@@ -33,6 +33,7 @@ export function LearnNav() {
 
   return (
     <div className="shrink-0">
+      {/* 단독판 셸 상단 바는 화면 제목을 보이지 않으므로 md 이상에서 여기 둔다(witems 는 lg — docs/SYNC.md). */}
       <PageHeader title="학습" className="hidden pb-2 md:flex" />
       <SegmentedTabs
         aria-label="학습 보기"

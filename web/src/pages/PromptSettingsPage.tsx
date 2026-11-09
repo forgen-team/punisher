@@ -14,7 +14,7 @@ export function PromptSettingsPage() {
         <ChevronLeft className="h-4 w-4" aria-hidden="true" />
         설정
       </Link>
-      <PageHeader title="강의 프롬프트" subtitle="강의를 만드는 지시문을 단계별로 보고 고쳐요." className="pt-1" />
+      <PageHeader title="강의 프롬프트" className="pt-1" />
       <PromptSettingsWidget />
     </div>
   );

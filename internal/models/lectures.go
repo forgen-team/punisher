@@ -48,10 +48,12 @@ type LectureReview struct {
 	Summary          string          `json:"summary"`
 	Issues           json.RawMessage `json:"issues"`
 	ValidationIssues json.RawMessage `json:"validationIssues"`
-	Attempt          int             `json:"attempt"`
-	Model            string          `json:"model"`
-	Reviewer         string          `json:"reviewer"`
-	CreatedAt        time.Time       `json:"createdAt"`
+	// ReaderGaps: the reviewer's beginner-reader pass (sentences assuming undefined terms).
+	ReaderGaps json.RawMessage `json:"readerGaps,omitempty"`
+	Attempt    int             `json:"attempt"`
+	Model      string          `json:"model"`
+	Reviewer   string          `json:"reviewer"`
+	CreatedAt  time.Time       `json:"createdAt"`
 }
 
 // GenerationJob is an LLM job (lecture generation or usage accounting).

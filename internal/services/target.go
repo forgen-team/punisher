@@ -109,6 +109,16 @@ func (s *Service) targetForPlan(ctx context.Context, userID string, concept mode
 			pc.Learned = append(pc.Learned, ref)
 		}
 	}
+	prereqs, err := s.Store.PrerequisitesOf(ctx, userID, conceptID)
+	if err != nil {
+		return Target{}, err
+	}
+	pc.Unlearned = UnlearnedRefs(prereqs)
+	catalog, err := s.Store.ConceptCatalog(ctx, userID)
+	if err != nil {
+		return Target{}, err
+	}
+	pc.Catalog = CatalogRefs(catalog, conceptID, pc.Linkable)
 
 	return Target{
 		Plan:    plan,
@@ -133,5 +143,6 @@ func (t Target) parseAndValidate(markup string) (lecture.Content, []lecture.Issu
 	if err != nil {
 		return content, nil, err
 	}
+	lecture.NormalizeInlineTerms(&content, t.Validation.KnownConceptIDs)
 	return content, lecture.Validate(content, t.Validation), nil
 }

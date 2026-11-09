@@ -234,7 +234,8 @@ func (s *Service) storeAttempts(ctx context.Context, t Target, jobID string, res
 		}
 		if err := s.Store.InsertReview(ctx, saved.ID, models.LectureReview{
 			Verdict: verdict, Summary: a.Review.Summary, Issues: issuesJSON(a.Review.Issues),
-			ValidationIssues: issuesJSON(a.Issues), Attempt: a.Number, Model: model, Reviewer: "llm",
+			ValidationIssues: issuesJSON(a.Issues), ReaderGaps: issuesJSON(a.Review.ReaderGaps),
+			Attempt: a.Number, Model: model, Reviewer: "llm",
 		}); err != nil {
 			return final, err
 		}

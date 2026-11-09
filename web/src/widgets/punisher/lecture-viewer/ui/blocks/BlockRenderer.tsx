@@ -1,8 +1,10 @@
 
 import { AlertOctagon, ExternalLink } from "lucide-react";
 import type { DocumentLink, LectureBlock } from "@/src/shared/api/punisher";
-import { Markdown } from "@/src/shared/ui/punisher/Markdown";
+import { Markdown, type RenderTerm } from "@/src/shared/ui/punisher/Markdown";
 import { TermPopover, type DeeperOrigin } from "@/src/features/punisher/term-popover";
+import { closeUnclosedFence } from "../../lib/fences";
+import { toInlineTermLinks } from "../../lib/inlineTerms";
 import { CodeBlock } from "./CodeBlock";
 import { MermaidBlock } from "./MermaidBlock";
 
@@ -36,16 +38,17 @@ interface BlockRendererProps {
   onBeforeDeeper?: () => DeeperOrigin | void;
 }
 
-/** 모델이 문장 중간에 쓴 "@@term 용어"(지시어는 줄 맨 앞만 유효)는 지시어만 지우고 용어는 남긴다. */
-function stripInlineDirectives(text: string): string {
-  return text.replace(/@@term\s+/g, "");
-}
-
 export function BlockRenderer({ block, onBeforeDeeper }: BlockRendererProps) {
   const text = block.text ?? "";
+  // 본문 문장 안의 [용어](term:개념id) → 누르면 용어 설명(스트리밍 미리보기에선 글자만).
+  const renderTerm: RenderTerm | undefined = onBeforeDeeper
+    ? (conceptId, label) => (
+        <TermPopover inline term={String(label)} conceptId={conceptId} onBeforeDeeper={onBeforeDeeper} />
+      )
+    : undefined;
   switch (block.type) {
     case "markdown":
-      return <Markdown>{stripInlineDirectives(text)}</Markdown>;
+      return <Markdown renderTerm={renderTerm}>{toInlineTermLinks(closeUnclosedFence(text))}</Markdown>;
     case "code":
       return <CodeBlock code={text} lang={block.lang} />;
     case "log":
@@ -59,7 +62,7 @@ export function BlockRenderer({ block, onBeforeDeeper }: BlockRendererProps) {
             <AlertOctagon className="size-4" aria-hidden="true" />
             흔한 오해
           </p>
-          <Markdown>{stripInlineDirectives(text)}</Markdown>
+          <Markdown renderTerm={renderTerm}>{toInlineTermLinks(closeUnclosedFence(text))}</Markdown>
         </aside>
       );
     case "term":

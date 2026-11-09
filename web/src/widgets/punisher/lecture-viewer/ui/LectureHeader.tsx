@@ -2,6 +2,7 @@
 import { Link } from "@/src/shared/lib/router";
 import { ChevronRight } from "lucide-react";
 import type { ConceptDetail, Lecture, LectureContent } from "@/src/shared/api/punisher";
+import { LECTURE_TITLE_ID } from "./LectureTopBar";
 import { LectureReviewBadges, USER_STATE_LABELS, areaLabel } from "@/src/entities/punisher";
 
 function mapHref(conceptId: string): string {
@@ -39,7 +40,7 @@ export function LectureHeader({ lecture, content, concept, fallbackTitle }: Lect
         // 강의 제목은 생성마다 달라지므로, 무엇을 배우는지(개념 이름)를 제목 위에 고정해 둔다.
         <p className="text-sm font-semibold text-accent-text">{concept.name}</p>
       )}
-      <h1 className="text-xl font-semibold text-fg md:text-2xl">{content.title || fallbackTitle}</h1>
+      <h1 id={LECTURE_TITLE_ID} className="text-xl font-semibold text-fg md:text-2xl">{content.title || fallbackTitle}</h1>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-muted">
         {concept ? (
           <Link href={mapHref(concept.id)} className="hover:text-fg hover:underline">

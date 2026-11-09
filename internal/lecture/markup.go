@@ -35,7 +35,8 @@ var ErrIncomplete = errors.New("lecture markup is incomplete (missing @@end)")
 
 var (
 	directiveRe = regexp.MustCompile(`^@@([a-z_]+)(?:\s+(.*))?$`)
-	sourceRe    = regexp.MustCompile(`^\s*[-*]\s*\[([^\]]+)\]\((\S+?)\)\s*$`)
+	// trailing text after the link (e.g. "— 이 문서가 근거하는 내용") is allowed and ignored.
+	sourceRe = regexp.MustCompile(`^\s*[-*]\s*\[([^\]]+)\]\((\S+?)\)(?:\s.*)?$`)
 )
 
 type parser struct {
@@ -164,6 +165,10 @@ func (p *parser) openBlock(kind string, attrs map[string]string) {
 	b := Block{Type: kind}
 	if attrs != nil {
 		b.Lang = attrs["lang"]
+		// "@@code bash" (lang= omitted) — accept the first bare token as the language.
+		if b.Lang == "" && (kind == BlockCode || kind == BlockLog) {
+			b.Lang = attrs["_"]
+		}
 		b.ConceptID = attrs["concept"]
 		b.Term = attrs["term"]
 		_, b.Proposed = attrs["proposed"]

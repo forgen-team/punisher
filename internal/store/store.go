@@ -28,6 +28,7 @@ type Store interface {
 	DoneSet(ctx context.Context, userID, conceptID string) (learning.DoneSet, error)
 	ConceptCatalog(ctx context.Context, userID string) ([]ConceptRef, error)
 	RelatedConcepts(ctx context.Context, userID, conceptID string) ([]ConceptRef, error)
+	PrerequisitesOf(ctx context.Context, userID, conceptID string) ([]ConceptRef, error)
 	KnownConceptIDs(ctx context.Context) (map[string]bool, error)
 	ProposeConcept(ctx context.Context, userID string, p models.ProposedConcept) (string, error)
 	GetGloss(ctx context.Context, conceptID string) (string, error)

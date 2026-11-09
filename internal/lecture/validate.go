@@ -132,6 +132,9 @@ func validateBlock(path string, b Block, vc ValidationContext, add func(string, 
 		if strings.TrimSpace(b.Text) == "" {
 			add(path, "%s block is empty", b.Type)
 		}
+		if b.Type != BlockMermaid && UnclosedFence(b.Text) {
+			add(path, "%s block has an unclosed ``` code fence (the rest of the text would render as code)", b.Type)
+		}
 	case BlockCode, BlockLog:
 		if strings.TrimSpace(b.Text) == "" {
 			add(path, "%s block is empty", b.Type)
@@ -157,6 +160,42 @@ func validateBlock(path string, b Block, vc ValidationContext, add func(string, 
 	default:
 		add(path, "unknown block type %q", b.Type)
 	}
+}
+
+// UnclosedFence reports whether markdown text opens a ``` / ~~~ code fence it
+// never closes (CommonMark: a fence closes with the same character, at least
+// as long, on its own line).
+func UnclosedFence(text string) bool {
+	open := ""
+	for _, line := range strings.Split(text, "\n") {
+		t := strings.TrimLeft(line, " ")
+		if len(line)-len(t) > 3 {
+			continue
+		}
+		marker := fenceMarker(t)
+		if marker == "" {
+			continue
+		}
+		if open == "" {
+			open = marker
+		} else if marker[0] == open[0] && len(marker) >= len(open) && strings.TrimSpace(t[len(marker):]) == "" {
+			open = ""
+		}
+	}
+	return open != ""
+}
+
+func fenceMarker(line string) string {
+	for _, ch := range []byte{'`', '~'} {
+		n := 0
+		for n < len(line) && line[n] == ch {
+			n++
+		}
+		if n >= 3 {
+			return line[:n]
+		}
+	}
+	return ""
 }
 
 func isHTTPSURL(raw string) bool {

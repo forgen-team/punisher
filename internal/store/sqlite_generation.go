@@ -114,6 +114,21 @@ func (s *SQLiteStore) RelatedConcepts(ctx context.Context, userID, conceptID str
 	return refs, nil
 }
 
+// PrerequisitesOf returns the direct prerequisites of conceptID with the user's state.
+func (s *SQLiteStore) PrerequisitesOf(ctx context.Context, userID, conceptID string) ([]ConceptRef, error) {
+	refs, err := collect(s.c().query(ctx, `
+		SELECT n.id, n.name, n.area, n.depth, n.summary, COALESCE(st.state, 'not_started')
+		FROM concept_edges e
+		JOIN concepts n ON n.id = e.from_id AND n.status <> 'retired'
+		LEFT JOIN user_concept_states st ON st.concept_id = n.id AND st.user_id = $1
+		WHERE e.to_id = $2 AND e.kind = 'prerequisite'
+		ORDER BY n.depth, n.id`, userID, conceptID), scanConceptRef)
+	if err != nil {
+		return nil, fmt.Errorf("prerequisites: %w", err)
+	}
+	return refs, nil
+}
+
 // KnownConceptIDs returns the ids of every non-retired concept.
 func (s *SQLiteStore) KnownConceptIDs(ctx context.Context) (map[string]bool, error) {
 	ids, err := collect(s.c().query(ctx, `SELECT id FROM concepts WHERE status <> 'retired'`), scanString)

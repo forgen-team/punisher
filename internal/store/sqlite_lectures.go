@@ -84,10 +84,10 @@ func (s *SQLiteStore) InsertLecture(ctx context.Context, l NewLecture) (models.L
 // InsertReview stores a review-pass result for a lecture.
 func (s *SQLiteStore) InsertReview(ctx context.Context, lectureID string, r models.LectureReview) error {
 	_, err := s.c().exec(ctx, `
-		INSERT INTO lecture_reviews (id, lecture_id, verdict, issues, model, reviewer, attempt, summary, validation_issues)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		INSERT INTO lecture_reviews (id, lecture_id, verdict, issues, model, reviewer, attempt, summary, validation_issues, reader_gaps)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 		NewID(), lectureID, r.Verdict, nonNullJSON(r.Issues, "[]"), r.Model, r.Reviewer, r.Attempt, r.Summary,
-		nonNullJSON(r.ValidationIssues, "[]"))
+		nonNullJSON(r.ValidationIssues, "[]"), nonNullJSON(r.ReaderGaps, "[]"))
 	if err != nil {
 		return fmt.Errorf("insert review: %w", err)
 	}
@@ -152,10 +152,10 @@ func (s *SQLiteStore) GetLecture(ctx context.Context, userID, lectureID string) 
 	}
 
 	l.Reviews, err = collect(s.c().query(ctx, `
-		SELECT id, verdict, summary, issues, validation_issues, attempt, model, reviewer, created_at
+		SELECT id, verdict, summary, issues, validation_issues, reader_gaps, attempt, model, reviewer, created_at
 		FROM lecture_reviews WHERE lecture_id = $1 ORDER BY created_at`, l.ID), func(row rowScanner) (models.LectureReview, error) {
 		var r models.LectureReview
-		err := row.Scan(&r.ID, &r.Verdict, &r.Summary, rawJSON(&r.Issues), rawJSON(&r.ValidationIssues), &r.Attempt, &r.Model, &r.Reviewer, ts(&r.CreatedAt))
+		err := row.Scan(&r.ID, &r.Verdict, &r.Summary, rawJSON(&r.Issues), rawJSON(&r.ValidationIssues), rawJSON(&r.ReaderGaps), &r.Attempt, &r.Model, &r.Reviewer, ts(&r.CreatedAt))
 		return r, err
 	})
 	if err != nil {

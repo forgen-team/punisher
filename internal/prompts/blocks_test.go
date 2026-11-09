@@ -90,3 +90,41 @@ func TestUnknownVars(t *testing.T) {
 		t.Fatalf("unknown = %v", got)
 	}
 }
+
+func TestAssumedKnowledgeRules(t *testing.T) {
+	if Version != "punisher-prompts-2026-11-09.2" {
+		t.Fatalf("version = %s (bump when default blocks change)", Version)
+	}
+	for _, want := range []string{"전제하지 않습니다", "첫 등장에서 정의합니다", "2~3문장", "\"당연히\""} {
+		if !strings.Contains(SystemTeacher, want) {
+			t.Errorf("teacher lacks %q", want)
+		}
+	}
+	for _, want := range []string{"(term:os.process)", "문장 중간에 \"@@term\"을 쓰지 않습니다"} {
+		if !strings.Contains(MarkupSpec, want) {
+			t.Errorf("markup spec lacks %q", want)
+		}
+	}
+	for _, want := range []string{"초보 독자 시뮬레이션", "assumed_knowledge", "\"reader_gaps\"", "INSERT INSERT INTO"} {
+		if !strings.Contains(ReviewTask, want) {
+			t.Errorf("review task lacks %q", want)
+		}
+	}
+	if !strings.Contains(OutlineTask, "terms_to_define") {
+		t.Error("outline lacks terms_to_define")
+	}
+	p := Lecture(LectureContext{ConceptID: "os.process", Unlearned: []ConceptRef{{ID: "os.kernel-and-syscall", Name: "커널"}}}, "", "", Defaults())
+	if !strings.Contains(p, "## 아직 배우지 않은 선행 개념") || !strings.Contains(p, "os.kernel-and-syscall: 커널") {
+		t.Fatalf("lecture prompt lacks unlearned prerequisites: %s", p)
+	}
+}
+
+func TestCatalogListedForLinking(t *testing.T) {
+	p := Lecture(LectureContext{Catalog: []CatalogRef{
+		{ID: "net.nat", Name: "NAT", Area: "network"}, {ID: "net.subnet", Name: "서브넷", Area: "network", Learned: true},
+		{ID: "os.signal", Name: "시그널", Area: "os"},
+	}}, "", "", Defaults())
+	if !strings.Contains(p, "- network: net.nat NAT, net.subnet 서브넷✓\n- os: os.signal 시그널\n") {
+		t.Fatalf("catalog block wrong:\n%s", p)
+	}
+}

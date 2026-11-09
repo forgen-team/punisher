@@ -12,6 +12,8 @@ import (
 	"github.com/wooo-jin/punisher/internal/learning"
 	"github.com/wooo-jin/punisher/internal/lecture"
 	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/wooo-jin/punisher/internal/prompts"
+	"github.com/wooo-jin/punisher/internal/store"
 )
 
 const validMarkup = `@@lecture
@@ -254,5 +256,41 @@ func TestUnknownDirectiveIsRejectedAndRegenerated(t *testing.T) {
 	}
 	if len(f.notes) != 2 || !strings.Contains(f.notes[1], "unknown directive @@dummy_placeholder_removed") {
 		t.Fatalf("regeneration notes = %q", f.notes)
+	}
+}
+
+func TestReviewReaderGapsParsedAndFedBack(t *testing.T) {
+	r := ParseReview(`{"verdict":"fail","summary":"s","reader_gaps":[{"section":"judgment_next","quote":"감독자라면",
+		"unknown":"감독자(supervisor)","why":"웹 개발자는 systemd 역할을 모름","fix":"한 줄 정의"}],
+		"issues":[{"severity":"major","kind":"assumed_knowledge","section":"judgment_next","quote":"감독자라면","message":"m"}]}`)
+	if len(r.ReaderGaps) != 1 || !r.Blocking() {
+		t.Fatalf("review = %+v", r)
+	}
+	notes := RevisionNotes(Attempt{Reviewed: true, Review: r})
+	if !strings.Contains(notes, "[전제 지식 · judgment_next]") || !strings.Contains(notes, "major/assumed_knowledge") {
+		t.Fatalf("notes = %s", notes)
+	}
+	if ParseReview(`{"verdict":"pass","summary":"ok"}`).ReaderGaps == nil {
+		t.Fatal("reader_gaps must default to empty")
+	}
+}
+
+func TestUnlearnedRefsKeepsOnlyNotDone(t *testing.T) {
+	got := UnlearnedRefs([]store.ConceptRef{
+		{ID: "a", Name: "A", State: learning.Completed},
+		{ID: "b", Name: "B", State: learning.Known},
+		{ID: "c", Name: "C", State: learning.InProgress},
+		{ID: "d", Name: "D", State: "not_started"},
+	})
+	if len(got) != 2 || got[0].ID != "c" || got[1].ID != "d" {
+		t.Fatalf("unlearned = %+v", got)
+	}
+}
+
+func TestCatalogRefsSkipsTargetAndNeighbours(t *testing.T) {
+	got := CatalogRefs([]store.ConceptRef{{ID: "t"}, {ID: "n"}, {ID: "x", Name: "X", Area: "os", State: learning.Known}},
+		"t", []prompts.ConceptRef{{ID: "n"}})
+	if len(got) != 1 || got[0].ID != "x" || !got[0].Learned {
+		t.Fatalf("catalog = %+v", got)
 	}
 }

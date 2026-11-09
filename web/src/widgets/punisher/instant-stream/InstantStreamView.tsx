@@ -38,7 +38,7 @@ export function InstantStreamView({ jobId }: { jobId: string }) {
     <div className="flex w-full flex-col">
       <LectureTopBar title={content.title || "즉석 강의"} onOpenToc={hasToc ? () => setTocOpen(true) : undefined} />
       <div className="flex gap-8">
-        <aside className="sticky top-[calc(var(--app-header-offset)+4rem)] hidden max-h-[calc(100dvh-6rem)] w-56 shrink-0 self-start overflow-y-auto pt-4 lg:block">
+        <aside className="sticky top-[calc(var(--app-header-offset)+4rem)] hidden max-h-[calc(100dvh-6rem)] w-56 shrink-0 self-start overflow-y-auto pb-10 pt-4 lg:block">
           {hasToc && <SectionToc sections={content.sections} totalMinutes={content.estimatedMinutes} />}
         </aside>
         <article className="mx-auto w-full min-w-0 max-w-2xl pb-16" aria-busy={busy}>

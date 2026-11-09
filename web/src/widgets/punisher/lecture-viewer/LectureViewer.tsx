@@ -129,7 +129,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
         menuItems={menuItems}
       />
       <div className="flex gap-8">
-        <aside className="sticky top-[calc(var(--app-header-offset)+4rem)] hidden max-h-[calc(100dvh-6rem)] w-56 shrink-0 self-start overflow-y-auto pt-4 lg:block">
+        <aside className="sticky top-[calc(var(--app-header-offset)+4rem)] hidden max-h-[calc(100dvh-6rem)] w-56 shrink-0 self-start overflow-y-auto pb-10 pt-4 lg:block">
           <SectionToc sections={content.sections} totalMinutes={totalMinutes} />
         </aside>
         <article className="mx-auto w-full min-w-0 max-w-2xl pb-16">

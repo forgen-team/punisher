@@ -23,6 +23,8 @@ interface TermPopoverProps {
    * Returns the origin so the new lecture is linked under it ("이 강의에서 더 깊게 본 강의").
    */
   onBeforeDeeper: () => DeeperOrigin | void;
+  /** 본문 문장 안의 인라인 링크(아이콘·터치 높이 없이 글자만) */
+  inline?: boolean;
 }
 
 /**
@@ -30,7 +32,7 @@ interface TermPopoverProps {
  * 본문에 펼치지 않고 스크롤 위치도 바꾸지 않는다(스크롤 잠금 없음).
  * Esc·바깥·닫기로 본문 복귀, "더 깊게"는 현재 위치를 북마크하고 해당 개념 강의로 이동 (design §3.3).
  */
-export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeDeeper }: TermPopoverProps) {
+export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeDeeper, inline = false }: TermPopoverProps) {
   const [anchor, setAnchor] = useState<OverlayAnchor | null>(null);
   const open = anchor !== null;
   const gloss = useGloss(conceptId, open);
@@ -57,12 +59,13 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
         aria-expanded={open}
         onClick={(event) => setAnchor(toOverlayAnchor(event.currentTarget.getBoundingClientRect()))}
         className={cn(
-          "inline-flex min-h-touch items-center gap-1.5 rounded-sm text-base font-medium text-accent-text",
-          "underline decoration-dotted underline-offset-4",
+          inline
+            ? "inline rounded-sm text-accent-text underline decoration-dotted underline-offset-4"
+            : "inline-flex min-h-touch items-center gap-1.5 rounded-sm text-base font-medium text-accent-text underline decoration-dotted underline-offset-4",
           focusRing,
         )}
       >
-        <BookOpen className="size-4" aria-hidden="true" />
+        {!inline && <BookOpen className="size-4" aria-hidden="true" />}
         {label}
         {proposed && <span className="text-xs font-normal text-fg-muted no-underline">(제안)</span>}
       </button>

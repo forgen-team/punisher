@@ -9,7 +9,7 @@ import { BRAND_LINE, PunisherLogo } from "@/src/shared/ui/brand";
 export function SettingsPage() {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 pb-10">
-      <PageHeader title="설정" subtitle="강의를 내 손에 익은 언어로 읽어요." />
+      <PageHeader title="설정" />
       <Section title="학습">
         <LearningSettingsForm />
       </Section>

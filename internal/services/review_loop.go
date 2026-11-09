@@ -20,11 +20,22 @@ type ReviewIssue struct {
 	Suggestion string `json:"suggestion"`
 }
 
+// ReaderGap is a sentence a web FE/BE developer could not follow because it
+// assumes an undefined term or mechanism (reviewer's beginner-reader pass).
+type ReaderGap struct {
+	Section string `json:"section"`
+	Quote   string `json:"quote"`
+	Unknown string `json:"unknown"`
+	Why     string `json:"why"`
+	Fix     string `json:"fix"`
+}
+
 // ReviewOutcome is the parsed review pass.
 type ReviewOutcome struct {
-	Verdict string        `json:"verdict"`
-	Summary string        `json:"summary"`
-	Issues  []ReviewIssue `json:"issues"`
+	Verdict    string        `json:"verdict"`
+	Summary    string        `json:"summary"`
+	ReaderGaps []ReaderGap   `json:"reader_gaps"`
+	Issues     []ReviewIssue `json:"issues"`
 }
 
 // Blocking reports whether the review requires revision: explicit fail or
@@ -50,6 +61,9 @@ func ParseReview(text string) ReviewOutcome {
 	}
 	if out.Issues == nil {
 		out.Issues = []ReviewIssue{}
+	}
+	if out.ReaderGaps == nil {
+		out.ReaderGaps = []ReaderGap{}
 	}
 	return out
 }
@@ -121,6 +135,9 @@ func RunReviewLoop(ctx context.Context, maxAttempts int, f LoopFuncs) (LoopResul
 	return res, nil
 }
 
+// maxGapNotes bounds reader-gap lines in revision notes (prompt size).
+const maxGapNotes = 15
+
 // RevisionNotes formats an attempt's problems for the regeneration prompt.
 func RevisionNotes(a Attempt) string {
 	var b strings.Builder
@@ -142,6 +159,13 @@ func RevisionNotes(a Attempt) string {
 			fmt.Fprintf(&b, " → %s", i.Suggestion)
 		}
 		b.WriteString("\n")
+	}
+	for i, g := range a.Review.ReaderGaps {
+		if i == maxGapNotes {
+			fmt.Fprintf(&b, "- [전제 지식] 외 %d건도 같은 방식으로 첫 등장에서 정의하세요.\n", len(a.Review.ReaderGaps)-maxGapNotes)
+			break
+		}
+		fmt.Fprintf(&b, "- [전제 지식 · %s] %q 에서 '%s'를 정의 없이 씀 → %s\n", g.Section, g.Quote, g.Unknown, g.Fix)
 	}
 	if b.Len() == 0 && a.Reviewed && a.Review.Verdict != "pass" {
 		fmt.Fprintf(&b, "- [검수] %s\n", a.Review.Summary)

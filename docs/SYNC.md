@@ -10,6 +10,7 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | --- | --- | --- |
 | v0.1.0 (`0c03f16`) | `1574a0a` | 최초 이식 (NOTICE) |
 | v0.2.0 | `98308e6` | 학습 요청 완료 판정·즉시 해석, '더 깊게' 연결, 강의 프롬프트 편집 |
+| v0.2.1 | `dfb61eb` | 81399aa(프롬프트 2026-11-09.2·인라인 용어·펜스 검증·reader_gaps·마이그레이션 006), 7485785(하단 여백), e7b8111·5e5c77a(헤더 정리, 단독판 셸에 맞게 일부만). 제외: f192b0e(학습 요청 대기열 UI 제거), 7f4bc8a(글 해설, RSS 전용) |
 
 다음 이식의 시작점은 **표의 마지막 witems 커밋**입니다. 이식을 마치면 이 표에 한 줄을 추가합니다.
 
@@ -19,6 +20,8 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
    ```sh
    scripts/witems-sync.sh ~/repo/witems-workspace/witems-claude <마지막 기준> <새 기준>
    ```
+   범위 안에 단독판에 해당하지 않는 커밋(RSS 전용, 학습 요청 대기열 제거 등)이 섞여 있으면 범위 대신 커밋별로 뽑아 골라 적용합니다:
+   `scripts/witems-sync.sh <witems> <커밋>^ <커밋> .sync/pick-<커밋>` (v0.2.1 에서 사용).
    `.sync/<범위>/` 에 `commits.txt` · `files.txt`(보고서용 목록) · `server.patch` · `web.patch` · `kit.patch` · `store.diff` · `web-other.txt` 가 생깁니다.
 2. **서버 적용**: `git apply --recount --reject .sync/<범위>/server.patch` → `*.rej` 를 손으로 반영하고 지웁니다(대개 아래 '갈라진 곳' 파일).
 3. **저장소 포팅(손으로)**: `store.diff` 를 보고
@@ -87,6 +90,9 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | `web/src/shared/api/punisher/client.ts` | 로그인 리다이렉트·API 키 안내 제거, 503(Claude 미설치/미로그인) 안내 | 인증 없음 |
 | `web/src/shared/lib/{router.tsx,ThemeSync.tsx,theme.ts}`, `web/src/app`, `web/src/pages` | 단독판 셸 | Next.js 대신 Vite + React Router |
 | `web/src/widgets/punisher/lecture-viewer/lib/highlight.ts` | shiki 언어 29개만 | 바이너리 크기 |
+| `web/src/widgets/punisher/lecture-viewer/ui/LectureTopBar.tsx` | 뒤로(←) 버튼을 모든 폭에서 보임(witems 는 lg 이상만) | 단독판 셸 상단 바에는 [←]가 없음 |
+| `web/src/widgets/punisher/nav/LearnNav.tsx` | '학습' 제목을 md 이상에서 보임(witems 는 lg) | 단독판 셸 상단 바는 화면 제목을 보이지 않음 |
+| `web/src/widgets/punisher/today/ui/StudyRequestList.tsx` 외 학습 요청 UI | witems f192b0e(대기열 UI 제거)를 **가져오지 않음** | 단독판은 직접 입력 학습 요청을 유지 |
 | `web/src/styles/brand.css`, `web/src/shared/ui/brand/*`, `assets/*`, `web/public/*` | forgen 패밀리 브랜딩(오렌지 액센트·로고) | 단독판 정체성. `design-tokens.css` 는 witems 원본 그대로 두고 `brand.css` 에서 액센트만 덮어쓴다 |
 
 ## 앞으로 들어올 것

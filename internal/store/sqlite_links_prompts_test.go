@@ -63,6 +63,7 @@ func TestDeeperLinksDirectAndViaJob(t *testing.T) {
 		t.Fatalf("unreadable parent err = %v, want ErrNotFound", err)
 	}
 
+	time.Sleep(3 * time.Millisecond) // links are ordered by link time (ms precision)
 	job, _, err := s.CreateJob(ctx, NewJob{IdempotencyKey: "test-link", Kind: "question", UserID: user, ConceptID: cB})
 	if err != nil {
 		t.Fatal(err)
@@ -322,8 +323,9 @@ func TestUpgradeFromV010(t *testing.T) {
 	}
 	var applied int
 	_ = s.c().row(ctx, `SELECT COUNT(*) FROM schema_migrations`).Scan(&applied)
-	if applied != 5 {
-		t.Fatalf("schema_migrations = %d, want 5", applied)
+	all, _ := fs.Glob(migrations.Files, "*.sql")
+	if applied != len(all) {
+		t.Fatalf("schema_migrations = %d, want %d", applied, len(all))
 	}
 
 	if lang := s.ExampleLanguageFor(ctx, testUser); lang != "go" {
@@ -341,6 +343,14 @@ func TestUpgradeFromV010(t *testing.T) {
 	}
 	if _, err := s.SavePromptOverride(ctx, testUser, "teacher.system", "x", "save"); err != nil {
 		t.Fatalf("new table after upgrade: %v", err)
+	}
+	// 006: reader_gaps on reviews (old reviews default to []).
+	gaps := []byte(`[{"section":"principles","quote":"q","unknown":"u"}]`)
+	if err := s.InsertReview(ctx, parent, models.LectureReview{Verdict: "fail", Reviewer: "llm", Attempt: 1, ReaderGaps: gaps}); err != nil {
+		t.Fatalf("review with reader_gaps: %v", err)
+	}
+	if lec, err := s.GetLecture(ctx, testUser, parent); err != nil || len(lec.Reviews) != 1 || string(lec.Reviews[0].ReaderGaps) != string(gaps) {
+		t.Fatalf("reader_gaps round trip: %+v %v", lec.Reviews, err)
 	}
 
 	raw, _ := migrations.Files.ReadFile("004_lecture_links.sql")
