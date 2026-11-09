@@ -63,7 +63,15 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
     );
   }
   if (lectureQuery.error) {
-    return <ErrorState message={describePunisherError(lectureQuery.error)} onRetry={() => lectureQuery.refetch()} />;
+    // 단독판: 셸 상단 바에 뒤로 버튼이 없어, 강의를 못 불러오면 강의 화면으로 돌아갈 길을 함께 둔다(docs/SYNC.md).
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <ErrorState message={describePunisherError(lectureQuery.error)} onRetry={() => lectureQuery.refetch()} />
+        <Link href="/" className="text-sm text-fg-secondary underline-offset-2 hover:text-fg hover:underline">
+          강의 화면으로 돌아가기
+        </Link>
+      </div>
+    );
   }
   if (!lecture || !content || content.sections.length === 0) {
     return <EmptyState title="강의 본문이 없습니다" description="강의가 아직 생성 중이거나 비어 있습니다." />;

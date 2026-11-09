@@ -8,7 +8,7 @@ import { BRAND_LINE, PunisherLogo } from "@/src/shared/ui/brand";
 /** 설정: 예시 코드 언어 · 화면 테마 · Claude Code 연결 상태 · 데이터 위치. */
 export function SettingsPage() {
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 pb-10">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <PageHeader title="설정" />
       <Section title="학습">
         <LearningSettingsForm />
@@ -20,7 +20,7 @@ export function SettingsPage() {
             linkAs={Link}
             leading={<ScrollText />}
             title="강의 프롬프트"
-            meta="개요 짜기 → 본문 쓰기 → 감수 → 용어 설명 → 질문 답변 → 구절 설명 지시문을 보고 고쳐요"
+            meta="강의를 만드는 지시문을 단계별로 보고 고쳐요"
           />
         </List>
       </Section>

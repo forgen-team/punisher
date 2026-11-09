@@ -99,6 +99,10 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | `web/src/widgets/punisher/today/ui/StudyRequestList.tsx` 외 학습 요청 UI | witems f192b0e(대기열 UI 제거)·534141d(지도·추천의 학습 요청 흔적 정리)를 **가져오지 않음** — 지도의 '요청됨' 표시·`?request=`·대기 목록 유지 | 단독판은 직접 입력 학습 요청을 유지 |
 | `web/src/widgets/punisher/today/TodayWidget.tsx`, `knowledge-map/KnowledgeMapWidget.tsx` | 위 이유로 witems 와 import·요청 관련 줄이 다름(챕터 기능은 동일) | 이식 때 `.rej` 가 나면 요청 UI 를 남기고 챕터 쪽만 합친다 |
 | `cmd/punisher/main.go`, `internal/config` | RSS 신호(`Signals`, `RSSServerURL`) 연결 없음 → `Service.Signals == nil` 이라 다음 챕터 제안의 RSS 관심사·트렌드(c)는 꺼짐 | 단독판에는 RSS 서버가 없음 |
+| `web/src/widgets/punisher/knowledge-map/ui/MapControls.tsx` | 412px 등 좁은 폭에서 영역·목표 선택을 세로로 쌓음(`flex-col sm:flex-row`) | '목표 경로 없음'이 잘림 — witems 에도 적용 권장 |
+| `web/src/features/punisher/learning-settings/LearningSettingsForm.tsx` | 필드 사이 `gap-5`(저장 상태 줄 `-mt-3`) | 필드 두 개가 붙어 보임 — witems 에도 적용 권장 |
+| `web/src/widgets/punisher/lecture-viewer/LectureViewer.tsx` | 강의를 못 불러올 때 '강의 화면으로 돌아가기' 링크 | 단독판 셸에 뒤로 버튼이 없음 |
+| `web/src/app/AppShell.tsx`, `web/src/shared/ui/BackLink.tsx`, `web/src/pages/*` | 본문 아래 여백은 셸 한 곳(`pb-[calc(3rem+var(--safe-bottom))]`), 하위 화면 맨 위 '← 상위' 링크 공통 | 여백·패딩 점검(2026-11-09) |
 | `web/src/styles/brand.css`, `web/src/shared/ui/brand/*`, `assets/*`, `web/public/*` | forgen 패밀리 브랜딩(오렌지 액센트·로고) | 단독판 정체성. `design-tokens.css` 는 witems 원본 그대로 두고 `brand.css` 에서 액센트만 덮어쓴다 |
 
 ## 앞으로 들어올 것

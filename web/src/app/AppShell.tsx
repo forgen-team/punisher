@@ -55,7 +55,7 @@ export function AppShell() {
           </Link>
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 pb-6 pt-3 md:px-6">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 pb-[calc(3rem+var(--safe-bottom))] pt-3 md:px-6">
         <ClaudeStatusBanner />
         <LearnNav />
         <div className="flex min-w-0 flex-1 flex-col">

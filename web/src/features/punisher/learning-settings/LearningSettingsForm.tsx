@@ -30,7 +30,7 @@ export function LearningSettingsForm() {
   const daily = pending?.dailyMinutes ?? settings.data.settings.dailyMinutes ?? 30;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-5">
       <Field
         label="예시 코드 언어"
         hint="강의·질문 답변·'이 부분 설명'의 코드 예시를 이 언어로 써요. 셸 명령·SQL·설정 파일은 원래 형식 그대로예요. 이미 만든 강의는 바뀌지 않아요."
@@ -56,7 +56,7 @@ export function LearningSettingsForm() {
           ))}
         </Select>
       </Field>
-      <p aria-live="polite" className="flex min-h-5 items-center gap-1.5 text-xs text-fg-muted">
+      <p aria-live="polite" className="-mt-3 flex min-h-5 items-center gap-1.5 text-xs text-fg-muted">
         {save.isPending && <Spinner size="sm" label={null} />}
         {save.isPending && "저장 중…"}
         {!save.isPending && save.isSuccess && "저장했어요."}

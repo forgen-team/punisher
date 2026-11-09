@@ -26,12 +26,13 @@ export function AddStudyRequestForm() {
       <div className="flex items-center gap-2">
         <Input
           aria-label="공부하고 싶은 주제"
-          placeholder="공부하고 싶은 주제 (예: 쿠버네티스 Pod 재시작)"
+          className="min-w-0"
+          placeholder="예: 쿠버네티스 Pod 재시작"
           value={query}
           maxLength={MAX_QUERY}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <Button type="submit" size="sm" variant="secondary" loading={create.isPending} disabled={!trimmed}>
+        <Button type="submit" size="md" variant="secondary" className="shrink-0" loading={create.isPending} disabled={!trimmed}>
           <Plus className="h-4 w-4" aria-hidden="true" />
           추가
         </Button>

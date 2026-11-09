@@ -37,44 +37,47 @@ export function MapControls({
 
   return (
     <div className="flex items-center gap-2">
-      <div className="min-w-0 flex-1">
-        <Select
-          aria-label="영역"
-          value={area}
-          disabled={Boolean(goalId)}
-          title={goalId ? "목표 경로를 보는 중에는 영역 대신 경로가 표시됩니다" : undefined}
-          onChange={(event) => onAreaChange(event.target.value)}
-        >
-          <option value="all">전체 영역</option>
-          {chapters.length > 0 && (
-            <optgroup label="내 챕터">
-              {chapters.map((c) => (
-                <option key={c.id} value={`${CHAPTER_OPTION_PREFIX}${c.id}`}>
-                  새 챕터: {c.title}
+      {/* 좁은 화면(412px 등)에서 두 선택이 나란히 서면 '목표 경로 없음'이 잘려 세로로 쌓는다. */}
+      <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
+        <div className="min-w-0 flex-1">
+          <Select
+            aria-label="영역"
+            value={area}
+            disabled={Boolean(goalId)}
+            title={goalId ? "목표 경로를 보는 중에는 영역 대신 경로가 표시됩니다" : undefined}
+            onChange={(event) => onAreaChange(event.target.value)}
+          >
+            <option value="all">전체 영역</option>
+            {chapters.length > 0 && (
+              <optgroup label="내 챕터">
+                {chapters.map((c) => (
+                  <option key={c.id} value={`${CHAPTER_OPTION_PREFIX}${c.id}`}>
+                    새 챕터: {c.title}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {PUNISHER_AREAS.map((a) => {
+              const signals = coverage.find((c) => c.area === a);
+              const summary = signals ? areaSignals(signals) : "";
+              return (
+                <option key={a} value={a}>
+                  {summary ? `${AREA_LABELS[a]} · ${summary}` : AREA_LABELS[a]}
                 </option>
-              ))}
-            </optgroup>
-          )}
-          {PUNISHER_AREAS.map((a) => {
-            const signals = coverage.find((c) => c.area === a);
-            const summary = signals ? areaSignals(signals) : "";
-            return (
-              <option key={a} value={a}>
-                {summary ? `${AREA_LABELS[a]} · ${summary}` : AREA_LABELS[a]}
+              );
+            })}
+          </Select>
+        </div>
+        <div className="min-w-0 flex-1">
+          <Select aria-label="목표 경로" value={goalId} onChange={(event) => onGoalChange(event.target.value)}>
+            <option value="">목표 경로 없음</option>
+            {goals.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.title} ({GOAL_STATUS_LABELS[g.status]})
               </option>
-            );
-          })}
-        </Select>
-      </div>
-      <div className="min-w-0 flex-1">
-        <Select aria-label="목표 경로" value={goalId} onChange={(event) => onGoalChange(event.target.value)}>
-          <option value="">목표 경로 없음</option>
-          {goals.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.title} ({GOAL_STATUS_LABELS[g.status]})
-            </option>
-          ))}
-        </Select>
+            ))}
+          </Select>
+        </div>
       </div>
       <IconButton aria-label="범례" onClick={onOpenLegend}>
         <Info aria-hidden="true" />
