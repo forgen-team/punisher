@@ -10,6 +10,7 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | --- | --- | --- |
 | v0.1.0 (`0c03f16`) | `1574a0a` | 최초 이식 (NOTICE) |
 | v0.2.0 | `98308e6` | 학습 요청 완료 판정·즉시 해석, '더 깊게' 연결, 강의 프롬프트 편집 |
+| v0.3.1 | `86faccc` | (+6296884: remarkCjkStrong 을 UI kit `shared/ui/kit/lib` 로 이동, RSS 적용분 제외) |
 | v0.3.1 | `bea5102` | 여백 정리(c72203f·216d16b·2357f42·266de35·d784205), Field break-keep(fcab7af), 넓은 화면 6커밋(eeab342·4a76756·d59f75d·9e50424·27e2e10·717290a), ← 규칙(6242513), 굵게 렌더(43fbb32), MermaidOutsideBlock·prompts 2026-11-09.3(bea5102). 셸 폭을 witems 학습 레이아웃(최대 1600px, px-4→fold 6→lg 8)에 맞춤. 단독판 MapControls·LearningSettingsForm 수정은 witems 가 같은 문제를 고쳐 witems 판으로 되돌림 |
 | v0.3.0 (+3차) | `c37c9a6` | e9959f6: 시도 기록(마이그레이션 008, attempt_log JSON TEXT), 즉석 자동 재작성 1회(StageRewriting, 다시 시도 버튼), mermaid 본문 삼킴 검출. 단독판 전용 `TestUnknownDirectiveIsRejectedAndRegenerated`(ac4f369)는 witems 의 `TestReviewLoopAttemptLogKeepsFailedParse`·`TestInstantRewritesOnceAfterBadMarkup` 와 겹쳐 삭제 |
 | v0.3.0 | `b15c724` | 50f68f6 다음 챕터(마이그레이션 007, visibleTo 사용자 격리, 챕터 고르기·지도 챕터 보기·하루 학습량), 1bc2ab4 중 UI kit(HeightReserve·시트 하단 여백)만. 제외: 534141d(학습 요청 흔적 정리 — 단독판은 요청 UI 유지), 1bc2ab4 의 RSS·오늘 홈 부분, rss-server |

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import ReactMarkdown, { defaultUrlTransform, type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/src/shared/ui/kit";
-import { remarkCjkStrong } from "./cjkStrong";
+import { remarkCjkStrong } from "@/src/shared/ui/kit";
 
 /** 강의 본문의 인라인 개념 링크 [용어](term:개념id) — 렌더러가 없으면 글자만 보인다. */
 export type RenderTerm = (conceptId: string, label: ReactNode) => ReactNode;

@@ -1,4 +1,5 @@
 export * from "./lib/utils";
+export * from "./lib/remarkCjkStrong"; // remark 플러그인 — 한국어 조사가 붙은 **굵게** 보정(web·rss-reader 공용)
 export * from "./hooks/useBodyScrollLock";
 export * from "./hooks/useMediaQuery";
 export * from "./hooks/useIsSplitLayout";
