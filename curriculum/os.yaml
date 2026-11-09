@@ -1,0 +1,354 @@
+# 운영체제 — 프로세스·스레드·가상 메모리·스케줄링·파일·소켓
+# 규칙: objectives 는 순서를 바꾸지 말고 끝에 추가한다(목표 id = concept_id#순번).
+area: os
+title: 운영체제
+concepts:
+  - id: os.kernel-and-syscall
+    name: 커널과 시스템 콜
+    aliases: [Kernel, System Call, syscall, 시스템콜, 유저 모드와 커널 모드]
+    depth: 1
+    summary: 애플리케이션은 하드웨어를 직접 다루지 않고 시스템 콜로 커널에 일을 요청한다. 파일·네트워크·프로세스 생성이 모두 이 경계를 지난다.
+    objectives:
+      - 유저 모드와 커널 모드가 나뉘는 이유를 설명한다
+      - read·write·open 같은 호출이 시스템 콜로 커널에 전달되는 흐름을 설명한다
+      - strace 출력에서 어떤 시스템 콜이 느리거나 실패했는지 읽는 법을 안다
+    prerequisites: [arch.cpu-instruction-execution]
+    practical_cases:
+      - 파일 열기 실패(EACCES·ENOENT)를 strace로 확인해 권한 문제와 경로 문제를 구분
+    doc_links:
+      - title: syscalls(2) - Linux manual page
+        url: https://man7.org/linux/man-pages/man2/syscalls.2.html
+
+  - id: os.process
+    name: 프로세스
+    aliases: [Process, PID, 프로세스 ID, 실행 중인 프로그램]
+    depth: 1
+    summary: 프로세스는 실행 중인 프로그램의 인스턴스로, 자기만의 주소 공간·파일 디스크립터·환경 변수를 가진다. 서버 한 대 위의 서비스, 컨테이너 안의 앱 모두 결국 프로세스다.
+    objectives:
+      - 프로그램과 프로세스의 차이를 설명한다
+      - 프로세스가 가진 자원(주소 공간·파일 디스크립터·환경 변수·PID)을 나열하고 각각의 역할을 설명한다
+      - ps·top으로 프로세스 상태와 부모-자식 관계를 읽는다
+    prerequisites: [os.kernel-and-syscall]
+    practical_cases:
+      - 배포 후 이전 버전 프로세스가 남아 포트를 점유한 상황을 ps로 확인
+      - 같은 앱을 두 번 실행했을 때 서로의 메모리를 공유하지 않는 이유 설명
+    doc_links:
+      - title: proc(5) - Linux manual page
+        url: https://man7.org/linux/man-pages/man5/proc.5.html
+
+  - id: os.exit-code-and-signals
+    name: 종료 코드와 시그널
+    aliases: [Exit Code, Exit Status, 종료 코드, Signal, 시그널, SIGTERM, SIGKILL, 종료 상태]
+    depth: 1
+    summary: 프로세스는 종료 코드로 정상·비정상 종료를 알리고, 외부에서는 시그널로 종료를 요청하거나 강제한다. 128+N 형태의 종료 코드는 시그널 N으로 죽었다는 뜻이다.
+    objectives:
+      - 종료 코드 0과 0이 아닌 값의 의미, 128+시그널 번호 규칙(예 137 = SIGKILL)을 설명한다
+      - SIGTERM과 SIGKILL의 차이와 graceful shutdown이 필요한 이유를 설명한다
+      - 종료 원인을 종료 코드·시그널·로그 중 어디에서 읽어야 하는지 구분한다
+    prerequisites: [os.process]
+    practical_cases:
+      - 컨테이너가 exit code 137로 끝났을 때 OOM 또는 강제 종료 가능성을 가설로 세우기
+      - 배포 중 SIGTERM을 처리하지 않아 진행 중 요청이 끊기는 문제
+    doc_links:
+      - title: signal(7) - Linux manual page
+        url: https://man7.org/linux/man-pages/man7/signal.7.html
+
+  - id: os.process-lifecycle-fork-exec
+    name: 프로세스 생성과 생명주기
+    aliases: [fork, exec, fork-exec, 좀비 프로세스, Zombie Process, 고아 프로세스]
+    depth: 2
+    summary: 유닉스 계열에서 새 프로세스는 fork로 복제되고 exec로 다른 프로그램이 된다. 부모가 자식의 종료를 회수하지 않으면 좀비가 남는다.
+    objectives:
+      - fork와 exec가 각각 하는 일을 설명한다
+      - 좀비·고아 프로세스가 생기는 조건과 PID 1의 역할을 설명한다
+      - 컨테이너에서 PID 1 프로세스가 시그널과 자식 회수를 처리해야 하는 이유를 설명한다
+    prerequisites: [os.process, os.exit-code-and-signals]
+    practical_cases:
+      - 셸 스크립트를 ENTRYPOINT로 써서 SIGTERM이 앱까지 전달되지 않는 문제
+    doc_links:
+      - title: fork(2) - Linux manual page
+        url: https://man7.org/linux/man-pages/man2/fork.2.html
+
+  - id: os.stdout-stderr-logs
+    name: 표준 출력·표준 에러와 로그
+    aliases: [stdout, stderr, 표준 출력, 표준 에러, 로그, Log, 애플리케이션 로그]
+    depth: 1
+    summary: 프로세스는 표준 출력과 표준 에러라는 파일 디스크립터로 로그를 내보내고, 컨테이너 환경은 이를 수집해 보여준다. 로그는 프로세스가 스스로 남긴 증언일 뿐 종료 원인의 전부는 아니다.
+    objectives:
+      - stdout·stderr가 파일 디스크립터 1·2라는 점과 버퍼링 차이를 설명한다
+      - 컨테이너 로그가 어디서 와서 어디로 가는지 설명한다
+      - 로그가 비어 있을 때(강제 종료·버퍼 미플러시) 다른 증거를 찾아야 하는 이유를 설명한다
+    prerequisites: [os.process, os.file-descriptor]
+    practical_cases:
+      - kubectl logs --previous로 재시작 전 컨테이너의 마지막 로그 확인
+      - SIGKILL로 죽어 마지막 로그가 남지 않은 상황 해석
+
+  - id: os.thread
+    name: 스레드
+    aliases: [Thread, 멀티스레드, Multithreading, 프로세스와 스레드]
+    depth: 1
+    summary: 스레드는 한 프로세스 안에서 주소 공간을 공유하며 실행되는 흐름이다. 공유 덕분에 빠르지만 같은 데이터를 동시에 건드리면 문제가 생긴다.
+    objectives:
+      - 프로세스와 스레드가 공유하는 것과 따로 가지는 것(스택·레지스터)을 구분한다
+      - 멀티프로세스와 멀티스레드 구조의 장단점을 비교한다
+      - 스레드 하나의 크래시가 프로세스 전체에 미치는 영향을 설명한다
+    prerequisites: [os.process]
+    practical_cases:
+      - 웹 서버의 요청당 스레드 모델과 스레드 풀 크기 설정
+    doc_links:
+      - title: pthreads(7) - Linux manual page
+        url: https://man7.org/linux/man-pages/man7/pthreads.7.html
+
+  - id: os.context-switch
+    name: 컨텍스트 스위치
+    aliases: [Context Switch, 문맥 교환, 컨텍스트 스위칭]
+    depth: 2
+    summary: CPU가 실행 중인 스레드를 바꿀 때 레지스터와 상태를 저장·복원하는 비용이 든다. 스레드를 무작정 늘리면 일보다 전환에 시간을 쓴다.
+    objectives:
+      - 컨텍스트 스위치 때 저장·복원되는 것과 캐시에 미치는 영향을 설명한다
+      - 자발적·비자발적 컨텍스트 스위치를 구분하고 지표로 확인한다
+      - 스레드 수를 늘렸는데 처리량이 떨어지는 이유를 설명한다
+    prerequisites: [os.thread, arch.cpu-cache]
+    practical_cases:
+      - 스레드 풀을 수천 개로 늘린 뒤 CPU 사용률은 높은데 처리량이 줄어든 현상
+
+  - id: os.scheduling
+    name: CPU 스케줄링
+    aliases: [Scheduler, 스케줄러, CPU Scheduling, Load Average, 로드 애버리지]
+    depth: 2
+    summary: 커널 스케줄러는 실행 가능한 스레드들에 CPU 시간을 나눠 준다. load average와 CPU 사용률은 서로 다른 것을 측정한다.
+    objectives:
+      - 실행 대기 큐와 time slice 개념으로 스케줄링을 설명한다
+      - load average와 CPU 사용률의 차이를 설명한다
+      - CPU 제한(throttling)이 걸린 프로세스의 지연이 어떻게 보이는지 설명한다
+    prerequisites: [os.context-switch]
+    practical_cases:
+      - CPU 사용률은 낮은데 load average가 높을 때 I/O 대기를 의심하기
+
+  - id: os.race-condition
+    name: 경쟁 조건
+    aliases: [Race Condition, 레이스 컨디션, 공유 상태, 동시성 문제]
+    depth: 1
+    summary: 둘 이상의 실행 흐름이 공유 데이터를 동시에 읽고 쓰면 실행 순서에 따라 결과가 달라진다. 재현이 어렵고 부하가 높을 때만 드러나는 경우가 많다.
+    objectives:
+      - 읽기-수정-쓰기 사이에 끼어들기가 생기는 과정을 단계별로 설명한다
+      - 경쟁 조건이 테스트에서 잘 재현되지 않는 이유를 설명한다
+      - 공유 상태를 없애거나 보호하는 대표 방법을 비교한다
+    prerequisites: [os.thread]
+    practical_cases:
+      - 조회수 카운터가 동시 요청에서 값이 덜 올라가는 문제
+      - 재고 차감에서 음수 재고가 생기는 문제
+
+  - id: os.mutex-and-lock
+    name: 뮤텍스와 락
+    aliases: [Mutex, Lock, 락, 뮤텍스, Semaphore, 세마포어, 임계 구역]
+    depth: 1
+    summary: 락은 임계 구역에 한 번에 하나의 흐름만 들어가게 해서 경쟁 조건을 막는다. 대신 대기와 경합 비용이 생긴다.
+    objectives:
+      - 임계 구역과 뮤텍스의 관계를 설명한다
+      - 뮤텍스·세마포어·읽기-쓰기 락의 용도 차이를 설명한다
+      - 락 경합이 지연으로 나타나는 모습과 락 범위를 줄이는 방법을 설명한다
+    prerequisites: [os.race-condition]
+    practical_cases:
+      - 전역 락 하나 때문에 코어를 늘려도 처리량이 늘지 않는 서버
+
+  - id: os.deadlock
+    name: 교착 상태
+    aliases: [Deadlock, 데드락, 교착상태]
+    depth: 2
+    summary: 서로가 가진 자원을 기다리며 아무도 진행하지 못하는 상태다. 락 획득 순서를 통일하는 것이 가장 실용적인 예방책이다.
+    objectives:
+      - 교착 상태의 네 가지 조건을 설명한다
+      - 락 획득 순서 통일·타임아웃으로 교착을 예방하는 방법을 설명한다
+      - 스레드 덤프에서 교착 상태를 식별하는 법을 안다
+    prerequisites: [os.mutex-and-lock]
+    practical_cases:
+      - 두 계좌 이체가 서로 반대 순서로 락을 잡아 멈춘 상황
+
+  - id: os.atomic-and-cas
+    name: 원자적 연산과 CAS
+    aliases: [Atomic, CAS, Compare-And-Swap, 원자적 연산, Lock-free, 락 프리]
+    depth: 3
+    summary: CPU가 제공하는 원자적 명령으로 락 없이 공유 값을 안전하게 갱신할 수 있다. 단순 카운터에는 효과적이지만 복잡한 불변식에는 맞지 않는다.
+    objectives:
+      - CAS 루프로 값을 갱신하는 과정을 설명한다
+      - 원자적 연산이 락보다 유리한 경우와 한계(ABA 문제 등)를 설명한다
+    prerequisites: [os.race-condition, arch.memory-ordering]
+    practical_cases:
+      - 요청 카운터를 atomic 정수로 바꿔 락 경합을 제거
+
+  - id: os.virtual-memory
+    name: 가상 메모리
+    aliases: [Virtual Memory, 페이지, Page, 페이징, Paging, 주소 공간, Address Space, 스왑, Swap]
+    depth: 1
+    summary: 각 프로세스는 자기만의 가상 주소 공간을 보고, 커널과 MMU가 이를 물리 메모리 페이지에 매핑한다. 그래서 메모리 사용량을 나타내는 숫자가 여러 개다.
+    objectives:
+      - 가상 주소와 물리 주소, 페이지 테이블의 관계를 설명한다
+      - 페이지 폴트가 생기는 경우와 비용을 설명한다
+      - 스왑이 성능에 미치는 영향과 서버에서 스왑을 신중히 다루는 이유를 설명한다
+    prerequisites: [os.process, arch.memory-hierarchy]
+    practical_cases:
+      - 프로세스 가상 메모리 크기가 수십 GB인데 실제 사용량은 작은 이유
+
+  - id: os.memory-metrics
+    name: 메모리 사용량 지표 읽기
+    aliases: [RSS, VSZ, Resident Set Size, 메모리 지표, Working Set, 워킹셋]
+    depth: 2
+    summary: VSZ·RSS·워킹셋·페이지 캐시는 서로 다른 것을 센다. 어떤 숫자가 제한과 OOM 판단에 쓰이는지 알아야 오해 없이 해석할 수 있다.
+    objectives:
+      - VSZ·RSS·공유 메모리의 차이를 설명한다
+      - 컨테이너 메모리 지표(working set)와 페이지 캐시의 관계를 설명한다
+      - 메모리 사용량 그래프가 계속 오를 때 누수와 캐시를 구분하는 방법을 설명한다
+    prerequisites: [os.virtual-memory]
+    practical_cases:
+      - 대시보드 메모리 사용량과 top의 RSS가 다르게 보이는 이유 설명
+
+  - id: os.memory-oom
+    name: 메모리 부족과 OOM Killer
+    aliases: [OOM, OOM Killer, Out of Memory, OOMKilled, 메모리 부족, 메모리 초과]
+    depth: 2
+    summary: 메모리가 부족하면 커널(또는 cgroup)이 프로세스를 골라 SIGKILL로 종료한다. 앱 로그에는 흔적이 없고 커널 로그와 종료 코드 137에 단서가 남는다.
+    objectives:
+      - 시스템 전체 OOM과 cgroup 메모리 제한 초과 OOM의 차이를 설명한다
+      - OOM 종료가 로그 없이 exit code 137로 보이는 이유를 설명한다
+      - dmesg·커널 로그·컨테이너 상태에서 OOM 증거를 찾는다
+      - 메모리 제한을 올리는 것과 사용량을 줄이는 것 중 판단 기준을 설명한다
+    prerequisites: [os.memory-metrics, os.exit-code-and-signals]
+    practical_cases:
+      - 매시간 같은 작업 직후 컨테이너가 재시작되는 현상을 OOM 가설로 검증
+      - 대량 데이터를 한 번에 메모리에 올리는 배치가 OOM으로 죽는 문제
+    doc_links:
+      - title: Control Group v2 (memory controller)
+        url: https://docs.kernel.org/admin-guide/cgroup-v2.html
+
+  - id: os.cgroups
+    name: cgroups
+    aliases: [cgroup, Control Groups, 컨트롤 그룹, 자원 제한]
+    depth: 2
+    summary: cgroups는 프로세스 묶음의 CPU·메모리·I/O 사용량을 제한하고 계측하는 커널 기능이다. 컨테이너의 자원 제한은 이것으로 구현된다.
+    objectives:
+      - cgroup이 CPU·메모리를 제한하는 방식을 설명한다
+      - CPU 제한(quota)이 throttling으로 나타나는 과정을 설명한다
+      - 메모리 제한 초과가 OOM 종료로 이어지는 과정을 설명한다
+    prerequisites: [os.process, os.virtual-memory]
+    practical_cases:
+      - CPU limit 때문에 응답 지연이 주기적으로 튀는 서비스
+    doc_links:
+      - title: cgroups(7) - Linux manual page
+        url: https://man7.org/linux/man-pages/man7/cgroups.7.html
+
+  - id: os.namespaces
+    name: 네임스페이스
+    aliases: [Linux Namespaces, Namespace, PID 네임스페이스, 네트워크 네임스페이스]
+    depth: 2
+    summary: 네임스페이스는 프로세스가 보는 PID·네트워크·마운트·호스트명 등을 분리한다. 컨테이너가 독립된 머신처럼 보이는 이유다.
+    objectives:
+      - PID·네트워크·마운트 네임스페이스가 각각 무엇을 격리하는지 설명한다
+      - 컨테이너 안의 PID 1이 호스트에서는 다른 PID인 이유를 설명한다
+    prerequisites: [os.process]
+    practical_cases:
+      - 컨테이너 안에서 localhost가 호스트의 localhost가 아닌 이유
+    doc_links:
+      - title: namespaces(7) - Linux manual page
+        url: https://man7.org/linux/man-pages/man7/namespaces.7.html
+
+  - id: os.file-system
+    name: 파일 시스템
+    aliases: [File System, Filesystem, inode, 아이노드, 마운트, Mount]
+    depth: 1
+    summary: 파일 시스템은 디스크 블록 위에 파일과 디렉터리 구조를 만든다. 디스크 용량뿐 아니라 inode가 바닥나도 파일을 만들 수 없다.
+    objectives:
+      - 파일·디렉터리·inode·마운트의 관계를 설명한다
+      - 삭제한 파일이 열려 있으면 용량이 회수되지 않는 이유를 설명한다
+      - df와 du 결과가 다른 경우를 해석한다
+    prerequisites: [os.kernel-and-syscall]
+    practical_cases:
+      - 로그 파일을 지웠는데 디스크 사용량이 줄지 않는 문제
+
+  - id: os.file-descriptor
+    name: 파일 디스크립터
+    aliases: [File Descriptor, FD, fd, Too many open files, ulimit]
+    depth: 1
+    summary: 프로세스가 연 파일·소켓·파이프는 모두 정수 번호인 파일 디스크립터로 다뤄진다. 닫지 않으면 한도에 걸려 새 연결을 받지 못한다.
+    objectives:
+      - 파일 디스크립터가 파일·소켓·파이프를 통일된 방식으로 다루게 하는 원리를 설명한다
+      - Too many open files 오류의 원인과 ulimit의 관계를 설명한다
+      - lsof나 /proc/PID/fd로 열린 자원을 확인한다
+    prerequisites: [os.file-system]
+    practical_cases:
+      - HTTP 응답 본문을 닫지 않아 소켓 FD가 누수되는 Go 서버
+
+  - id: os.page-cache
+    name: 페이지 캐시
+    aliases: [Page Cache, 버퍼 캐시, Buffer Cache, fsync]
+    depth: 2
+    summary: 커널은 디스크 내용을 메모리에 캐시해 읽기·쓰기를 빠르게 한다. 그래서 free 메모리가 적어 보여도 문제가 아닐 수 있고, write 성공이 디스크 기록을 뜻하지 않는다.
+    objectives:
+      - 페이지 캐시가 읽기 성능을 높이는 원리를 설명한다
+      - write와 fsync의 차이, 장애 시 데이터 유실 가능성을 설명한다
+      - 메모리 지표에서 캐시를 사용 중 메모리와 구분해 읽는다
+    prerequisites: [os.virtual-memory, os.file-system]
+    practical_cases:
+      - 서버 free 메모리가 거의 0인데 정상인 이유 설명
+
+  - id: os.socket
+    name: 소켓
+    aliases: [Socket, 소켓 프로그래밍, listen, accept, 포트 바인딩]
+    depth: 1
+    summary: 소켓은 네트워크 통신의 끝점을 파일 디스크립터로 다루게 해 준다. 서버는 listen·accept로 연결을 받고 클라이언트는 connect로 연결한다.
+    objectives:
+      - listen·accept·connect의 역할과 순서를 설명한다
+      - address already in use 오류와 포트 바인딩 규칙을 설명한다
+      - 0.0.0.0과 127.0.0.1에 바인딩할 때의 차이를 설명한다
+    prerequisites: [os.file-descriptor, net.tcp]
+    practical_cases:
+      - 컨테이너에서 127.0.0.1에만 바인딩해 외부 접속이 안 되는 문제
+    doc_links:
+      - title: socket(7) - Linux manual page
+        url: https://man7.org/linux/man-pages/man7/socket.7.html
+
+  - id: os.io-models
+    name: 블로킹·논블로킹 I/O와 I/O 멀티플렉싱
+    aliases: [Blocking IO, Non-blocking IO, epoll, select(2), kqueue, IO 멀티플렉싱, 비동기 IO]
+    depth: 2
+    summary: 블로킹 I/O는 스레드를 기다리게 하고, 논블로킹과 epoll 같은 멀티플렉싱은 한 스레드가 많은 연결을 다루게 한다. 많은 동시 연결을 처리하는 서버의 기반이다.
+    objectives:
+      - 블로킹과 논블로킹 I/O의 차이를 설명한다
+      - epoll이 많은 연결을 적은 스레드로 처리하게 하는 원리를 설명한다
+      - 동기·비동기와 블로킹·논블로킹이 다른 축임을 설명한다
+    prerequisites: [os.socket, os.thread]
+    practical_cases:
+      - 연결 1만 개를 스레드 1만 개로 처리하려다 메모리가 부족해지는 문제
+    doc_links:
+      - title: epoll(7) - Linux manual page
+        url: https://man7.org/linux/man-pages/man7/epoll.7.html
+
+  - id: os.event-loop
+    name: 이벤트 루프
+    aliases: [Event Loop, 이벤트루프, Node.js 이벤트 루프]
+    depth: 2
+    summary: 이벤트 루프는 I/O 이벤트를 받아 콜백을 차례로 실행하는 단일 스레드 구조다. 루프를 막는 CPU 작업 하나가 모든 요청을 지연시킨다.
+    objectives:
+      - 이벤트 루프가 I/O 멀티플렉싱 위에서 동작하는 방식을 설명한다
+      - 이벤트 루프 블로킹이 전체 지연으로 번지는 이유를 설명한다
+      - CPU 작업을 워커로 분리해야 하는 기준을 설명한다
+    prerequisites: [os.io-models]
+    practical_cases:
+      - Node.js 서버에서 큰 JSON 파싱 때문에 모든 요청의 p99가 튀는 현상
+
+  - id: os.gc-memory-management
+    name: 가비지 컬렉션
+    aliases: [GC, Garbage Collection, 가비지 컬렉터, GC Pause, GC가 튄다, 힙, Heap Memory]
+    depth: 2
+    summary: GC는 더 이상 쓰지 않는 힙 메모리를 자동으로 회수하지만 CPU와 일시 정지 비용을 낸다. 할당을 줄이는 것이 GC 튜닝보다 먼저다.
+    objectives:
+      - 스택 할당과 힙 할당의 차이를 설명한다
+      - GC 일시 정지와 CPU 사용이 지연에 미치는 영향을 설명한다
+      - GC 빈도와 메모리 제한의 관계(예 Go의 GOGC·GOMEMLIMIT)를 설명한다
+      - {text: 할당 프로파일로 GC 압력의 원인을 찾는 방법을 설명한다, depth: 3}
+    prerequisites: [os.virtual-memory]
+    practical_cases:
+      - 트래픽이 몰릴 때 GC가 자주 돌아 응답 지연이 튀는 서버
+    doc_links:
+      - title: A Guide to the Go Garbage Collector
+        url: https://go.dev/doc/gc-guide

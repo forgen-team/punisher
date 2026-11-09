@@ -1,0 +1,35 @@
+export const punisherKeys = {
+  all: ["punisher"] as const,
+  concepts: (area?: string) => ["punisher", "concepts", area ?? "all"] as const,
+  concept: (id: string) => ["punisher", "concept", id] as const,
+  graph: (area?: string) => ["punisher", "graph", area ?? "all"] as const,
+  frontier: () => ["punisher", "frontier"] as const,
+  gloss: (conceptId: string) => ["punisher", "gloss", conceptId] as const,
+  today: () => ["punisher", "today"] as const,
+  studyRequests: () => ["punisher", "study-requests"] as const,
+  lecture: (id: string) => ["punisher", "lecture", id] as const,
+  questions: (lectureId: string) => ["punisher", "questions", lectureId] as const,
+  question: (id: string) => ["punisher", "question", id] as const,
+  notes: (filter: { lectureId?: string; conceptId?: string } = {}) =>
+    ["punisher", "notes", filter.lectureId ?? "", filter.conceptId ?? ""] as const,
+  myQuestions: (conceptId?: string) => ["punisher", "my-questions", conceptId ?? "all"] as const,
+  myLectures: (status: string) => ["punisher", "my-lectures", status] as const,
+  conceptLectures: (conceptId: string) => ["punisher", "concept-lectures", conceptId] as const,
+  goals: () => ["punisher", "goals"] as const,
+  goalPath: (id: string) => ["punisher", "goal-path", id] as const,
+  job: (id: string) => ["punisher", "job", id] as const,
+  settings: () => ["punisher", "settings"] as const,
+};
+
+/** Keys whose data depends on the user's learning state. */
+export const punisherLearningStateKeys = [
+  ["punisher", "today"],
+  ["punisher", "graph"],
+  ["punisher", "frontier"],
+  ["punisher", "concepts"],
+  ["punisher", "concept"],
+  ["punisher", "goal-path"],
+  ["punisher", "study-requests"],
+  ["punisher", "my-lectures"],
+  ["punisher", "concept-lectures"],
+] as const;

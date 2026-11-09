@@ -1,0 +1,1 @@
+export { TermPopover } from "./TermPopover";

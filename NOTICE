@@ -1,0 +1,22 @@
+Punisher (standalone)
+
+This repository is a standalone port of the "Punisher" learning app from the
+private Witems monorepo (github.com/wooo-jin/witems).
+
+Source snapshot
+  repository : witems monorepo, branch witems-cleanup
+  commit     : 1574a0a9fb9506f28060e1672eb4393ef6487ad0
+               "merge: 학습 UX 개선 8개 항목(learning-polish)"
+  date copied: 2026-11-09
+
+Ported from
+  apps/punisher-server            → cmd/punisher, internal/*, curriculum/, migrations/
+                                    (PostgreSQL store rewritten for SQLite)
+  apps/claude-gateway (gateway)   → internal/claudecli (runner, stream parser, two-lane limiter)
+  packages/go-shared/llm, llmjson → internal/llm, internal/llmjson (subset)
+  apps/web (Punisher screens)     → web/src/{widgets,features,entities,shared}/punisher
+  packages/ui                     → web/src/shared/ui/kit
+  packages/config (tokens, preset, theme, eslint) → web/src/styles, web/tailwind.preset.js,
+                                    web/src/shared/lib/theme.ts, web/eslint.config.js
+
+Monorepo history is not preserved; see the commit above for the original history.

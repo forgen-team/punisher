@@ -1,0 +1,130 @@
+package httpapi
+
+import (
+	"net"
+	"net/http"
+	"net/url"
+	"strings"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/wooo-jin/punisher/internal/http/handlers"
+	"github.com/wooo-jin/punisher/internal/services"
+	"github.com/wooo-jin/punisher/internal/store"
+)
+
+type RouterDependencies struct {
+	Store store.Store
+	// Services runs lecture generation, resolution and Q&A.
+	Services *services.Service
+	// Claude reports the local claude CLI status for the UI banner.
+	Claude handlers.ClaudeStatusSource
+	// UI serves the embedded web app for every non-API path (may be nil in tests).
+	UI http.Handler
+	// AppVersion and DataDir are shown on the settings screen.
+	AppVersion string
+	DataDir    string
+}
+
+func NewRouter(deps RouterDependencies) http.Handler {
+	router := chi.NewRouter()
+
+	router.Use(middleware.RequestID)
+	router.Use(middleware.Recoverer)
+	router.Use(localOnly)
+
+	healthHandler := &handlers.HealthHandler{Store: deps.Store}
+	statusHandler := &handlers.StatusHandler{Claude: deps.Claude, AppVersion: deps.AppVersion, DataDir: deps.DataDir}
+	conceptsHandler := &handlers.ConceptsHandler{Store: deps.Store}
+	progressHandler := &handlers.ProgressHandler{Store: deps.Store}
+	studyRequestsHandler := &handlers.StudyRequestsHandler{Store: deps.Store}
+	learn := &handlers.LearnHandler{Store: deps.Store, Svc: deps.Services}
+
+	router.Route("/v1", func(r chi.Router) {
+		r.Get("/health", healthHandler.Health)
+		r.Get("/status", statusHandler.Status)
+
+		r.Get("/concepts", conceptsHandler.List)
+		r.Get("/concepts/{id}", conceptsHandler.Detail)
+		r.Get("/concepts/{id}/lectures", learn.ConceptLectures)
+		r.Get("/graph", conceptsHandler.Graph)
+
+		r.Get("/me/frontier", conceptsHandler.Frontier)
+		r.Put("/me/concepts/{id}/state", progressHandler.SetConceptState)
+		r.Get("/me/questions", learn.ListMyQuestions)
+		r.Get("/me/lectures", learn.ListMyLectures)
+		r.Get("/me/settings", learn.GetSettings)
+		r.Put("/me/settings", learn.PutSettings)
+
+		r.Post("/study-requests", studyRequestsHandler.Create)
+		r.Get("/study-requests", learn.ListStudyRequests)
+		r.Get("/study-requests/{id}", learn.GetStudyRequest)
+
+		r.Get("/today", learn.Today)
+		r.Post("/concepts/{id}/known", learn.MarkKnown)
+		r.Get("/terms/{conceptId}/gloss", learn.Gloss)
+
+		r.Post("/lectures/instant", learn.InstantCreate)
+		r.Get("/lectures/instant/{jobId}/stream", learn.InstantStream)
+		r.Get("/jobs/{jobId}", learn.JobStatus)
+		r.Get("/lectures/{id}", learn.GetLecture)
+		r.Put("/lectures/{id}/progress", learn.Progress)
+		r.Post("/lectures/{id}/complete", learn.Complete)
+		r.Post("/lectures/{id}/feedback", learn.Feedback)
+		r.Post("/lectures/{id}/dismiss", learn.Dismiss)
+		r.Delete("/lectures/{id}/dismiss", learn.Restore)
+		r.Post("/lectures/{id}/explain", learn.Explain)
+		r.Get("/lectures/{id}/questions", learn.ListQuestions)
+		r.Post("/lectures/{id}/questions", learn.Ask)
+		r.Get("/questions/{id}", learn.GetQuestion)
+
+		r.Get("/notes", learn.ListNotes)
+		r.Post("/notes", learn.CreateNote)
+		r.Patch("/notes/{id}", learn.UpdateNote)
+		r.Delete("/notes/{id}", learn.DeleteNote)
+
+		r.Get("/goals", learn.ListGoals)
+		r.Post("/goals", learn.CreateGoal)
+		r.Patch("/goals/{id}", learn.UpdateGoal)
+		r.Delete("/goals/{id}", learn.DeleteGoal)
+		r.Get("/goals/{id}/path", learn.GoalPath)
+	})
+
+	if deps.UI != nil {
+		router.NotFound(deps.UI.ServeHTTP)
+	}
+	return router
+}
+
+// localOnly rejects requests that did not come from this machine's own UI:
+// the Host must be a loopback name (blocks DNS rebinding) and a cross-site
+// Origin may not call the API (blocks other web pages driving generation).
+func localOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !isLoopbackHost(r.Host) {
+			http.Error(w, "forbidden host", http.StatusForbidden)
+			return
+		}
+		if origin := r.Header.Get("Origin"); origin != "" {
+			u, err := url.Parse(origin)
+			if err != nil || !isLoopbackHost(u.Host) {
+				http.Error(w, "forbidden origin", http.StatusForbidden)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func isLoopbackHost(hostport string) bool {
+	host := hostport
+	if h, _, err := net.SplitHostPort(hostport); err == nil {
+		host = h
+	}
+	host = strings.Trim(host, "[]")
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}

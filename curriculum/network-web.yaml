@@ -1,0 +1,326 @@
+# 네트워크와 웹 — DNS·TCP·TLS·HTTP·프록시·세션
+area: network-web
+title: 네트워크와 웹
+concepts:
+  - id: net.network-layers
+    name: 네트워크 계층 모델
+    aliases: [OSI 7계층, OSI Model, TCP/IP 모델, 네트워크 계층, Network Layers]
+    depth: 1
+    summary: 네트워크 통신은 물리·링크·IP·전송·애플리케이션 계층이 각자 맡은 일을 하며 쌓여 있다. 장애 위치를 계층으로 나눠 생각하면 원인 범위가 좁혀진다.
+    objectives:
+      - TCP/IP 4계층 각각의 역할과 대표 프로토콜을 설명한다
+      - 캡슐화로 HTTP 요청이 패킷이 되는 과정을 설명한다
+      - 연결 실패를 계층별 가설로 나누어 생각한다
+    practical_cases:
+      - 핑은 되는데 HTTP 요청은 실패할 때 어느 계층부터 의심할지 정하기
+
+  - id: net.ip-and-routing
+    name: IP 주소와 라우팅
+    aliases: [IP, IP 주소, IP Address, 라우팅, Routing, 서브넷, Subnet, CIDR]
+    depth: 1
+    summary: IP 주소는 호스트의 위치를, 라우팅은 패킷이 목적지까지 가는 경로를 정한다. CIDR과 서브넷은 클라우드 네트워크 설정의 기본 언어다.
+    objectives:
+      - IPv4 주소와 CIDR 표기(예 10.0.0.0/16)를 해석한다
+      - 사설 IP와 공인 IP의 차이를 설명한다
+      - 라우팅 테이블과 기본 게이트웨이의 역할을 설명한다
+    prerequisites: [net.network-layers]
+    practical_cases:
+      - VPC 서브넷 대역이 겹쳐 피어링이 안 되는 문제
+
+  - id: net.nat-and-ports
+    name: NAT와 포트
+    aliases: [NAT, Port, 포트, 포트 포워딩, Port Forwarding, 포트 번호]
+    depth: 1
+    summary: 포트는 한 호스트 안의 통신 상대를 구분하고, NAT는 사설 주소를 공인 주소로 바꿔 준다. 컨테이너 포트 매핑도 같은 원리다.
+    objectives:
+      - IP·포트 조합(소켓 주소)이 연결을 식별하는 방식을 설명한다
+      - NAT가 주소를 변환하는 과정과 외부에서 내부로 접속이 어려운 이유를 설명한다
+      - 컨테이너 포트 매핑(호스트 포트→컨테이너 포트)을 설명한다
+    prerequisites: [net.ip-and-routing]
+    practical_cases:
+      - 도커 포트 매핑을 잘못 지정해 서비스가 외부에서 안 보이는 문제
+
+  - id: net.dns
+    name: DNS
+    aliases: [Domain Name System, 도메인 네임 시스템, DNS 조회, A 레코드, CNAME, TTL]
+    depth: 1
+    summary: DNS는 도메인 이름을 IP 주소로 바꾸는 분산 조회 시스템이다. 캐시와 TTL 때문에 변경이 즉시 반영되지 않는다.
+    objectives:
+      - 재귀 리졸버와 권한 서버를 거치는 조회 과정을 설명한다
+      - A·AAAA·CNAME·MX 레코드의 용도를 설명한다
+      - TTL과 캐시 때문에 DNS 변경이 늦게 반영되는 이유를 설명한다
+      - dig로 조회 결과와 TTL을 확인한다
+    prerequisites: [net.ip-and-routing, net.udp]
+    practical_cases:
+      - 도메인을 새 서버로 옮겼는데 일부 사용자만 옛 서버로 접속하는 현상
+    doc_links:
+      - title: RFC 1034 - Domain Names, Concepts and Facilities
+        url: https://www.rfc-editor.org/rfc/rfc1034
+
+  - id: net.tcp
+    name: TCP
+    aliases: [Transmission Control Protocol, TCP 연결, 신뢰성 있는 전송]
+    depth: 1
+    summary: TCP는 순서 보장·재전송·흐름 제어로 신뢰성 있는 바이트 스트림을 제공한다. 그 대가로 연결 설정 왕복과 혼잡 제어 지연이 생긴다.
+    objectives:
+      - TCP가 순서·재전송·흐름 제어로 신뢰성을 보장하는 방식을 설명한다
+      - TCP가 메시지 경계를 보존하지 않는 바이트 스트림이라는 점을 설명한다
+      - 패킷 손실이 지연으로 나타나는 과정을 설명한다
+    prerequisites: [net.ip-and-routing]
+    practical_cases:
+      - 네트워크가 불안정할 때 요청이 실패하기보다 느려지는 이유
+    doc_links:
+      - title: RFC 9293 - Transmission Control Protocol
+        url: https://www.rfc-editor.org/rfc/rfc9293
+
+  - id: net.tcp-connection-states
+    name: TCP 연결 수립과 종료 상태
+    aliases: [3-way Handshake, 3방향 핸드셰이크, TIME_WAIT, CLOSE_WAIT, TCP 상태]
+    depth: 2
+    summary: TCP 연결은 3방향 핸드셰이크로 시작해 FIN 교환으로 끝나며, 그 사이 상태가 남는다. TIME_WAIT·CLOSE_WAIT 누적은 연결 관리 문제의 신호다.
+    objectives:
+      - 3방향 핸드셰이크와 연결 종료 과정을 설명한다
+      - TIME_WAIT이 존재하는 이유와 대량 발생 조건을 설명한다
+      - CLOSE_WAIT 누적이 애플리케이션의 연결 미종료를 뜻하는 이유를 설명한다
+    prerequisites: [net.tcp]
+    practical_cases:
+      - ss 출력에서 CLOSE_WAIT이 수천 개 쌓인 서버의 원인 찾기
+
+  - id: net.udp
+    name: UDP
+    aliases: [User Datagram Protocol, 데이터그램]
+    depth: 1
+    summary: UDP는 연결 설정과 재전송 없이 데이터그램을 보낸다. 빠르지만 손실·순서 문제를 애플리케이션이 감당한다. DNS와 QUIC이 UDP 위에서 동작한다.
+    objectives:
+      - TCP와 UDP의 보장 차이를 비교한다
+      - UDP가 적합한 사례(DNS·실시간 미디어·QUIC)를 설명한다
+    prerequisites: [net.ip-and-routing]
+    practical_cases:
+      - 방화벽이 UDP를 막아 DNS 조회만 실패하는 환경
+    doc_links:
+      - title: RFC 768 - User Datagram Protocol
+        url: https://www.rfc-editor.org/rfc/rfc768
+
+  - id: net.tls
+    name: TLS
+    aliases: [HTTPS, SSL, TLS Handshake, TLS 핸드셰이크, 전송 계층 보안]
+    depth: 2
+    summary: TLS는 서버 인증서로 상대를 확인하고 키를 합의해 통신을 암호화한다. 인증서 체인·만료·도메인 불일치가 대표 장애 원인이다.
+    objectives:
+      - TLS 핸드셰이크에서 인증서 검증과 키 합의가 하는 일을 설명한다
+      - 인증서 체인과 신뢰할 수 있는 루트의 관계를 설명한다
+      - 인증서 만료·SAN 불일치·중간 인증서 누락 오류를 구분한다
+    prerequisites: [net.tcp, sec.cryptography-basics]
+    practical_cases:
+      - 브라우저는 되는데 서버 간 호출만 인증서 오류가 나는 문제(중간 인증서 누락)
+    doc_links:
+      - title: RFC 8446 - TLS 1.3
+        url: https://www.rfc-editor.org/rfc/rfc8446
+
+  - id: net.http
+    name: HTTP
+    aliases: [HTTP 프로토콜, HyperText Transfer Protocol, HTTP 메서드, HTTP Method, HTTP 헤더]
+    depth: 1
+    summary: HTTP는 요청·응답 메시지로 자원을 주고받는 무상태 프로토콜이다. 메서드의 의미(안전·멱등)와 헤더가 캐시·재시도 동작을 좌우한다.
+    objectives:
+      - 요청 줄·헤더·본문으로 이루어진 메시지 구조를 설명한다
+      - GET·POST·PUT·PATCH·DELETE의 의미와 안전성·멱등성을 구분한다
+      - HTTP가 무상태라는 의미와 상태를 유지하는 방법을 설명한다
+    prerequisites: [net.tcp]
+    practical_cases:
+      - GET 요청으로 데이터를 변경해 크롤러가 데이터를 지운 사고
+    doc_links:
+      - title: RFC 9110 - HTTP Semantics
+        url: https://www.rfc-editor.org/rfc/rfc9110
+
+  - id: net.http-status-codes
+    name: HTTP 상태 코드
+    aliases: [HTTP Status Code, 상태 코드, 4xx, 5xx, 502, 503, 504]
+    depth: 1
+    summary: 상태 코드는 요청 결과를 분류한다. 특히 502·503·504는 어느 구간에서 실패했는지에 대한 단서다.
+    objectives:
+      - 2xx·3xx·4xx·5xx 범주의 의미를 설명한다
+      - 502·503·504가 프록시와 백엔드 중 어디의 문제를 시사하는지 설명한다
+      - 401과 403, 400과 422의 차이를 설명한다
+    prerequisites: [net.http]
+    practical_cases:
+      - nginx 502 응답을 보고 백엔드 프로세스 종료를 의심하는 과정
+    doc_links:
+      - title: MDN - HTTP response status codes
+        url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status
+
+  - id: net.http2-http3
+    name: HTTP/2와 HTTP/3
+    aliases: [HTTP/2, HTTP2, HTTP/3, HTTP3, QUIC, 멀티플렉싱]
+    depth: 2
+    summary: HTTP/2는 하나의 연결에서 여러 요청을 다중화하고, HTTP/3는 QUIC(UDP) 위에서 TCP의 head-of-line 블로킹을 줄인다.
+    objectives:
+      - HTTP/1.1의 연결당 요청 제약과 HTTP/2 다중화의 차이를 설명한다
+      - TCP head-of-line 블로킹과 QUIC이 이를 줄이는 방식을 설명한다
+    prerequisites: [net.http, net.tls, net.udp]
+    practical_cases:
+      - gRPC가 HTTP/2 위에서 동작해 L4 로드밸런서에서 부하가 쏠리는 문제
+    doc_links:
+      - title: RFC 9113 - HTTP/2
+        url: https://www.rfc-editor.org/rfc/rfc9113
+      - title: RFC 9114 - HTTP/3
+        url: https://www.rfc-editor.org/rfc/rfc9114
+
+  - id: net.request-path
+    name: DNS부터 HTTP까지 요청 경로
+    aliases: [요청 경로, 브라우저에 URL을 입력하면, Request Lifecycle, 요청 흐름]
+    depth: 1
+    summary: 요청 하나는 DNS 조회, TCP 연결, TLS 핸드셰이크, HTTP 요청·응답을 차례로 거친다. 실패나 지연이 어느 구간에서 생겼는지 측정하는 것이 진단의 출발점이다.
+    objectives:
+      - 요청이 거치는 구간(DNS·TCP·TLS·HTTP·서버 처리)을 순서대로 설명한다
+      - curl의 구간별 시간 측정으로 느린 구간을 찾는다
+      - 구간별 실패가 어떤 오류 메시지로 나타나는지 연결한다
+    prerequisites: [net.dns, net.tcp, net.tls, net.http]
+    practical_cases:
+      - 요청이 실패했을 때 DNS 실패·연결 거부·타임아웃·5xx를 구분해 살펴보기
+
+  - id: net.timeouts
+    name: 타임아웃
+    aliases: [Timeout, 타임아웃 설정, Connect Timeout, Read Timeout, Deadline]
+    depth: 1
+    summary: 타임아웃이 없으면 느린 의존성 하나가 모든 자원을 붙잡는다. 연결·읽기·전체 타임아웃을 구분하고 호출 체인 전체에서 예산을 나눠야 한다.
+    objectives:
+      - 연결 타임아웃과 읽기 타임아웃, 전체 deadline의 차이를 설명한다
+      - 타임아웃이 없을 때 스레드·연결이 고갈되는 과정을 설명한다
+      - 호출 체인에서 상위 타임아웃보다 하위 타임아웃이 짧아야 하는 이유를 설명한다
+    prerequisites: [net.request-path]
+    practical_cases:
+      - 외부 API 하나가 느려지자 전체 서버 응답이 멈춘 장애
+
+  - id: net.retry-and-backoff
+    name: 재시도와 백오프
+    aliases: [Retry, 재시도, Exponential Backoff, 지수 백오프, Jitter, 지터]
+    depth: 2
+    summary: 일시적 실패는 재시도로 회복되지만, 무작정 재시도하면 부하를 증폭시키고 중복 처리를 만든다. 지수 백오프와 지터, 재시도 가능한 오류 구분이 필요하다.
+    objectives:
+      - 재시도해도 되는 오류와 안 되는 오류를 구분한다
+      - 지수 백오프와 지터가 동시 재시도 폭주를 막는 원리를 설명한다
+      - 재시도가 멱등하지 않은 요청에서 중복을 만드는 과정을 설명한다
+    prerequisites: [net.timeouts, net.http-status-codes]
+    practical_cases:
+      - 장애 복구 직후 모든 클라이언트가 동시에 재시도해 다시 장애가 나는 현상
+    doc_links:
+      - title: Amazon Builders' Library - Timeouts, retries, and backoff with jitter
+        url: https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/
+
+  - id: net.reverse-proxy
+    name: 프록시와 리버스 프록시
+    aliases: [Proxy, 프록시, Reverse Proxy, 리버스 프록시, nginx, X-Forwarded-For]
+    depth: 1
+    summary: 리버스 프록시는 클라이언트 앞에서 요청을 받아 백엔드로 전달하며 TLS 종료·라우팅·버퍼링을 맡는다. 원래 클라이언트 정보는 헤더로 전달된다.
+    objectives:
+      - 포워드 프록시와 리버스 프록시의 차이를 설명한다
+      - 리버스 프록시가 TLS 종료·경로 라우팅·업로드 크기 제한을 처리하는 방식을 설명한다
+      - X-Forwarded-For와 실제 클라이언트 IP 처리 시 신뢰 문제를 설명한다
+    prerequisites: [net.http]
+    practical_cases:
+      - nginx client_max_body_size 때문에 큰 파일 업로드만 413으로 실패하는 문제
+
+  - id: net.load-balancer
+    name: 로드밸런서
+    aliases: [Load Balancer, LB, 로드 밸런싱, L4 로드밸런서, L7 로드밸런서]
+    depth: 2
+    summary: 로드밸런서는 여러 인스턴스에 요청을 나누고 건강하지 않은 대상을 제외한다. L4와 L7은 볼 수 있는 정보와 분배 단위가 다르다.
+    objectives:
+      - L4와 L7 로드밸런싱의 차이를 설명한다
+      - 라운드로빈·최소 연결 등 분배 방식의 특징을 설명한다
+      - 헬스 체크와 연결 드레이닝이 배포 중 오류를 줄이는 방식을 설명한다
+    prerequisites: [net.reverse-proxy, net.tcp]
+    practical_cases:
+      - 배포 중 종료되는 인스턴스로 요청이 가서 일부 502가 나는 현상
+
+  - id: net.keepalive-connection-reuse
+    name: 연결 재사용과 Keep-Alive
+    aliases: [Keep-Alive, HTTP Keep-Alive, Connection Reuse, 연결 재사용, HTTP 클라이언트 풀]
+    depth: 2
+    summary: 연결 수립 비용을 아끼려고 HTTP 클라이언트는 연결을 풀에 두고 재사용한다. 유휴 타임아웃이 서버와 맞지 않으면 끊긴 연결로 요청하다 실패한다.
+    objectives:
+      - 연결 재사용이 지연을 줄이는 이유를 설명한다
+      - 클라이언트와 서버·프록시의 유휴 타임아웃 불일치로 생기는 오류를 설명한다
+      - HTTP 클라이언트를 요청마다 새로 만들면 생기는 문제를 설명한다
+    prerequisites: [net.tcp-connection-states, net.http]
+    practical_cases:
+      - 간헐적인 connection reset by peer가 유휴 연결 재사용 때문으로 밝혀진 사례
+
+  - id: net.cookie-and-session
+    name: 쿠키와 세션
+    aliases: [Cookie, 쿠키, Session, 세션, Set-Cookie, SameSite, HttpOnly]
+    depth: 1
+    summary: 무상태인 HTTP 위에서 쿠키로 식별자를 주고받아 세션을 유지한다. Secure·HttpOnly·SameSite 속성이 보안을 좌우한다.
+    objectives:
+      - Set-Cookie와 Cookie 헤더로 상태가 유지되는 흐름을 설명한다
+      - Domain·Path·Secure·HttpOnly·SameSite 속성의 의미를 설명한다
+      - 서버 세션 저장소가 필요한 이유와 확장 시 문제를 설명한다
+    prerequisites: [net.http]
+    practical_cases:
+      - 서브도메인 간 로그인이 공유되지 않는 쿠키 Domain 설정 문제
+    doc_links:
+      - title: MDN - Using HTTP cookies
+        url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies
+
+  - id: net.cors
+    name: CORS
+    aliases: [Cross-Origin Resource Sharing, 교차 출처 리소스 공유, Preflight, 프리플라이트, Same-Origin Policy, 동일 출처 정책]
+    depth: 2
+    summary: 브라우저는 동일 출처 정책으로 다른 출처 요청의 응답 읽기를 막고, 서버는 CORS 헤더로 허용 범위를 알린다. 서버 간 호출에는 적용되지 않는다.
+    objectives:
+      - 출처(origin)의 정의와 동일 출처 정책을 설명한다
+      - 프리플라이트 요청이 발생하는 조건과 응답 헤더를 설명한다
+      - 자격 증명 포함 요청에서 와일드카드 출처가 허용되지 않는 이유를 설명한다
+    prerequisites: [net.cookie-and-session]
+    practical_cases:
+      - 로컬에서는 되는데 배포 후 브라우저 콘솔에 CORS 오류가 뜨는 문제
+    doc_links:
+      - title: MDN - Cross-Origin Resource Sharing (CORS)
+        url: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
+
+  - id: net.realtime-push
+    name: WebSocket과 SSE
+    aliases: [WebSocket, 웹소켓, SSE, Server-Sent Events, 롱 폴링, Long Polling]
+    depth: 2
+    summary: 서버가 클라이언트로 먼저 데이터를 보내려면 롱 폴링·SSE·WebSocket 중 하나를 쓴다. 프록시 타임아웃과 버퍼링 설정이 연결 유지에 영향을 준다.
+    objectives:
+      - 롱 폴링·SSE·WebSocket의 방향성과 특징을 비교한다
+      - 프록시 버퍼링·유휴 타임아웃이 스트리밍 응답을 끊는 이유를 설명한다
+    prerequisites: [net.http, net.reverse-proxy]
+    practical_cases:
+      - nginx 버퍼링 때문에 SSE 이벤트가 한꺼번에 늦게 도착하는 문제
+    doc_links:
+      - title: MDN - Using server-sent events
+        url: https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
+      - title: RFC 6455 - The WebSocket Protocol
+        url: https://www.rfc-editor.org/rfc/rfc6455
+
+  - id: net.http-caching-cdn
+    name: HTTP 캐싱과 CDN
+    aliases: [CDN, HTTP Caching, HTTP 캐싱, Cache-Control, ETag, 브라우저 캐시]
+    depth: 2
+    summary: Cache-Control과 검증 헤더로 브라우저·CDN이 응답을 재사용한다. 잘못된 캐시 설정은 오래된 화면이나 개인 정보 노출로 이어진다.
+    objectives:
+      - Cache-Control의 max-age·no-cache·no-store·private 차이를 설명한다
+      - ETag와 조건부 요청(304)의 동작을 설명한다
+      - CDN 캐시에 사용자별 응답이 저장되면 생기는 위험을 설명한다
+    prerequisites: [net.http, net.dns]
+    practical_cases:
+      - 배포 후에도 사용자가 옛 JS 번들을 받는 캐시 문제를 파일명 해시로 해결
+    doc_links:
+      - title: MDN - HTTP caching
+        url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching
+
+  - id: net.rest-api-design
+    name: REST API 설계
+    aliases: [REST, RESTful, REST API, API 설계, 리소스 설계]
+    depth: 1
+    summary: REST 스타일 API는 자원을 URL로, 행위를 HTTP 메서드로, 결과를 상태 코드로 표현한다. 일관된 오류 형식과 페이지네이션이 사용성을 좌우한다.
+    objectives:
+      - 자원 중심 URL과 메서드 선택 원칙을 설명한다
+      - 일관된 오류 응답 형식과 상태 코드 선택을 설명한다
+      - 목록 API에서 페이지네이션·필터 설계를 설명한다
+    prerequisites: [net.http-status-codes]
+    practical_cases:
+      - 모든 오류를 200과 본문 플래그로 반환해 모니터링이 실패를 못 잡는 API

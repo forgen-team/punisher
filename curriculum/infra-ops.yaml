@@ -1,0 +1,426 @@
+# 인프라와 운영 — 컨테이너·Kubernetes·배포·관측·백업·복구
+# 핵심 경로(설계 §3.1 "Pod가 죽었다"):
+#   os.process → os.exit-code-and-signals → infra.container → infra.kubernetes → infra.pod
+#   → infra.pod-lifecycle → infra.probes / os.memory-oom → infra.k8s-resources → infra.recovery-vs-root-cause
+area: infra-ops
+title: 인프라와 운영
+concepts:
+  - id: infra.container
+    name: 컨테이너
+    aliases: [Container, 도커 컨테이너, Docker Container, 컨테이너란]
+    depth: 1
+    summary: 컨테이너는 격리된 환경에서 실행되는 평범한 프로세스다. 이미지에 실행 환경을 묶어 같은 코드가 어디서나 같은 방식으로 실행되게 한다.
+    objectives:
+      - 컨테이너가 결국 호스트 커널 위의 프로세스라는 점을 설명한다
+      - 가상 머신과 컨테이너의 격리 수준과 비용을 비교한다
+      - 컨테이너가 환경 차이 문제를 줄이는 방식과 줄이지 못하는 것(커널·설정·외부 의존)을 설명한다
+      - 컨테이너의 메인 프로세스가 끝나면 컨테이너도 끝나는 이유를 설명한다
+    prerequisites: [os.process, os.exit-code-and-signals]
+    practical_cases:
+      - 개발 PC에서는 되는데 서버에서만 실패하던 문제를 컨테이너 이미지로 통일
+      - 포그라운드 프로세스 없이 시작해 컨테이너가 바로 종료되는 문제
+    doc_links:
+      - title: Docker overview
+        url: https://docs.docker.com/get-started/docker-overview/
+
+  - id: infra.container-image
+    name: 컨테이너 이미지
+    aliases: [Container Image, Docker Image, 도커 이미지, 이미지 레이어, Image Layer, 이미지 태그]
+    depth: 1
+    summary: 이미지는 파일 시스템 레이어와 실행 설정을 묶은 불변 패키지다. 태그는 바뀔 수 있으므로 재현성이 필요하면 다이제스트로 고정한다.
+    objectives:
+      - 이미지 레이어와 캐시 재사용 방식을 설명한다
+      - 태그와 다이제스트의 차이, latest 태그의 위험을 설명한다
+      - 레지스트리에서 이미지를 받아 실행하는 흐름을 설명한다
+    prerequisites: [infra.container]
+    practical_cases:
+      - 같은 태그로 다시 푸시해 서버마다 다른 버전이 실행된 문제
+
+  - id: infra.dockerfile
+    name: Dockerfile과 이미지 빌드
+    aliases: [Dockerfile, 도커파일, Multi-stage Build, 멀티 스테이지 빌드, docker build]
+    depth: 1
+    summary: Dockerfile은 이미지를 만드는 절차를 기록한다. 레이어 순서와 멀티 스테이지 빌드가 빌드 속도·이미지 크기·보안을 좌우한다.
+    objectives:
+      - 레이어 캐시를 살리도록 명령 순서를 배치한다
+      - 멀티 스테이지 빌드로 빌드 도구를 런타임 이미지에서 제외한다
+      - 비루트 사용자·HEALTHCHECK·ENTRYPOINT 형식(exec form)이 운영에 주는 영향을 설명한다
+    prerequisites: [infra.container-image]
+    practical_cases:
+      - 소스 한 줄만 바꿔도 의존성 설치부터 다시 하는 느린 빌드 개선
+    doc_links:
+      - title: Dockerfile reference
+        url: https://docs.docker.com/reference/dockerfile/
+
+  - id: infra.container-isolation
+    name: 컨테이너 격리 원리
+    aliases: [Container Isolation, 컨테이너 격리, Container Runtime, 컨테이너 런타임, containerd, runc]
+    depth: 2
+    summary: 컨테이너 런타임은 네임스페이스로 보이는 것을, cgroups로 쓸 수 있는 양을 제한해 프로세스를 격리한다. 커널을 공유하므로 VM보다 격리 경계가 얇다.
+    objectives:
+      - 네임스페이스와 cgroups가 각각 컨테이너 격리에 기여하는 부분을 설명한다
+      - 컨테이너 런타임(containerd·runc)의 역할을 설명한다
+      - 커널 공유가 보안 경계에 주는 의미를 설명한다
+    prerequisites: [infra.container, os.namespaces, os.cgroups]
+    practical_cases:
+      - 특권 컨테이너로 실행해 호스트 장치에 접근 가능해진 보안 위험
+
+  - id: infra.container-resource-limits
+    name: 컨테이너 자원 제한
+    aliases: [Container Resource Limits, 메모리 제한, Memory Limit, CPU Limit, CPU 제한]
+    depth: 2
+    summary: 컨테이너에 메모리·CPU 한도를 두면 이웃을 보호하지만, 메모리 한도를 넘으면 강제 종료되고 CPU 한도에 걸리면 느려진다.
+    objectives:
+      - 메모리 한도 초과가 OOM 종료(exit 137)로 이어지는 과정을 설명한다
+      - CPU 한도가 종료가 아니라 throttling 지연으로 나타나는 이유를 설명한다
+      - 런타임(JVM·Node·Go)이 컨테이너 한도를 인식하는지 확인해야 하는 이유를 설명한다
+    prerequisites: [infra.container, os.cgroups, os.memory-oom]
+    practical_cases:
+      - 메모리 한도 256MB 컨테이너가 피드 수집 때마다 OOM으로 재시작되는 서비스
+
+  - id: infra.kubernetes
+    name: Kubernetes
+    aliases: [K8s, k8s, 쿠버네티스, 쿠베, 컨테이너 오케스트레이션, Container Orchestration]
+    depth: 1
+    summary: Kubernetes는 원하는 상태를 선언하면 컨트롤러가 실제 상태를 그에 맞추는 컨테이너 오케스트레이터다. 컨테이너 실행 외에 배치·재시작·확장·네트워킹을 관리한다.
+    objectives:
+      - 선언적 원하는 상태와 컨트롤러의 조정 루프를 설명한다
+      - 클러스터·노드·Pod·컨테이너의 역할과 관계를 설명한다
+      - 컨테이너를 직접 실행하는 것 외에 오케스트레이터가 관리하는 것(재시작·배치·확장·서비스 발견)을 설명한다
+    prerequisites: [infra.container]
+    practical_cases:
+      - 노드 하나가 죽었을 때 Pod가 다른 노드로 다시 배치되는 과정 이해
+    doc_links:
+      - title: Kubernetes - Overview
+        url: https://kubernetes.io/docs/concepts/overview/
+
+  - id: infra.kubernetes-architecture
+    name: Kubernetes 구성 요소
+    aliases: [Control Plane, 컨트롤 플레인, kubelet, kube-apiserver, etcd, 스케줄러 (Kubernetes)]
+    depth: 2
+    summary: API 서버·etcd·스케줄러·컨트롤러 매니저가 컨트롤 플레인을 이루고, 각 노드의 kubelet이 실제 컨테이너를 실행한다.
+    objectives:
+      - API 서버·etcd·스케줄러·컨트롤러 매니저·kubelet의 역할을 설명한다
+      - kubectl 명령이 클러스터 상태를 바꾸는 흐름을 설명한다
+      - 컨트롤 플레인 장애와 노드 장애가 서비스에 미치는 영향의 차이를 설명한다
+    prerequisites: [infra.kubernetes]
+    practical_cases:
+      - API 서버 장애 중에도 기존 Pod는 계속 동작하는 이유 설명
+    doc_links:
+      - title: Kubernetes Components
+        url: https://kubernetes.io/docs/concepts/overview/components/
+
+  - id: infra.pod
+    name: Pod
+    aliases: [파드, Kubernetes Pod, 쿠버네티스 파드, 포드]
+    depth: 1
+    summary: Pod는 Kubernetes가 배치하는 최소 단위로, 네트워크와 볼륨을 공유하는 하나 이상의 컨테이너 묶음이다. Pod는 교체 가능한 일회용으로 다뤄진다.
+    objectives:
+      - Pod와 컨테이너의 관계, 같은 Pod 안 컨테이너가 공유하는 것을 설명한다
+      - Pod를 직접 만들지 않고 컨트롤러로 관리하는 이유를 설명한다
+      - Pod가 재생성되면 IP와 로컬 파일이 바뀌는 이유를 설명한다
+    prerequisites: [infra.kubernetes]
+    practical_cases:
+      - 사이드카 컨테이너가 같은 Pod에서 로그를 수집하는 구조
+    doc_links:
+      - title: Kubernetes - Pods
+        url: https://kubernetes.io/docs/concepts/workloads/pods/
+
+  - id: infra.pod-lifecycle
+    name: Pod 생명주기와 상태
+    aliases: [Pod Lifecycle, Pod 생명주기, Pod Phase, Pod가 죽었다, CrashLoopBackOff, Pending, ImagePullBackOff, 컨테이너 상태]
+    depth: 1
+    summary: Pod는 Pending·Running·Succeeded·Failed 단계와 컨테이너별 상태(Waiting·Running·Terminated)를 가진다. "Pod가 죽었다"는 이 중 어느 상태인지에 따라 전혀 다른 뜻이다.
+    objectives:
+      - Pod phase와 컨테이너 상태(Waiting·Running·Terminated)와 그 reason을 구분한다
+      - Pending·ImagePullBackOff·CrashLoopBackOff·OOMKilled가 각각 무엇을 시사하는지 설명한다
+      - kubectl describe의 상태·종료 코드·reason을 읽어 관찰 사실과 원인 가설을 구분한다
+    prerequisites: [infra.pod, os.exit-code-and-signals]
+    practical_cases:
+      - Pod가 죽었다는 보고를 받고 Pending인지 재시작 반복인지 먼저 확인하기
+    doc_links:
+      - title: Kubernetes - Pod Lifecycle
+        url: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+
+  - id: infra.restart-policy-crashloop
+    name: 재시작 정책과 CrashLoopBackOff
+    aliases: [Restart Policy, 재시작 정책, CrashLoop, 크래시 루프, Back-off, 재시작 반복]
+    depth: 2
+    summary: 컨테이너가 끝나면 kubelet이 재시작 정책에 따라 다시 띄우고, 반복 실패하면 대기 시간을 늘리며 CrashLoopBackOff로 표시한다. 재시작은 증상을 가릴 수 있다.
+    objectives:
+      - restartPolicy(Always·OnFailure·Never)의 동작을 설명한다
+      - CrashLoopBackOff의 지수 대기 동작과 재시작 횟수 지표를 설명한다
+      - 재시작 직전 로그(--previous)와 마지막 종료 상태로 원인을 좁힌다
+    prerequisites: [infra.pod-lifecycle, os.stdout-stderr-logs]
+    practical_cases:
+      - 설정 파일 누락으로 시작 직후 종료를 반복하는 Pod 진단
+
+  - id: infra.probes
+    name: Liveness·Readiness·Startup Probe
+    aliases: [Probe, 프로브, Liveness Probe, Readiness Probe, Startup Probe, 헬스 체크, Health Check]
+    depth: 2
+    summary: liveness는 재시작 여부를, readiness는 트래픽 수신 여부를, startup은 느린 시작을 판단한다. 잘못 설정한 probe는 멀쩡한 앱을 반복 재시작시킨다.
+    objectives:
+      - liveness·readiness·startup probe의 목적과 실패 시 결과를 구분한다
+      - liveness probe가 외부 의존성을 검사하면 연쇄 재시작이 생기는 이유를 설명한다
+      - 구성 오류·프로세스 종료·검사 실패를 사례로 비교해 재시작 원인을 구분한다
+      - 느린 시작 앱에서 startup probe와 타이밍 값을 정하는 기준을 설명한다
+    prerequisites: [infra.pod-lifecycle]
+    practical_cases:
+      - DB가 잠깐 느려지자 liveness 실패로 모든 Pod가 동시에 재시작된 장애
+    doc_links:
+      - title: Configure Liveness, Readiness and Startup Probes
+        url: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+
+  - id: infra.k8s-resources
+    name: Kubernetes 리소스 요청과 제한
+    aliases: [Resource Requests, Resource Limits, requests, limits, QoS Class, OOMKilled 137]
+    depth: 2
+    summary: requests는 스케줄링에 쓰이는 예약량이고 limits는 넘을 수 없는 상한이다. 메모리 limit 초과는 OOMKilled, CPU limit은 throttling으로 나타난다.
+    objectives:
+      - requests와 limits가 각각 스케줄링과 실행에 미치는 영향을 설명한다
+      - 메모리 지표·limit·OOMKilled 종료를 연결해 설명한다
+      - QoS 클래스와 노드 메모리 압박 시 축출(eviction) 순서를 설명한다
+    prerequisites: [infra.pod, infra.container-resource-limits]
+    practical_cases:
+      - limit 없이 배포한 Pod 하나가 노드 메모리를 다 써 다른 Pod가 축출된 장애
+    doc_links:
+      - title: Resource Management for Pods and Containers
+        url: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+
+  - id: infra.reading-failure-state
+    name: 장애 상태 읽기
+    aliases: [kubectl describe, kubectl events, Kubernetes Events, 이벤트와 로그, 상태·이벤트·로그, Troubleshooting Pods]
+    depth: 1
+    summary: 상태는 지금 어떤지, 이벤트는 클러스터가 무엇을 했는지, 로그는 앱이 무엇을 말했는지 알려준다. 셋을 시간순으로 맞춰야 원인 후보가 좁혀진다.
+    objectives:
+      - 상태·이벤트·로그가 각각 답하는 질문을 구분한다
+      - 세 정보를 시간순으로 맞춰 원인 후보를 좁히는 절차를 설명한다
+      - 하나의 증상을 특정 원인으로 단정하지 않고 확인할 증거를 정하는 법을 설명한다
+    prerequisites: [infra.pod-lifecycle, os.stdout-stderr-logs]
+    practical_cases:
+      - 이벤트의 FailedScheduling과 로그 부재를 근거로 앱이 아닌 자원 부족 문제로 판단
+    doc_links:
+      - title: Debug Pods
+        url: https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/
+
+  - id: infra.recovery-vs-root-cause
+    name: 복구와 원인 제거
+    aliases: [Root Cause, 근본 원인, 재시작으로 해결, Mitigation, 완화 조치, 원인 분석]
+    depth: 2
+    summary: 재시작은 서비스를 복구하지만 원인을 없애지 않는다. 복구 후에는 재발 조건을 확인하고, 변경 후 무엇이 정상이어야 하는지 검증 조건을 정해야 한다.
+    objectives:
+      - 완화 조치와 원인 제거의 차이를 설명한다
+      - 재시작이 증거(메모리 상태·로그)를 지우는 문제와 보존 방법을 설명한다
+      - 변경 후 확인할 조건(지표·재시작 횟수·기간)을 정한다
+    prerequisites: [infra.restart-policy-crashloop, infra.reading-failure-state]
+    practical_cases:
+      - 매일 재시작으로 버티던 메모리 누수 서비스를 힙 프로파일로 원인 제거
+
+  - id: infra.deployment
+    name: Deployment와 ReplicaSet
+    aliases: [Deployment, 디플로이먼트, ReplicaSet, 레플리카셋, Replicas, 레플리카]
+    depth: 1
+    summary: Deployment는 원하는 Pod 수와 템플릿을 선언하고 ReplicaSet을 통해 유지한다. 템플릿이 바뀌면 새 ReplicaSet으로 점진 교체한다.
+    objectives:
+      - Deployment·ReplicaSet·Pod의 소유 관계를 설명한다
+      - Pod를 삭제해도 다시 생기는 이유를 설명한다
+      - 레플리카 수 조정과 템플릿 변경이 각각 무엇을 일으키는지 설명한다
+    prerequisites: [infra.pod]
+    practical_cases:
+      - 문제 Pod를 지웠더니 같은 문제의 Pod가 바로 다시 생기는 상황 이해
+    doc_links:
+      - title: Kubernetes - Deployments
+        url: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+
+  - id: infra.k8s-service-networking
+    name: Service와 클러스터 네트워킹
+    aliases: [Kubernetes Service, 쿠버네티스 서비스, ClusterIP, NodePort, Ingress, 인그레스, 서비스 디스커버리]
+    depth: 2
+    summary: Service는 바뀌는 Pod IP들 앞에 고정된 이름과 주소를 주고, 준비된 Pod로만 트래픽을 보낸다. Ingress는 외부 HTTP 요청을 Service로 연결한다.
+    objectives:
+      - Service가 레이블 셀렉터로 대상 Pod를 고르는 방식을 설명한다
+      - ClusterIP·NodePort·LoadBalancer·Ingress의 차이를 설명한다
+      - 클러스터 DNS로 서비스 이름을 해석하는 흐름을 설명한다
+    prerequisites: [infra.pod, net.load-balancer, net.dns]
+    practical_cases:
+      - 셀렉터 레이블 오타로 Service에 엔드포인트가 없어 503이 나는 문제
+    doc_links:
+      - title: Kubernetes - Service
+        url: https://kubernetes.io/docs/concepts/services-networking/service/
+
+  - id: infra.config-and-secrets
+    name: 설정과 시크릿 주입
+    aliases: [ConfigMap, Secret, 컨피그맵, 쿠버네티스 시크릿, 환경 변수 주입, 12-Factor Config]
+    depth: 1
+    summary: 설정과 비밀 값은 이미지에 넣지 않고 실행 시 환경 변수나 파일로 주입한다. 이미지 하나로 여러 환경을 운영할 수 있게 된다.
+    objectives:
+      - 설정을 코드·이미지와 분리하는 이유를 설명한다
+      - ConfigMap과 Secret을 환경 변수·볼륨으로 주입하는 방식과 변경 반영 차이를 설명한다
+      - Kubernetes Secret이 기본적으로 암호화가 아닌 인코딩이라는 점을 설명한다
+    prerequisites: [infra.pod]
+    practical_cases:
+      - 설정 값을 바꿨는데 Pod를 재시작하기 전까지 반영되지 않은 문제
+    doc_links:
+      - title: Kubernetes - ConfigMaps
+        url: https://kubernetes.io/docs/concepts/configuration/configmap/
+      - title: Kubernetes - Secrets
+        url: https://kubernetes.io/docs/concepts/configuration/secret/
+
+  - id: infra.rolling-update
+    name: 롤링 업데이트와 롤백
+    aliases: [Rolling Update, 롤링 업데이트, Rollback, 롤백, 무중단 배포, maxSurge, maxUnavailable]
+    depth: 2
+    summary: 롤링 업데이트는 새 버전 Pod가 준비되는 만큼 옛 Pod를 줄인다. readiness probe와 graceful shutdown이 맞지 않으면 배포 중 오류가 난다.
+    objectives:
+      - maxSurge·maxUnavailable이 교체 속도와 가용성에 미치는 영향을 설명한다
+      - readiness와 graceful shutdown이 무중단 배포의 조건인 이유를 설명한다
+      - 배포 실패 시 이전 버전으로 롤백하는 방법과 데이터 호환성 조건을 설명한다
+    prerequisites: [infra.deployment, infra.probes]
+    practical_cases:
+      - 배포 때마다 몇 초간 502가 나던 서비스를 preStop 대기와 SIGTERM 처리로 해결
+
+  - id: infra.deployment-strategies
+    name: 배포 전략
+    aliases: [Blue-Green, 블루 그린, Canary, 카나리 배포, Feature Flag, 피처 플래그, 배포 전략]
+    depth: 2
+    summary: 블루-그린은 전체를 한 번에 전환하고, 카나리는 일부 트래픽으로 먼저 검증한다. 피처 플래그는 배포와 기능 공개를 분리한다.
+    objectives:
+      - 롤링·블루-그린·카나리의 위험과 비용을 비교한다
+      - 카나리 단계에서 볼 지표와 중단 기준을 정한다
+      - 배포와 릴리스를 피처 플래그로 분리하는 이점을 설명한다
+    prerequisites: [infra.rolling-update, infra.metrics]
+    practical_cases:
+      - 새 버전을 5% 트래픽에만 보내 오류율 증가를 확인하고 자동 롤백
+
+  - id: infra.observability
+    name: 관측 가능성
+    aliases: [Observability, 관측성, 모니터링, Monitoring, Logs Metrics Traces, 텔레메트리]
+    depth: 1
+    summary: 관측 가능성은 외부에서 보이는 신호(로그·지표·트레이스)로 시스템 내부 상태를 추론하는 능력이다. 미리 예상하지 못한 질문에 답할 수 있어야 한다.
+    objectives:
+      - 로그·지표·트레이스가 각각 답하기 좋은 질문을 구분한다
+      - 장애 시 신호를 어떤 순서로 보며 범위를 좁히는지 설명한다
+    prerequisites: [os.stdout-stderr-logs]
+    practical_cases:
+      - 오류율 지표로 시점을 찾고 로그로 원인을, 트레이스로 구간을 확인하는 흐름
+    doc_links:
+      - title: OpenTelemetry - Observability primer
+        url: https://opentelemetry.io/docs/concepts/observability-primer/
+
+  - id: infra.metrics
+    name: 지표와 대시보드
+    aliases: [Metrics, 메트릭, 지표, Prometheus, 프로메테우스, Percentile, p99, RED 지표]
+    depth: 1
+    summary: 지표는 시간에 따른 수치로 추세와 이상을 보여준다. 평균은 꼬리 지연을 숨기므로 백분위수와 RED(요청률·오류·지연) 지표를 본다.
+    objectives:
+      - 카운터·게이지·히스토그램의 차이를 설명한다
+      - 평균 대신 p95·p99 지연을 봐야 하는 이유를 설명한다
+      - 서비스 기본 지표로 RED 또는 USE 방법을 적용한다
+      - 레이블 카디널리티 폭증이 지표 시스템에 주는 부담을 설명한다
+    prerequisites: [infra.observability]
+    practical_cases:
+      - 평균 응답 시간은 정상인데 p99가 5초인 API 발견
+
+  - id: infra.structured-logging
+    name: 구조화 로그
+    aliases: [Structured Logging, 구조화 로깅, JSON 로그, Log Level, 로그 레벨, Correlation ID, 요청 ID]
+    depth: 1
+    summary: 로그를 키-값 구조로 남기고 요청 ID를 붙이면 검색과 상관 분석이 쉬워진다. 로그 레벨과 민감 정보 제외 규칙이 함께 필요하다.
+    objectives:
+      - 구조화 로그가 텍스트 로그보다 검색·집계에 유리한 이유를 설명한다
+      - 요청 ID로 여러 서비스 로그를 연결하는 방법을 설명한다
+      - 로그에 남기면 안 되는 정보와 로그 양 관리 기준을 설명한다
+    prerequisites: [infra.observability]
+    practical_cases:
+      - 사용자 한 명의 실패 요청을 요청 ID로 nginx부터 DB 쿼리까지 추적
+
+  - id: infra.distributed-tracing
+    name: 분산 트레이싱
+    aliases: [Distributed Tracing, 분산 추적, Trace, Span, 트레이스, OpenTelemetry]
+    depth: 2
+    summary: 트레이스는 요청 하나가 여러 서비스를 거치는 동안의 구간(span)을 연결해 어디서 시간이 쓰였는지 보여준다.
+    objectives:
+      - trace·span·context 전파의 개념을 설명한다
+      - 트레이스로 느린 구간과 순차·병렬 호출을 식별한다
+      - 샘플링이 비용과 가시성에 미치는 영향을 설명한다
+    prerequisites: [infra.observability, dist.partial-failure]
+    practical_cases:
+      - API 지연의 80%가 순차로 호출하는 외부 API 세 개에서 온다는 것을 트레이스로 발견
+    doc_links:
+      - title: OpenTelemetry - Traces
+        url: https://opentelemetry.io/docs/concepts/signals/traces/
+
+  - id: infra.slo-alerting
+    name: SLO와 알림
+    aliases: [SLO, SLI, SLA, Error Budget, 에러 버짓, 알림, Alerting]
+    depth: 2
+    summary: SLI는 사용자 경험을 나타내는 지표, SLO는 그 목표치다. 알림은 원인 지표가 아니라 사용자 영향과 에러 버짓 소진 속도에 걸어야 피로가 줄어든다.
+    objectives:
+      - SLI·SLO·SLA의 차이를 설명한다
+      - 에러 버짓으로 배포 속도와 안정성을 조절하는 방식을 설명한다
+      - 증상 기반 알림과 원인 기반 알림의 차이와 알림 피로를 설명한다
+    prerequisites: [infra.metrics]
+    practical_cases:
+      - CPU 80% 알림을 지우고 오류율·지연 SLO 기반 알림으로 교체
+    doc_links:
+      - title: Google SRE Book - Service Level Objectives
+        url: https://sre.google/sre-book/service-level-objectives/
+
+  - id: infra.ci-cd
+    name: CI/CD
+    aliases: [CI, CD, 지속적 통합, 지속적 배포, Continuous Integration, Continuous Delivery, 배포 파이프라인, GitHub Actions]
+    depth: 1
+    summary: CI는 변경마다 빌드와 테스트를 자동으로 돌리고, CD는 검증된 산출물을 일관된 절차로 배포한다. 같은 산출물을 여러 환경에 승격하는 것이 핵심이다.
+    objectives:
+      - 빌드·테스트·이미지 생성·배포 단계와 산출물 흐름을 설명한다
+      - 환경마다 다시 빌드하지 않고 같은 이미지를 승격하는 이유를 설명한다
+      - 배포 파이프라인에서 시크릿을 다루는 원칙을 설명한다
+    prerequisites: [infra.container-image]
+    practical_cases:
+      - 스테이징과 운영에서 각각 빌드해 의존성 버전이 달라진 사고
+    doc_links:
+      - title: GitHub Actions documentation
+        url: https://docs.github.com/en/actions
+
+  - id: infra.infrastructure-as-code
+    name: 코드형 인프라
+    aliases: [Infrastructure as Code, IaC, Terraform, 테라폼, GitOps]
+    depth: 2
+    summary: 인프라 구성을 코드로 관리하면 변경 이력·리뷰·재현이 가능해진다. 콘솔에서 직접 바꾼 변경은 코드와 실제 상태의 차이(drift)를 만든다.
+    objectives:
+      - 선언형 인프라 코드와 plan·apply 흐름을 설명한다
+      - 수동 변경이 만드는 drift와 그 위험을 설명한다
+      - 상태 파일과 동시 적용 잠금의 필요성을 설명한다
+    prerequisites: [infra.ci-cd]
+    practical_cases:
+      - 서버에서 직접 고친 nginx 설정이 이미지 재빌드 때 사라진 사고
+    doc_links:
+      - title: Terraform - What is Terraform
+        url: https://developer.hashicorp.com/terraform/intro
+
+  - id: infra.backup-and-dr
+    name: 백업과 재해 복구
+    aliases: [Disaster Recovery, DR, 재해 복구, RPO, RTO, 복원 리허설]
+    depth: 2
+    summary: 재해 복구 계획은 얼마나 많은 데이터를(RPO) 얼마나 빨리(RTO) 되찾을지 정하고 실제로 연습하는 것이다. 볼륨·설정·시크릿까지 복구 범위에 포함해야 한다.
+    objectives:
+      - RPO와 RTO를 정하고 그에 맞는 백업 방식을 고른다
+      - 복원 리허설로 백업의 유효성과 걸리는 시간을 확인한다
+      - 데이터 외에 설정·시크릿·이미지가 복구 범위에 포함되어야 하는 이유를 설명한다
+    prerequisites: [db.backup-and-restore]
+    practical_cases:
+      - 볼륨 백업은 있었지만 암호화 키가 없어 복원하지 못한 사례
+
+  - id: infra.incident-response
+    name: 장애 대응과 회고
+    aliases: [Incident Response, 장애 대응, Postmortem, 포스트모템, 장애 회고, Runbook, 런북]
+    depth: 2
+    summary: 장애 대응은 영향 범위 확인→완화→원인 분석→재발 방지 순으로 진행한다. 비난 없는 회고와 런북이 다음 장애의 대응 시간을 줄인다.
+    objectives:
+      - 장애 대응 단계와 역할 분담(지휘·소통·조치)을 설명한다
+      - 타임라인 기반 비난 없는 회고를 작성하는 방법을 설명한다
+      - 런북에 담아야 할 내용(증상·확인 명령·완화 절차·에스컬레이션)을 설명한다
+    prerequisites: [infra.recovery-vs-root-cause, infra.slo-alerting]
+    practical_cases:
+      - 같은 장애가 세 번 반복된 뒤에야 런북과 알림 기준을 만든 팀

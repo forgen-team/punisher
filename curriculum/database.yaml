@@ -1,0 +1,305 @@
+# 데이터베이스 — 모델링·SQL·인덱스·실행 계획·트랜잭션·잠금
+area: database
+title: 데이터베이스
+concepts:
+  - id: db.relational-model
+    name: 관계형 모델
+    aliases: [Relational Model, RDBMS, 관계형 데이터베이스, 테이블과 키, Primary Key, 기본 키, Foreign Key, 외래 키]
+    depth: 1
+    summary: 관계형 모델은 데이터를 테이블·행·열로 표현하고 키로 관계를 맺는다. 제약 조건은 애플리케이션 버그가 데이터를 망가뜨리는 것을 막는 마지막 방어선이다.
+    objectives:
+      - 기본 키·외래 키·유니크 제약의 역할을 설명한다
+      - 일대다·다대다 관계를 테이블로 표현한다
+      - 제약 조건을 DB에 두는 것과 코드에만 두는 것의 차이를 설명한다
+    practical_cases:
+      - 유니크 제약 없이 코드에서만 중복을 검사해 동시 가입으로 중복 계정이 생긴 문제
+
+  - id: db.sql-basics
+    name: SQL 기초
+    aliases: [SQL, 쿼리, Query, SELECT, GROUP BY, 집계 쿼리]
+    depth: 1
+    summary: SQL은 원하는 결과를 선언하면 DB가 실행 방법을 정한다. 집계·필터·정렬을 DB에서 처리하면 애플리케이션으로 옮기는 데이터가 줄어든다.
+    objectives:
+      - SELECT 절의 논리적 실행 순서(FROM·WHERE·GROUP BY·HAVING·SELECT·ORDER BY)를 설명한다
+      - NULL이 비교·집계에서 동작하는 방식을 설명한다
+      - 애플리케이션에서 필터링하는 대신 SQL에서 처리해야 하는 이유를 설명한다
+    prerequisites: [db.relational-model]
+    practical_cases:
+      - 전체 행을 가져와 코드에서 필터링하다 메모리가 터지는 API
+
+  - id: db.joins
+    name: 조인
+    aliases: [JOIN, Join, 조인, Inner Join, Left Join, 외부 조인]
+    depth: 1
+    summary: 조인은 관계를 따라 여러 테이블의 행을 결합한다. 조인 방식과 조건에 따라 행이 늘어나거나 사라질 수 있다.
+    objectives:
+      - INNER·LEFT JOIN의 결과 차이를 설명한다
+      - 일대다 조인으로 행이 늘어나 집계가 틀어지는 문제를 설명한다
+      - {text: 중첩 루프·해시·병합 조인의 개념적 차이를 설명한다, depth: 2}
+    prerequisites: [db.sql-basics]
+    practical_cases:
+      - 주문과 주문 항목을 조인한 뒤 SUM을 했더니 금액이 부풀려진 리포트
+    doc_links:
+      - title: PostgreSQL - Joins Between Tables
+        url: https://www.postgresql.org/docs/current/tutorial-join.html
+
+  - id: db.normalization
+    name: 정규화와 반정규화
+    aliases: [Normalization, 정규화, Denormalization, 반정규화, 정규형]
+    depth: 2
+    summary: 정규화는 중복을 줄여 갱신 이상을 막고, 반정규화는 읽기 성능을 위해 중복을 의도적으로 허용한다. 어느 쪽이든 정합성 유지 비용을 누가 지는지가 핵심이다.
+    objectives:
+      - 중복 저장이 갱신 이상을 만드는 과정을 설명한다
+      - 1·2·3 정규형의 목적을 실무 언어로 설명한다
+      - 반정규화를 선택할 때 정합성을 유지하는 방법을 설명한다
+    prerequisites: [db.relational-model]
+    practical_cases:
+      - 주문 테이블에 고객 이름을 복사해 두었다가 이름 변경이 반영되지 않는 문제
+
+  - id: db.index
+    name: 인덱스
+    aliases: [Index, DB 인덱스, Database Index, 색인, B-Tree 인덱스]
+    depth: 1
+    summary: 인덱스는 정렬된 보조 구조로 조회 범위를 줄이지만 쓰기와 저장 공간 비용을 낸다. 인덱스가 있어도 조건 형태와 선택도에 따라 쓰이지 않을 수 있다.
+    objectives:
+      - 인덱스가 전체 스캔 대신 일부만 읽게 하는 원리를 설명한다
+      - 인덱스를 추가해도 빨라지지 않는 경우(낮은 선택도·함수 적용·타입 불일치)를 설명한다
+      - 인덱스가 쓰기 성능과 저장 공간에 미치는 비용을 설명한다
+    prerequisites: [db.sql-basics, ds.b-tree]
+    practical_cases:
+      - WHERE lower(email) 조건 때문에 email 인덱스가 쓰이지 않는 쿼리
+    doc_links:
+      - title: PostgreSQL - Indexes
+        url: https://www.postgresql.org/docs/current/indexes.html
+
+  - id: db.composite-index
+    name: 복합 인덱스
+    aliases: [Composite Index, 복합 인덱스, 다중 컬럼 인덱스, Multicolumn Index, 커버링 인덱스, Covering Index]
+    depth: 2
+    summary: 복합 인덱스는 컬럼 순서가 중요하며, 앞쪽 컬럼 조건이 없으면 잘 쓰이지 않는다. 필요한 컬럼을 모두 담으면 테이블을 읽지 않고 응답할 수 있다.
+    objectives:
+      - 복합 인덱스의 컬럼 순서가 사용 가능 여부를 결정하는 이유를 설명한다
+      - 등호 조건·범위 조건·정렬을 고려해 컬럼 순서를 정한다
+      - 커버링 인덱스(index-only scan)의 이점을 설명한다
+    prerequisites: [db.index]
+    practical_cases:
+      - (user_id, created_at) 인덱스로 사용자별 최신 목록 쿼리를 정렬 없이 처리
+    doc_links:
+      - title: PostgreSQL - Multicolumn Indexes
+        url: https://www.postgresql.org/docs/current/indexes-multicolumn.html
+
+  - id: db.query-plan
+    name: 실행 계획 읽기
+    aliases: [EXPLAIN, Query Plan, 실행 계획, EXPLAIN ANALYZE, 옵티마이저, Query Optimizer]
+    depth: 2
+    summary: 옵티마이저는 통계를 바탕으로 실행 방법을 고르고, EXPLAIN은 그 계획과 실제 비용을 보여준다. 추정 행 수와 실제 행 수의 차이가 느린 쿼리의 단서다.
+    objectives:
+      - EXPLAIN ANALYZE 출력에서 스캔 방식·조인 방식·실제 시간을 읽는다
+      - 추정 행 수와 실제 행 수가 크게 다를 때의 의미와 통계 갱신을 설명한다
+      - 느린 쿼리를 재현하고 개선 전후를 비교하는 절차를 설명한다
+    prerequisites: [db.index, db.joins]
+    practical_cases:
+      - 데이터가 늘면서 인덱스 스캔이 순차 스캔으로 바뀌어 느려진 쿼리
+    doc_links:
+      - title: PostgreSQL - Using EXPLAIN
+        url: https://www.postgresql.org/docs/current/using-explain.html
+
+  - id: db.n-plus-one
+    name: N+1 쿼리 문제
+    aliases: [N+1, N+1 Problem, N+1 쿼리, Lazy Loading]
+    depth: 1
+    summary: 목록을 한 번 조회한 뒤 항목마다 추가 쿼리를 날리면 왕복이 N+1번 생긴다. ORM의 지연 로딩에서 흔하다.
+    objectives:
+      - N+1 문제가 생기는 코드 패턴을 식별한다
+      - 조인·IN 절 일괄 조회로 왕복을 줄이는 방법을 설명한다
+      - 쿼리 로그나 APM에서 N+1을 발견하는 방법을 설명한다
+    prerequisites: [db.joins]
+    practical_cases:
+      - 게시글 50개 목록에서 작성자 조회 쿼리가 50번 나가는 API
+
+  - id: db.pagination
+    name: 페이지네이션
+    aliases: [Pagination, 페이지네이션, Offset Pagination, Keyset Pagination, 커서 페이지네이션, Cursor Pagination]
+    depth: 1
+    summary: OFFSET은 뒤 페이지로 갈수록 버리는 행이 늘어 느려지고, 키셋(커서) 방식은 마지막 키 이후만 읽는다. 무한 스크롤에는 커서 방식이 맞다.
+    objectives:
+      - OFFSET 페이지네이션이 뒤로 갈수록 느려지는 이유를 설명한다
+      - 키셋 페이지네이션의 원리와 정렬 키 유일성 조건을 설명한다
+      - 데이터가 추가될 때 OFFSET 방식에서 중복·누락이 생기는 이유를 설명한다
+    prerequisites: [db.index]
+    practical_cases:
+      - 무한 스크롤에서 새 글이 올라오며 같은 항목이 두 번 보이는 버그
+
+  - id: db.transaction
+    name: 트랜잭션
+    aliases: [Transaction, 트랜잭션, ACID, 커밋, Commit, 트랜잭션 롤백]
+    depth: 1
+    summary: 트랜잭션은 여러 변경을 하나의 단위로 묶어 전부 반영하거나 전부 취소한다. ACID 속성이 무엇을 보장하고 무엇을 보장하지 않는지 알아야 한다.
+    objectives:
+      - ACID 각 속성이 보장하는 것을 설명한다
+      - 트랜잭션 경계를 어디에 둘지 판단한다
+      - 트랜잭션 안에서 외부 API를 호출하면 생기는 문제를 설명한다
+    prerequisites: [db.sql-basics]
+    practical_cases:
+      - 주문 생성과 재고 차감 중 하나만 반영되어 데이터가 어긋난 장애
+
+  - id: db.isolation-levels
+    name: 격리 수준
+    aliases: [Isolation Level, 격리 수준, Read Committed, Repeatable Read, Serializable, Lost Update, 갱신 손실]
+    depth: 2
+    summary: 격리 수준은 동시에 실행되는 트랜잭션이 서로의 변경을 어디까지 보는지 정한다. 기본 격리 수준에서도 갱신 손실 같은 이상 현상이 생길 수 있다.
+    objectives:
+      - Read Committed·Repeatable Read·Serializable의 차이를 설명한다
+      - 갱신 손실·쓰기 스큐가 생기는 시나리오를 설명한다
+      - 사용 중인 DB의 기본 격리 수준과 그 의미를 확인한다
+    prerequisites: [db.transaction, os.race-condition]
+    practical_cases:
+      - 두 요청이 같은 잔액을 읽고 각각 차감해 한 번의 차감이 사라진 문제
+    doc_links:
+      - title: PostgreSQL - Transaction Isolation
+        url: https://www.postgresql.org/docs/current/transaction-iso.html
+
+  - id: db.locking
+    name: DB 잠금
+    aliases: [Row Lock, 행 잠금, DB 락, SELECT FOR UPDATE, 테이블 락, Lock Wait]
+    depth: 2
+    summary: DB는 행·테이블 잠금으로 동시 수정을 직렬화한다. 긴 트랜잭션이 잠금을 오래 쥐면 다른 요청이 줄줄이 대기한다.
+    objectives:
+      - SELECT FOR UPDATE로 비관적 잠금을 거는 방식을 설명한다
+      - 긴 트랜잭션이 잠금 대기 연쇄를 만드는 과정을 설명한다
+      - pg_locks 등으로 잠금 대기 원인을 찾는 방법을 설명한다
+      - DDL(인덱스 생성·컬럼 추가)이 테이블 잠금을 거는 경우를 설명한다
+    prerequisites: [db.isolation-levels, os.mutex-and-lock]
+    practical_cases:
+      - 운영 중 ALTER TABLE이 잠금을 기다리며 모든 쿼리를 막은 장애
+    doc_links:
+      - title: PostgreSQL - Explicit Locking
+        url: https://www.postgresql.org/docs/current/explicit-locking.html
+
+  - id: db.deadlock
+    name: DB 교착 상태
+    aliases: [DB Deadlock, DB 데드락, deadlock detected]
+    depth: 2
+    summary: 두 트랜잭션이 서로의 잠금을 기다리면 DB가 교착을 감지하고 하나를 실패시킨다. 잠금 순서를 통일하고 재시도로 대응한다.
+    objectives:
+      - DB가 교착을 감지하고 한 트랜잭션을 중단하는 동작을 설명한다
+      - 갱신 순서를 정렬해 교착을 줄이는 방법을 설명한다
+      - 교착으로 실패한 트랜잭션을 안전하게 재시도하는 조건을 설명한다
+    prerequisites: [db.locking, os.deadlock]
+    practical_cases:
+      - 일괄 갱신 배치와 사용자 요청이 서로 다른 순서로 행을 갱신해 생긴 deadlock
+
+  - id: db.mvcc
+    name: MVCC
+    aliases: [Multi-Version Concurrency Control, 다중 버전 동시성 제어, VACUUM, 스냅샷]
+    depth: 3
+    summary: MVCC는 행의 여러 버전을 두어 읽기가 쓰기를 막지 않게 한다. 대신 오래된 버전 정리(VACUUM)가 필요하고 긴 트랜잭션이 정리를 막는다.
+    objectives:
+      - 스냅샷으로 읽기와 쓰기가 서로 막지 않는 원리를 설명한다
+      - 죽은 튜플과 VACUUM, 테이블 팽창의 관계를 설명한다
+      - 오래 열린 트랜잭션이 정리를 방해하는 이유를 설명한다
+    prerequisites: [db.isolation-levels]
+    practical_cases:
+      - 몇 시간 열려 있던 트랜잭션 때문에 테이블 크기가 계속 커진 문제
+    doc_links:
+      - title: PostgreSQL - Concurrency Control (MVCC)
+        url: https://www.postgresql.org/docs/current/mvcc.html
+
+  - id: db.optimistic-locking
+    name: 낙관적 잠금
+    aliases: [Optimistic Locking, 낙관적 락, 버전 컬럼, Version Column, 조건부 업데이트]
+    depth: 2
+    summary: 낙관적 잠금은 충돌이 드물다고 보고 버전 비교로 갱신 시점에 충돌을 감지한다. 충돌 시 재시도나 사용자 확인이 필요하다.
+    objectives:
+      - 버전 컬럼과 조건부 UPDATE로 충돌을 감지하는 방법을 설명한다
+      - 비관적 잠금과 낙관적 잠금의 선택 기준을 설명한다
+    prerequisites: [db.transaction]
+    practical_cases:
+      - 두 관리자가 같은 문서를 동시에 수정해 한쪽 변경이 덮어써지는 문제
+
+  - id: db.wal-and-durability
+    name: WAL과 내구성
+    aliases: [WAL, Write-Ahead Log, 선행 기록 로그, Durability, 내구성, Redo Log]
+    depth: 2
+    summary: DB는 데이터 파일을 바꾸기 전에 변경 기록(WAL)을 먼저 디스크에 남겨 장애 후에도 커밋을 복구한다. 복제와 시점 복구도 WAL 위에서 동작한다.
+    objectives:
+      - 커밋이 WAL fsync로 내구성을 얻는 과정을 설명한다
+      - 장애 후 WAL 재생으로 복구하는 원리를 설명한다
+      - WAL이 디스크를 가득 채우는 상황(복제 슬롯 등)을 설명한다
+    prerequisites: [db.transaction, arch.storage-devices]
+    practical_cases:
+      - 사용하지 않는 복제 슬롯 때문에 WAL이 쌓여 디스크가 가득 찬 장애
+    doc_links:
+      - title: PostgreSQL - Write-Ahead Logging (WAL)
+        url: https://www.postgresql.org/docs/current/wal-intro.html
+
+  - id: db.connection-pool
+    name: DB 커넥션 풀
+    aliases: [Connection Pool, 커넥션 풀, DB Connection Pool, PgBouncer, max_connections]
+    depth: 1
+    summary: DB 연결은 만들기 비싸고 서버당 수가 제한되어 있어 풀로 재사용한다. 풀 크기는 클수록 좋은 것이 아니라 DB가 감당할 동시성에 맞춰야 한다.
+    objectives:
+      - 연결 생성 비용과 DB의 최대 연결 수 제한을 설명한다
+      - 풀 고갈이 요청 대기와 타임아웃으로 나타나는 과정을 설명한다
+      - 인스턴스 수 × 풀 크기가 DB 한도를 넘는 문제를 계산한다
+    prerequisites: [db.sql-basics, net.tcp]
+    practical_cases:
+      - 오토스케일링으로 인스턴스가 늘자 DB too many connections 오류가 난 장애
+
+  - id: db.replication
+    name: 복제
+    aliases: [Replication, 레플리케이션, Read Replica, 읽기 복제본, 복제 지연, Replication Lag]
+    depth: 2
+    summary: 복제는 주 DB의 변경을 복제본에 전달해 읽기 분산과 장애 대비를 한다. 비동기 복제에서는 방금 쓴 데이터가 복제본에 아직 없을 수 있다.
+    objectives:
+      - 동기·비동기 복제의 차이와 데이터 유실 가능성을 설명한다
+      - 복제 지연 때문에 쓰기 직후 읽기에서 옛 값이 보이는 문제를 설명한다
+      - 장애 조치(failover) 시 고려할 점을 설명한다
+    prerequisites: [db.wal-and-durability]
+    practical_cases:
+      - 회원 정보 수정 직후 화면에 이전 값이 보이는 read-after-write 문제
+    doc_links:
+      - title: PostgreSQL - High Availability, Load Balancing, and Replication
+        url: https://www.postgresql.org/docs/current/high-availability.html
+
+  - id: db.backup-and-restore
+    name: DB 백업과 복원
+    aliases: [Database Backup, DB 백업, pg_dump, PITR, Point-in-Time Recovery, 시점 복구]
+    depth: 2
+    summary: 논리 백업과 물리 백업, 시점 복구는 복구 범위와 시간이 다르다. 복원해 보지 않은 백업은 백업이라고 할 수 없다.
+    objectives:
+      - 논리 백업(pg_dump)과 물리 백업·PITR의 차이를 설명한다
+      - RPO·RTO 관점에서 백업 방식을 고른다
+      - 복원 리허설로 백업을 검증하는 절차를 설명한다
+    prerequisites: [db.wal-and-durability]
+    practical_cases:
+      - 매일 백업은 성공했는데 복원해 보니 일부 DB가 빠져 있던 사례
+    doc_links:
+      - title: PostgreSQL - Backup and Restore
+        url: https://www.postgresql.org/docs/current/backup.html
+
+  - id: db.schema-migration
+    name: 스키마 마이그레이션
+    aliases: [Schema Migration, 마이그레이션, DB Migration, 무중단 마이그레이션, Expand and Contract]
+    depth: 2
+    summary: 운영 중 스키마 변경은 잠금과 구버전 코드 호환을 함께 고려해야 한다. 확장→이전→축소 단계로 나누면 무중단 배포와 롤백이 쉬워진다.
+    objectives:
+      - 마이그레이션 버전 관리와 적용 기록 방식을 설명한다
+      - 컬럼 이름 변경을 expand-contract 단계로 나누는 방법을 설명한다
+      - 큰 테이블 변경이 잠금과 장시간 쓰기를 유발하는 경우를 설명한다
+    prerequisites: [db.sql-basics, db.transaction]
+    practical_cases:
+      - NOT NULL 컬럼 추가 배포 중 구버전 서버의 INSERT가 실패한 장애
+
+  - id: db.nosql-models
+    name: NoSQL 데이터 모델
+    aliases: [NoSQL, Document DB, 문서 DB, Key-Value Store, 키-값 저장소, Redis, MongoDB]
+    depth: 2
+    summary: 키-값·문서·와이드 컬럼 저장소는 조회 패턴에 맞춘 모델링으로 확장성을 얻고 조인·트랜잭션 일부를 포기한다. 조회 패턴을 먼저 정하고 고른다.
+    objectives:
+      - 키-값·문서·와이드 컬럼 모델의 특징을 비교한다
+      - 조회 패턴 중심 모델링과 관계형 모델링의 차이를 설명한다
+      - 관계형 DB 대신 NoSQL을 고를 근거와 포기하는 것을 설명한다
+    prerequisites: [db.relational-model]
+    practical_cases:
+      - 세션·캐시는 Redis에, 주문은 관계형 DB에 두는 이유 설명

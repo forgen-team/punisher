@@ -1,0 +1,206 @@
+# 컴퓨터구조 — CPU·메모리 계층·캐시·명령 실행·I/O
+area: computer-architecture
+title: 컴퓨터구조
+concepts:
+  - id: arch.data-representation
+    name: 데이터 표현
+    aliases: [Binary, 이진수, 2진수, Data Representation, 비트와 바이트, 정수 오버플로]
+    depth: 1
+    summary: 컴퓨터는 모든 값을 고정 폭 비트열로 표현한다. 정수 범위·부호·인코딩을 이해하면 오버플로와 문자 깨짐을 설명할 수 있다.
+    objectives:
+      - 비트·바이트·워드와 부호 있는 정수(2의 보수) 표현을 설명한다
+      - 정수 오버플로가 생기는 조건과 실무에서 드러나는 모습을 설명한다
+      - 문자 인코딩(UTF-8)이 바이트 수와 문자 수를 다르게 만드는 이유를 설명한다
+    practical_cases:
+      - 32비트 ID 컬럼이 21억을 넘어 삽입이 실패하는 장애
+      - 한글 문자열 길이 제한을 바이트로 계산해 잘림이 생기는 문제
+
+  - id: arch.cpu-instruction-execution
+    name: CPU와 명령 실행
+    aliases: [CPU, 명령어 사이클, Instruction Cycle, 레지스터, Register, 클럭]
+    depth: 1
+    summary: CPU는 메모리에서 명령을 가져와 해석하고 실행하는 과정을 반복한다. 레지스터와 메모리 사이의 거리가 성능 차이의 출발점이다.
+    objectives:
+      - fetch-decode-execute 사이클을 설명한다
+      - 레지스터·메모리·클럭 속도의 관계를 설명한다
+      - CPU 사용률 100%가 항상 유용한 일을 뜻하지 않는 이유를 설명한다
+    prerequisites: [arch.data-representation]
+    practical_cases:
+      - 같은 코어 수인데 다른 인스턴스 타입에서 처리량이 다른 이유
+
+  - id: arch.memory-hierarchy
+    name: 메모리 계층
+    aliases: [Memory Hierarchy, 메모리 계층 구조, RAM, 주기억장치]
+    depth: 1
+    summary: 레지스터·캐시·RAM·디스크로 갈수록 크고 싸지만 느려진다. 성능 문제의 상당수는 데이터가 어느 계층에 있느냐로 설명된다.
+    objectives:
+      - 계층별 대략적 용량과 접근 지연의 크기 차이를 설명한다
+      - 데이터가 상위 계층으로 올라오는 원리를 설명한다
+    prerequisites: [arch.cpu-instruction-execution]
+    practical_cases:
+      - 메모리에 다 들어가던 데이터가 커지면서 갑자기 디스크 I/O가 병목이 되는 서비스
+
+  - id: arch.cpu-cache
+    name: CPU 캐시
+    aliases: [CPU Cache, L1 캐시, L2 캐시, L3 캐시, 캐시 라인, Cache Line, 캐시 미스]
+    depth: 2
+    summary: CPU 캐시는 RAM보다 수십 배 빠른 작은 메모리로, 64바이트 캐시 라인 단위로 데이터를 가져온다. 캐시 미스가 많으면 CPU가 기다리느라 시간을 쓴다.
+    objectives:
+      - L1·L2·L3 캐시와 캐시 라인 단위 로드를 설명한다
+      - 캐시 히트와 미스가 실행 시간에 미치는 영향을 설명한다
+      - CPU 사용률이 높아도 실제로는 메모리를 기다리는 상황(stall)을 설명한다
+    prerequisites: [arch.memory-hierarchy]
+    practical_cases:
+      - 같은 알고리즘인데 자료 배치에 따라 실행 시간이 몇 배 차이 나는 벤치마크
+
+  - id: arch.cache-locality
+    name: 지역성과 메모리 접근 패턴
+    aliases: [Locality, 지역성, 공간 지역성, 시간 지역성, Cache Locality]
+    depth: 2
+    summary: 가까운 주소를 연속으로 읽으면(공간 지역성) 캐시가 효과적이고, 포인터를 따라 흩어진 주소를 읽으면 느려진다. 배열이 연결 리스트보다 빠른 실무적 이유다.
+    objectives:
+      - 공간·시간 지역성을 예시와 함께 설명한다
+      - 행 우선·열 우선 순회의 성능 차이를 설명한다
+      - 배열 순회와 연결 리스트 순회의 캐시 효율 차이를 설명한다
+    prerequisites: [arch.cpu-cache, ds.array]
+    related: [ds.linked-list]
+    practical_cases:
+      - 객체 배열 대신 필드별 배열로 바꿔 집계 성능을 개선한 사례
+
+  - id: arch.multicore
+    name: 멀티코어와 병렬 실행
+    aliases: [Multicore, 멀티코어, 병렬성, Parallelism, 하이퍼스레딩, Hyper-Threading]
+    depth: 2
+    summary: 여러 코어는 동시에 다른 일을 실행하지만, 공유 데이터에 접근할수록 서로를 기다린다. 동시성과 병렬성은 다른 개념이다.
+    objectives:
+      - 동시성과 병렬성의 차이를 설명한다
+      - 코어 수를 늘려도 성능이 비례해 늘지 않는 이유(암달의 법칙)를 설명한다
+      - 하이퍼스레딩 vCPU가 물리 코어와 다른 점을 설명한다
+    prerequisites: [arch.cpu-instruction-execution]
+    practical_cases:
+      - vCPU를 두 배로 늘렸는데 처리량이 30%만 오른 서비스
+
+  - id: arch.memory-ordering
+    name: 메모리 순서와 가시성
+    aliases: [Memory Ordering, Memory Model, 메모리 모델, 메모리 배리어, Memory Barrier, volatile]
+    depth: 3
+    summary: CPU와 컴파일러는 성능을 위해 메모리 연산 순서를 바꿀 수 있어서, 한 스레드의 쓰기가 다른 스레드에 언제 보이는지는 보장되지 않는다. 언어의 메모리 모델이 그 보장을 정의한다.
+    objectives:
+      - 재정렬 때문에 다른 스레드가 예상과 다른 값을 보는 예를 설명한다
+      - happens-before 관계와 동기화 도구가 가시성을 보장하는 방식을 설명한다
+    prerequisites: [arch.multicore, arch.cpu-cache]
+    practical_cases:
+      - 플래그 변수로 스레드 종료를 알렸는데 루프가 끝나지 않는 버그
+    doc_links:
+      - title: The Go Memory Model
+        url: https://go.dev/ref/mem
+
+  - id: arch.cache-coherence-false-sharing
+    name: 캐시 일관성과 False Sharing
+    aliases: [Cache Coherence, False Sharing, 거짓 공유, MESI]
+    depth: 3
+    summary: 여러 코어의 캐시는 같은 캐시 라인을 일관되게 유지해야 해서, 서로 다른 변수라도 같은 라인에 있으면 성능이 떨어진다.
+    objectives:
+      - 캐시 일관성 프로토콜이 하는 일을 개념 수준에서 설명한다
+      - false sharing이 생기는 조건과 패딩으로 해결하는 방법을 설명한다
+    prerequisites: [arch.memory-ordering]
+    practical_cases:
+      - 스레드별 카운터 배열이 오히려 단일 카운터보다 느린 현상
+
+  - id: arch.pipeline-branch-prediction
+    name: 파이프라인과 분기 예측
+    aliases: [Pipeline, 파이프라인, Branch Prediction, 분기 예측, 투기적 실행]
+    depth: 3
+    summary: CPU는 명령을 겹쳐 실행하고 분기 결과를 미리 예측한다. 예측이 자주 틀리면 파이프라인을 비우는 비용이 쌓인다.
+    objectives:
+      - 명령 파이프라인이 처리량을 높이는 원리를 설명한다
+      - 분기 예측 실패가 성능에 미치는 영향을 설명한다
+    prerequisites: [arch.cpu-instruction-execution]
+    practical_cases:
+      - 정렬된 배열에서 조건 합계 루프가 더 빠른 이유
+
+  - id: arch.io-devices-interrupts
+    name: I/O 장치와 인터럽트
+    aliases: [Interrupt, 인터럽트, IO 장치, IO Device, 폴링, Polling]
+    depth: 1
+    summary: 디스크·네트워크 카드 같은 장치는 CPU보다 훨씬 느리기 때문에 인터럽트로 작업 완료를 알린다. 프로그램이 I/O를 기다리는 동안 CPU는 다른 일을 할 수 있다.
+    objectives:
+      - 인터럽트와 폴링 방식의 차이를 설명한다
+      - I/O 대기 중인 프로세스가 CPU를 쓰지 않는 이유를 설명한다
+      - iowait 지표가 뜻하는 것과 오해를 설명한다
+    prerequisites: [arch.cpu-instruction-execution]
+    practical_cases:
+      - CPU 사용률은 낮은데 응답이 느린 서버에서 iowait 확인
+
+  - id: arch.dma
+    name: DMA
+    aliases: [Direct Memory Access, 직접 메모리 접근, Zero Copy, 제로 카피]
+    depth: 2
+    summary: DMA는 장치가 CPU를 거치지 않고 메모리에 데이터를 옮기게 해 준다. zero-copy 전송 같은 최적화의 기반이다.
+    objectives:
+      - DMA가 CPU 부담을 줄이는 방식을 설명한다
+      - sendfile 같은 zero-copy가 복사 횟수를 줄이는 원리를 설명한다
+    prerequisites: [arch.io-devices-interrupts]
+    practical_cases:
+      - 정적 파일 서빙에서 sendfile을 켜 CPU 사용량을 줄인 사례
+
+  - id: arch.storage-devices
+    name: 저장 장치(SSD·HDD)
+    aliases: [SSD, HDD, Storage, 스토리지, IOPS, 디스크]
+    depth: 1
+    summary: HDD는 탐색 시간 때문에 랜덤 접근이 느리고 SSD는 훨씬 빠르지만 쓰기 특성이 다르다. IOPS·처리량·지연은 다른 지표다.
+    objectives:
+      - 순차 접근과 랜덤 접근의 성능 차이를 설명한다
+      - IOPS·처리량·지연을 구분해 디스크 성능을 해석한다
+      - 클라우드 볼륨의 IOPS 한도가 성능에 미치는 영향을 설명한다
+    prerequisites: [arch.memory-hierarchy]
+    practical_cases:
+      - 클라우드 디스크 IOPS 크레딧이 바닥나 DB가 갑자기 느려진 장애
+
+  - id: arch.latency-numbers
+    name: 지연 시간 감각
+    aliases: [Latency Numbers, 지연 시간 수치, 레이턴시 감각]
+    depth: 1
+    summary: 캐시 접근은 나노초, 메모리는 수십~수백 나노초, SSD는 수십~수백 마이크로초, 대륙 간 네트워크는 수십~수백 밀리초다. 이 감각이 설계 판단의 기준이 된다.
+    objectives:
+      - 캐시·메모리·디스크·네트워크 접근 지연의 자릿수를 설명한다
+      - 요청 하나가 몇 번의 네트워크 왕복을 하는지 세어 지연을 추정한다
+    prerequisites: [arch.memory-hierarchy, arch.storage-devices]
+    practical_cases:
+      - 반복문 안에서 원격 호출을 하는 코드의 지연을 미리 추정
+
+  - id: arch.numa
+    name: NUMA
+    aliases: [Non-Uniform Memory Access, 누마]
+    depth: 3
+    summary: 멀티 소켓 서버에서는 CPU마다 가까운 메모리와 먼 메모리가 있어 접근 비용이 다르다. 큰 DB 서버 튜닝에서 드러난다.
+    objectives:
+      - NUMA 노드와 원격 메모리 접근 비용을 설명한다
+      - NUMA가 대형 DB·JVM 성능에 영향을 주는 방식을 설명한다
+    prerequisites: [arch.multicore, arch.memory-hierarchy]
+    practical_cases:
+      - 코어가 많은 서버로 옮겼는데 DB 지연이 들쭉날쭉해진 사례
+
+  - id: arch.floating-point
+    name: 부동소수점
+    aliases: [Floating Point, IEEE 754, 부동 소수점, float, double]
+    depth: 2
+    summary: 부동소수점은 근사값이라 0.1 + 0.2가 정확히 0.3이 아니다. 금액 계산에는 정수나 decimal을 쓴다.
+    objectives:
+      - IEEE 754 표현이 근사 오차를 만드는 이유를 설명한다
+      - 금액·수량 계산에서 부동소수점을 피해야 하는 이유와 대안을 설명한다
+    prerequisites: [arch.data-representation]
+    practical_cases:
+      - 결제 합계가 1원씩 어긋나는 버그
+
+  - id: arch.endianness-alignment
+    name: 엔디언과 메모리 정렬
+    aliases: [Endianness, 엔디언, Big Endian, Little Endian, Alignment, 메모리 정렬]
+    depth: 2
+    summary: 여러 바이트 값을 메모리나 네트워크에 놓는 순서가 엔디언이다. 바이너리 프로토콜이나 파일 포맷을 다룰 때 반드시 맞춰야 한다.
+    objectives:
+      - 빅 엔디언과 리틀 엔디언, 네트워크 바이트 순서를 설명한다
+      - 구조체 정렬과 패딩이 메모리 크기에 미치는 영향을 설명한다
+    prerequisites: [arch.data-representation]
+    practical_cases:
+      - 바이너리 프로토콜 파서에서 바이트 순서를 잘못 읽어 값이 깨지는 문제

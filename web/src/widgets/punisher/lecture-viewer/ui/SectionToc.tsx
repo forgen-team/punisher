@@ -1,0 +1,68 @@
+
+import { BottomSheet, cn, focusRing } from "@/src/shared/ui/kit";
+import type { LectureSection } from "@/src/shared/api/punisher";
+import { SECTION_KIND_LABELS } from "@/src/entities/punisher";
+import { scrollToAnchor } from "@/src/features/punisher/lecture-progress";
+
+interface SectionTocProps {
+  sections: LectureSection[];
+  totalMinutes: number;
+  /** 항목 선택 후 (시트 닫기 등) */
+  onNavigate?: () => void;
+  /** 시트 안에서는 제목 줄을 생략 */
+  hideHeading?: boolean;
+}
+
+export function SectionToc({ sections, totalMinutes, onNavigate, hideHeading = false }: SectionTocProps) {
+  return (
+    <nav aria-label="강의 목차" className="flex flex-col gap-1 text-sm">
+      {!hideHeading && (
+        <p className="px-2 py-1 font-semibold text-fg">
+          목차 <span className="font-normal text-fg-muted">· 약 {totalMinutes}분</span>
+        </p>
+      )}
+      <ol className="flex flex-col">
+        {sections.map((s, index) => (
+          <li key={s.anchor || index}>
+            <a
+              href={`#pa-${s.anchor}`}
+              onClick={(event) => {
+                onNavigate?.();
+                // 시트가 닫히며 스크롤 잠금이 풀린 다음 프레임에 이동한다.
+                event.preventDefault();
+                requestAnimationFrame(() => {
+                  if (!scrollToAnchor(s.anchor)) { window.location.hash = `pa-${s.anchor}`; }
+                });
+              }}
+              className={cn(
+                "flex min-h-touch items-center justify-between gap-2 rounded-md px-2 text-fg-secondary hover:bg-canvas-hover hover:text-fg md:min-h-9",
+                focusRing,
+              )}
+            >
+              <span className="min-w-0">
+                {index + 1}. {s.title || SECTION_KIND_LABELS[s.kind] || s.kind}
+              </span>
+              {s.minutes > 0 && <span className="shrink-0 text-xs text-fg-muted">{s.minutes}분</span>}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
+interface TocSheetProps {
+  open: boolean;
+  onClose: () => void;
+  sections: LectureSection[];
+  totalMinutes: number;
+}
+
+/** 모바일·태블릿 목차 시트 (lg 이상은 왼쪽 고정 목차). */
+export function TocSheet({ open, onClose, sections, totalMinutes }: TocSheetProps) {
+  return (
+    <BottomSheet open={open} onClose={onClose} title="목차" description={`약 ${totalMinutes}분`} desktop="sheet">
+      <SectionToc sections={sections} totalMinutes={totalMinutes} onNavigate={onClose} hideHeading />
+    </BottomSheet>
+  );
+}

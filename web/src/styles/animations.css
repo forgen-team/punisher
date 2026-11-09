@@ -1,0 +1,19 @@
+/**
+ * witems Animation — 동작 줄이기 설정 존중 (D5)
+ * 애니메이션 유틸리티·keyframes는 tailwind preset(animate-fade-in / slide-* / scale-in / sheet-*)
+ * 과 Tailwind 기본(animate-spin / animate-pulse)이 제공한다. 여기에는 전역 감속 규칙만 둔다.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-up,
+  .animate-slide-down,
+  .animate-scale-in,
+  .animate-sheet-up,
+  .animate-sheet-right,
+  .animate-pulse {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

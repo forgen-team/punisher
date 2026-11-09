@@ -1,0 +1,284 @@
+# 보안과 설계 — 인증·권한·비밀 관리·신뢰 경계·모듈 책임
+area: security-design
+title: 보안과 설계
+concepts:
+  - id: sec.cryptography-basics
+    name: 암호학 기초
+    aliases: [Cryptography, 암호화, Hash Function, 해시 함수, 대칭키, 비대칭키, 공개키 암호, Public Key, 전자 서명]
+    depth: 1
+    summary: 해시는 되돌릴 수 없는 지문, 대칭키 암호는 같은 키로 잠그고 여는 것, 공개키 암호는 서명과 키 교환에 쓰인다. 직접 구현하지 않고 검증된 라이브러리를 쓴다.
+    objectives:
+      - 해시·대칭키 암호화·공개키 암호화·전자 서명의 용도를 구분한다
+      - 인코딩(Base64)과 암호화의 차이를 설명한다
+      - 암호 알고리즘을 직접 구현하지 말아야 하는 이유를 설명한다
+    practical_cases:
+      - Base64로 인코딩한 값을 암호화된 값으로 오해해 비밀번호를 노출한 사례
+
+  - id: sec.password-hashing
+    name: 비밀번호 저장
+    aliases: [Password Hashing, 비밀번호 해싱, bcrypt, argon2, Salt, 솔트]
+    depth: 1
+    summary: 비밀번호는 복호화할 수 없도록 느린 해시(bcrypt·argon2)와 솔트로 저장한다. 빠른 해시(SHA-256 단독)는 대입 공격에 약하다.
+    objectives:
+      - 비밀번호를 암호화가 아닌 해시로 저장하는 이유를 설명한다
+      - 솔트와 느린 해시가 대입·레인보우 테이블 공격을 막는 원리를 설명한다
+    prerequisites: [sec.cryptography-basics]
+    practical_cases:
+      - SHA-1 단일 해시로 저장된 비밀번호가 유출 후 대량 복원된 사고
+    doc_links:
+      - title: OWASP Password Storage Cheat Sheet
+        url: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+
+  - id: sec.authentication
+    name: 인증
+    aliases: [Authentication, 인증, AuthN, 로그인, Login, MFA, 다중 인증]
+    depth: 1
+    summary: 인증은 요청자가 누구인지 확인하는 과정이다. 로그인 이후에는 세션이나 토큰이 그 사실을 매 요청에 실어 나른다.
+    objectives:
+      - 인증과 인가의 차이를 설명한다
+      - 로그인 후 세션 쿠키로 사용자 신원이 유지되는 흐름을 설명한다
+      - 무차별 대입 방어(레이트 리밋·MFA)의 필요성을 설명한다
+    prerequisites: [net.cookie-and-session]
+    practical_cases:
+      - 로그인 API에 시도 제한이 없어 계정 대입 공격을 받은 사례
+    doc_links:
+      - title: OWASP Authentication Cheat Sheet
+        url: https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
+
+  - id: sec.authorization
+    name: 인가와 권한 모델
+    aliases: [Authorization, 인가, AuthZ, 권한, RBAC, 역할 기반 접근 제어, IDOR]
+    depth: 1
+    summary: 인가는 인증된 사용자가 특정 자원에 무엇을 할 수 있는지 판단한다. 모든 요청에서 서버가 자원 소유권을 확인하지 않으면 남의 데이터에 접근할 수 있다.
+    objectives:
+      - RBAC 같은 권한 모델의 구조를 설명한다
+      - ID만 바꿔 남의 데이터를 조회하는 IDOR 취약점과 방어를 설명한다
+      - 권한 검사를 화면이 아닌 서버에서 해야 하는 이유를 설명한다
+    prerequisites: [sec.authentication]
+    practical_cases:
+      - URL의 주문 번호만 바꾸면 다른 사람 주문이 보이던 취약점
+    doc_links:
+      - title: OWASP Authorization Cheat Sheet
+        url: https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html
+
+  - id: sec.session-vs-token
+    name: 세션 방식과 토큰 방식
+    aliases: [Session vs Token, 세션 인증, 토큰 인증, Bearer Token, Access Token, Refresh Token]
+    depth: 2
+    summary: 서버 세션은 즉시 무효화가 쉽고, 자체 포함 토큰은 서버 조회 없이 검증되지만 폐기가 어렵다. 저장 위치(쿠키·스토리지)가 XSS·CSRF 노출을 바꾼다.
+    objectives:
+      - 서버 세션과 자체 포함 토큰의 검증·폐기 방식 차이를 설명한다
+      - 액세스 토큰과 리프레시 토큰을 나누는 이유를 설명한다
+      - 토큰을 localStorage와 HttpOnly 쿠키에 둘 때의 위험 차이를 설명한다
+    prerequisites: [sec.authentication]
+    practical_cases:
+      - 퇴사자 계정을 막았는데 발급된 토큰이 만료 전까지 계속 유효했던 문제
+    doc_links:
+      - title: OWASP Session Management Cheat Sheet
+        url: https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
+
+  - id: sec.jwt
+    name: JWT
+    aliases: [JSON Web Token, 제이더블유티, JWT 토큰]
+    depth: 2
+    summary: JWT는 서명된 JSON 클레임으로, 내용은 누구나 읽을 수 있고 서명만 위조를 막는다. 알고리즘 고정·만료·대상 검증을 빠뜨리면 위험하다.
+    objectives:
+      - 헤더·페이로드·서명 구조와 서명 검증 과정을 설명한다
+      - JWT 페이로드가 암호화되지 않는다는 점과 담지 말아야 할 정보를 설명한다
+      - exp·aud·iss 검증과 알고리즘 고정이 필요한 이유를 설명한다
+    prerequisites: [sec.session-vs-token, sec.cryptography-basics]
+    practical_cases:
+      - 서명 검증 없이 JWT를 디코딩만 해서 사용자 ID를 신뢰한 취약점
+    doc_links:
+      - title: RFC 7519 - JSON Web Token (JWT)
+        url: https://www.rfc-editor.org/rfc/rfc7519
+
+  - id: sec.oauth-oidc
+    name: OAuth 2.0과 OpenID Connect
+    aliases: [OAuth, OAuth2, OAuth 2.0, OIDC, OpenID Connect, 소셜 로그인, Google 로그인, Authorization Code]
+    depth: 2
+    summary: OAuth 2.0은 권한 위임 프로토콜이고 OIDC는 그 위에 신원 확인을 더한다. 소셜 로그인은 Authorization Code 흐름과 state·PKCE 검증으로 안전해진다.
+    objectives:
+      - Authorization Code 흐름의 각 단계를 설명한다
+      - OAuth(인가)와 OIDC(인증)의 차이를 설명한다
+      - state·PKCE·리다이렉트 URI 검증이 막는 공격을 설명한다
+    prerequisites: [sec.authentication, net.http]
+    related: [sec.jwt]
+    practical_cases:
+      - 리다이렉트 URI를 느슨하게 허용해 인가 코드가 탈취될 수 있던 설정
+    doc_links:
+      - title: RFC 6749 - The OAuth 2.0 Authorization Framework
+        url: https://www.rfc-editor.org/rfc/rfc6749
+
+  - id: sec.secrets-management
+    name: 비밀 관리
+    aliases: [Secrets Management, 시크릿 관리, API Key 관리, 비밀 키, Secret Rotation, 키 교체, BYOK]
+    depth: 1
+    summary: API 키·DB 비밀번호 같은 비밀은 코드와 이미지에 넣지 않고 별도 저장소나 환경에서 주입하며, 유출을 전제로 교체 절차를 마련한다.
+    objectives:
+      - 비밀이 코드·이미지·로그·히스토리로 새는 경로를 설명한다
+      - 환경 변수·비밀 저장소·암호화 저장의 차이를 설명한다
+      - 유출 시 교체(rotation) 절차와 영향 범위 확인을 설명한다
+    prerequisites: [sec.cryptography-basics]
+    practical_cases:
+      - 공개 저장소에 커밋된 클라우드 키가 몇 분 만에 악용된 사고
+    doc_links:
+      - title: OWASP Secrets Management Cheat Sheet
+        url: https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html
+
+  - id: sec.trust-boundary
+    name: 신뢰 경계
+    aliases: [Trust Boundary, 신뢰 경계, Threat Modeling, 위협 모델링, 공격 표면, Attack Surface]
+    depth: 1
+    summary: 신뢰 경계는 데이터나 요청의 신뢰 수준이 바뀌는 지점이다. 경계를 넘어오는 모든 입력은 검증 대상이며, 내부망이라고 무조건 신뢰하지 않는다.
+    objectives:
+      - 시스템 도식에서 신뢰 경계를 표시하고 넘어오는 데이터를 식별한다
+      - 클라이언트가 보낸 값(가격·권한·사용자 ID)을 신뢰하면 안 되는 이유를 설명한다
+      - 내부 서비스 간 호출에도 인증이 필요한 경우를 설명한다
+    prerequisites: [sec.authorization]
+    practical_cases:
+      - 결제 금액을 클라이언트 요청 값 그대로 사용해 조작된 금액으로 결제된 사고
+
+  - id: sec.injection
+    name: 인젝션과 입력 검증
+    aliases: [Injection, SQL Injection, SQL 인젝션, Command Injection, 명령 주입, 입력 검증, Prepared Statement]
+    depth: 1
+    summary: 입력이 코드나 쿼리의 일부로 해석되면 인젝션이 생긴다. 문자열 연결 대신 파라미터 바인딩을 쓰는 것이 근본 해결이다.
+    objectives:
+      - SQL 인젝션이 생기는 원리를 쿼리 문자열 조립으로 설명한다
+      - 파라미터 바인딩이 데이터와 코드를 분리하는 방식을 설명한다
+      - 셸 명령 실행 시 명령 주입을 막는 방법을 설명한다
+    prerequisites: [sec.trust-boundary, db.sql-basics]
+    practical_cases:
+      - 정렬 컬럼명을 요청 값으로 받아 쿼리에 그대로 넣은 취약점(허용 목록으로 해결)
+    doc_links:
+      - title: OWASP SQL Injection Prevention Cheat Sheet
+        url: https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+
+  - id: sec.xss
+    name: XSS
+    aliases: [Cross-Site Scripting, 크로스 사이트 스크립팅, Stored XSS, Reflected XSS, CSP, Content Security Policy]
+    depth: 2
+    summary: XSS는 공격자 스크립트가 다른 사용자의 브라우저에서 실행되는 취약점이다. 출력 위치에 맞는 이스케이프와 CSP로 막는다.
+    objectives:
+      - 저장형·반사형·DOM 기반 XSS의 차이를 설명한다
+      - 출력 문맥별 이스케이프와 HTML 정제(sanitize)의 필요성을 설명한다
+      - 마크다운·HTML 렌더링 기능에서 XSS가 생기는 경로를 설명한다
+    prerequisites: [sec.injection]
+    practical_cases:
+      - 외부 RSS 본문 HTML을 그대로 렌더링해 스크립트가 실행될 수 있던 화면
+    doc_links:
+      - title: OWASP Cross Site Scripting Prevention Cheat Sheet
+        url: https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+
+  - id: sec.csrf
+    name: CSRF
+    aliases: [Cross-Site Request Forgery, 사이트 간 요청 위조, CSRF Token, CSRF 토큰]
+    depth: 2
+    summary: CSRF는 사용자의 브라우저가 자동으로 붙이는 쿠키를 이용해 원치 않는 요청을 보내게 하는 공격이다. SameSite 쿠키와 CSRF 토큰으로 막는다.
+    objectives:
+      - 쿠키 자동 전송이 CSRF를 가능하게 하는 원리를 설명한다
+      - SameSite 속성과 CSRF 토큰·Origin 검사의 역할을 설명한다
+      - 상태 변경을 GET으로 처리하면 위험한 이유를 설명한다
+    prerequisites: [sec.authentication, net.cookie-and-session]
+    related: [net.cors]
+    practical_cases:
+      - 외부 페이지의 이미지 태그 하나로 로그인 사용자의 설정이 바뀐 취약점
+    doc_links:
+      - title: OWASP Cross-Site Request Forgery Prevention Cheat Sheet
+        url: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
+
+  - id: sec.ssrf
+    name: SSRF
+    aliases: [Server-Side Request Forgery, 서버 측 요청 위조, 메타데이터 엔드포인트]
+    depth: 2
+    summary: SSRF는 서버가 사용자가 준 URL을 대신 요청하게 만들어 내부망·클라우드 메타데이터에 접근하는 공격이다. URL 미리보기·피드 수집 기능에서 생긴다.
+    objectives:
+      - URL을 받아 서버가 요청하는 기능이 SSRF에 노출되는 이유를 설명한다
+      - 내부 IP·메타데이터 주소 차단과 리다이렉트·DNS 재바인딩 우회를 설명한다
+    prerequisites: [sec.trust-boundary, net.http]
+    practical_cases:
+      - RSS 피드 URL 등록 기능으로 내부 관리 API를 호출할 수 있던 취약점
+    doc_links:
+      - title: OWASP Server Side Request Forgery Prevention Cheat Sheet
+        url: https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
+
+  - id: sec.least-privilege
+    name: 최소 권한 원칙
+    aliases: [Least Privilege, 최소 권한, Principle of Least Privilege, 권한 분리]
+    depth: 1
+    summary: 각 사용자·서비스·프로세스에 필요한 최소한의 권한만 준다. 침해가 생겨도 피해 범위가 그 권한으로 제한된다.
+    objectives:
+      - 서비스 계정·DB 계정·컨테이너 사용자에 최소 권한을 적용하는 방법을 설명한다
+      - 공용 관리자 계정이 사고 범위를 키우는 이유를 설명한다
+    prerequisites: [sec.authorization]
+    practical_cases:
+      - 서비스마다 전용 DB 역할을 두어 한 서비스 침해가 다른 DB로 번지지 않게 함
+
+  - id: sec.tls-certificates
+    name: 인증서와 PKI
+    aliases: [TLS Certificate, 인증서, SSL 인증서, PKI, Let's Encrypt, 인증서 갱신, CA]
+    depth: 2
+    summary: 인증서는 CA가 도메인 소유를 확인하고 서명한 공개키 문서다. 자동 갱신과 만료 모니터링이 없으면 언젠가 반드시 만료 장애가 난다.
+    objectives:
+      - CA 서명과 인증서 체인 검증 과정을 설명한다
+      - ACME(Let's Encrypt) 자동 발급·갱신 흐름을 설명한다
+      - 인증서 만료 모니터링과 갱신 실패 대응을 설명한다
+    prerequisites: [net.tls]
+    practical_cases:
+      - 자동 갱신 크론이 조용히 실패해 주말에 인증서가 만료된 장애
+
+  - id: sec.module-boundaries
+    name: 모듈 경계와 책임
+    aliases: [Module Boundary, 모듈 경계, Cohesion, 응집도, Coupling, 결합도, 단일 책임, Separation of Concerns]
+    depth: 1
+    summary: 모듈은 하나의 이유로만 바뀌도록 책임을 모으고(응집), 다른 모듈의 내부를 모르게(낮은 결합) 나눈다. 변경이 어디까지 번지는지가 설계 품질의 척도다.
+    objectives:
+      - 응집도와 결합도를 변경 파급 범위로 설명한다
+      - 한 기능 수정이 여러 파일·서비스로 번지는 구조의 원인을 찾는다
+      - 공개 인터페이스와 내부 구현을 분리하는 방법을 설명한다
+    practical_cases:
+      - 주문 로직이 컨트롤러·뷰·배치에 흩어져 정책 변경 때마다 버그가 생기는 코드
+
+  - id: sec.dependency-direction
+    name: 의존성 방향과 계층
+    aliases: [Dependency Inversion, 의존성 역전, Layered Architecture, 계층형 아키텍처, Clean Architecture, 순환 의존]
+    depth: 2
+    summary: 안정적인 핵심 규칙이 변하기 쉬운 세부 구현(DB·외부 API)에 의존하지 않게 방향을 정한다. 순환 의존은 분리와 테스트를 어렵게 한다.
+    objectives:
+      - 의존성 방향이 변경 영향과 테스트 용이성에 미치는 영향을 설명한다
+      - 인터페이스로 외부 의존을 경계 밖으로 밀어내는 방법을 설명한다
+      - 순환 의존을 탐지하고 끊는 방법을 설명한다
+    prerequisites: [sec.module-boundaries]
+    related: [ds.topological-sort]
+    practical_cases:
+      - 도메인 로직이 특정 LLM SDK 타입에 직접 의존해 공급자 교체가 어려워진 코드
+
+  - id: sec.api-contracts
+    name: API 계약과 버전 관리
+    aliases: [API Contract, API 계약, API Versioning, API 버전 관리, 하위 호환성, Backward Compatibility, OpenAPI]
+    depth: 2
+    summary: API는 서비스 간 계약이므로 변경은 하위 호환을 지키거나 버전을 나눠야 한다. 필드 추가는 대체로 안전하고 삭제·의미 변경은 위험하다.
+    objectives:
+      - 하위 호환 변경과 깨지는 변경을 구분한다
+      - 버전 관리 방식(URL·헤더)과 폐기 절차를 설명한다
+      - 클라이언트가 모르는 필드를 무시하도록 만드는 관대한 수신 원칙을 설명한다
+    prerequisites: [net.rest-api-design, sec.module-boundaries]
+    practical_cases:
+      - 응답 필드 이름 변경 배포 후 모바일 구버전 앱이 일제히 깨진 사고
+
+  - id: sec.supply-chain
+    name: 소프트웨어 공급망 보안
+    aliases: [Supply Chain Security, 공급망 보안, 의존성 취약점, SBOM, Lockfile, 락파일, SLSA]
+    depth: 2
+    summary: 사용하는 라이브러리·이미지·빌드 도구가 공격 경로가 될 수 있다. 버전 고정, 취약점 스캔, 출처 검증으로 위험을 줄인다.
+    objectives:
+      - 락파일과 버전 고정이 재현성과 보안에 주는 의미를 설명한다
+      - 의존성 취약점 스캔 결과를 영향도에 따라 판단하는 방법을 설명한다
+      - 빌드 산출물 출처 검증(SLSA 수준)의 개념을 설명한다
+    prerequisites: [infra.ci-cd]
+    practical_cases:
+      - 이름이 비슷한 악성 패키지를 설치해 빌드 서버의 토큰이 유출된 사고
+    doc_links:
+      - title: SLSA - Supply-chain Levels for Software Artifacts
+        url: https://slsa.dev/
