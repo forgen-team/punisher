@@ -377,6 +377,7 @@ export interface GenerationJob {
   id: string;
   kind: string;
   conceptId: string;
+  depth?: number;
   status: "pending" | "running" | "succeeded" | "failed" | "skipped";
   reason: string;
   error?: string;

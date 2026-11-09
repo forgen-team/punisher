@@ -159,8 +159,13 @@ func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Tar
 		return models.Lecture{}, err
 	}
 	var u usage
+	var result LoopResult
 	fail := func(err error) (models.Lecture, error) {
-		if ferr := s.Store.FinishJob(context.WithoutCancel(ctx), jobID, u.outcome("failed", "", err, "")); ferr != nil {
+		o := u.outcome("failed", "", err, "")
+		if len(result.Attempts) > 0 {
+			o.Attempts = result.AttemptLog()
+		}
+		if ferr := s.Store.FinishJob(context.WithoutCancel(ctx), jobID, o); ferr != nil {
 			logf("finish job %s: %v", jobID, ferr)
 		}
 		return models.Lecture{}, err
@@ -178,7 +183,7 @@ func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Tar
 	if maxTokens <= 0 {
 		maxTokens = defaultMaxTokens
 	}
-	result, err := RunReviewLoop(ctx, libraryAttempts, LoopFuncs{
+	result, err = RunReviewLoop(ctx, libraryAttempts, LoopFuncs{
 		Generate: func(ctx context.Context, notes string) (string, error) {
 			return s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel, System: teacher,
 				User: prompts.Lecture(t.Prompt, outline, notes, t.Prompts), MaxTokens: maxTokens, Timeout: 6 * time.Minute}, &u)
@@ -202,7 +207,9 @@ func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Tar
 	if err != nil {
 		return fail(fmt.Errorf("store lecture: %w", err))
 	}
-	if err := s.Store.FinishJob(ctx, jobID, u.outcome("succeeded", result.Status, nil, final.ID)); err != nil {
+	done := u.outcome("succeeded", result.Status, nil, final.ID)
+	done.Attempts = result.AttemptLog()
+	if err := s.Store.FinishJob(ctx, jobID, done); err != nil {
 		logf("finish job %s: %v", jobID, err)
 	}
 	return final, nil

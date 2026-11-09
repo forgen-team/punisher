@@ -241,24 +241,6 @@ func TestSectionForAnchor(t *testing.T) {
 	}
 }
 
-// TestUnknownDirectiveIsRejectedAndRegenerated: a draft with a directive the
-// markup does not define (seen live: @@dummy_placeholder_removed) never parses,
-// is not saved, and its parse error is fed into the regeneration notes.
-func TestUnknownDirectiveIsRejectedAndRegenerated(t *testing.T) {
-	bad := strings.Replace(validMarkup, "@@sources\n- [doc](https://example.org/doc)\n", "@@dummy_placeholder_removed\n", 1)
-	if _, _, err := testTarget().parseAndValidate(bad); err == nil || !strings.Contains(err.Error(), "unknown directive @@dummy_placeholder_removed") {
-		t.Fatalf("parse err = %v", err)
-	}
-	f := &fakeSteps{drafts: []string{bad, validMarkup}, reviews: []ReviewOutcome{pass}}
-	res, err := RunReviewLoop(context.Background(), 2, f.funcs())
-	if err != nil || res.Status != "published" || res.Final != 1 || res.Attempts[0].ParseErr == nil {
-		t.Fatalf("loop = %+v %v", res, err)
-	}
-	if len(f.notes) != 2 || !strings.Contains(f.notes[1], "unknown directive @@dummy_placeholder_removed") {
-		t.Fatalf("regeneration notes = %q", f.notes)
-	}
-}
-
 func TestReviewReaderGapsParsedAndFedBack(t *testing.T) {
 	r := ParseReview(`{"verdict":"fail","summary":"s","reader_gaps":[{"section":"judgment_next","quote":"감독자라면",
 		"unknown":"감독자(supervisor)","why":"웹 개발자는 systemd 역할을 모름","fix":"한 줄 정의"}],
@@ -292,5 +274,18 @@ func TestCatalogRefsSkipsTargetAndNeighbours(t *testing.T) {
 		"t", []prompts.ConceptRef{{ID: "n"}})
 	if len(got) != 1 || got[0].ID != "x" || !got[0].Learned {
 		t.Fatalf("catalog = %+v", got)
+	}
+}
+
+func TestReviewLoopAttemptLogKeepsFailedParse(t *testing.T) {
+	f := &fakeSteps{drafts: []string{"@@lecture\ntitle: t\n@@frobnicate\n@@end", validMarkup}, reviews: []ReviewOutcome{pass}}
+	res, err := RunReviewLoop(context.Background(), 2, f.funcs())
+	if err != nil {
+		t.Fatal(err)
+	}
+	log := res.AttemptLog()
+	if len(log) != 2 || log[0].Attempt != 1 || log[0].Result != "parse_error" || !strings.Contains(log[0].Message, "frobnicate") ||
+		log[1].Result != "ok" {
+		t.Fatalf("attempt log = %+v", log)
 	}
 }

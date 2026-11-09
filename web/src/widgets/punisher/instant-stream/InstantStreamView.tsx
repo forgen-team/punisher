@@ -3,15 +3,17 @@ import { Link } from "@/src/shared/lib/router";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "@/src/shared/lib/router";
 import { useQueryClient } from "@tanstack/react-query";
-import { EmptyState, Spinner, buttonVariants } from "@/src/shared/ui/kit";
+import { Button, EmptyState, Spinner, buttonVariants } from "@/src/shared/ui/kit";
 import { invalidateLearningState, parsePartialMarkup } from "@/src/entities/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import { LectureBody, LectureHeader, LectureTopBar, SectionToc, TocSheet } from "../lecture-viewer";
 import { useInstantStream, type StreamPhase } from "./useInstantStream";
+import { useRetryInstant } from "./useRetryInstant";
 
 const PHASE_LABELS: Record<StreamPhase, string> = {
   connecting: "생성 작업에 연결하는 중",
   generating: "강의를 실시간으로 작성하는 중",
+  rewriting: "형식 문제로 다시 쓰는 중이에요",
   validating: "구조와 출처를 검증하는 중",
   done: "완료, 저장된 강의로 이동합니다",
   error: "생성 실패",
@@ -21,7 +23,8 @@ const PHASE_LABELS: Record<StreamPhase, string> = {
 export function InstantStreamView({ jobId }: { jobId: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { phase, text, lectureId, errorMessage } = useInstantStream(jobId);
+  const { phase, text, lectureId, errorMessage, rewriteReason } = useInstantStream(jobId);
+  const retry = useRetryInstant(jobId);
   const content = useMemo(() => parsePartialMarkup(text), [text]);
   const [tocOpen, setTocOpen] = useState(false);
 
@@ -31,7 +34,7 @@ export function InstantStreamView({ jobId }: { jobId: string }) {
     router.replace(lectureHref(lectureId));
   }, [phase, lectureId, router, queryClient]);
 
-  const busy = phase === "connecting" || phase === "generating" || phase === "validating";
+  const busy = phase === "connecting" || phase === "generating" || phase === "rewriting" || phase === "validating";
   const hasToc = content.sections.length > 0;
 
   return (
@@ -46,14 +49,27 @@ export function InstantStreamView({ jobId }: { jobId: string }) {
             {busy && <Spinner size="sm" label={null} />}
             즉석 강의 · {PHASE_LABELS[phase]}
           </p>
+          {phase === "rewriting" && (
+            <p className="mt-2 rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">
+              처음 쓴 강의가 화면 형식 규칙을 지키지 않아 한 번 더 써요. 잠시만 기다려 주세요.
+              {rewriteReason && <span className="mt-1 block truncate text-xs text-fg-muted">사유: {rewriteReason}</span>}
+            </p>
+          )}
           {phase === "error" ? (
             <EmptyState
               title="강의를 생성하지 못했습니다"
               description={errorMessage}
               action={
-                <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
-                  강의 화면으로 돌아가기
-                </Link>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {retry.available && (
+                    <Button size="sm" loading={retry.isPending} onClick={retry.run}>
+                      다시 시도
+                    </Button>
+                  )}
+                  <Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                    강의 화면으로 돌아가기
+                  </Link>
+                </div>
               }
             />
           ) : (

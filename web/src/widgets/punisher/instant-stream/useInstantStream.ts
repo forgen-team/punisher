@@ -2,13 +2,15 @@
 import { useEffect, useRef, useState } from "react";
 import { instantStreamUrl, punisherApi } from "@/src/shared/api/punisher";
 
-export type StreamPhase = "connecting" | "generating" | "validating" | "done" | "error";
+export type StreamPhase = "connecting" | "generating" | "rewriting" | "validating" | "done" | "error";
 
 export interface InstantStreamState {
   phase: StreamPhase;
   text: string;
   lectureId?: string;
   errorMessage?: string;
+  /** 첫 출력이 형식 검증에 실패해 자동으로 다시 쓰는 중이면 그 사유 */
+  rewriteReason?: string;
 }
 
 const MAX_RECONNECTS = 3;
@@ -62,17 +64,24 @@ export function useInstantStream(jobId: string): InstantStreamState {
 
     function connect() {
       attempts += 1;
-      setState((prev) => ({ ...prev, phase: "connecting", text: "" }));
+      setState((prev) => ({ ...prev, phase: "connecting", text: "", rewriteReason: undefined }));
       const es = new EventSource(instantStreamUrl(jobId));
       source = es;
       es.addEventListener("status", (event) => {
-        const data = parseData<{ stage?: string }>(event);
+        const data = parseData<{ stage?: string; reason?: string }>(event);
+        if (data?.stage === "rewriting") {
+          // 서버가 처음부터 다시 쓴다 — 받은 본문을 비우고 안내를 띄운다(재연결 재생 때도 같은 순서로 온다).
+          setState((prev) => ({ ...prev, phase: "rewriting", text: "", rewriteReason: data.reason ?? "" }));
+          return;
+        }
         const phase: StreamPhase = data?.stage === "validating" ? "validating" : "generating";
         setState((prev) => (prev.phase === phase ? prev : { ...prev, phase }));
       });
       es.addEventListener("delta", (event) => {
         const data = parseData<{ text?: string }>(event);
-        if (data?.text) {setState((prev) => ({ ...prev, phase: "generating", text: prev.text + data.text }));}
+        if (data?.text) {
+          setState((prev) => ({ ...prev, phase: prev.phase === "rewriting" ? "rewriting" : "generating", text: prev.text + data.text }));
+        }
       });
       es.addEventListener("done", (event) => {
         const data = parseData<{ lectureId?: string }>(event);

@@ -3,6 +3,7 @@ package lecture
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -135,6 +136,11 @@ func validateBlock(path string, b Block, vc ValidationContext, add func(string, 
 		if b.Type != BlockMermaid && UnclosedFence(b.Text) {
 			add(path, "%s block has an unclosed ``` code fence (the rest of the text would render as code)", b.Type)
 		}
+		if b.Type == BlockMermaid {
+			if why := MermaidSwallowedProse(b.Text); why != "" {
+				add(path, "mermaid block swallowed lecture prose (%s) — end the diagram and start a new @@markdown block", why)
+			}
+		}
 	case BlockCode, BlockLog:
 		if strings.TrimSpace(b.Text) == "" {
 			add(path, "%s block is empty", b.Type)
@@ -160,6 +166,53 @@ func validateBlock(path string, b Block, vc ValidationContext, add func(string, 
 	default:
 		add(path, "unknown block type %q", b.Type)
 	}
+}
+
+// mermaidProseRun: this many consecutive prose lines after a blank line means
+// the diagram's end was missed and the following text fell into it.
+const mermaidProseRun = 2
+
+var (
+	hangulRe        = regexp.MustCompile(`[\p{Hangul}]`)
+	mdHeadingRe     = regexp.MustCompile(`^#{1,6}\s`)
+	mermaidSyntaxRe = regexp.MustCompile(`-->|---|==>|-\.->|->>|-->>|--x|:::|^\s*(flowchart|graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|journey|participant|actor|subgraph|end|classDef|class|style|linkStyle|click|note|loop|alt|else|opt|par|rect|autonumber|activate|deactivate|state|direction|section|title|%%)\b|^\s*[\w.-]+\s*[\[\(\{>]`)
+)
+
+// MermaidSwallowedProse returns why a mermaid source contains lecture prose
+// ("" when it looks like a diagram): a markdown heading (## ), an @@ directive,
+// or, after a blank line, mermaidProseRun+ consecutive Korean lines that are
+// not diagram syntax.
+func MermaidSwallowedProse(src string) string {
+	afterBlank, run := false, 0
+	for _, line := range strings.Split(src, "\n") {
+		t := strings.TrimSpace(line)
+		switch {
+		case mdHeadingRe.MatchString(t):
+			return "markdown heading " + clipLine(t)
+		case strings.Contains(t, "@@"):
+			return "@@ directive " + clipLine(t)
+		case t == "":
+			afterBlank, run = true, 0
+			continue
+		}
+		if afterBlank && hangulRe.MatchString(t) && !mermaidSyntaxRe.MatchString(t) {
+			run++
+			if run >= mermaidProseRun {
+				return "prose paragraph " + clipLine(t)
+			}
+			continue
+		}
+		afterBlank, run = false, 0
+	}
+	return ""
+}
+
+func clipLine(s string) string {
+	r := []rune(s)
+	if len(r) > 40 {
+		return string(r[:40]) + "…"
+	}
+	return s
 }
 
 // UnclosedFence reports whether markdown text opens a ``` / ~~~ code fence it

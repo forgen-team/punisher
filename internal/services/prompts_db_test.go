@@ -145,7 +145,7 @@ func (r *recordingLLM) Stream(ctx context.Context, key string, req llm.MessagesR
 func TestInstantLectureRecordsUserPromptVersion(t *testing.T) {
 	s, user := dbService(t)
 	ctx := context.Background()
-	fake := &recordingLLM{text: validMarkup}
+	fake := &recordingLLM{}
 	s.LLM = fake
 	if _, err := s.Store.SavePromptOverride(ctx, user, prompts.BlockTeacherSystem, "내 강사 원칙(테스트)", "save"); err != nil {
 		t.Fatal(err)
@@ -155,6 +155,7 @@ func TestInstantLectureRecordsUserPromptVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	fake.text = lectureMarkupFor(tgt.Plan.ObjectiveIDs) // valid for this target → no automatic rewrite
 	job, _, err := s.Store.CreateJob(ctx, store.NewJob{
 		IdempotencyKey: "test-version:" + user, Kind: "instant", UserID: user, ConceptID: conceptID,
 		ObjectiveKey: "test-version:" + user, Depth: tgt.Plan.Depth, Reason: "test",

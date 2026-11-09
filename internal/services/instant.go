@@ -152,14 +152,30 @@ func (s *Service) linkDeeper(ctx context.Context, userID string, req InstantRequ
 
 func streamURL(jobID string) string { return "/v1/lectures/instant/" + jobID + "/stream" }
 
+// instantAttempts: one automatic rewrite when the first output does not parse
+// or fails structural validation (the reason is fed back to the model).
+const instantAttempts = 2
+
+// StageRewriting is the status stage emitted before the automatic rewrite;
+// clients drop the streamed text and show "형식 문제로 다시 쓰는 중".
+const StageRewriting = "rewriting"
+
 // runInstant streams one lecture. It runs detached from the HTTP request.
+// If the output cannot be parsed or fails validation, it is rewritten once
+// with the problems as revision notes; every attempt is kept in the job's
+// attempt_log. A second failure to parse fails the job (never saved).
 func (s *Service) runInstant(apiKey, userID, jobID string, t Target, emit func(Event)) {
 	ctx, cancel := context.WithTimeout(context.Background(), instantTimeout)
 	defer cancel()
 	var u usage
+	var tries []store.AttemptRecord
 	fail := func(code string, err error) {
 		logf("instant job %s failed: %v", jobID, err)
-		if ferr := s.Store.FinishJob(ctx, jobID, u.outcome("failed", code, err, "")); ferr != nil {
+		o := u.outcome("failed", code, err, "")
+		if len(tries) > 0 {
+			o.Attempts = tries
+		}
+		if ferr := s.Store.FinishJob(ctx, jobID, o); ferr != nil {
 			logf("finish job %s: %v", jobID, ferr)
 		}
 		msg := DescribeLLMError(err)
@@ -172,58 +188,74 @@ func (s *Service) runInstant(apiKey, userID, jobID string, t Target, emit func(E
 		fail("store_error", err)
 		return
 	}
-	emit(Event{Type: EventStatus, Data: map[string]string{"stage": "generating"}})
 
 	maxTokens := s.Cfg.LectureMaxTokens
 	if maxTokens <= 0 {
 		maxTokens = defaultMaxTokens
 	}
-	res, err := s.LLM.Stream(ctx, apiKey, llm.MessagesRequest{
-		Model: s.Cfg.LectureModel, System: t.Prompts.Text(prompts.BlockTeacherSystem, prompts.LectureVars(t.Prompt)),
-		User:      prompts.Lecture(t.Prompt, "", "", t.Prompts),
-		MaxTokens: maxTokens, Timeout: instantTimeout,
-	}, func(delta string) error {
-		emit(Event{Type: EventDelta, Data: map[string]string{"text": delta}})
-		return nil
-	})
-	u.add(res)
-	if err != nil {
-		fail("llm_error", err)
-		return
+	notes := ""
+	var a Attempt
+	for n := 1; n <= instantAttempts; n++ {
+		if n == 1 {
+			emit(Event{Type: EventStatus, Data: map[string]string{"stage": "generating"}})
+		} else {
+			emit(Event{Type: EventStatus, Data: map[string]string{"stage": StageRewriting, "reason": tries[len(tries)-1].Message}})
+		}
+		res, err := s.LLM.Stream(ctx, apiKey, llm.MessagesRequest{
+			Model: s.Cfg.LectureModel, System: t.Prompts.Text(prompts.BlockTeacherSystem, prompts.LectureVars(t.Prompt)),
+			User:      prompts.Lecture(t.Prompt, "", notes, t.Prompts),
+			MaxTokens: maxTokens, Timeout: instantTimeout,
+		}, func(delta string) error {
+			emit(Event{Type: EventDelta, Data: map[string]string{"text": delta}})
+			return nil
+		})
+		u.add(res)
+		if err != nil {
+			fail("llm_error", err)
+			return
+		}
+		if res.Truncated() {
+			fail("truncated", fmt.Errorf("model output truncated at max_tokens (%d)", maxTokens))
+			return
+		}
+		emit(Event{Type: EventStatus, Data: map[string]string{"stage": "validating"}})
+		a = Attempt{Number: n, Markup: res.Text}
+		a.Content, a.Issues, a.ParseErr = t.parseAndValidate(res.Text)
+		tries = append(tries, a.Record())
+		if a.ParseErr == nil && len(a.Issues) == 0 {
+			break
+		}
+		notes = RevisionNotes(a)
 	}
-	if res.Truncated() {
-		fail("truncated", fmt.Errorf("model output truncated at max_tokens (%d)", maxTokens))
-		return
-	}
-
-	emit(Event{Type: EventStatus, Data: map[string]string{"stage": "validating"}})
-	content, issues, perr := t.parseAndValidate(res.Text)
-	if perr != nil {
-		fail("unusable_output", fmt.Errorf("%w: %v", ErrUnusableOutput, perr))
+	if a.ParseErr != nil {
+		fail("unusable_output", fmt.Errorf("%w: %v", ErrUnusableOutput, a.ParseErr))
 		return
 	}
 	status, flagged, reason := "published", false, ""
-	if len(issues) > 0 {
+	if len(a.Issues) > 0 {
 		status, flagged = "needs_revision", true
-		parts := make([]string, 0, len(issues))
-		for _, i := range issues {
+		parts := make([]string, 0, len(a.Issues))
+		for _, i := range a.Issues {
 			parts = append(parts, i.String())
 		}
 		reason = strings.Join(parts, "; ")
 	}
-	saved, err := s.saveLecture(ctx, t, content, learning.JobInstant, status, userID, jobID, u.model, flagged, reason)
+	saved, err := s.saveLecture(ctx, t, a.Content, learning.JobInstant, status, userID, jobID, u.model, flagged, reason)
 	if err != nil {
 		fail("store_error", err)
 		return
 	}
-	if err := s.Store.FinishJob(ctx, jobID, u.outcome("succeeded", status, nil, saved.ID)); err != nil {
+	done := u.outcome("succeeded", status, nil, saved.ID)
+	done.Attempts = tries
+	if err := s.Store.FinishJob(ctx, jobID, done); err != nil {
 		logf("finish job %s: %v", jobID, err)
 	}
 	if err := s.Store.ResolveLinkJob(ctx, jobID, saved.ID); err != nil {
 		logf("resolve links of job %s: %v", jobID, err)
 	}
 	emit(Event{Type: EventDone, Data: map[string]any{
-		"lectureId": saved.ID, "status": status, "flagged": flagged, "issues": issuesOrEmpty(issues),
+		"lectureId": saved.ID, "status": status, "flagged": flagged, "issues": issuesOrEmpty(a.Issues),
+		"attempts": len(tries),
 	}})
 }
 

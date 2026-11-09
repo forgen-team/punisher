@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/wooo-jin/punisher/internal/lecture"
+	"github.com/wooo-jin/punisher/internal/store"
 	"github.com/wooo-jin/punisher/internal/llmjson"
 )
 
@@ -82,6 +83,36 @@ type Attempt struct {
 // Passed: parsed, structurally valid and review not blocking.
 func (a Attempt) Passed() bool {
 	return a.ParseErr == nil && len(a.Issues) == 0 && a.Reviewed && !a.Review.Blocking()
+}
+
+// Record summarizes the attempt for generation_jobs.attempt_log.
+func (a Attempt) Record() store.AttemptRecord {
+	r := store.AttemptRecord{Attempt: a.Number, Result: "ok"}
+	switch {
+	case a.ParseErr != nil:
+		r.Result, r.Message = "parse_error", a.ParseErr.Error()
+	case len(a.Issues) > 0:
+		msgs := make([]string, 0, len(a.Issues))
+		for _, i := range a.Issues {
+			msgs = append(msgs, i.String())
+		}
+		r.Result, r.Message = "invalid", strings.Join(msgs, "; ")
+	case a.Reviewed && a.Review.Blocking():
+		r.Result, r.Message = "review_failed", a.Review.Summary
+	}
+	if len(r.Message) > 1000 {
+		r.Message = r.Message[:1000]
+	}
+	return r
+}
+
+// AttemptLog is the per-attempt record of a loop result.
+func (r LoopResult) AttemptLog() []store.AttemptRecord {
+	out := make([]store.AttemptRecord, 0, len(r.Attempts))
+	for _, a := range r.Attempts {
+		out = append(out, a.Record())
+	}
+	return out
 }
 
 // LoopResult is the outcome of the review loop.

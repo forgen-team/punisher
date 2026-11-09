@@ -10,6 +10,7 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | --- | --- | --- |
 | v0.1.0 (`0c03f16`) | `1574a0a` | 최초 이식 (NOTICE) |
 | v0.2.0 | `98308e6` | 학습 요청 완료 판정·즉시 해석, '더 깊게' 연결, 강의 프롬프트 편집 |
+| v0.3.0 (+3차) | `c37c9a6` | e9959f6: 시도 기록(마이그레이션 008, attempt_log JSON TEXT), 즉석 자동 재작성 1회(StageRewriting, 다시 시도 버튼), mermaid 본문 삼킴 검출. 단독판 전용 `TestUnknownDirectiveIsRejectedAndRegenerated`(ac4f369)는 witems 의 `TestReviewLoopAttemptLogKeepsFailedParse`·`TestInstantRewritesOnceAfterBadMarkup` 와 겹쳐 삭제 |
 | v0.3.0 | `b15c724` | 50f68f6 다음 챕터(마이그레이션 007, visibleTo 사용자 격리, 챕터 고르기·지도 챕터 보기·하루 학습량), 1bc2ab4 중 UI kit(HeightReserve·시트 하단 여백)만. 제외: 534141d(학습 요청 흔적 정리 — 단독판은 요청 UI 유지), 1bc2ab4 의 RSS·오늘 홈 부분, rss-server |
 | v0.2.1 | `dfb61eb` | 81399aa(프롬프트 2026-11-09.2·인라인 용어·펜스 검증·reader_gaps·마이그레이션 006), 7485785(하단 여백), e7b8111·5e5c77a(헤더 정리, 단독판 셸에 맞게 일부만). 제외: f192b0e(학습 요청 대기열 UI 제거), 7f4bc8a(글 해설, RSS 전용) |
 
@@ -83,6 +84,7 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | `internal/services/prompts.go` `libraryTarget` | `Cfg.LibraryUsesUserPrompts`(단독판 `true`)면 라이브러리 강의도 사용자 프롬프트 사용 | witems 라이브러리는 여러 사용자가 공유 → 기본값 고정. 단독판 라이브러리(추천 미리 만들기)는 그 한 사람만 읽음 |
 | `internal/services/prompts_db_test.go` | 임시 SQLite 로 실행 + 위 규칙 테스트 추가 | |
 | `internal/http/router.go` | 인증·CORS·rate limit 없음, `localOnly`, `/v1/status`, 웹 UI 서빙 | 단일 사용자·127.0.0.1 |
+| `internal/services/instant.go` | 실패 이벤트 문구를 `DescribeLLMError` 한국어로(8줄 차이) | 로컬 CLI 안내 |
 | `internal/http/handlers/learn.go` 등 오류 문구 | Claude Code 미설치/미로그인 한국어 안내(`services.DescribeLLMError`) | 게이트웨이 대신 로컬 CLI |
 | `internal/claudecli/*` | claude-gateway 실행기 이식본 | witems `apps/claude-gateway` 가 바뀌면 같이 확인 |
 | `web/src/widgets/punisher/prompt-settings/PromptSettingsWidget.tsx` | 안내 문구: "추천 강의 미리 만들기 포함" | 위 라이브러리 규칙 |

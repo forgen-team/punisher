@@ -121,6 +121,16 @@ type JobOutcome struct {
 	Model        string
 	InputTokens  int
 	OutputTokens int
+	// Attempts: per-attempt record of multi-attempt jobs (nil = keep the column as is).
+	Attempts []AttemptRecord
+}
+
+// AttemptRecord is one generation attempt of a job (generation_jobs.attempt_log).
+type AttemptRecord struct {
+	Attempt int `json:"attempt"`
+	// Result: ok | parse_error | invalid (schema issues) | review_failed
+	Result  string `json:"result"`
+	Message string `json:"message,omitempty"`
 }
 
 // FinishJob records the terminal state. Failed jobs never carry a lecture.
@@ -129,12 +139,22 @@ func (s *SQLiteStore) FinishJob(ctx context.Context, jobID string, o JobOutcome)
 	if o.LectureID != "" && o.Status == "succeeded" {
 		lectureID = o.LectureID
 	}
+	var attemptLog any // NULL keeps the column as is
+	if o.Attempts != nil {
+		raw, err := json.Marshal(o.Attempts)
+		if err != nil {
+			return err
+		}
+		attemptLog = string(raw)
+	}
 	_, err := s.c().exec(ctx, `
 		UPDATE generation_jobs SET status = $2, reason = CASE WHEN $3 = '' THEN reason ELSE $3 END,
 			error = $4, lecture_id = $5, model = $6, input_tokens = input_tokens + $7,
-			output_tokens = output_tokens + $8, finished_at = NOW(), updated_at = NOW()
+			output_tokens = output_tokens + $8, finished_at = NOW(), updated_at = NOW(),
+			attempt_log = COALESCE($9, attempt_log),
+			attempts = CASE WHEN $9 IS NULL THEN attempts ELSE json_array_length($9) END
 		WHERE id = $1`, jobID, o.Status, o.Reason, truncateText(o.Error, 2000), lectureID, o.Model,
-		o.InputTokens, o.OutputTokens)
+		o.InputTokens, o.OutputTokens, attemptLog)
 	return err
 }
 
