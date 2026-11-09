@@ -9,7 +9,7 @@ import { DismissedNotice, useResumeDismiss } from "@/src/features/punisher/resum
 import { AddStudyRequestForm } from "@/src/features/punisher/study-request-add";
 import { describePunisherError, type InstantResponse, type Recommendation } from "@/src/shared/api/punisher";
 import { DeeperGroup, InlineError } from "@/src/shared/ui/punisher";
-import { RecommendationRow, RecommendationSheet, ResumeRow, StudyRequestList } from "./ui";
+import { NEW_CHAPTER_PATH, NextChapterCard, RecommendationRow, RecommendationSheet, ResumeRow, StudyRequestList } from "./ui";
 
 function resumeKey(item: Recommendation): string {
   return item.lectureId ?? item.conceptId;
@@ -93,10 +93,10 @@ export function TodayWidget() {
           compact
           icon={<Target />}
           title="추천할 다음 강의가 없습니다"
-          description={today.data.message ?? "새 목표를 선택하면 다음 경로를 추천합니다."}
+          description="지금 지도에서 배울 강의를 다 마쳤어요. 다음 챕터를 골라 새 개념을 열어 보세요."
           action={
-            <Link href="/map?panel=goals" className={buttonVariants({ variant: "secondary", size: "sm" })}>
-              목표 선택
+            <Link href={NEW_CHAPTER_PATH} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+              다음 챕터 고르기
             </Link>
           }
         />
@@ -118,6 +118,11 @@ export function TodayWidget() {
           <InlineError error={error} />
           {pickResult && <ResolutionChoices response={pickResult} disabled={isPending} onPick={(id) => start(id)} />}
         </div>
+        {today.data?.nextChapter && (
+          <div className="order-4 fold:order-none">
+            <NextChapterCard prompt={today.data.nextChapter} />
+          </div>
+        )}
         <div className="order-4 fold:order-none">{recommendSection}</div>
       </div>
       <div className="contents fold:flex fold:min-w-0 fold:flex-col fold:gap-4 md:gap-6">

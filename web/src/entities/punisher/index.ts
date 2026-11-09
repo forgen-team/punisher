@@ -12,3 +12,4 @@ export { ConceptStateBadge, LectureReviewBadges } from "./ui/StateBadges";
 export { MapStateIcon } from "./ui/MapStateIcon";
 export { groupByParent, type LectureGroup } from "./lib/groupByParent";
 export * from "./model/prompts";
+export * from "./model/chapters";

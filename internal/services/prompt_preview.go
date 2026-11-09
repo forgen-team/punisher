@@ -97,13 +97,13 @@ func (s *Service) PreviewPrompt(ctx context.Context, userID, blockID string, dra
 // previewTarget builds the example concept's context with all of its
 // depth-1 objectives, ignoring what the user already learned.
 func (s *Service) previewTarget(ctx context.Context, userID string) (Target, error) {
-	concept, err := s.Store.ConceptInfo(ctx, PreviewConceptID)
+	concept, err := s.Store.ConceptInfo(ctx, userID, PreviewConceptID)
 	if errors.Is(err, store.ErrNotFound) {
 		catalog, cerr := s.Store.ConceptCatalog(ctx, userID)
 		if cerr != nil || len(catalog) == 0 {
 			return Target{}, err
 		}
-		concept, err = s.Store.ConceptInfo(ctx, catalog[0].ID)
+		concept, err = s.Store.ConceptInfo(ctx, userID, catalog[0].ID)
 	}
 	if err != nil {
 		return Target{}, err

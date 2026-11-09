@@ -32,6 +32,10 @@ type TodayConcept struct {
 	HasPending bool
 	// Proposed: dynamic concept not yet confirmed; only reachable via study requests.
 	Proposed bool
+	// Private: a user's chapter concept (never pre-generated as a shared library lecture).
+	Private bool
+	// PendingDepths: depths that still have a pending objective (≈ lectures left).
+	PendingDepths int
 }
 
 // ResumeItem is an in-progress lecture.
@@ -94,6 +98,8 @@ type Recommendation struct {
 type TodayResult struct {
 	Items     []Recommendation `json:"items"`
 	Exhausted bool             `json:"exhausted"`
+	// NextChapter is set when the remaining learnable runway is short (see CheckNextChapter).
+	NextChapter *NextChapterPrompt `json:"nextChapter,omitempty"`
 }
 
 type todayBuilder struct {

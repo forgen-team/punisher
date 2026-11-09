@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/wooo-jin/punisher/internal/chapter"
 	"github.com/wooo-jin/punisher/internal/curriculum"
 	"github.com/wooo-jin/punisher/internal/learning"
 	"github.com/wooo-jin/punisher/internal/models"
@@ -23,19 +24,19 @@ type Store interface {
 	GetConceptDetail(ctx context.Context, userID, conceptID string) (*models.ConceptDetail, error)
 	LoadGraph(ctx context.Context, userID string) (*models.GraphData, error)
 	LoadMapExtras(ctx context.Context, userID string, data *models.GraphData) error
-	ResolveConcepts(ctx context.Context, normalizedQuery string) ([]string, error)
-	ConceptInfo(ctx context.Context, conceptID string) (models.ConceptInfo, error)
+	ResolveConcepts(ctx context.Context, userID, normalizedQuery string) ([]string, error)
+	ConceptInfo(ctx context.Context, userID, conceptID string) (models.ConceptInfo, error)
 	DoneSet(ctx context.Context, userID, conceptID string) (learning.DoneSet, error)
 	ConceptCatalog(ctx context.Context, userID string) ([]ConceptRef, error)
 	RelatedConcepts(ctx context.Context, userID, conceptID string) ([]ConceptRef, error)
 	PrerequisitesOf(ctx context.Context, userID, conceptID string) ([]ConceptRef, error)
-	KnownConceptIDs(ctx context.Context) (map[string]bool, error)
+	KnownConceptIDs(ctx context.Context, userID string) (map[string]bool, error)
 	ProposeConcept(ctx context.Context, userID string, p models.ProposedConcept) (string, error)
 	GetGloss(ctx context.Context, conceptID string) (string, error)
 	SaveGloss(ctx context.Context, conceptID, gloss, model string) error
 	LoadToday(ctx context.Context, userID string) (*TodayData, error)
-	PrerequisiteEdges(ctx context.Context) ([]learning.PrereqEdge, error)
-	AliasIndex(ctx context.Context) (learning.AliasIndex, error)
+	PrerequisiteEdges(ctx context.Context, userID string) ([]learning.PrereqEdge, error)
+	AliasIndex(ctx context.Context, userID string) (learning.AliasIndex, error)
 
 	// learning state
 	SetConceptState(ctx context.Context, userID, conceptID, requested string) (string, error)
@@ -47,7 +48,7 @@ type Store interface {
 	RestoreLecture(ctx context.Context, userID, lectureID string) error
 	DismissedConceptIDs(ctx context.Context, userID string) (map[string]bool, error)
 	GetLearningSettings(ctx context.Context, userID string) (models.LearningSettings, error)
-	SaveLearningSettings(ctx context.Context, userID, lang string) (models.LearningSettings, error)
+	SaveLearningSettings(ctx context.Context, userID, lang string, daily int) (models.LearningSettings, error)
 	ExampleLanguageFor(ctx context.Context, userID string) string
 
 	// lectures
@@ -109,4 +110,12 @@ type Store interface {
 	PromptHistoryEntryByID(ctx context.Context, userID string, id int64) (PromptHistoryEntry, error)
 	UserGloss(ctx context.Context, userID, conceptID, promptHash string) (string, error)
 	SaveUserGloss(ctx context.Context, userID, conceptID, promptHash, gloss, model string) error
+
+	// chapters ("다음 챕터")
+	ChapterSignals(ctx context.Context, userID string) (proposed []learning.ProposedSignal, deepen []learning.DeepenSignal, covered map[string]bool, err error)
+	ChapterContext(ctx context.Context, userID string) (chapter.Context, error)
+	SaveChapterDraft(ctx context.Context, userID string, input any, d chapter.Draft, model string) (string, error)
+	ChapterDraft(ctx context.Context, userID, draftID string) (d chapter.Draft, input json.RawMessage, applied bool, err error)
+	ApplyChapter(ctx context.Context, userID, draftID string, d chapter.Draft, input json.RawMessage) (string, error)
+	ListChapters(ctx context.Context, userID string) ([]ChapterInfo, error)
 }

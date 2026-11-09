@@ -21,6 +21,8 @@ type Concept struct {
 	ObjectiveCount    int             `json:"objectiveCount"`
 	UserState         string          `json:"userState"`
 	UpdatedAt         time.Time       `json:"updatedAt"`
+	// ChapterID: the user's chapter this concept belongs to ("" = shared curriculum).
+	ChapterID string `json:"chapterId,omitempty"`
 }
 
 // Objective is a learning objective with the caller's state at its depth.
@@ -73,6 +75,8 @@ type GraphNode struct {
 	// Requests are the caller's pending study requests resolved to this concept
 	// (only while the concept is not completed/known).
 	Requests []MapRequest `json:"requests,omitempty"`
+	// ChapterID: the caller's chapter this concept belongs to (map grouping).
+	ChapterID string `json:"chapterId,omitempty"`
 }
 
 // MapRequest is a pending study request shown on the knowledge map.
@@ -104,6 +108,14 @@ type Graph struct {
 	Coverage          []AreaCoverage `json:"coverage"`
 	// PendingRequests: study requests not yet mapped to any concept (분류 중).
 	PendingRequests []MapRequest `json:"pendingRequests"`
+	// Chapters: the caller's own chapters (새 챕터: <이름> 묶음).
+	Chapters []GraphChapter `json:"chapters"`
+}
+
+// GraphChapter is one of the caller's chapters on the map.
+type GraphChapter struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
 }
 
 // FrontierItem is a recommended next concept.

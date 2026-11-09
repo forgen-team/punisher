@@ -60,7 +60,8 @@ g diff "$from" "$to" -- packages/ui/src packages/config/styles/design-tokens.css
         -e 's#\([ab]\)/packages/config/styles/#\1/web/src/styles/#g' \
         -e 's#\([ab]\)/packages/config/tailwind/preset.js#\1/web/tailwind.preset.js#g' \
   | web_rewrite > "$out/kit.patch"
-g diff --name-status "$from" "$to" -- apps/web | grep -iE 'learn|punisher|prompt' | grep -v '/punisher/' > "$out/web-other.txt" || true
+# web.patch 밖의 학습 관련 변경: Next 라우트(app/**, workspace/punisher/** 포함)와 공용 코드.
+g diff --name-status "$from" "$to" -- apps/web | grep -iE 'learn|punisher|prompt|chapter' | grep -vE 'apps/web/src/(.*/)?punisher/' > "$out/web-other.txt" || true
 
 echo "출력: $out"
 wc -l "$out"/*.txt "$out"/*.patch "$out"/*.diff | sed 's#'"$out"'/##'

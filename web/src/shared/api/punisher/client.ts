@@ -7,18 +7,21 @@ export class PunisherApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly requestId?: string;
+  /** 검증 실패 상세(예: CHAPTER_INVALID 의 problems) */
+  readonly problems: string[];
 
-  constructor(status: number, code: string, message: string, requestId?: string) {
+  constructor(status: number, code: string, message: string, requestId?: string, problems: string[] = []) {
     super(message);
     this.name = "PunisherApiError";
     this.status = status;
     this.code = code;
     this.requestId = requestId;
+    this.problems = problems;
   }
 }
 
 interface ErrorEnvelope {
-  error?: { code?: string; message?: string; requestId?: string };
+  error?: { code?: string; message?: string; requestId?: string; problems?: string[] };
 }
 
 async function parseError(res: Response): Promise<PunisherApiError> {
@@ -29,7 +32,7 @@ async function parseError(res: Response): Promise<PunisherApiError> {
     envelope = {};
   }
   const err = envelope.error ?? {};
-  return new PunisherApiError(res.status, err.code ?? "HTTP_ERROR", err.message ?? `HTTP ${res.status}`, err.requestId);
+  return new PunisherApiError(res.status, err.code ?? "HTTP_ERROR", err.message ?? `HTTP ${res.status}`, err.requestId, err.problems ?? []);
 }
 
 export interface PunisherRequestInit extends Omit<RequestInit, "body"> {

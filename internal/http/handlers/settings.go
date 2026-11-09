@@ -35,8 +35,11 @@ func (h *LearnHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 type settingsBody struct {
-	ExampleLanguage string `json:"exampleLanguage"`
+	ExampleLanguage *string `json:"exampleLanguage"`
+	DailyMinutes    *int    `json:"dailyMinutes"`
 }
+
+var dailyMinuteOptions = map[int]bool{15: true, 30: true, 45: true, 60: true}
 
 // PutSettings handles PUT /v1/me/settings. Affects lectures/answers generated
 // afterwards; existing lectures are not regenerated.
@@ -50,12 +53,26 @@ func (h *LearnHandler) PutSettings(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, err.Error())
 		return
 	}
-	lang := strings.ToLower(strings.TrimSpace(body.ExampleLanguage))
-	if !learning.IsValidExampleLanguage(lang) {
-		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, "exampleLanguage must be one of "+strings.Join(learning.ExampleLanguageIDs, "|"))
+	lang, daily := "", 0
+	if body.ExampleLanguage != nil {
+		lang = strings.ToLower(strings.TrimSpace(*body.ExampleLanguage))
+		if !learning.IsValidExampleLanguage(lang) {
+			writeError(w, r, http.StatusBadRequest, ErrorBadRequest, "exampleLanguage must be one of "+strings.Join(learning.ExampleLanguageIDs, "|"))
+			return
+		}
+	}
+	if body.DailyMinutes != nil {
+		if !dailyMinuteOptions[*body.DailyMinutes] {
+			writeError(w, r, http.StatusBadRequest, ErrorBadRequest, "dailyMinutes must be 15|30|45|60")
+			return
+		}
+		daily = *body.DailyMinutes
+	}
+	if lang == "" && daily == 0 {
+		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, "exampleLanguage or dailyMinutes is required")
 		return
 	}
-	st, err := h.Store.SaveLearningSettings(r.Context(), userID, lang)
+	st, err := h.Store.SaveLearningSettings(r.Context(), userID, lang, daily)
 	if err != nil {
 		writeServiceError(w, r, "save settings", err)
 		return

@@ -31,9 +31,9 @@ func (s *SQLiteStore) LoadToday(ctx context.Context, userID string) (*TodayData,
 
 	concepts, err := collect(s.c().query(ctx, `
 		SELECT c.id, c.name, c.area, c.depth, c.summary, COALESCE(json_extract(c.practical_cases, '$[0]'), ''),
-		       COALESCE(st.state, 'not_started'), c.status = 'proposed',
-		       EXISTS (
-		         SELECT 1 FROM objectives o
+		       COALESCE(st.state, 'not_started'), c.status = 'proposed', c.owner_user_id IS NOT NULL,
+		       (
+		         SELECT COUNT(DISTINCT o.depth) FROM objectives o
 		         WHERE o.concept_id = c.id AND o.status = 'active'
 		           AND NOT EXISTS (
 		             SELECT 1 FROM user_objective_states us
@@ -41,9 +41,11 @@ func (s *SQLiteStore) LoadToday(ctx context.Context, userID string) (*TodayData,
 		               AND us.state IN ('completed', 'known')))
 		FROM concepts c
 		LEFT JOIN user_concept_states st ON st.concept_id = c.id AND st.user_id = $1
-		WHERE c.status IN ('active', 'proposed')`, userID), func(row rowScanner) (learning.TodayConcept, error) {
+		WHERE c.status IN ('active', 'proposed') AND `+visibleTo("c", "$1"), userID), func(row rowScanner) (learning.TodayConcept, error) {
 		var c learning.TodayConcept
-		err := row.Scan(&c.ID, &c.Name, &c.Area, &c.Depth, &c.Summary, &c.PracticalCase, &c.State, &c.Proposed, &c.HasPending)
+		err := row.Scan(&c.ID, &c.Name, &c.Area, &c.Depth, &c.Summary, &c.PracticalCase, &c.State, &c.Proposed,
+			&c.Private, &c.PendingDepths)
+		c.HasPending = c.PendingDepths > 0
 		return c, err
 	})
 	if err != nil {
@@ -53,7 +55,7 @@ func (s *SQLiteStore) LoadToday(ctx context.Context, userID string) (*TodayData,
 		d.Concepts[c.ID] = c
 	}
 
-	if d.Edges, err = s.PrerequisiteEdges(ctx); err != nil {
+	if d.Edges, err = s.PrerequisiteEdges(ctx, userID); err != nil {
 		return nil, err
 	}
 
@@ -94,12 +96,12 @@ func (s *SQLiteStore) LoadToday(ctx context.Context, userID string) (*TodayData,
 }
 
 // PrerequisiteEdges returns prerequisite edges between non-retired concepts.
-func (s *SQLiteStore) PrerequisiteEdges(ctx context.Context) ([]learning.PrereqEdge, error) {
+func (s *SQLiteStore) PrerequisiteEdges(ctx context.Context, userID string) ([]learning.PrereqEdge, error) {
 	edges, err := collect(s.c().query(ctx, `
 		SELECT e.from_id, e.to_id FROM concept_edges e
-		JOIN concepts a ON a.id = e.from_id AND a.status <> 'retired'
-		JOIN concepts b ON b.id = e.to_id AND b.status <> 'retired'
-		WHERE e.kind = $1`, curriculum.EdgePrerequisite), func(row rowScanner) (learning.PrereqEdge, error) {
+		JOIN concepts a ON a.id = e.from_id AND a.status <> 'retired' AND `+visibleTo("a", "$2")+`
+		JOIN concepts b ON b.id = e.to_id AND b.status <> 'retired' AND `+visibleTo("b", "$2")+`
+		WHERE e.kind = $1`, curriculum.EdgePrerequisite, userID), func(row rowScanner) (learning.PrereqEdge, error) {
 		var e learning.PrereqEdge
 		err := row.Scan(&e.From, &e.To)
 		return e, err
@@ -111,12 +113,12 @@ func (s *SQLiteStore) PrerequisiteEdges(ctx context.Context) ([]learning.PrereqE
 }
 
 // AliasIndex loads normalized aliases (and ids) of non-retired concepts.
-func (s *SQLiteStore) AliasIndex(ctx context.Context) (learning.AliasIndex, error) {
+func (s *SQLiteStore) AliasIndex(ctx context.Context, userID string) (learning.AliasIndex, error) {
 	type pair struct{ alias, id string }
 	pairs, err := collect(s.c().query(ctx, `
 		SELECT a.alias, a.concept_id FROM concept_aliases a
-		JOIN concepts c ON c.id = a.concept_id AND c.status <> 'retired'
-		UNION ALL SELECT id, id FROM concepts WHERE status <> 'retired'`), func(row rowScanner) (pair, error) {
+		JOIN concepts c ON c.id = a.concept_id AND c.status <> 'retired' AND `+visibleTo("c", "$1")+`
+		UNION ALL SELECT c.id, c.id FROM concepts c WHERE c.status <> 'retired' AND `+visibleTo("c", "$1"), userID), func(row rowScanner) (pair, error) {
 		var p pair
 		err := row.Scan(&p.alias, &p.id)
 		return p, err

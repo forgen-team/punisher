@@ -79,6 +79,8 @@ type Service struct {
 	Cfg   Config
 	Hub   *Hub
 	Now   func() time.Time
+	// Signals: RSS interests/trends for next-chapter suggestions (nil = off, e.g. standalone).
+	Signals SignalSource
 }
 
 func (s *Service) now() time.Time {

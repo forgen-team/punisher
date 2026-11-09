@@ -2,13 +2,17 @@
 import { Info } from "lucide-react";
 import { IconButton, Menu, Select, type MenuItem } from "@/src/shared/ui/kit";
 import { AREA_LABELS, GOAL_STATUS_LABELS } from "@/src/entities/punisher";
-import { PUNISHER_AREAS, type AreaCoverage, type Goal } from "@/src/shared/api/punisher";
+import { PUNISHER_AREAS, type AreaCoverage, type Goal, type GraphChapter } from "@/src/shared/api/punisher";
 import { areaSignals } from "./MapPanels";
 
 interface MapControlsProps {
   area: string;
   goalId: string;
   goals: Goal[];
+  /** 내 챕터(영역 선택지에 '새 챕터: <이름>'으로) */
+  chapters: GraphChapter[];
+  /** 새 챕터 열기(다음 챕터 고르기 화면) */
+  onOpenChapter: () => void;
   /** 영역 선택지에 "학습 n · 요청 n"을 붙이기 위한 전체 영역 요약 */
   coverage: AreaCoverage[];
   onAreaChange: (area: string) => void;
@@ -18,11 +22,15 @@ interface MapControlsProps {
   onOpenKnown: () => void;
 }
 
+/** 영역 선택값 중 챕터를 뜻하는 접두사(값 = chapter:<id>). */
+export const CHAPTER_OPTION_PREFIX = "chapter:";
+
 /** 지도 컨트롤 한 줄: 영역 · 목표 경로 · 범례 · ⋯(목표 관리, 아는 개념 표시). */
 export function MapControls({
-  area, goalId, goals, coverage, onAreaChange, onGoalChange, onOpenLegend, onOpenGoals, onOpenKnown,
+  area, chapters, goalId, goals, coverage, onAreaChange, onOpenChapter, onGoalChange, onOpenLegend, onOpenGoals, onOpenKnown,
 }: MapControlsProps) {
   const menuItems: MenuItem[] = [
+    { key: "chapter", label: "새 챕터 열기", onSelect: onOpenChapter },
     { key: "goals", label: "목표 관리", onSelect: onOpenGoals },
     { key: "known", label: "이미 아는 개념 표시", onSelect: onOpenKnown },
   ];
@@ -38,6 +46,15 @@ export function MapControls({
           onChange={(event) => onAreaChange(event.target.value)}
         >
           <option value="all">전체 영역</option>
+          {chapters.length > 0 && (
+            <optgroup label="내 챕터">
+              {chapters.map((c) => (
+                <option key={c.id} value={`${CHAPTER_OPTION_PREFIX}${c.id}`}>
+                  새 챕터: {c.title}
+                </option>
+              ))}
+            </optgroup>
+          )}
           {PUNISHER_AREAS.map((a) => {
             const signals = coverage.find((c) => c.area === a);
             const summary = signals ? areaSignals(signals) : "";

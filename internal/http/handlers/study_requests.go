@@ -56,7 +56,7 @@ func (h *StudyRequestsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resolved, err := h.Store.ResolveConcepts(r.Context(), curriculum.NormalizeAlias(req.Query))
+	resolved, err := h.Store.ResolveConcepts(r.Context(), userID, curriculum.NormalizeAlias(req.Query))
 	if err != nil {
 		log.Printf("resolve study request: %v", err)
 		writeError(w, r, http.StatusInternalServerError, ErrorInternal, "failed to resolve concepts")

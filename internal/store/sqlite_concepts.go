@@ -21,12 +21,12 @@ const conceptColumns = `
 	c.id, c.name, c.area, c.depth, c.summary, c.practical_cases, c.doc_links,
 	c.status, c.origin, COALESCE(c.curriculum_version, ''), c.updated_at,
 	(SELECT COUNT(*) FROM objectives o WHERE o.concept_id = c.id AND o.status = 'active'),
-	COALESCE(s.state, 'not_started')`
+	COALESCE(s.state, 'not_started'), COALESCE(c.chapter_id, '')`
 
 func scanConcept(row rowScanner) (models.Concept, error) {
 	var c models.Concept
 	err := row.Scan(&c.ID, &c.Name, &c.Area, &c.Depth, &c.Summary, rawJSON(&c.PracticalCases), rawJSON(&c.DocLinks),
-		&c.Status, &c.Origin, &c.CurriculumVersion, ts(&c.UpdatedAt), &c.ObjectiveCount, &c.UserState)
+		&c.Status, &c.Origin, &c.CurriculumVersion, ts(&c.UpdatedAt), &c.ObjectiveCount, &c.UserState, &c.ChapterID)
 	return c, err
 }
 
@@ -36,7 +36,7 @@ func (s *SQLiteStore) ListConcepts(ctx context.Context, userID string, f Concept
 		SELECT `+conceptColumns+`
 		FROM concepts c
 		LEFT JOIN user_concept_states s ON s.concept_id = c.id AND s.user_id = $1
-		WHERE ($2 = '' OR c.area = $2) AND ($3 = '' OR c.status = $3)
+		WHERE ($2 = '' OR c.area = $2) AND ($3 = '' OR c.status = $3) AND `+visibleTo("c", "$1")+`
 		ORDER BY c.area, c.depth, c.id`, userID, f.Area, f.Status), scanConcept)
 	if err != nil {
 		return nil, fmt.Errorf("list concepts: %w", err)
@@ -50,7 +50,7 @@ func (s *SQLiteStore) GetConceptDetail(ctx context.Context, userID, conceptID st
 		SELECT `+conceptColumns+`
 		FROM concepts c
 		LEFT JOIN user_concept_states s ON s.concept_id = c.id AND s.user_id = $1
-		WHERE c.id = $2`, userID, conceptID))
+		WHERE c.id = $2 AND `+visibleTo("c", "$1"), userID, conceptID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -111,7 +111,7 @@ func (s *SQLiteStore) fillNeighbours(ctx context.Context, userID string, d *mode
 		FROM concept_edges e
 		JOIN concepts n ON n.id = CASE WHEN e.to_id = $2 THEN e.from_id ELSE e.to_id END
 		LEFT JOIN user_concept_states s ON s.concept_id = n.id AND s.user_id = $1
-		WHERE (e.from_id = $2 OR e.to_id = $2) AND n.status <> 'retired'
+		WHERE (e.from_id = $2 OR e.to_id = $2) AND n.status <> 'retired' AND `+visibleTo("n", "$1")+`
 		ORDER BY n.area, n.depth, n.id`, userID, d.ID), func(row rowScanner) (neighbour, error) {
 		var n neighbour
 		err := row.Scan(&n.link.Kind, &n.direction, &n.link.ID, &n.link.Name, &n.link.Area, &n.link.UserState)
@@ -154,9 +154,9 @@ func (s *SQLiteStore) LoadGraph(ctx context.Context, userID string) (*models.Gra
 	edges, err := collect(s.c().query(ctx, `
 		SELECT e.from_id, e.to_id, e.kind
 		FROM concept_edges e
-		JOIN concepts a ON a.id = e.from_id AND a.status = 'active'
-		JOIN concepts b ON b.id = e.to_id AND b.status = 'active'
-		ORDER BY e.kind, e.from_id, e.to_id`), scanEdge)
+		JOIN concepts a ON a.id = e.from_id AND a.status = 'active' AND `+visibleTo("a", "$1")+`
+		JOIN concepts b ON b.id = e.to_id AND b.status = 'active' AND `+visibleTo("b", "$1")+`
+		ORDER BY e.kind, e.from_id, e.to_id`, userID), scanEdge)
 	if err != nil {
 		return nil, fmt.Errorf("list edges: %w", err)
 	}
@@ -170,13 +170,13 @@ func (s *SQLiteStore) LoadGraph(ctx context.Context, userID string) (*models.Gra
 
 // ResolveConcepts finds non-retired concepts whose normalized alias/name or id
 // exactly equals the normalized query. No fuzzy or embedding matching yet.
-func (s *SQLiteStore) ResolveConcepts(ctx context.Context, normalizedQuery string) ([]string, error) {
+func (s *SQLiteStore) ResolveConcepts(ctx context.Context, userID, normalizedQuery string) ([]string, error) {
 	ids, err := collect(s.c().query(ctx, `
 		SELECT DISTINCT c.id
 		FROM concepts c
 		LEFT JOIN concept_aliases a ON a.concept_id = c.id
-		WHERE c.status <> 'retired' AND (a.alias = $1 OR c.id = $1)
-		ORDER BY c.id`, normalizedQuery), scanString)
+		WHERE c.status <> 'retired' AND (a.alias = $1 OR c.id = $1 OR lower(c.name) = $1) AND `+visibleTo("c", "$2")+`
+		ORDER BY c.id`, normalizedQuery, userID), scanString)
 	if err != nil {
 		return nil, fmt.Errorf("resolve concepts: %w", err)
 	}

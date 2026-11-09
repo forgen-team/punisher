@@ -21,6 +21,7 @@ export const punisherKeys = {
   settings: () => ["punisher", "settings"] as const,
   lectureLinks: (id: string) => ["punisher", "lecture-links", id] as const,
   prompts: () => ["punisher", "prompts"] as const,
+  chapterSuggestions: () => ["punisher", "chapter-suggestions"] as const,
   promptHistory: (id: string) => ["punisher", "prompt-history", id] as const,
 };
 

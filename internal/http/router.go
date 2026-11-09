@@ -94,6 +94,11 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Patch("/notes/{id}", learn.UpdateNote)
 		r.Delete("/notes/{id}", learn.DeleteNote)
 
+		r.Get("/chapters", learn.ListChapters)
+		r.Get("/chapters/suggestions", learn.ChapterSuggestions)
+		r.Post("/chapters/drafts", learn.CreateChapterDraft)
+		r.Post("/chapters/drafts/{id}/apply", learn.ApplyChapterDraft)
+
 		r.Get("/goals", learn.ListGoals)
 		r.Post("/goals", learn.CreateGoal)
 		r.Patch("/goals/{id}", learn.UpdateGoal)

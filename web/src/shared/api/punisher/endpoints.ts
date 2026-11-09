@@ -28,6 +28,7 @@ import type {
 } from "./types";
 import type { ExampleLanguage, LearningSettingsResponse, LectureLinks, SelectionExplanation } from "./learningTypes";
 import type { PromptHistoryEntry, PromptPreview, PromptSaveResponse, PromptsResponse } from "./promptTypes";
+import type { ChapterDraftResponse, ChapterSuggestionsResponse } from "./chapterTypes";
 
 const enc = encodeURIComponent;
 
@@ -132,8 +133,15 @@ export const punisherApi = {
 
   // Learning settings
   getLearningSettings: () => punisherFetch<LearningSettingsResponse>("/me/settings"),
-  saveLearningSettings: (exampleLanguage: ExampleLanguage) =>
-    punisherFetch<LearningSettingsResponse>("/me/settings", { method: "PUT", json: { exampleLanguage } }),
+  saveLearningSettings: (patch: { exampleLanguage?: ExampleLanguage; dailyMinutes?: number }) =>
+    punisherFetch<LearningSettingsResponse>("/me/settings", { method: "PUT", json: patch }),
+
+  // Next chapter
+  chapterSuggestions: () => punisherFetch<ChapterSuggestionsResponse>("/chapters/suggestions"),
+  createChapterDraft: (body: { suggestionIds: string[]; freeText: string }) =>
+    punisherFetch<ChapterDraftResponse>("/chapters/drafts", { method: "POST", json: body }),
+  applyChapterDraft: (draftId: string) =>
+    punisherFetch<{ chapterId: string }>(`/chapters/drafts/${enc(draftId)}/apply`, { method: "POST" }),
 
   // Prompt blocks (학습 설정 > 강의 프롬프트)
   listPrompts: () => punisherFetch<PromptsResponse>("/me/prompts"),

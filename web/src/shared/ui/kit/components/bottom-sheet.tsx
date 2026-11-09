@@ -129,7 +129,7 @@ export function BottomSheet({
             </svg>
           </IconButton>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-6">{children}</div>
         {footer ? <div className="flex shrink-0 justify-end gap-2 border-t border-line px-4 py-3">{footer}</div> : null}
       </div>
     </div>,

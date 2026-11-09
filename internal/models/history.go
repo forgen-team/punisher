@@ -61,6 +61,8 @@ type ConceptLecture struct {
 // LearningSettings are the caller's learning preferences.
 type LearningSettings struct {
 	// ExampleLanguage is the language for code examples in generated lectures/answers.
-	ExampleLanguage string     `json:"exampleLanguage"`
-	UpdatedAt       *time.Time `json:"updatedAt,omitempty"`
+	ExampleLanguage string `json:"exampleLanguage"`
+	// DailyMinutes is the daily learning pace (15/30/45/60) used for the next-chapter prompt.
+	DailyMinutes int        `json:"dailyMinutes"`
+	UpdatedAt    *time.Time `json:"updatedAt,omitempty"`
 }

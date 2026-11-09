@@ -90,7 +90,17 @@ func (h *ConceptsHandler) Graph(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusInternalServerError, ErrorInternal, "failed to load graph")
 		return
 	}
-	writeJSON(w, http.StatusOK, buildGraph(data, area))
+	graph := buildGraph(data, area)
+	chapters, err := h.Store.ListChapters(r.Context(), userID)
+	if err != nil {
+		log.Printf("list chapters: %v", err)
+		writeError(w, r, http.StatusInternalServerError, ErrorInternal, "failed to load graph")
+		return
+	}
+	for _, ch := range chapters {
+		graph.Chapters = append(graph.Chapters, models.GraphChapter{ID: ch.ID, Title: ch.Title})
+	}
+	writeJSON(w, http.StatusOK, graph)
 }
 
 // Frontier handles GET /v1/me/frontier?limit= — concepts whose prerequisites
@@ -168,6 +178,7 @@ func buildGraph(data *models.GraphData, area string) models.Graph {
 		Nodes:             []models.GraphNode{},
 		Edges:             []models.Edge{},
 		PendingRequests:   []models.MapRequest{},
+		Chapters:          []models.GraphChapter{},
 	}
 	requestsByConcept := map[string][]models.MapRequest{}
 	for _, req := range data.Requests {
@@ -198,6 +209,7 @@ func buildGraph(data *models.GraphData, area string) models.Graph {
 		graph.Nodes = append(graph.Nodes, models.GraphNode{
 			ID: c.ID, Name: c.Name, Area: c.Area, Depth: c.Depth, Status: c.Status,
 			State: a.State, Locked: a.Locked, Frontier: a.Frontier, Unlocks: a.Unlocks, Requests: requests,
+			ChapterID: c.ChapterID,
 		})
 	}
 	for _, e := range data.Edges {

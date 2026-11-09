@@ -55,7 +55,7 @@ func (s *SQLiteStore) addProposedConcepts(ctx context.Context, userID string, id
 		SELECT `+conceptColumns+`
 		FROM concepts c
 		LEFT JOIN user_concept_states s ON s.concept_id = c.id AND s.user_id = $1
-		WHERE c.id IN (SELECT value FROM json_each($2)) AND c.status = 'proposed'
+		WHERE c.id IN (SELECT value FROM json_each($2)) AND c.status = 'proposed' AND `+visibleTo("c", "$1")+`
 		ORDER BY c.area, c.depth, c.id`, userID, ids), scanConcept)
 	if err != nil {
 		return fmt.Errorf("proposed concepts: %w", err)

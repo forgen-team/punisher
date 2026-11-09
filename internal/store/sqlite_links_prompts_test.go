@@ -306,6 +306,12 @@ func TestUpgradeFromV010(t *testing.T) {
 		VALUES ($1, $2, 'manual', '옛 요청', $3, 'resolved', 'old')`, NewID(), testUser, []string{cB, cA}); err != nil {
 		t.Fatal(err)
 	}
+	var conceptsBefore, objectivesBefore int
+	_ = old.c().row(ctx, `SELECT COUNT(*) FROM concepts`).Scan(&conceptsBefore)
+	_ = old.c().row(ctx, `SELECT COUNT(*) FROM objectives`).Scan(&objectivesBefore)
+	if _, err := old.c().exec(ctx, `INSERT INTO user_concept_states (user_id, concept_id, state) VALUES ($1, $2, 'known')`, testUser, cA); err != nil {
+		t.Fatal(err)
+	}
 	if err := old.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -344,6 +350,37 @@ func TestUpgradeFromV010(t *testing.T) {
 	if _, err := s.SavePromptOverride(ctx, testUser, "teacher.system", "x", "save"); err != nil {
 		t.Fatalf("new table after upgrade: %v", err)
 	}
+	// 007: concepts was rebuilt (CHECK origin += chapter) with foreign keys off —
+	// every row, child row and user state survives and foreign keys are back on.
+	var conceptsAfter, objectivesAfter, fkOn int
+	_ = s.c().row(ctx, `SELECT COUNT(*) FROM concepts`).Scan(&conceptsAfter)
+	_ = s.c().row(ctx, `SELECT COUNT(*) FROM objectives`).Scan(&objectivesAfter)
+	_ = s.c().row(ctx, `PRAGMA foreign_keys`).Scan(&fkOn)
+	if conceptsAfter != conceptsBefore || objectivesAfter != objectivesBefore || fkOn != 1 {
+		t.Fatalf("after 007: concepts %d→%d objectives %d→%d foreign_keys=%d",
+			conceptsBefore, conceptsAfter, objectivesBefore, objectivesAfter, fkOn)
+	}
+	if d, err := s.GetConceptDetail(ctx, testUser, cA); err != nil || d.UserState != "known" || len(d.Objectives) == 0 {
+		t.Fatalf("concept state/objectives lost by rebuild: %+v %v", d, err)
+	}
+	if fk, _ := collect(s.c().query(ctx, `PRAGMA foreign_key_check`), func(r rowScanner) (string, error) {
+		var table, parent string
+		var rowid, fkid any
+		err := r.Scan(&table, &rowid, &parent, &fkid)
+		return table, err
+	}); len(fk) != 0 {
+		t.Fatalf("foreign key violations after upgrade: %v", fk)
+	}
+	if _, err := s.c().exec(ctx, `INSERT INTO concepts (id, name, area, depth, origin, owner_user_id) VALUES ('t.chapter', 'c', 'os', 1, 'chapter', $1)`, testUser); err != nil {
+		t.Fatalf("origin=chapter after 007: %v", err)
+	}
+	if _, err := s.c().exec(ctx, `INSERT INTO objectives (id, concept_id, text, depth, ordinal) VALUES ('x#1', 'no-such-concept', 't', 1, 1)`); err == nil {
+		t.Fatal("foreign keys must be enforced after the migration")
+	}
+	if st, err := s.GetLearningSettings(ctx, testUser); err != nil || st.DailyMinutes != 30 || st.ExampleLanguage != "go" {
+		t.Fatalf("settings after 007: %+v %v", st, err)
+	}
+
 	// 006: reader_gaps on reviews (old reviews default to []).
 	gaps := []byte(`[{"section":"principles","quote":"q","unknown":"u"}]`)
 	if err := s.InsertReview(ctx, parent, models.LectureReview{Verdict: "fail", Reviewer: "llm", Attempt: 1, ReaderGaps: gaps}); err != nil {

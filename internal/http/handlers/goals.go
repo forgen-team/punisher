@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	appMiddleware "github.com/wooo-jin/punisher/internal/middleware"
 	"net/http"
 	"strings"
 	"unicode/utf8"
@@ -23,7 +24,11 @@ func (h *LearnHandler) validTargets(r *http.Request, ids []string) (bool, error)
 	if len(ids) == 0 || len(ids) > 10 {
 		return false, nil
 	}
-	known, err := h.Store.KnownConceptIDs(r.Context())
+	userID, err := appMiddleware.GetUserID(r.Context())
+	if err != nil {
+		return false, err
+	}
+	known, err := h.Store.KnownConceptIDs(r.Context(), userID)
 	if err != nil {
 		return false, err
 	}

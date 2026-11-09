@@ -1,3 +1,4 @@
+import type { GraphChapter, NextChapterPrompt } from "./chapterTypes";
 import type { MapRequest } from "./learningTypes";
 
 // DTOs mirrored from apps/punisher-server/internal/{models,learning,services,lecture,store}.
@@ -75,6 +76,8 @@ export interface GraphNode {
   unlocks: number;
   /** 이 개념으로 연결된 대기 학습 요청(개념을 마치면 비어 있음) */
   requests?: MapRequest[];
+  /** 내 챕터 개념이면 그 챕터 id */
+  chapterId?: string;
 }
 
 export interface GraphEdge {
@@ -100,6 +103,8 @@ export interface Graph {
   coverage: AreaCoverage[];
   /** 아직 개념에 연결되지 않은(분류 중) 학습 요청 */
   pendingRequests: MapRequest[];
+  /** 내 챕터(새 챕터: <이름> 묶음) */
+  chapters: GraphChapter[];
 }
 
 export interface FrontierItem {
@@ -159,6 +164,8 @@ export interface TodayResponse {
   items: Recommendation[];
   exhausted: boolean;
   message?: string;
+  /** 남은 학습 분량이 하루 학습량 × 14일보다 적으면 '다음 챕터 고르기' */
+  nextChapter?: NextChapterPrompt;
 }
 
 export interface PathStep {

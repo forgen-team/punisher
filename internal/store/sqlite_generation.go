@@ -12,13 +12,13 @@ import (
 	"github.com/wooo-jin/punisher/internal/models"
 )
 
-// ConceptInfo loads a non-retired concept with its active objectives.
-func (s *SQLiteStore) ConceptInfo(ctx context.Context, conceptID string) (models.ConceptInfo, error) {
+// ConceptInfo loads a non-retired concept visible to userID with its active objectives.
+func (s *SQLiteStore) ConceptInfo(ctx context.Context, userID, conceptID string) (models.ConceptInfo, error) {
 	var c models.ConceptInfo
 	var cases, links json.RawMessage
 	err := s.c().row(ctx, `
 		SELECT id, name, area, depth, summary, status, practical_cases, doc_links
-		FROM concepts WHERE id = $1 AND status <> 'retired'`, conceptID).
+		FROM concepts c WHERE c.id = $1 AND c.status <> 'retired' AND `+visibleTo("c", "$2"), conceptID, userID).
 		Scan(&c.ID, &c.Name, &c.Area, &c.Depth, &c.Summary, &c.Status, rawJSON(&cases), rawJSON(&links))
 	if errors.Is(err, sql.ErrNoRows) {
 		return c, ErrNotFound
@@ -92,7 +92,7 @@ func (s *SQLiteStore) ConceptCatalog(ctx context.Context, userID string) ([]Conc
 		SELECT c.id, c.name, c.area, c.depth, c.summary, COALESCE(st.state, 'not_started')
 		FROM concepts c
 		LEFT JOIN user_concept_states st ON st.concept_id = c.id AND st.user_id = $1
-		WHERE c.status IN ('active', 'proposed')
+		WHERE c.status IN ('active', 'proposed') AND `+visibleTo("c", "$1")+`
 		ORDER BY c.area, c.depth, c.id`, userID), scanConceptRef)
 	if err != nil {
 		return nil, fmt.Errorf("concept catalog: %w", err)
@@ -107,7 +107,7 @@ func (s *SQLiteStore) RelatedConcepts(ctx context.Context, userID, conceptID str
 		FROM concept_edges e
 		JOIN concepts n ON n.id = CASE WHEN e.to_id = $2 THEN e.from_id ELSE e.to_id END
 		LEFT JOIN user_concept_states st ON st.concept_id = n.id AND st.user_id = $1
-		WHERE (e.from_id = $2 OR e.to_id = $2) AND n.status <> 'retired'`, userID, conceptID), scanConceptRef)
+		WHERE (e.from_id = $2 OR e.to_id = $2) AND n.status <> 'retired' AND `+visibleTo("n", "$1"), userID, conceptID), scanConceptRef)
 	if err != nil {
 		return nil, fmt.Errorf("related concepts: %w", err)
 	}
@@ -119,7 +119,7 @@ func (s *SQLiteStore) PrerequisitesOf(ctx context.Context, userID, conceptID str
 	refs, err := collect(s.c().query(ctx, `
 		SELECT n.id, n.name, n.area, n.depth, n.summary, COALESCE(st.state, 'not_started')
 		FROM concept_edges e
-		JOIN concepts n ON n.id = e.from_id AND n.status <> 'retired'
+		JOIN concepts n ON n.id = e.from_id AND n.status <> 'retired' AND `+visibleTo("n", "$1")+`
 		LEFT JOIN user_concept_states st ON st.concept_id = n.id AND st.user_id = $1
 		WHERE e.to_id = $2 AND e.kind = 'prerequisite'
 		ORDER BY n.depth, n.id`, userID, conceptID), scanConceptRef)
@@ -129,9 +129,9 @@ func (s *SQLiteStore) PrerequisitesOf(ctx context.Context, userID, conceptID str
 	return refs, nil
 }
 
-// KnownConceptIDs returns the ids of every non-retired concept.
-func (s *SQLiteStore) KnownConceptIDs(ctx context.Context) (map[string]bool, error) {
-	ids, err := collect(s.c().query(ctx, `SELECT id FROM concepts WHERE status <> 'retired'`), scanString)
+// KnownConceptIDs returns the ids of every non-retired concept visible to userID.
+func (s *SQLiteStore) KnownConceptIDs(ctx context.Context, userID string) (map[string]bool, error) {
+	ids, err := collect(s.c().query(ctx, `SELECT c.id FROM concepts c WHERE c.status <> 'retired' AND `+visibleTo("c", "$1"), userID), scanString)
 	if err != nil {
 		return nil, fmt.Errorf("known concepts: %w", err)
 	}

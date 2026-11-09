@@ -21,7 +21,7 @@ func (s *SQLiteStore) SetConceptState(ctx context.Context, userID, conceptID, re
 	var next string
 	err := s.tx(ctx, func(c conn) error {
 		var status string
-		err := c.row(ctx, `SELECT status FROM concepts WHERE id = $1`, conceptID).Scan(&status)
+		err := c.row(ctx, `SELECT c.status FROM concepts c WHERE c.id = $1 AND `+visibleTo("c", "$2"), conceptID, userID).Scan(&status)
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
 		}

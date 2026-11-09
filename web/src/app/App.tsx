@@ -5,7 +5,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ThemeSync } from "@/src/shared/lib/ThemeSync";
 import { AppShell } from "./AppShell";
 import {
-  HistoryPage, InstantPage, LecturePage, MapPage, NotFoundPage, PromptSettingsPage, SettingsPage, TodayPage,
+  HistoryPage, InstantPage, LecturePage, MapPage, NewChapterPage, NotFoundPage, PromptSettingsPage, SettingsPage, TodayPage,
 } from "@/src/pages";
 
 function createQueryClient(): QueryClient {
@@ -30,6 +30,7 @@ export function App() {
               <Route path="map" element={<MapPage />} />
               <Route path="goals" element={<MapPage />} />
               <Route path="history" element={<HistoryPage />} />
+              <Route path="chapters/new" element={<NewChapterPage />} />
               <Route path="lectures/:id" element={<LecturePage />} />
               <Route path="instant/:jobId" element={<InstantPage />} />
               <Route path="settings" element={<SettingsPage />} />

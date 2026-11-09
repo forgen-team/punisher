@@ -35,7 +35,7 @@ func (t Target) promptVersion() string {
 // prompt/validation context. Returns learning.ErrNothingToLearn when every
 // objective at that depth is completed/known (dedup invariant).
 func (s *Service) BuildTarget(ctx context.Context, userID, conceptID string, depth int, query string) (Target, error) {
-	concept, err := s.Store.ConceptInfo(ctx, conceptID)
+	concept, err := s.Store.ConceptInfo(ctx, userID, conceptID)
 	if err != nil {
 		return Target{}, err
 	}
@@ -57,7 +57,7 @@ func (s *Service) BuildTarget(ctx context.Context, userID, conceptID string, dep
 // TargetForLecture rebuilds the generation target of an existing lecture (same
 // concept, objectives and depth) regardless of what the user already learned.
 func (s *Service) TargetForLecture(ctx context.Context, userID string, lec models.Lecture) (Target, error) {
-	concept, err := s.Store.ConceptInfo(ctx, lec.ConceptID)
+	concept, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID)
 	if err != nil {
 		return Target{}, err
 	}
@@ -74,7 +74,7 @@ func (s *Service) targetForPlan(ctx context.Context, userID string, concept mode
 	if err != nil {
 		return Target{}, err
 	}
-	known, err := s.Store.KnownConceptIDs(ctx)
+	known, err := s.Store.KnownConceptIDs(ctx, userID)
 	if err != nil {
 		return Target{}, err
 	}

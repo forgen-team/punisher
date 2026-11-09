@@ -106,7 +106,7 @@ func (s *Service) Resolve(ctx context.Context, userID, query string, keyFn func(
 	if query == "" {
 		return res, errors.New("query is required")
 	}
-	index, err := s.Store.AliasIndex(ctx)
+	index, err := s.Store.AliasIndex(ctx, userID)
 	if err != nil {
 		return res, err
 	}
@@ -189,7 +189,7 @@ func (s *Service) GoalPath(ctx context.Context, userID, target string) ([]models
 	if err != nil {
 		return nil, "", err
 	}
-	edges, err := s.Store.PrerequisiteEdges(ctx)
+	edges, err := s.Store.PrerequisiteEdges(ctx, userID)
 	if err != nil {
 		return nil, "", err
 	}

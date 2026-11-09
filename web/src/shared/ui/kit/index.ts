@@ -15,6 +15,7 @@ export * from "./components/segmented-tabs";
 export * from "./components/bottom-sheet";
 export * from "./components/menu";
 export * from "./components/states"; // EmptyState, ErrorState, Skeleton, ListSkeleton
+export * from "./components/height-reserve"; // HeightReserve(로딩 시프트 방지)
 export * from "./components/input"; // Input, Textarea
 export * from "./components/field"; // Field, FieldInput, FieldTextarea, Select, Switch
 export * from "./components/toast";

@@ -31,7 +31,7 @@ func (s *Service) UserPrompts(ctx context.Context, userID string) prompts.Set {
 // interactionVars are the {{vars}} of Q&A blocks.
 func (s *Service) interactionVars(ctx context.Context, userID, conceptID string) map[string]string {
 	vars := map[string]string{"example_language": s.exampleLanguageName(ctx, userID)}
-	if info, err := s.Store.ConceptInfo(ctx, conceptID); err == nil {
+	if info, err := s.Store.ConceptInfo(ctx, userID, conceptID); err == nil {
 		vars["concept_name"] = info.Name
 	}
 	return vars

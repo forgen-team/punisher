@@ -130,7 +130,7 @@ func (s *Service) libraryCandidates(ctx context.Context, userID string) ([]strin
 	seen := map[string]bool{}
 	out := []string{}
 	for _, r := range today.Items {
-		if r.Kind != learning.RecResume && !seen[r.ConceptID] {
+		if r.Kind != learning.RecResume && !seen[r.ConceptID] && !data.Concepts[r.ConceptID].Private {
 			seen[r.ConceptID] = true
 			out = append(out, r.ConceptID)
 		}
@@ -142,7 +142,7 @@ func (s *Service) libraryCandidates(ctx context.Context, userID string) ([]strin
 		states[c.ID] = c.State
 	}
 	for _, f := range learning.Analyze(nodes, data.Edges, states).Frontier {
-		if c := data.Concepts[f.ID]; !seen[f.ID] && c.HasPending && !c.Proposed {
+		if c := data.Concepts[f.ID]; !seen[f.ID] && c.HasPending && !c.Proposed && !c.Private {
 			seen[f.ID] = true
 			out = append(out, f.ID)
 		}
@@ -288,5 +288,13 @@ func (s *Service) Today(ctx context.Context, userID string, limit int) (learning
 	if err != nil {
 		return learning.TodayResult{}, err
 	}
-	return learning.BuildToday(todayInput(data, limit)), nil
+	res := learning.BuildToday(todayInput(data, limit))
+	daily := learning.DefaultDailyMinutes
+	if st, err := s.Store.GetLearningSettings(ctx, userID); err == nil {
+		daily = st.DailyMinutes
+	} else {
+		logf("learning settings for %s: %v (using %d min/day)", userID, err, daily)
+	}
+	res.NextChapter = learning.CheckNextChapter(learning.RemainingMinutes(data.Concepts), daily)
+	return res, nil
 }

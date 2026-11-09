@@ -134,7 +134,7 @@ func (s *SQLiteStore) ListMyLectures(ctx context.Context, userID, status string,
 // Only the newest version per (objective set, depth) is returned.
 func (s *SQLiteStore) ListConceptLectures(ctx context.Context, userID, conceptID string) ([]models.ConceptLecture, error) {
 	var exists bool
-	if err := s.c().row(ctx, `SELECT EXISTS (SELECT 1 FROM concepts WHERE id = $1)`, conceptID).Scan(&exists); err != nil {
+	if err := s.c().row(ctx, `SELECT EXISTS (SELECT 1 FROM concepts c WHERE c.id = $1 AND `+visibleTo("c", "$2")+`)`, conceptID, userID).Scan(&exists); err != nil {
 		return nil, fmt.Errorf("check concept: %w", err)
 	}
 	if !exists {

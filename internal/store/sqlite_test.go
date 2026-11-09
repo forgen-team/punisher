@@ -51,7 +51,7 @@ func firstConcept(t *testing.T, s *SQLiteStore) models.ConceptInfo {
 	}
 	for _, c := range list {
 		if c.ObjectiveCount > 0 {
-			info, err := s.ConceptInfo(ctx, c.ID)
+			info, err := s.ConceptInfo(ctx, testUser, c.ID)
 			if err != nil {
 				t.Fatalf("concept info: %v", err)
 			}
@@ -175,11 +175,11 @@ func TestConceptDetailStateAndResolve(t *testing.T) {
 	}
 
 	alias := seed.Aliases[0]
-	ids, err := s.ResolveConcepts(ctx, alias.Alias)
+	ids, err := s.ResolveConcepts(ctx, testUser, alias.Alias)
 	if err != nil || len(ids) == 0 || ids[0] != alias.ConceptID {
 		t.Fatalf("resolve %q = %v %v, want %s", alias.Alias, ids, err, alias.ConceptID)
 	}
-	idx, err := s.AliasIndex(ctx)
+	idx, err := s.AliasIndex(ctx, testUser)
 	if err != nil || idx[alias.Alias] != alias.ConceptID {
 		t.Fatalf("alias index = %v", err)
 	}
@@ -189,7 +189,7 @@ func TestConceptDetailStateAndResolve(t *testing.T) {
 	if _, err := s.RelatedConcepts(ctx, testUser, c.ID); err != nil {
 		t.Fatal(err)
 	}
-	known, err := s.KnownConceptIDs(ctx)
+	known, err := s.KnownConceptIDs(ctx, testUser)
 	if err != nil || !known[c.ID] {
 		t.Fatalf("known ids: %v", err)
 	}
@@ -574,7 +574,7 @@ func TestNotesGoalsQuestionsSettings(t *testing.T) {
 	if err != nil || st.ExampleLanguage != learning.DefaultExampleLanguage || st.UpdatedAt != nil {
 		t.Fatalf("default settings = %+v %v", st, err)
 	}
-	if _, err := s.SaveLearningSettings(ctx, testUser, "python"); err != nil {
+	if _, err := s.SaveLearningSettings(ctx, testUser, "python", 0); err != nil {
 		t.Fatal(err)
 	}
 	if lang := s.ExampleLanguageFor(ctx, testUser); lang != "python" {

@@ -4,6 +4,8 @@ export type ExampleLanguage = "typescript" | "javascript" | "go" | "java" | "kot
 
 export interface LearningSettings {
   exampleLanguage: ExampleLanguage;
+  /** 하루 학습량(분) — 15/30/45/60 */
+  dailyMinutes: number;
   updatedAt?: string;
 }
 

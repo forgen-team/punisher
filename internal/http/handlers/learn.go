@@ -87,6 +87,9 @@ func (h *LearnHandler) Today(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	payload := map[string]any{"items": res.Items, "exhausted": res.Exhausted}
+	if res.NextChapter != nil {
+		payload["nextChapter"] = res.NextChapter
+	}
 	if res.Exhausted {
 		payload["message"] = "추천할 다음 강의가 없습니다. 새 목표를 선택해 주세요."
 	}

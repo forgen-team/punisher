@@ -31,7 +31,7 @@ func (s *Service) Gloss(ctx context.Context, userID, conceptID string) (gloss st
 	if err != nil || gloss != "" {
 		return gloss, gloss != "", err
 	}
-	concept, err := s.Store.ConceptInfo(ctx, conceptID)
+	concept, err := s.Store.ConceptInfo(ctx, userID, conceptID)
 	if err != nil {
 		return "", false, err
 	}
@@ -174,14 +174,14 @@ func (s *Service) qaContext(ctx context.Context, userID string, lec models.Lectu
 		SectionTitle: section.Title, SectionText: RenderSection(section),
 		ExampleLanguage: s.exampleLanguageName(ctx, userID),
 	}
-	if info, err := s.Store.ConceptInfo(ctx, lec.ConceptID); err == nil {
+	if info, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID); err == nil {
 		pc.ConceptName = info.Name
 	}
 	related, err := s.Store.RelatedConcepts(ctx, userID, lec.ConceptID)
 	if err != nil {
 		return qaCtx{}, err
 	}
-	known, err := s.Store.KnownConceptIDs(ctx)
+	known, err := s.Store.KnownConceptIDs(ctx, userID)
 	if err != nil {
 		return qaCtx{}, err
 	}

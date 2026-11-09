@@ -7,7 +7,10 @@ import { GoalsManager } from "@/src/features/punisher/goal-manage";
 import { KnownAreasSheet, KnownOnboardingPrompt, useKnownOnboardingPrompt } from "@/src/features/punisher/known-onboarding";
 import { describePunisherError } from "@/src/shared/api/punisher";
 import { ConceptDetailSheet } from "./ui/ConceptDetailSheet";
-import { MapControls } from "./ui/MapControls";
+import { CHAPTER_OPTION_PREFIX, MapControls } from "./ui/MapControls";
+import { chapterView } from "./lib/chapterView";
+
+const NEW_CHAPTER_PATH = "/chapters/new";
 import { CoverageList, FrontierList, MapLegendSheet, PendingRequestList } from "./ui/MapPanels";
 
 const LazyMapCanvas = lazy(() => import("./ui/MapCanvas"));
@@ -36,7 +39,8 @@ export function KnowledgeMapWidget() {
   const areaParam = params.get("area") ?? DEFAULT_AREA;
   const requestId = params.get("request");
   const goalsOpen = params.get("panel") === "goals";
-  const areaFilter = goalId || areaParam === "all" ? null : areaParam;
+  const chapterParam = params.get("chapter");
+  const areaFilter = goalId || chapterParam || areaParam === "all" ? null : areaParam;
 
   const graph = useGraph();
   // ?request=<학습 요청 id> (RSS "지도에서 보기") → 그 요청이 붙은 개념을 연다.
@@ -78,11 +82,12 @@ export function KnowledgeMapWidget() {
     const all = graph.data?.nodes ?? [];
     let visible = all;
     if (pathIds) { visible = all.filter((n) => pathIds.has(n.id)); }
+    else if (chapterParam) { visible = chapterView(all, graph.data?.edges ?? [], chapterParam); }
     else if (areaFilter) { visible = all.filter((n) => n.area === areaFilter); }
     const ids = new Set(visible.map((n) => n.id));
     const prereq = (graph.data?.edges ?? []).filter((edge) => edge.kind === "prerequisite" && ids.has(edge.from) && ids.has(edge.to));
     return { nodes: visible, edges: prereq };
-  }, [graph.data, pathIds, areaFilter]);
+  }, [graph.data, pathIds, areaFilter, chapterParam]);
   const selectedRequests = useMemo(
     () => graph.data?.nodes.find((n) => n.id === selectedId)?.requests ?? [],
     [graph.data, selectedId],
@@ -113,11 +118,17 @@ export function KnowledgeMapWidget() {
   return (
     <div className="flex w-full flex-col gap-3">
       <MapControls
-        area={areaParam}
+        area={chapterParam ? `${CHAPTER_OPTION_PREFIX}${chapterParam}` : areaParam}
+        chapters={graph.data?.chapters ?? []}
         goalId={goalId}
         goals={goals.data ?? []}
         coverage={graph.data?.coverage ?? []}
-        onAreaChange={(a) => setParams({ area: a })}
+        onAreaChange={(a) =>
+          a.startsWith(CHAPTER_OPTION_PREFIX)
+            ? setParams({ chapter: a.slice(CHAPTER_OPTION_PREFIX.length), area: null })
+            : setParams({ area: a, chapter: null })
+        }
+        onOpenChapter={() => router.push(NEW_CHAPTER_PATH)}
         onGoalChange={(g) => setParams({ goal: g || null })}
         onOpenLegend={() => setLegendOpen(true)}
         onOpenGoals={() => setParams({ panel: "goals" })}

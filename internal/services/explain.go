@@ -74,7 +74,7 @@ func (s *Service) ExplainSelection(ctx context.Context, userID string, lec model
 		ConceptID: lec.ConceptID, LectureTitle: lec.Title, SectionTitle: section.Title,
 		SectionText: RenderSection(section), ExampleLanguage: s.exampleLanguageName(ctx, userID),
 	}
-	if info, err := s.Store.ConceptInfo(ctx, lec.ConceptID); err == nil {
+	if info, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID); err == nil {
 		pc.ConceptName = info.Name
 	}
 	if err := s.CheckBudget(ctx, userID, false); err != nil {

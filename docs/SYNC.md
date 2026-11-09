@@ -10,6 +10,7 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | --- | --- | --- |
 | v0.1.0 (`0c03f16`) | `1574a0a` | 최초 이식 (NOTICE) |
 | v0.2.0 | `98308e6` | 학습 요청 완료 판정·즉시 해석, '더 깊게' 연결, 강의 프롬프트 편집 |
+| v0.3.0 | `b15c724` | 50f68f6 다음 챕터(마이그레이션 007, visibleTo 사용자 격리, 챕터 고르기·지도 챕터 보기·하루 학습량), 1bc2ab4 중 UI kit(HeightReserve·시트 하단 여백)만. 제외: 534141d(학습 요청 흔적 정리 — 단독판은 요청 UI 유지), 1bc2ab4 의 RSS·오늘 홈 부분, rss-server |
 | v0.2.1 | `dfb61eb` | 81399aa(프롬프트 2026-11-09.2·인라인 용어·펜스 검증·reader_gaps·마이그레이션 006), 7485785(하단 여백), e7b8111·5e5c77a(헤더 정리, 단독판 셸에 맞게 일부만). 제외: f192b0e(학습 요청 대기열 UI 제거), 7f4bc8a(글 해설, RSS 전용) |
 
 다음 이식의 시작점은 **표의 마지막 witems 커밋**입니다. 이식을 마치면 이 표에 한 줄을 추가합니다.
@@ -69,6 +70,7 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | `jsonb_path_exists(...)` | `json_each`/`json_extract` 조합 |
 | `::text`, `::uuid`, `FOR UPDATE`, `pg_advisory_xact_lock` | 삭제 (연결 1개로 직렬화) |
 | `ADD COLUMN IF NOT EXISTS`, `ADD CONSTRAINT` | `ADD COLUMN` 만 (마이그레이션은 한 번만 실행). 제약 변경이 필요하면 새 테이블에 처음부터 넣는다 |
+| 기존 표의 `DROP/ADD CONSTRAINT`(CHECK 변경) | 표 재생성(12단계): 파일 첫 줄 `-- punisher:foreign_keys=off` → `CREATE TABLE x_vN` → `INSERT … SELECT` → `DROP TABLE x` → `RENAME` → 인덱스 재생성. 러너가 외래 키를 끄고 실행한 뒤 `foreign_key_check` 로 확인(007 이 예). 외래 키를 켠 채 `DROP TABLE` 하면 참조 행이 CASCADE 로 지워지므로 반드시 표시를 단다 |
 
 ## 갈라진 곳 (일부러 다르게 둔 부분)
 
@@ -92,7 +94,9 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | `web/src/widgets/punisher/lecture-viewer/lib/highlight.ts` | shiki 언어 29개만 | 바이너리 크기 |
 | `web/src/widgets/punisher/lecture-viewer/ui/LectureTopBar.tsx` | 뒤로(←) 버튼을 모든 폭에서 보임(witems 는 lg 이상만) | 단독판 셸 상단 바에는 [←]가 없음 |
 | `web/src/widgets/punisher/nav/LearnNav.tsx` | '학습' 제목을 md 이상에서 보임(witems 는 lg) | 단독판 셸 상단 바는 화면 제목을 보이지 않음 |
-| `web/src/widgets/punisher/today/ui/StudyRequestList.tsx` 외 학습 요청 UI | witems f192b0e(대기열 UI 제거)를 **가져오지 않음** | 단독판은 직접 입력 학습 요청을 유지 |
+| `web/src/widgets/punisher/today/ui/StudyRequestList.tsx` 외 학습 요청 UI | witems f192b0e(대기열 UI 제거)·534141d(지도·추천의 학습 요청 흔적 정리)를 **가져오지 않음** — 지도의 '요청됨' 표시·`?request=`·대기 목록 유지 | 단독판은 직접 입력 학습 요청을 유지 |
+| `web/src/widgets/punisher/today/TodayWidget.tsx`, `knowledge-map/KnowledgeMapWidget.tsx` | 위 이유로 witems 와 import·요청 관련 줄이 다름(챕터 기능은 동일) | 이식 때 `.rej` 가 나면 요청 UI 를 남기고 챕터 쪽만 합친다 |
+| `cmd/punisher/main.go`, `internal/config` | RSS 신호(`Signals`, `RSSServerURL`) 연결 없음 → `Service.Signals == nil` 이라 다음 챕터 제안의 RSS 관심사·트렌드(c)는 꺼짐 | 단독판에는 RSS 서버가 없음 |
 | `web/src/styles/brand.css`, `web/src/shared/ui/brand/*`, `assets/*`, `web/public/*` | forgen 패밀리 브랜딩(오렌지 액센트·로고) | 단독판 정체성. `design-tokens.css` 는 witems 원본 그대로 두고 `brand.css` 에서 액센트만 덮어쓴다 |
 
 ## 앞으로 들어올 것

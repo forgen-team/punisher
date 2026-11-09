@@ -37,7 +37,7 @@ export function useLearningSettings() {
 export function useSaveLearningSettings() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (exampleLanguage: ExampleLanguage) => punisherApi.saveLearningSettings(exampleLanguage),
+    mutationFn: (patch: { exampleLanguage?: ExampleLanguage; dailyMinutes?: number }) => punisherApi.saveLearningSettings(patch),
     onSuccess: (data) => queryClient.setQueryData(punisherKeys.settings(), data),
   });
 }
