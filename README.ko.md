@@ -127,7 +127,7 @@ cd web && npm run dev   # 프론트 개발 서버(:5173), /v1 은 punisher --no-
 ## forgen 패밀리
 
 Punisher 는 Claude 를 내 방식에 맞추는 [forgen](https://github.com/wooo-jin/forgen) 의 형제 프로젝트입니다.
-같은 개발자가 만든 [Handoff](https://github.com/wooo-jin/handoff)(내 노트북에서 일을 맡기고 휴대폰으로 확인하는 워크플로 에이전트)와 같은 불꽃 로고·오렌지 색을 씁니다.
+같은 개발자가 만든 Handoff(내 노트북에서 일을 맡기고 휴대폰으로 확인하는 워크플로 에이전트)와 같은 불꽃 로고·오렌지 색을 씁니다.
 
 ## 라이선스
 

@@ -81,7 +81,7 @@ Punisher is ported from a private monorepo; see [NOTICE](NOTICE) and [docs/SYNC.
 ## Part of the forgen family
 
 Punisher is a companion to [forgen](https://github.com/wooo-jin/forgen), which makes Claude fit the way you work.
-It shares the forgen flame and orange accent with its sibling [Handoff](https://github.com/wooo-jin/handoff), a local workflow agent you drive from your phone.
+It shares the forgen flame and orange accent with its sibling Handoff, a local workflow agent you drive from your phone.
 
 ## License
 
