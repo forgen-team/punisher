@@ -4,6 +4,7 @@
  */
 @import './design-tokens.css';
 @import './animations.css';
+@import './brand.css';
 
 @tailwind base;
 @tailwind components;

@@ -46,7 +46,7 @@ func main() {
 	noBrowser := flag.Bool("no-browser", false, "시작할 때 브라우저를 열지 않음")
 	flag.Parse()
 	if *showVersion {
-		fmt.Println("punisher", version)
+		fmt.Printf("punisher %s\npart of the forgen family — https://github.com/wooo-jin/forgen\n© 2026 jang-ujin · MIT License\n", version)
 		return
 	}
 	if *noBrowser {

@@ -31,7 +31,7 @@ test:
 # Release zip for hand-off: punisher + install.sh + README + CHANGELOG (no publishing).
 release: build
 	mkdir -p dist/release/punisher-$(VERSION)
-	cp dist/punisher install.sh README.md CHANGELOG.md dist/release/punisher-$(VERSION)/
+	cp dist/punisher install.sh README.md README.ko.md CHANGELOG.md LICENSE dist/release/punisher-$(VERSION)/
 	cd dist/release && ditto -c -k --keepParent punisher-$(VERSION) punisher-$(VERSION)-macos-universal.zip
 	@ls -lh dist/release/*.zip
 

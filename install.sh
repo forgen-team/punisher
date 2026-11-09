@@ -1,5 +1,5 @@
 #!/bin/sh
-# Punisher 설치: 내려받은 punisher 실행 파일을 ~/bin 으로 복사합니다 (Homebrew 불필요).
+# Punisher 설치 (forgen 패밀리): 내려받은 punisher 실행 파일을 ~/bin 으로 복사합니다 (Homebrew 불필요).
 #   사용법: sh install.sh [punisher 파일 경로]   (기본: 이 스크립트 옆의 punisher 또는 dist/punisher)
 set -eu
 
@@ -22,7 +22,8 @@ chmod +x "$dest_dir/punisher"
 # 인터넷에서 받은 파일의 격리 속성(Gatekeeper '확인되지 않은 개발자' 경고)을 제거합니다.
 xattr -d com.apple.quarantine "$dest_dir/punisher" 2>/dev/null || true
 
-echo "설치 완료: $dest_dir/punisher"
+echo "설치 완료: $dest_dir/punisher ($("$dest_dir/punisher" --version | head -1))"
+echo "Punisher · part of the forgen family (https://github.com/wooo-jin/forgen) · © 2026 jang-ujin"
 case ":$PATH:" in
   *":$dest_dir:"*) echo "이제 터미널에서 punisher 를 입력하면 실행됩니다." ;;
   *)

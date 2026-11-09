@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f0f23"/>
+      <stop offset="100%" stop-color="#1a1a3e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="50%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="50%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="55%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#ffffff" stroke-width="0.3" opacity="0.05"/>
+    </pattern>
+  </defs>
+
+  <rect width="800" height="200" rx="12" fill="url(#bg)"/>
+  <rect width="800" height="200" rx="12" fill="url(#grid)"/>
+  <line x1="60" y1="172" x2="740" y2="172" stroke="url(#accent)" stroke-width="1" opacity="0.4"/>
+
+  <!-- Symbol: the forgen flame rising from an open book under half a clock face (30 minutes) -->
+  <g transform="translate(76, 40) scale(1.6)">
+    <path d="M10 33 A22 22 0 0 1 54 33" stroke="url(#mark)" stroke-width="6" stroke-linecap="round"/>
+  
+  <path d="M32 55 C26 49.5 16 48.5 6 50.5" stroke="url(#mark)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M32 55 C38 49.5 48 48.5 58 50.5" stroke="url(#mark)" stroke-width="6" stroke-linecap="round"/>
+  
+  <path transform="translate(1.6 4.25) scale(0.95)" d="M32 15 C37 22 42 27 41 35 C40.3 41 36.5 45 32 45 C27 45 23 41 23.5 35.5 C24 31 27 28.5 27.5 23.5 C30 25.5 30.8 28 30.8 30.5 C33 27 33.5 21 32 15 Z" fill="url(#flame)"/>
+  </g>
+
+  <text x="200" y="95" font-family="'SF Mono', 'Fira Code', 'JetBrains Mono', Menlo, monospace" font-size="52" font-weight="700" fill="#ffffff" letter-spacing="8">PUNISHER</text>
+  <text x="200" y="125" font-family="'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" fill="#f59e0b" letter-spacing="3" opacity="0.9">30 MINUTES OF CS, EVERY DAY</text>
+
+  <rect x="200" y="138" width="120" height="22" rx="4" fill="#f97316" opacity="0.15"/>
+  <text x="210" y="153" font-family="'SF Mono', Menlo, monospace" font-size="11" fill="#f59e0b" opacity="0.85">Pick a concept.</text>
+  <rect x="330" y="138" width="130" height="22" rx="4" fill="#f97316" opacity="0.15"/>
+  <text x="340" y="153" font-family="'SF Mono', Menlo, monospace" font-size="11" fill="#f59e0b" opacity="0.85">Read the lecture.</text>
+  <rect x="470" y="138" width="110" height="22" rx="4" fill="#f97316" opacity="0.15"/>
+  <text x="480" y="153" font-family="'SF Mono', Menlo, monospace" font-size="11" fill="#f59e0b" opacity="0.85">Ask anything.</text>
+
+  <text x="740" y="190" text-anchor="end" font-family="'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" fill="#ffffff" opacity="0.45" letter-spacing="1">a forgen companion</text>
+</svg>

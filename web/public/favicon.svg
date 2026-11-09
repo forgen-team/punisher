@@ -1,1 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#3b5bdb"/><path d="M10 8h7.5a5.5 5.5 0 0 1 0 11H14v5h-4zm4 4v3h3.3a1.5 1.5 0 0 0 0-3z" fill="#fff"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Punisher">
+  <title>Punisher</title>
+  <defs>
+    <linearGradient id="punisher-accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="50%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="punisher-flame" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="55%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <!-- Half a clock face: thirty minutes a day. -->
+  <path d="M10 33 A22 22 0 0 1 54 33" stroke="url(#punisher-accent)" stroke-width="6" stroke-linecap="round"/>
+  <!-- An open book: the lecture. -->
+  <path d="M32 55 C26 49.5 16 48.5 6 50.5" stroke="url(#punisher-accent)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M32 55 C38 49.5 48 48.5 58 50.5" stroke="url(#punisher-accent)" stroke-width="6" stroke-linecap="round"/>
+  <!-- The forgen flame, rising from the open book. -->
+  <path transform="translate(1.6 4.25) scale(0.95)" d="M32 15 C37 22 42 27 41 35 C40.3 41 36.5 45 32 45 C27 45 23 41 23.5 35.5 C24 31 27 28.5 27.5 23.5 C30 25.5 30.8 28 30.8 30.5 C33 27 33.5 21 32 15 Z" fill="url(#punisher-flame)"/>
+</svg>

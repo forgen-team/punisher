@@ -3,6 +3,7 @@ import { List, ListRow, PageHeader, Section, Skeleton, ThemeSelect } from "@/src
 import { Link } from "@/src/shared/lib/router";
 import { LearningSettingsForm } from "@/src/features/punisher/learning-settings";
 import { useAppStatus } from "@/src/shared/api/status";
+import { BRAND_LINE, PunisherLogo } from "@/src/shared/ui/brand";
 
 /** 설정: 예시 코드 언어 · 화면 테마 · Claude Code 연결 상태 · 데이터 위치. */
 export function SettingsPage() {
@@ -28,6 +29,18 @@ export function SettingsPage() {
       </Section>
       <Section title="Claude Code 연결">
         <ClaudeStatusPanel />
+      </Section>
+      <Section title="정보">
+        <p className="flex items-center gap-2 text-sm text-fg-secondary">
+          <PunisherLogo size={20} />
+          <span>
+            {BRAND_LINE.split("forgen")[0]}
+            <a href="https://github.com/wooo-jin/forgen" target="_blank" rel="noreferrer" className="text-accent-text underline-offset-2 hover:underline">
+              forgen
+            </a>
+            {BRAND_LINE.split("forgen")[1]}
+          </span>
+        </p>
       </Section>
     </div>
   );

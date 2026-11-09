@@ -5,6 +5,7 @@ import { Link } from "@/src/shared/lib/router";
 import { ListSkeleton, cn, focusRing } from "@/src/shared/ui/kit";
 import { LearnNav } from "@/src/widgets/punisher/nav";
 import { ClaudeStatusBanner } from "@/src/widgets/claude-status";
+import { BrandMark } from "@/src/shared/ui/brand";
 
 const TITLES: Array<[RegExp, string]> = [
   [/^\/map/, "지식 지도"],
@@ -35,9 +36,8 @@ export function AppShell() {
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-nav border-b border-line bg-canvas-translucent pt-safe-top backdrop-blur">
         <div className="mx-auto flex h-12 w-full max-w-6xl items-center justify-between px-4 md:px-6">
-          <Link href="/" className={cn("flex items-center gap-2 rounded-md text-base font-semibold text-fg", focusRing)}>
-            <img src="/favicon.svg" alt="" className="h-6 w-6" />
-            Punisher
+          <Link href="/" aria-label="Punisher 홈" className={cn("flex items-center rounded-md", focusRing)}>
+            <BrandMark />
           </Link>
           <Link
             href="/settings"
