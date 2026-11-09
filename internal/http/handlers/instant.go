@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -29,6 +30,10 @@ func (h *LearnHandler) InstantCreate(w http.ResponseWriter, r *http.Request) {
 	body.Query = strings.TrimSpace(body.Query)
 	if (body.ConceptID == "" && body.Query == "") || utf8.RuneCountInString(body.Query) > maxQueryRunes || body.Depth < 0 || body.Depth > 3 {
 		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, "conceptId or query (max 500 chars) is required; depth 0..3")
+		return
+	}
+	if msg := validateParentLink(&body); msg != "" {
+		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, msg)
 		return
 	}
 	if !h.requireOwner(w, r, userID) {
@@ -134,4 +139,23 @@ func (h *LearnHandler) JobStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, job)
+}
+
+var uuidRe = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+// validateParentLink normalizes the optional "더 깊게" origin of an instant request.
+func validateParentLink(body *services.InstantRequest) string {
+	body.ParentLectureID = strings.TrimSpace(body.ParentLectureID)
+	body.ParentAnchor = strings.TrimSpace(body.ParentAnchor)
+	if body.ParentLectureID == "" {
+		body.ParentAnchor = ""
+		return ""
+	}
+	if !uuidRe.MatchString(body.ParentLectureID) {
+		return "parentLectureId must be a lecture id"
+	}
+	if utf8.RuneCountInString(body.ParentAnchor) > 200 {
+		return "parentAnchor max 200 chars"
+	}
+	return ""
 }

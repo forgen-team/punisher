@@ -93,4 +93,19 @@ type Store interface {
 	GetStudyRequest(ctx context.Context, userID, id string) (models.StudyRequest, error)
 	UnresolvedStudyRequests(ctx context.Context, userID string, maxAttempts, limit int) ([]models.StudyRequest, error)
 	RecordResolution(ctx context.Context, id string, conceptIDs []string, startingConceptID, errMsg string) error
+	SetStudyRequestDismissed(ctx context.Context, userID, id string, dismissed bool) error
+
+	// lecture links ("더 깊게" / "다시 만들기")
+	LinkDeeper(ctx context.Context, l DeeperLink) error
+	ResolveLinkJob(ctx context.Context, jobID, lectureID string) error
+	LectureLinks(ctx context.Context, userID, lectureID string) (parents, children []models.LinkedLecture, err error)
+
+	// prompt overrides
+	PromptOverrides(ctx context.Context, userID string) (map[string]PromptOverride, error)
+	SavePromptOverride(ctx context.Context, userID, promptID, body, action string) (PromptOverride, error)
+	ResetPromptOverride(ctx context.Context, userID, promptID string) error
+	PromptHistory(ctx context.Context, userID, promptID string) ([]PromptHistoryEntry, error)
+	PromptHistoryEntryByID(ctx context.Context, userID string, id int64) (PromptHistoryEntry, error)
+	UserGloss(ctx context.Context, userID, conceptID, promptHash string) (string, error)
+	SaveUserGloss(ctx context.Context, userID, conceptID, promptHash, gloss, model string) error
 }

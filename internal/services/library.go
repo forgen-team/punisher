@@ -73,7 +73,7 @@ func (s *Service) generateLibrary(ctx context.Context, owner string, candidates 
 		if rep.Ready >= want {
 			break
 		}
-		target, err := s.BuildTarget(ctx, owner, conceptID, 0, "")
+		target, err := s.libraryTarget(ctx, owner, conceptID)
 		if errors.Is(err, learning.ErrNothingToLearn) {
 			continue
 		}
@@ -166,8 +166,10 @@ func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Tar
 		return models.Lecture{}, err
 	}
 
+	vars := prompts.LectureVars(t.Prompt)
+	teacher := t.Prompts.Text(prompts.BlockTeacherSystem, vars)
 	outline, err := s.complete(ctx, apiKey, llm.MessagesRequest{
-		Model: s.Cfg.LectureModel, System: prompts.SystemTeacher, User: prompts.Outline(t.Prompt), MaxTokens: 4000,
+		Model: s.Cfg.LectureModel, System: teacher, User: prompts.Outline(t.Prompt, t.Prompts), MaxTokens: 4000,
 	}, &u)
 	if err != nil {
 		return fail(fmt.Errorf("outline: %w", err))
@@ -178,12 +180,13 @@ func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Tar
 	}
 	result, err := RunReviewLoop(ctx, libraryAttempts, LoopFuncs{
 		Generate: func(ctx context.Context, notes string) (string, error) {
-			return s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel, System: prompts.SystemTeacher,
-				User: prompts.Lecture(t.Prompt, outline, notes), MaxTokens: maxTokens, Timeout: 6 * time.Minute}, &u)
+			return s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel, System: teacher,
+				User: prompts.Lecture(t.Prompt, outline, notes, t.Prompts), MaxTokens: maxTokens, Timeout: 6 * time.Minute}, &u)
 		},
 		Review: func(ctx context.Context, markup string) (ReviewOutcome, error) {
-			text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel, System: prompts.SystemReviewer,
-				User: prompts.Review(t.Prompt, markup), MaxTokens: 4000, Timeout: 4 * time.Minute}, &u)
+			text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel,
+				System: t.Prompts.Text(prompts.BlockReviewerSystem, vars),
+				User:   prompts.Review(t.Prompt, markup, t.Prompts), MaxTokens: 4000, Timeout: 4 * time.Minute}, &u)
 			if err != nil {
 				return ReviewOutcome{}, err
 			}
@@ -217,7 +220,11 @@ func (s *Service) storeAttempts(ctx context.Context, t Target, jobID string, res
 		if i == res.Final {
 			status = res.Status
 		}
-		saved, err := s.saveLecture(ctx, t, a.Content, learning.JobLibrary, status, "", jobID, model, false, "")
+		kind := learning.JobLibrary
+		if t.Owner != "" {
+			kind = learning.JobInstant
+		}
+		saved, err := s.saveLecture(ctx, t, a.Content, kind, status, t.Owner, jobID, model, false, "")
 		if err != nil {
 			return final, err
 		}
@@ -254,7 +261,7 @@ func (s *Service) saveLecture(ctx context.Context, t Target, c lecture.Content, 
 	return s.Store.InsertLecture(ctx, store.NewLecture{
 		ConceptID: t.Plan.ConceptID, ObjectiveIDs: t.Plan.ObjectiveIDs, ObjectiveKey: t.Plan.ObjectiveKey,
 		Depth: t.Plan.Depth, Kind: kind, Status: status, Title: c.Title, Content: content, ContentHash: hash,
-		Sources: sources, Model: model, PromptVersion: prompts.Version, RequestedBy: requestedBy,
+		Sources: sources, Model: model, PromptVersion: t.promptVersion(), RequestedBy: requestedBy,
 		Flagged: flagged, FlagReason: flagReason, EstimatedMinutes: c.TotalMinutes(), GenerationJobID: jobID,
 	})
 }

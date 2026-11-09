@@ -10,9 +10,9 @@ func TestExampleLanguageInjectedIntoAllGenerationPrompts(t *testing.T) {
 	qc := QAContext{ConceptID: "os.page-cache", ConceptName: "페이지 캐시", ExampleLanguage: "TypeScript"}
 	ec := ExplainContext{ConceptID: "os.page-cache", ConceptName: "페이지 캐시", ExampleLanguage: "TypeScript"}
 	prompts := map[string]string{
-		"outline":  Outline(lc),
-		"lecture":  Lecture(lc, "", ""),
-		"review":   Review(lc, "@@lecture"),
+		"outline":  Outline(lc, Defaults()),
+		"lecture":  Lecture(lc, "", "", Defaults()),
+		"review":   Review(lc, "@@lecture", Defaults()),
 		"question": Question(qc, "왜?"),
 		"alt":      AltExplanation(qc, ""),
 		"explain":  ExplainSelection(ec, "더티 페이지"),
@@ -28,7 +28,7 @@ func TestExampleLanguageRuleEmptyWhenUnset(t *testing.T) {
 	if got := ExampleLanguageRule(" "); got != "" {
 		t.Fatalf("rule = %q, want empty", got)
 	}
-	if strings.Contains(Lecture(LectureContext{}, "", ""), "## 예시 코드 언어") {
+	if strings.Contains(Lecture(LectureContext{}, "", "", Defaults()), "## 예시 코드 언어") {
 		t.Fatal("lecture prompt has a language rule without a preference")
 	}
 }

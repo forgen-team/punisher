@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/wooo-jin/punisher/internal/services"
 )
 
 var goalStatuses = map[string]bool{"active": true, "achieved": true, "archived": true}
@@ -184,6 +185,9 @@ func (h *LearnHandler) ListStudyRequests(w http.ResponseWriter, r *http.Request)
 	if list == nil {
 		list = []models.StudyRequest{}
 	}
+	for i := range list {
+		list[i].Resolving = services.IsResolving(list[i].ID)
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"studyRequests": list})
 }
 
@@ -199,5 +203,6 @@ func (h *LearnHandler) GetStudyRequest(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, r, "get study request", err)
 		return
 	}
+	req.Resolving = services.IsResolving(req.ID)
 	writeJSON(w, http.StatusOK, map[string]any{"studyRequest": req})
 }

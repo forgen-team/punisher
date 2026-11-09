@@ -86,7 +86,10 @@ func (s *Service) ExplainSelection(ctx context.Context, userID string, lec model
 	}
 	var u usage
 	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{
-		Model: s.Cfg.LectureModel, System: prompts.SystemExplain, User: prompts.ExplainSelection(pc, selection),
+		Model: s.Cfg.LectureModel,
+		System: s.UserPrompts(ctx, userID).Text(prompts.BlockExplainSystem,
+			map[string]string{"concept_name": pc.ConceptName, "example_language": pc.ExampleLanguage}),
+		User:      prompts.ExplainSelection(pc, selection),
 		MaxTokens: 2000, Timeout: 90 * time.Second, Priority: llm.PriorityInteractive,
 	}, &u)
 	text = strings.TrimSpace(text)

@@ -49,3 +49,13 @@ export function useExplainSelection(lectureId: string) {
       punisherApi.explainSelection(lectureId, anchor, selection),
   });
 }
+
+/** "이 개념 더 깊게"로 이어진 원 강의(parents)·심화 강의(children). */
+export function useLectureLinks(lectureId: string) {
+  return useQuery({
+    queryKey: punisherKeys.lectureLinks(lectureId),
+    queryFn: () => punisherApi.getLectureLinks(lectureId),
+    enabled: Boolean(lectureId),
+    ...punisherQueryDefaults,
+  });
+}

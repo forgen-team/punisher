@@ -63,11 +63,8 @@ const SystemTeacher = `당신은 "Punisher"의 강사입니다. 수강생은 실
 7. 이미 배운 개념은 다시 가르치지 않습니다. 용어 링크(@@term)로만 참조하고 한 줄로 상기시킨 뒤 넘어갑니다.
 8. 존댓말로, 군더더기 없이, 정확하게 씁니다. 과장("완벽하게", "항상", "절대")을 피하고 조건을 명시합니다.`
 
-// Outline asks for a JSON outline of the lecture.
-func Outline(c LectureContext) string {
-	var b strings.Builder
-	writeContext(&b, c)
-	b.WriteString(`
+// OutlineTask is the default fixed instruction of the outline step (block outline.task).
+const OutlineTask = `
 ## 작업
 위 개념으로 30분 강의의 개요를 설계하세요. 섹션은 반드시 다음 4개, 이 순서입니다.
 - situation_question (약 3분): 실무 상황과 오늘의 질문
@@ -89,14 +86,20 @@ JSON만 출력하세요(설명 문장 금지):
   "sources": [{"title": "...", "url": "https://..."}],
   "uncertain_points": ["확신이 없어 본문에서 단정하지 않을 내용"]
 }
-분 합계는 25~35분이어야 합니다.`)
+분 합계는 25~35분이어야 합니다.`
+
+// Outline asks for a JSON outline of the lecture.
+func Outline(c LectureContext, set Set) string {
+	var b strings.Builder
+	writeContext(&b, c)
+	b.WriteString(set.Text(BlockOutlineTask, c.vars()))
 	return b.String()
 }
 
 // Lecture asks for the full lecture in markup. outlineJSON may be empty
 // (instant lectures). revisionNotes, when set, lists reviewer/validator
 // issues the regeneration must fix.
-func Lecture(c LectureContext, outlineJSON, revisionNotes string) string {
+func Lecture(c LectureContext, outlineJSON, revisionNotes string, set Set) string {
 	var b strings.Builder
 	writeContext(&b, c)
 	if outlineJSON != "" {
@@ -105,7 +108,7 @@ func Lecture(c LectureContext, outlineJSON, revisionNotes string) string {
 	if revisionNotes != "" {
 		b.WriteString("\n## 이전 초안에 대한 검수 지적(반드시 모두 고칠 것)\n" + revisionNotes + "\n")
 	}
-	b.WriteString(MarkupSpec)
+	b.WriteString(set.Text(BlockLectureFormat, c.vars()))
 	return b.String()
 }
 
@@ -155,12 +158,8 @@ flowchart LR
 - @@term 의 concept 은 "연결 가능한 기존 개념" 목록의 id만 쓰고, 목록에 없으면 proposed 를 붙인 새 slug(영역.이름 형식, 소문자-하이픈)를 씁니다.
 - 마지막 줄은 반드시 @@end 입니다.`
 
-// Review asks a separate reviewer pass to critique a lecture draft.
-func Review(c LectureContext, markup string) string {
-	var b strings.Builder
-	writeContext(&b, c)
-	b.WriteString("\n## 검수할 강의 초안\n<<<LECTURE\n" + markup + "\nLECTURE>>>\n")
-	b.WriteString(`
+// ReviewTask is the default fixed instruction of the review step (block review.task).
+const ReviewTask = `
 ## 작업
 당신은 강사가 아니라 엄격한 기술 검수자입니다. 초안을 처음부터 끝까지 읽고 다음을 지적하세요.
 - factual_error: 사실 오류(동작 설명, 명령어 옵션, 출력 형식, 기본값, 버전 의존 동작을 일반론처럼 쓴 경우 포함)
@@ -182,7 +181,14 @@ JSON만 출력하세요:
      "section": "situation_question|principles|walkthrough|judgment_next|header", "quote": "문제 문장 일부",
      "message": "무엇이 왜 문제인지", "suggestion": "어떻게 고칠지"}
   ]
-}`)
+}`
+
+// Review asks a separate reviewer pass to critique a lecture draft.
+func Review(c LectureContext, markup string, set Set) string {
+	var b strings.Builder
+	writeContext(&b, c)
+	b.WriteString("\n## 검수할 강의 초안\n<<<LECTURE\n" + markup + "\nLECTURE>>>\n")
+	b.WriteString(set.Text(BlockReviewTask, c.vars()))
 	return b.String()
 }
 

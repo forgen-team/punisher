@@ -42,6 +42,8 @@ type ResumeItem struct {
 	Anchor           string
 	Percent          int
 	EstimatedMinutes int
+	// ParentLectureID: lecture it was opened from via "더 깊게" ("" = none).
+	ParentLectureID string
 }
 
 // GoalInput is an active goal with its prerequisite path (PathTo order).
@@ -84,6 +86,8 @@ type Recommendation struct {
 	EstimatedMinutes   int    `json:"estimatedMinutes"`
 	Anchor             string `json:"anchor,omitempty"`
 	Percent            int    `json:"percent,omitempty"`
+	// ParentLectureID (resume only): the lecture this one was opened from via "더 깊게".
+	ParentLectureID string `json:"parentLectureId,omitempty"`
 }
 
 // TodayResult is the GET /v1/today payload core.
@@ -151,7 +155,7 @@ func BuildToday(in TodayInput) TodayResult {
 		}
 		if c, ok := b.learnable(r.ConceptID); ok {
 			b.add(c, Recommendation{Kind: RecResume, LectureID: r.LectureID, Title: r.Title, Anchor: r.Anchor,
-				Percent: r.Percent, EstimatedMinutes: remainingMinutes(r),
+				Percent: r.Percent, EstimatedMinutes: remainingMinutes(r), ParentLectureID: r.ParentLectureID,
 				Reason: fmt.Sprintf("지난번 %d%%까지 본 강의입니다. 멈춘 위치에서 이어서 끝내면 흐름이 끊기지 않습니다.", r.Percent)})
 		}
 	}

@@ -2,6 +2,7 @@
 import type { LectureContent } from "@/src/shared/api/punisher";
 import { SECTION_KIND_LABELS } from "@/src/entities/punisher";
 import { anchorElementId } from "@/src/features/punisher/lecture-progress";
+import type { DeeperOrigin } from "@/src/features/punisher/term-popover";
 import { BlockRenderer } from "./blocks";
 
 function anchorProps(anchor: string) {
@@ -10,7 +11,7 @@ function anchorProps(anchor: string) {
 
 interface LectureBodyProps {
   content: Pick<LectureContent, "sections">;
-  onBeforeDeeper?: () => void;
+  onBeforeDeeper?: () => DeeperOrigin | void;
 }
 
 /** 강의 본문 — 16px / 행간 1.7 (모바일·데스크톱 동일), 읽기 폭은 부모 열이 제한한다. */

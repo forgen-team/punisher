@@ -12,6 +12,7 @@
 //   간격  Tailwind 기본 4px 스케일(1–12) 그대로 · 안전영역 pt-safe-top / pb-safe-bottom
 //   모양  rounded-sm(6) · rounded-md(8) · rounded-lg(10) · rounded-xl(14) · rounded-full · shadow-xs · shadow-sm · shadow-overlay
 //   자간  tracking-tight(제목) · tracking-ui(본문 UI)
+//   폭    fold:(600px, 폴드 펼침 2단) · sm · md · lg(1024, 사이드바) — 2단 판정은 JS 에서 useIsSplitLayout()
 //   z     z-nav(30) · z-panel(40) · z-sheet(45) · z-modal(50) · z-toast(9999)
 // 주의: CSS 변수 색은 `/10` 같은 opacity modifier가 동작하지 않는다 → *-subtle 토큰을 쓸 것.
 // shadcn HSL·raw gray·witems-*·chart·cta/surface/ink 등 옛 별칭은 D5에서 제거됐다 — 다시 추가하지 말 것.
@@ -22,6 +23,16 @@ const v = (name) => `var(${name})`;
 const preset = {
   content: [],
   theme: {
+    // fold(600px): 갤럭시 폴드 펼친 화면(약 680~900px)부터 2단(목록+상세). 커버 화면(360~410px)은 모바일 그대로.
+    // 순서가 CSS 우선순위이므로 기본값을 다시 적고 그 앞에 fold 를 둔다(extend 로 넣으면 맨 뒤에 붙어 md·lg 를 덮는다).
+    screens: {
+      fold: '600px',
+      sm: '640px',
+      md: '768px',
+      lg: '1024px',
+      xl: '1280px',
+      '2xl': '1536px',
+    },
     extend: {
       colors: {
         /* ===== 새 시맨틱 토큰 ===== */

@@ -1,5 +1,6 @@
-import { CheckCircle2, AlertTriangle } from "lucide-react";
-import { PageHeader, Section, Skeleton, ThemeSelect } from "@/src/shared/ui/kit";
+import { CheckCircle2, AlertTriangle, ScrollText } from "lucide-react";
+import { List, ListRow, PageHeader, Section, Skeleton, ThemeSelect } from "@/src/shared/ui/kit";
+import { Link } from "@/src/shared/lib/router";
 import { LearningSettingsForm } from "@/src/features/punisher/learning-settings";
 import { useAppStatus } from "@/src/shared/api/status";
 
@@ -10,6 +11,17 @@ export function SettingsPage() {
       <PageHeader title="설정" subtitle="강의를 내 손에 익은 언어로 읽어요." />
       <Section title="학습">
         <LearningSettingsForm />
+      </Section>
+      <Section title="고급">
+        <List>
+          <ListRow
+            href="/settings/prompts"
+            linkAs={Link}
+            leading={<ScrollText />}
+            title="강의 프롬프트"
+            meta="개요 짜기 → 본문 쓰기 → 감수 → 용어 설명 → 질문 답변 → 구절 설명 지시문을 보고 고쳐요"
+          />
+        </List>
       </Section>
       <Section title="화면">
         <ThemeSelect className="w-fit" />

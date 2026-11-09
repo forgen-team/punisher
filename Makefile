@@ -5,7 +5,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 WEBUI_DIST := internal/webui/dist
 
-.PHONY: build web go-darwin test lint clean run
+.PHONY: build web go-darwin test lint clean run release
 
 build: web go-darwin
 
@@ -26,7 +26,14 @@ go-darwin:
 test:
 	go vet ./...
 	go test ./...
-	cd web && npm run typecheck && npm run lint
+	cd web && npm run typecheck && npm run lint && npm test
+
+# Release zip for hand-off: punisher + install.sh + README + CHANGELOG (no publishing).
+release: build
+	mkdir -p dist/release/punisher-$(VERSION)
+	cp dist/punisher install.sh README.md CHANGELOG.md dist/release/punisher-$(VERSION)/
+	cd dist/release && ditto -c -k --keepParent punisher-$(VERSION) punisher-$(VERSION)-macos-universal.zip
+	@ls -lh dist/release/*.zip
 
 run:
 	go run ./cmd/punisher

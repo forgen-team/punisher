@@ -1,0 +1,63 @@
+package services
+
+import (
+	"context"
+
+	"github.com/wooo-jin/punisher/internal/prompts"
+)
+
+// UserPrompts is the user's effective instruction blocks (overrides on top of
+// the code defaults). A load failure falls back to the defaults and is logged:
+// generation must not fail because of a settings read.
+func (s *Service) UserPrompts(ctx context.Context, userID string) prompts.Set {
+	if userID == "" {
+		return prompts.Defaults()
+	}
+	overrides, err := s.Store.PromptOverrides(ctx, userID)
+	if err != nil {
+		logf("prompt overrides for %s: %v (using defaults)", userID, err)
+		return prompts.Defaults()
+	}
+	bodies := make(map[string]string, len(overrides))
+	for id, o := range overrides {
+		bodies[id] = o.Body
+	}
+	return prompts.NewSet(bodies)
+}
+
+// interactionVars are the {{vars}} of Q&A blocks.
+func (s *Service) interactionVars(ctx context.Context, userID, conceptID string) map[string]string {
+	vars := map[string]string{"example_language": s.exampleLanguageName(ctx, userID)}
+	if info, err := s.Store.ConceptInfo(ctx, conceptID); err == nil {
+		vars["concept_name"] = info.Name
+	}
+	return vars
+}
+
+// libraryTarget plans a library lecture. In witems library lectures are shared
+// across users, so they always use the code default prompts (overrides are
+// personal). The standalone app has one user who is the only reader of the
+// library, so with Cfg.LibraryUsesUserPrompts the owner's blocks apply too
+// (the lecture stays kind=library; its prompt_version records the override).
+func (s *Service) libraryTarget(ctx context.Context, owner, conceptID string) (Target, error) {
+	t, err := s.BuildTarget(ctx, owner, conceptID, 0, "")
+	if err != nil {
+		return t, err
+	}
+	set := prompts.Defaults()
+	if s.Cfg.LibraryUsesUserPrompts && owner != "" {
+		set = s.UserPrompts(ctx, owner)
+	}
+	t.Prompts, t.PromptBlocks, t.Owner = set, prompts.FullBlocks, ""
+	return t, nil
+}
+
+// instantTarget plans the user's own instant lecture with their prompt blocks.
+func (s *Service) instantTarget(ctx context.Context, userID, conceptID string, depth int, query string) (Target, error) {
+	t, err := s.BuildTarget(ctx, userID, conceptID, depth, query)
+	if err != nil {
+		return t, err
+	}
+	t.Prompts, t.PromptBlocks, t.Owner = s.UserPrompts(ctx, userID), prompts.InstantBlocks, userID
+	return t, nil
+}

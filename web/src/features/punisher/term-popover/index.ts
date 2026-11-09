@@ -1,1 +1,1 @@
-export { TermPopover } from "./TermPopover";
+export { TermPopover, type DeeperOrigin } from "./TermPopover";

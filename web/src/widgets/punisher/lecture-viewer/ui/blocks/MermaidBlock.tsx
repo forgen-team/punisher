@@ -29,14 +29,13 @@ export function MermaidBlock({ source, title }: { source: string; title?: string
         startOnLoad: false,
         securityLevel: "strict",
         theme: theme === "dark" ? "dark" : "default",
-        // Without this mermaid appends a "Syntax error" bomb SVG to <body> on
-        // parse errors, which then stays on every page of the SPA.
+        // 이 옵션이 없으면 문법 오류 시 mermaid 가 "Syntax error" 그림을 <body>에 붙여 모든 화면에 남는다.
         suppressErrorRendering: true,
       });
       try {
         return await mermaid.render(id, source);
       } finally {
-        // render() leaves its temporary container behind when it throws.
+        // render() 가 예외를 던지면 임시 컨테이너가 남으므로 지운다.
         document.getElementById(`d${id}`)?.remove();
       }
     })

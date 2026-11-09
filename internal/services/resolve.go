@@ -148,7 +148,7 @@ func (s *Service) resolveWithLLM(ctx context.Context, userID, apiKey string, res
 	}
 	var u usage
 	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{
-		Model: s.Cfg.FastModel, System: prompts.SystemResolve,
+		Model: s.Cfg.FastModel, System: s.UserPrompts(ctx, userID).Text(prompts.BlockResolveSystem, nil),
 		User: prompts.Resolve(res.Query, candidates, curriculum.Areas), MaxTokens: 1500, Timeout: 60 * time.Second,
 	}, &u)
 	if err == nil {
@@ -246,6 +246,9 @@ func (s *Service) ResolveStudyRequestsWithStarts(ctx context.Context) (int, []st
 	var starts []string
 	seen := map[string]bool{}
 	for _, r := range pending {
+		if IsResolving(r.ID) {
+			continue // 즉시 해석(ResolveRequestNow)이 이미 처리 중
+		}
 		res, err := s.Resolve(ctx, owner, r.Query, func() (string, error) { return s.Keys.UserKey(ctx, owner) })
 		if errors.Is(err, ErrBudgetExceeded) || errors.Is(err, ErrNoAPIKey) {
 			return resolved, starts, err // stop the batch; retry on the next tick without burning attempts
@@ -261,9 +264,11 @@ func (s *Service) ResolveStudyRequestsWithStarts(ctx context.Context) (int, []st
 		}
 		if len(res.ConceptIDs) > 0 {
 			resolved++
-			if start := res.StartingConceptID; start != "" && !seen[start] {
-				seen[start] = true
-				starts = append(starts, start)
+			for _, start := range studyPregenerateTargets(res) {
+				if !seen[start] {
+					seen[start] = true
+					starts = append(starts, start)
+				}
 			}
 		}
 	}

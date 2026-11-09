@@ -18,6 +18,17 @@ type Target struct {
 	Concept    models.ConceptInfo
 	Prompt     prompts.LectureContext
 	Validation lecture.ValidationContext
+	// Prompts: instruction blocks to use. Zero value = code defaults (library lectures).
+	Prompts prompts.Set
+	// PromptBlocks: blocks this generation uses (for the recorded prompt version).
+	PromptBlocks []string
+	// Owner: requested_by of user-owned (instant/regenerated) lectures; "" = library.
+	Owner string
+}
+
+// promptVersion is the version recorded on lectures saved from t.
+func (t Target) promptVersion() string {
+	return t.Prompts.Version(t.PromptBlocks...)
 }
 
 // BuildTarget plans the next lecture for (user, concept, depth) and gathers
@@ -40,7 +51,25 @@ func (s *Service) BuildTarget(ctx context.Context, userID, conceptID string, dep
 	if err != nil {
 		return Target{}, err
 	}
+	return s.targetForPlan(ctx, userID, concept, plan, query)
+}
 
+// TargetForLecture rebuilds the generation target of an existing lecture (same
+// concept, objectives and depth) regardless of what the user already learned.
+func (s *Service) TargetForLecture(ctx context.Context, userID string, lec models.Lecture) (Target, error) {
+	concept, err := s.Store.ConceptInfo(ctx, lec.ConceptID)
+	if err != nil {
+		return Target{}, err
+	}
+	plan := learning.LecturePlan{
+		ConceptID: lec.ConceptID, ObjectiveIDs: lec.ObjectiveIDs,
+		ObjectiveKey: learning.ObjectiveKey(lec.ObjectiveIDs), Depth: lec.Depth,
+	}
+	return s.targetForPlan(ctx, userID, concept, plan, "")
+}
+
+func (s *Service) targetForPlan(ctx context.Context, userID string, concept models.ConceptInfo, plan learning.LecturePlan, query string) (Target, error) {
+	conceptID := concept.ID
 	related, err := s.Store.RelatedConcepts(ctx, userID, conceptID)
 	if err != nil {
 		return Target{}, err

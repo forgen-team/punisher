@@ -101,7 +101,7 @@ func (s *SQLiteStore) ListMyLectures(ctx context.Context, userID, status string,
 	}
 	items, err := collect(s.c().query(ctx, `
 		SELECT l.id, l.concept_id, c.name, l.title, l.depth, l.kind, l.estimated_minutes,
-			p.percent, p.started_at, p.last_seen_at, p.completed_at, `+sortCol+`
+			p.percent, p.started_at, p.last_seen_at, p.completed_at, `+parentLectureSQL("l.id")+`, `+sortCol+`
 		FROM user_lecture_progress p
 		JOIN lectures l ON l.id = p.lecture_id AND (l.kind = 'library' OR l.requested_by = p.user_id)
 		JOIN concepts c ON c.id = l.concept_id
@@ -110,7 +110,7 @@ func (s *SQLiteStore) ListMyLectures(ctx context.Context, userID, status string,
 		userID, cur.At, cur.ID, limit+1), func(r rowScanner) (row, error) {
 		var m row
 		err := r.Scan(&m.ID, &m.ConceptID, &m.ConceptName, &m.Title, &m.Depth, &m.Kind, &m.EstimatedMinutes,
-			&m.Percent, ts(&m.StartedAt), ts(&m.LastSeenAt), nts(&m.CompletedAt), ts(&m.sortAt))
+			&m.Percent, ts(&m.StartedAt), ts(&m.LastSeenAt), nts(&m.CompletedAt), &m.ParentLectureID, ts(&m.sortAt))
 		return m, err
 	})
 	if err != nil {

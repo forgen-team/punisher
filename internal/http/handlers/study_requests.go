@@ -7,9 +7,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/wooo-jin/punisher/internal/curriculum"
 	"github.com/wooo-jin/punisher/internal/learning"
 	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/wooo-jin/punisher/internal/services"
 	"github.com/wooo-jin/punisher/internal/store"
 )
 
@@ -21,6 +23,8 @@ const (
 
 type StudyRequestsHandler struct {
 	Store store.Store
+	// Svc 가 있으면 별칭으로 바로 못 찾은 요청의 개념 해석을 즉시 백그라운드로 시작한다(스케줄러 30분 대기 없음).
+	Svc *services.Service
 }
 
 type createStudyRequestBody struct {
@@ -77,7 +81,33 @@ func (h *StudyRequestsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if created {
 		status = http.StatusCreated
 	}
+	if saved.Status == "unresolved" && h.Svc != nil {
+		h.Svc.ResolveRequestNow(userID, saved.ID)
+		saved.Resolving = services.IsResolving(saved.ID)
+	}
 	writeJSON(w, status, map[string]any{"studyRequest": saved, "created": created})
+}
+
+// Resolve handles POST /v1/study-requests/{id}/resolve — "다시 시도". Starts concept resolution
+// immediately regardless of past attempts. 202 when started, 200 when it is already resolved/running.
+func (h *StudyRequestsHandler) Resolve(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	req, err := h.Store.GetStudyRequest(r.Context(), userID, chi.URLParam(r, "id"))
+	if err != nil {
+		writeServiceError(w, r, "get study request", err)
+		return
+	}
+	if req.Status != "unresolved" || h.Svc == nil {
+		req.Resolving = services.IsResolving(req.ID)
+		writeJSON(w, http.StatusOK, map[string]any{"studyRequest": req})
+		return
+	}
+	h.Svc.ResolveRequestNow(userID, req.ID)
+	req.Resolving = true
+	writeJSON(w, http.StatusAccepted, map[string]any{"studyRequest": req})
 }
 
 func validateStudyRequest(userID string, body createStudyRequestBody, headerKey string) (models.StudyRequest, string) {

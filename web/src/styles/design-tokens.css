@@ -11,7 +11,8 @@
  * 대비(WCAG 2.1, 직접 계산 2026-11-09)
  *  라이트  text 17.7 · secondary 7.7 · muted 5.3(bg) / 4.8(subtle) / 4.6(hover) · border-strong 3.25
  *          accent 5.4 · accent-text on accent-subtle 6.2 · danger 5.6 · success 5.4 · warning 5.2
- *  다크    text 16.1 · secondary 7.4 · muted 5.6(bg) / 5.3(elevated) / 4.9(hover) · border-strong 3.2
+ *  다크    text 16.3 · secondary 9.2 · muted 6.8(bg) / 6.3(elevated) / 5.8(hover) · border-strong 3.2
+ *          (2026-11-09 다크 작은 글씨 가독성 보강: 흐림·보조 글자 한 단계 밝게, 바탕 살짝 올림)
  *          accent 6.9 · accent-text on accent-subtle 7.3 · danger 6.8 · success 10.8 · warning 11.3
  *
  * 테마 적용: ThemeProvider가 <html data-theme="light|dark">를 설정한다.
@@ -145,18 +146,18 @@
    ============================================ */
 [data-theme="dark"] {
   color-scheme: dark;
-  --color-bg: #111113;
-  --color-bg-subtle: var(--w-gray-950);
-  --color-bg-elevated: #18181B;
-  --color-bg-translucent: rgba(17, 17, 19, 0.78);
-  --color-surface-hover: #1F1F23;
-  --color-surface-active: #26262B;
+  --color-bg: #131316;
+  --color-bg-subtle: #0E0E10;
+  --color-bg-elevated: #1B1B1F;
+  --color-bg-translucent: rgba(19, 19, 22, 0.8);
+  --color-surface-hover: #232328;
+  --color-surface-active: #2A2A30;
   --color-border: rgba(255, 255, 255, 0.08);
   --color-border-subtle: rgba(255, 255, 255, 0.05);
   --color-border-strong: #63636D;
-  --color-text: #EDEDEF;
-  --color-text-secondary: #A1A1AA;
-  --color-text-muted: #8B8B94;
+  --color-text: #F0F0F2;
+  --color-text-secondary: #B6B6BE;
+  --color-text-muted: #9C9CA6;
   --color-inverse-bg: #EDEDEF;
   --color-inverse-text: #0B0B0D;
   --color-accent: var(--w-accent-400);
@@ -181,18 +182,18 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     color-scheme: dark;
-    --color-bg: #111113;
-    --color-bg-subtle: var(--w-gray-950);
-    --color-bg-elevated: #18181B;
-    --color-bg-translucent: rgba(17, 17, 19, 0.78);
-    --color-surface-hover: #1F1F23;
-    --color-surface-active: #26262B;
+    --color-bg: #131316;
+    --color-bg-subtle: #0E0E10;
+    --color-bg-elevated: #1B1B1F;
+    --color-bg-translucent: rgba(19, 19, 22, 0.8);
+    --color-surface-hover: #232328;
+    --color-surface-active: #2A2A30;
     --color-border: rgba(255, 255, 255, 0.08);
     --color-border-subtle: rgba(255, 255, 255, 0.05);
     --color-border-strong: #63636D;
-    --color-text: #EDEDEF;
-    --color-text-secondary: #A1A1AA;
-    --color-text-muted: #8B8B94;
+    --color-text: #F0F0F2;
+    --color-text-secondary: #B6B6BE;
+    --color-text-muted: #9C9CA6;
     --color-inverse-bg: #EDEDEF;
     --color-inverse-text: #0B0B0D;
     --color-accent: var(--w-accent-400);

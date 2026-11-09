@@ -36,3 +36,27 @@ export interface MapRequest {
   source: "rss" | "manual" | "guardian";
   status: "unresolved" | "resolved" | "in_progress";
 }
+
+/** "이 개념 더 깊게"로 이어진 강의(GET /lectures/{id}/links). */
+export interface LinkedLecture {
+  id: string;
+  conceptId: string;
+  conceptName: string;
+  title: string;
+  kind: "library" | "instant";
+  status: string;
+  createdAt: string;
+  linkedAt: string;
+  /** 원 강의에서 "더 깊게"를 누른 위치 */
+  anchor: string;
+  percent: number;
+  completedAt?: string;
+  /** deeper: "이 개념 더 깊게" · regenerated: "새 프롬프트로 다시 만들기" */
+  linkKind: "deeper" | "regenerated";
+  promptVersion: string;
+}
+
+export interface LectureLinks {
+  parents: LinkedLecture[];
+  children: LinkedLecture[];
+}

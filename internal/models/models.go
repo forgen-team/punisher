@@ -144,7 +144,9 @@ type StudyRequest struct {
 	ResolveError       string          `json:"resolveError,omitempty"`
 	ResolvedAt         *time.Time      `json:"resolvedAt,omitempty"`
 	// Learned is computed: every resolved concept is completed/known.
-	Learned   bool      `json:"learned"`
+	Learned bool `json:"learned"`
+	// Resolving is computed: concept resolution for this request is running right now.
+	Resolving bool      `json:"resolving"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }

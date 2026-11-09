@@ -19,6 +19,9 @@ export const punisherKeys = {
   goalPath: (id: string) => ["punisher", "goal-path", id] as const,
   job: (id: string) => ["punisher", "job", id] as const,
   settings: () => ["punisher", "settings"] as const,
+  lectureLinks: (id: string) => ["punisher", "lecture-links", id] as const,
+  prompts: () => ["punisher", "prompts"] as const,
+  promptHistory: (id: string) => ["punisher", "prompt-history", id] as const,
 };
 
 /** Keys whose data depends on the user's learning state. */
@@ -32,4 +35,5 @@ export const punisherLearningStateKeys = [
   ["punisher", "study-requests"],
   ["punisher", "my-lectures"],
   ["punisher", "concept-lectures"],
+  ["punisher", "lecture-links"],
 ] as const;

@@ -5,13 +5,15 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useAtom } from "jotai";
 import { ArrowLeft } from "lucide-react";
 import { Button, EmptyState, ErrorState, ListSkeleton, type MenuItem } from "@/src/shared/ui/kit";
-import { lectureBookmarkAtom, useConceptDetail, useLecture } from "@/src/entities/punisher";
+import { lectureBookmarkAtom, useConceptDetail, useLecture, useLectureLinks, usePrompts } from "@/src/entities/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import { useLectureProgress } from "@/src/features/punisher/lecture-progress";
 import { SelectionExplain } from "@/src/features/punisher/reading-assist";
 import { LectureActionStatus, LectureWrapup, useLectureActions } from "@/src/features/punisher/lecture-actions";
 import { describePunisherError, type DocumentLink } from "@/src/shared/api/punisher";
+import { DeeperLecturesSection, ParentLectureLink } from "./ui/DeeperLectures";
 import { LectureBody } from "./ui/LectureBody";
+import { RegenerateSheet } from "./ui/RegenerateSheet";
 import { LectureHeader } from "./ui/LectureHeader";
 import { LectureAssistSheet } from "./ui/LectureSidePanel";
 import { LectureTopBar } from "./ui/LectureTopBar";
@@ -35,10 +37,20 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
   const [assistOpen, setAssistOpen] = useState(false);
   const wrapupRef = useRef<HTMLElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const deeperRef = useRef<HTMLElement>(null);
+  const links = useLectureLinks(lectureId);
+  const prompts = usePrompts();
+  const [regenOpen, setRegenOpen] = useState(false);
+  // 본문 생성에 쓰는 블록(개요·강사 원칙·형식·감수)을 바꿨을 때만 '다시 만들기'를 보인다.
+  const lecturePromptEdited = (prompts.data?.blocks ?? []).some(
+    (b) => b.overridden && (b.stage === "outline" || b.stage === "lecture" || b.stage === "review"),
+  );
 
   const onBeforeDeeper = useCallback(() => {
     saveNow();
-    setBookmark({ lectureId, anchor: getAnchor(), title: content?.title ?? lecture?.title ?? "" });
+    const anchor = getAnchor();
+    setBookmark({ lectureId, anchor, title: content?.title ?? lecture?.title ?? "" });
+    return { lectureId, anchor };
   }, [saveNow, setBookmark, lectureId, getAnchor, content?.title, lecture?.title]);
 
   const sources = useMemo<DocumentLink[]>(() => (Array.isArray(lecture?.sources) ? lecture.sources : []), [lecture?.sources]);
@@ -58,7 +70,11 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
   }
 
   const totalMinutes = content.estimatedMinutes || lecture.estimatedMinutes;
-  const showReturn = bookmark && bookmark.lectureId !== lectureId;
+  const parentLecture = links.data?.parents[0];
+  const deeperLectures = (links.data?.children ?? []).filter((l) => l.linkKind !== "regenerated");
+  const regenerated = (links.data?.children ?? []).filter((l) => l.linkKind === "regenerated");
+  // 서버에 기록된 원 강의가 있으면 그것을, 없으면(이전 데이터) 세션 북마크를 쓴다.
+  const showReturn = !parentLecture && bookmark && bookmark.lectureId !== lectureId;
   const returnHref = bookmark ? `${lectureHref(bookmark.lectureId)}#pa-${bookmark.anchor}` : "";
 
   const menuItems: MenuItem[] = [
@@ -71,6 +87,26 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
         wrapupRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
         wrapupRef.current?.focus({ preventScroll: true });
       },
+    },
+    ...(deeperLectures.length > 0
+      ? [
+          {
+            key: "deeper",
+            label: `더 깊게 본 강의 ${deeperLectures.length}개`,
+            onSelect: () => {
+              deeperRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              deeperRef.current?.focus({ preventScroll: true });
+            },
+          },
+        ]
+      : []),
+    ...(lecturePromptEdited
+      ? [{ key: "regenerate", label: "이 강의 새 프롬프트로 다시 만들기", onSelect: () => setRegenOpen(true) }]
+      : []),
+    {
+      key: "prompts",
+      label: "강의 프롬프트 보기·고치기",
+      onSelect: () => router.push("/settings/prompts"),
     },
     {
       key: "example-language",
@@ -97,6 +133,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
           <SectionToc sections={content.sections} totalMinutes={totalMinutes} />
         </aside>
         <article className="mx-auto w-full min-w-0 max-w-2xl pb-16">
+          {parentLecture && <ParentLectureLink parent={parentLecture} />}
           {showReturn && (
             <div className="flex items-center gap-2 border-b border-line py-1 text-sm">
               <Link href={returnHref} className="inline-flex min-h-touch min-w-0 flex-1 items-center gap-1 text-accent-text">
@@ -115,12 +152,15 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
           </div>
           <SelectionExplain lectureId={lectureId} containerRef={bodyRef} />
           <SourcesList sources={sources} title="이 강의의 출처" />
+          <DeeperLecturesSection ref={deeperRef} kind="deeper" lectures={deeperLectures} />
+          <DeeperLecturesSection kind="regenerated" lectures={regenerated} />
           <div className="mt-10">
             <LectureWrapup ref={wrapupRef} lectureId={lectureId} actions={actions} getAnchor={getAnchor} />
           </div>
         </article>
       </div>
       <TocSheet open={tocOpen} onClose={() => setTocOpen(false)} sections={content.sections} totalMinutes={totalMinutes} />
+      <RegenerateSheet lectureId={lectureId} open={regenOpen} onClose={() => setRegenOpen(false)} />
       <LectureAssistSheet
         open={assistOpen}
         onClose={() => setAssistOpen(false)}

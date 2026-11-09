@@ -32,6 +32,10 @@ type InstantRequest struct {
 	Depth     int    `json:"depth"`
 	// AutoStart: for a free query, immediately generate for the starting point.
 	AutoStart bool `json:"autoStart"`
+	// ParentLectureID / ParentAnchor: set when opened via "이 개념 더 깊게" from
+	// a lecture; the resulting lecture is linked under it (lecture_links).
+	ParentLectureID string `json:"parentLectureId"`
+	ParentAnchor    string `json:"parentAnchor"`
 }
 
 // InstantResponse describes what happened.
@@ -67,7 +71,7 @@ func (s *Service) StartInstant(ctx context.Context, userID string, req InstantRe
 		}
 	}
 
-	t, err := s.BuildTarget(ctx, userID, conceptID, req.Depth, req.Query)
+	t, err := s.instantTarget(ctx, userID, conceptID, req.Depth, req.Query)
 	if errors.Is(err, learning.ErrNothingToLearn) {
 		return InstantResponse{Status: InstantAlreadyLearned, ConceptID: conceptID, Resolution: resolution}, nil
 	}
@@ -79,6 +83,7 @@ func (s *Service) StartInstant(ctx context.Context, userID string, req InstantRe
 	existing, err := s.Store.PublishedLectureCovering(ctx, userID, conceptID, t.Plan.Depth, t.Plan.ObjectiveIDs)
 	if err == nil {
 		resp.Status, resp.LectureID = InstantExisting, existing.ID
+		s.linkDeeper(ctx, userID, req, resp)
 		return resp, nil
 	}
 	if !errors.Is(err, store.ErrNotFound) {
@@ -88,6 +93,7 @@ func (s *Service) StartInstant(ctx context.Context, userID string, req InstantRe
 	target := learning.TargetKey(t.Plan)
 	if jobID, ok := s.Hub.ActiveJob(target); ok {
 		resp.Status, resp.JobID, resp.StreamURL = InstantAttached, jobID, streamURL(jobID)
+		s.linkDeeper(ctx, userID, req, resp)
 		return resp, nil
 	}
 	if err := s.CheckBudget(ctx, userID, true); err != nil {
@@ -105,6 +111,7 @@ func (s *Service) StartInstant(ctx context.Context, userID string, req InstantRe
 	if errors.Is(err, store.ErrJobActive) {
 		if jobID, ok := s.Hub.ActiveJob(target); ok {
 			resp.Status, resp.JobID, resp.StreamURL = InstantAttached, jobID, streamURL(jobID)
+			s.linkDeeper(ctx, userID, req, resp)
 			return resp, nil
 		}
 		return InstantResponse{}, ErrTargetBusy
@@ -124,7 +131,23 @@ func (s *Service) StartInstant(ctx context.Context, userID string, req InstantRe
 			logf("skip duplicate job %s: %v", job.ID, ferr)
 		}
 	}
+	s.linkDeeper(ctx, userID, req, resp)
 	return resp, nil
+}
+
+// linkDeeper records the "더 깊게" link for a successful instant response.
+// A failed link must not block learning, so it is logged, not returned.
+func (s *Service) linkDeeper(ctx context.Context, userID string, req InstantRequest, resp InstantResponse) {
+	if req.ParentLectureID == "" || (resp.LectureID == "" && resp.JobID == "") {
+		return
+	}
+	err := s.Store.LinkDeeper(ctx, store.DeeperLink{
+		UserID: userID, ParentLecture: req.ParentLectureID, ChildLectureID: resp.LectureID,
+		ChildJobID: resp.JobID, ChildConceptID: resp.ConceptID, Anchor: req.ParentAnchor,
+	})
+	if err != nil {
+		logf("link deeper %s -> %s%s: %v", req.ParentLectureID, resp.LectureID, resp.JobID, err)
+	}
 }
 
 func streamURL(jobID string) string { return "/v1/lectures/instant/" + jobID + "/stream" }
@@ -156,7 +179,8 @@ func (s *Service) runInstant(apiKey, userID, jobID string, t Target, emit func(E
 		maxTokens = defaultMaxTokens
 	}
 	res, err := s.LLM.Stream(ctx, apiKey, llm.MessagesRequest{
-		Model: s.Cfg.LectureModel, System: prompts.SystemTeacher, User: prompts.Lecture(t.Prompt, "", ""),
+		Model: s.Cfg.LectureModel, System: t.Prompts.Text(prompts.BlockTeacherSystem, prompts.LectureVars(t.Prompt)),
+		User:      prompts.Lecture(t.Prompt, "", "", t.Prompts),
 		MaxTokens: maxTokens, Timeout: instantTimeout,
 	}, func(delta string) error {
 		emit(Event{Type: EventDelta, Data: map[string]string{"text": delta}})
@@ -194,6 +218,9 @@ func (s *Service) runInstant(apiKey, userID, jobID string, t Target, emit func(E
 	}
 	if err := s.Store.FinishJob(ctx, jobID, u.outcome("succeeded", status, nil, saved.ID)); err != nil {
 		logf("finish job %s: %v", jobID, err)
+	}
+	if err := s.Store.ResolveLinkJob(ctx, jobID, saved.ID); err != nil {
+		logf("resolve links of job %s: %v", jobID, err)
 	}
 	emit(Event{Type: EventDone, Data: map[string]any{
 		"lectureId": saved.ID, "status": status, "flagged": flagged, "issues": issuesOrEmpty(issues),

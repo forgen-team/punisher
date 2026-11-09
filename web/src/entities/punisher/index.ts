@@ -10,3 +10,5 @@ export { mapNodeState, MAP_STATE_STYLES } from "./lib/mapState";
 export * from "./ui/constants";
 export { ConceptStateBadge, LectureReviewBadges } from "./ui/StateBadges";
 export { MapStateIcon } from "./ui/MapStateIcon";
+export { groupByParent, type LectureGroup } from "./lib/groupByParent";
+export * from "./model/prompts";

@@ -11,6 +11,7 @@ const TITLES: Array<[RegExp, string]> = [
   [/^\/history/, "학습 기록"],
   [/^\/lectures\//, "강의"],
   [/^\/instant\//, "즉석 강의 생성 중"],
+  [/^\/settings\/prompts/, "강의 프롬프트"],
   [/^\/settings/, "설정"],
 ];
 

@@ -22,6 +22,26 @@ type MyLecture struct {
 	StartedAt        time.Time  `json:"startedAt"`
 	LastSeenAt       time.Time  `json:"lastSeenAt"`
 	CompletedAt      *time.Time `json:"completedAt,omitempty"`
+	// ParentLectureID: the lecture this one was opened from via "더 깊게" ("" = none).
+	ParentLectureID string `json:"parentLectureId,omitempty"`
+}
+
+// LinkedLecture is a lecture connected by "이 개념 더 깊게" (parent or child).
+type LinkedLecture struct {
+	ID          string     `json:"id"`
+	ConceptID   string     `json:"conceptId"`
+	ConceptName string     `json:"conceptName"`
+	Title       string     `json:"title"`
+	Kind        string     `json:"kind"`
+	Status      string     `json:"status"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	LinkedAt    time.Time  `json:"linkedAt"`
+	Anchor      string     `json:"anchor"`
+	Percent     int        `json:"percent"`
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+	// LinkKind: deeper ("이 개념 더 깊게") | regenerated ("새 프롬프트로 다시 만들기").
+	LinkKind      string `json:"linkKind"`
+	PromptVersion string `json:"promptVersion"`
 }
 
 // ConceptLecture is a readable lecture of a concept with the caller's progress.

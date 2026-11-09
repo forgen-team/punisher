@@ -54,7 +54,7 @@ export const RECOMMENDATION_KIND_LABELS: Record<RecommendationKind, string> = {
 };
 
 export const STUDY_REQUEST_STATUS_LABELS: Record<StudyRequestStatus, string> = {
-  unresolved: "개념 확인 중",
+  unresolved: "개념 찾는 중",
   resolved: "학습 가능",
   "in_progress": "학습 중",
   done: "완료",

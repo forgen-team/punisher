@@ -128,6 +128,8 @@ export interface StudyRequest {
   resolveError?: string;
   resolvedAt?: string;
   learned: boolean;
+  /** 지금 이 요청의 개념 찾기가 진행 중인지(서버 계산) */
+  resolving?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -149,6 +151,8 @@ export interface Recommendation {
   estimatedMinutes: number;
   anchor?: string;
   percent?: number;
+  /** (이어보기) "더 깊게"로 이 강의를 연 원 강의 */
+  parentLectureId?: string;
 }
 
 export interface TodayResponse {
@@ -185,6 +189,9 @@ export interface InstantRequest {
   query?: string;
   depth?: number;
   autoStart?: boolean;
+  /** "이 개념 더 깊게" — 결과 강의를 이 강의 아래에 연결한다 */
+  parentLectureId?: string;
+  parentAnchor?: string;
 }
 
 export interface InstantResponse {
@@ -259,6 +266,8 @@ export interface Lecture {
   sources: DocumentLink[] | null;
   flagged: boolean;
   flagReason?: string;
+  /** 생성에 쓴 프롬프트 버전 — 내 프롬프트를 썼으면 '+u:<해시8>' 가 붙는다 */
+  promptVersion?: string;
   estimatedMinutes: number;
   createdAt: string;
   publishedAt?: string;
@@ -384,6 +393,8 @@ export interface MyLecture {
   startedAt: string;
   lastSeenAt: string;
   completedAt?: string;
+  /** "더 깊게"로 이 강의를 연 원 강의 */
+  parentLectureId?: string;
 }
 
 export type MyLectureStatus = "completed" | "in_progress";

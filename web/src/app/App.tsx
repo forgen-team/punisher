@@ -4,7 +4,9 @@ import { Provider as JotaiProvider } from "jotai";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ThemeSync } from "@/src/shared/lib/ThemeSync";
 import { AppShell } from "./AppShell";
-import { HistoryPage, InstantPage, LecturePage, MapPage, NotFoundPage, SettingsPage, TodayPage } from "@/src/pages";
+import {
+  HistoryPage, InstantPage, LecturePage, MapPage, NotFoundPage, PromptSettingsPage, SettingsPage, TodayPage,
+} from "@/src/pages";
 
 function createQueryClient(): QueryClient {
   return new QueryClient({
@@ -31,6 +33,7 @@ export function App() {
               <Route path="lectures/:id" element={<LecturePage />} />
               <Route path="instant/:jobId" element={<InstantPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="settings/prompts" element={<PromptSettingsPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Routes>

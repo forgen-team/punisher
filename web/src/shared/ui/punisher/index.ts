@@ -2,3 +2,4 @@
 export { InlineError } from "./InlineError";
 // Markdown (react-markdown) is imported from "./Markdown" directly to keep it out of routes that do not render lectures.
 export { ReadingOverlay, toOverlayAnchor, type OverlayAnchor } from "./ReadingOverlay";
+export { DeeperGroup } from "./DeeperGroup";

@@ -6,6 +6,8 @@ import (
 
 	"github.com/wooo-jin/punisher/internal/learning"
 	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/wooo-jin/punisher/internal/prompts"
+	"github.com/wooo-jin/punisher/internal/services"
 )
 
 func TestValidateExplainBody(t *testing.T) {
@@ -73,5 +75,40 @@ func TestBuildGraphRequestsAndAreaSummary(t *testing.T) {
 	cov := g.Coverage[0]
 	if cov.Total != 3 || cov.Completed != 1 || cov.InProgress != 1 || cov.Requested != 2 || cov.Dismissed != 1 {
 		t.Fatalf("coverage = %+v", cov)
+	}
+}
+
+func TestValidateParentLink(t *testing.T) {
+	ok := services.InstantRequest{ParentLectureID: " d2ab944b-0cf8-4973-9104-edd533950aae ", ParentAnchor: " principles-2 "}
+	if msg := validateParentLink(&ok); msg != "" || ok.ParentLectureID != "d2ab944b-0cf8-4973-9104-edd533950aae" || ok.ParentAnchor != "principles-2" {
+		t.Fatalf("valid link rejected/not trimmed: %q %+v", msg, ok)
+	}
+	none := services.InstantRequest{ParentAnchor: "x"}
+	if msg := validateParentLink(&none); msg != "" || none.ParentAnchor != "" {
+		t.Fatalf("anchor without parent should be dropped: %q %+v", msg, none)
+	}
+	for _, bad := range []services.InstantRequest{
+		{ParentLectureID: "not-a-uuid"},
+		{ParentLectureID: "d2ab944b-0cf8-4973-9104-edd533950aae", ParentAnchor: strings.Repeat("a", 201)},
+	} {
+		if msg := validateParentLink(&bad); msg == "" {
+			t.Fatalf("expected rejection for %+v", bad)
+		}
+	}
+}
+
+func TestPromptBodyRules(t *testing.T) {
+	b, _ := prompts.LookupBlock(prompts.BlockQASystem)
+	if !isDefaultBody(b, prompts.SystemQA+"\n\n  ") || isDefaultBody(b, prompts.SystemQA+" 추가") {
+		t.Fatal("isDefaultBody must ignore trailing whitespace only")
+	}
+	if _, err := validatePromptBody("  \n"); err == nil {
+		t.Fatal("empty body must be rejected")
+	}
+	if _, err := validatePromptBody(strings.Repeat("가", maxPromptRunes+1)); err == nil {
+		t.Fatal("oversized body must be rejected")
+	}
+	if got, err := validatePromptBody("본문 \n\n"); err != nil || got != "본문" {
+		t.Fatalf("got %q, %v", got, err)
 	}
 }

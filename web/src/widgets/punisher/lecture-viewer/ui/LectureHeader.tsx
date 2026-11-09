@@ -10,7 +10,7 @@ function mapHref(conceptId: string): string {
 
 interface LectureHeaderProps {
   /** 즉석 생성 스트리밍 중에는 강의 레코드가 없다 */
-  lecture?: Pick<Lecture, "kind" | "status" | "flagged" | "flagReason" | "depth">;
+  lecture?: Pick<Lecture, "kind" | "status" | "flagged" | "flagReason" | "depth" | "promptVersion">;
   content: Pick<LectureContent, "title" | "estimatedMinutes" | "objectiveIds" | "newScope" | "prerequisitesReferenced">;
   concept?: ConceptDetail;
   /** 제목 대체 문구 (스트리밍 시작 전) */
@@ -49,6 +49,15 @@ export function LectureHeader({ lecture, content, concept, fallbackTitle }: Lect
           <span>{meta.join(" · ")}</span>
         )}
         {lecture && <LectureReviewBadges lecture={lecture} />}
+        {lecture?.promptVersion?.includes("+u:") && (
+          <Link
+            href="/settings/prompts"
+            title={`프롬프트 버전 ${lecture.promptVersion}`}
+            className="rounded-md bg-accent-subtle px-1.5 text-xs font-medium text-accent-text"
+          >
+            내 프롬프트로 생성
+          </Link>
+        )}
       </div>
       {hasScope && (
         <details className="group border-y border-line text-sm">

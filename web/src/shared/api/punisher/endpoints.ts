@@ -26,7 +26,8 @@ import type {
   TodayResponse,
   UserConceptState,
 } from "./types";
-import type { ExampleLanguage, LearningSettingsResponse, SelectionExplanation } from "./learningTypes";
+import type { ExampleLanguage, LearningSettingsResponse, LectureLinks, SelectionExplanation } from "./learningTypes";
+import type { PromptHistoryEntry, PromptPreview, PromptSaveResponse, PromptsResponse } from "./promptTypes";
 
 const enc = encodeURIComponent;
 
@@ -65,6 +66,21 @@ export const punisherApi = {
     punisherFetch<{ studyRequests: StudyRequest[] }>(`/study-requests${query({ limit })}`).then(
       (r) => r.studyRequests,
     ),
+  /** 단독판: 직접 입력한 학습 요청 추가 (source=manual). 이미 있는 문구면 기존 요청을 돌려준다. */
+  createStudyRequest: (query: string) =>
+    punisherFetch<{ studyRequest: StudyRequest; created: boolean }>("/study-requests", {
+      method: "POST",
+      json: { source: "manual", query },
+    }),
+  /** 개념 찾기 다시 시도 — 즉시 백그라운드로 시작(202) */
+  dismissStudyRequest: (id: string) =>
+    punisherFetch<{ studyRequestId: string; dismissed: boolean }>(`/study-requests/${enc(id)}/dismiss`, { method: "POST" }),
+  restoreStudyRequest: (id: string) =>
+    punisherFetch<{ studyRequestId: string; dismissed: boolean }>(`/study-requests/${enc(id)}/dismiss`, { method: "DELETE" }),
+  resolveStudyRequest: (id: string) =>
+    punisherFetch<{ studyRequest: StudyRequest }>(`/study-requests/${enc(id)}/resolve`, { method: "POST" }).then(
+      (r) => r.studyRequest,
+    ),
 
   // Lectures
   startInstant: (body: InstantRequest) =>
@@ -95,6 +111,7 @@ export const punisherApi = {
     punisherFetch<{ lectureId: string; dismissed: boolean }>(`/lectures/${enc(id)}/dismiss`, { method: "POST" }),
   restoreLecture: (id: string) =>
     punisherFetch<{ lectureId: string; dismissed: boolean }>(`/lectures/${enc(id)}/dismiss`, { method: "DELETE" }),
+  getLectureLinks: (id: string) => punisherFetch<LectureLinks>(`/lectures/${enc(id)}/links`),
   explainSelection: (lectureId: string, anchor: string, selection: string) =>
     punisherFetch<SelectionExplanation>(`/lectures/${enc(lectureId)}/explain`, {
       method: "POST",
@@ -117,6 +134,23 @@ export const punisherApi = {
   getLearningSettings: () => punisherFetch<LearningSettingsResponse>("/me/settings"),
   saveLearningSettings: (exampleLanguage: ExampleLanguage) =>
     punisherFetch<LearningSettingsResponse>("/me/settings", { method: "PUT", json: { exampleLanguage } }),
+
+  // Prompt blocks (학습 설정 > 강의 프롬프트)
+  listPrompts: () => punisherFetch<PromptsResponse>("/me/prompts"),
+  savePrompt: (id: string, body: string) =>
+    punisherFetch<PromptSaveResponse>(`/me/prompts/${enc(id)}`, { method: "PUT", json: { body } }),
+  resetPrompt: (id: string) => punisherFetch<PromptSaveResponse>(`/me/prompts/${enc(id)}`, { method: "DELETE" }),
+  promptHistory: (id: string) =>
+    punisherFetch<{ history: PromptHistoryEntry[] }>(`/me/prompts/${enc(id)}/history`).then((r) => r.history),
+  restorePrompt: (id: string, historyId: number) =>
+    punisherFetch<PromptSaveResponse>(`/me/prompts/${enc(id)}/restore`, { method: "POST", json: { historyId } }),
+  previewPrompt: (id: string, body?: string) =>
+    punisherFetch<PromptPreview>(`/me/prompts/${enc(id)}/preview`, {
+      method: "POST",
+      json: body === undefined ? {} : { body },
+    }),
+  regenerateLecture: (id: string) =>
+    punisherFetch<InstantResponse>(`/lectures/${enc(id)}/regenerate`, { method: "POST" }),
 
   // Notes
   listNotes: (filter: { lectureId?: string; conceptId?: string } = {}) =>

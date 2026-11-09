@@ -2,7 +2,7 @@
 import { AlertOctagon, ExternalLink } from "lucide-react";
 import type { DocumentLink, LectureBlock } from "@/src/shared/api/punisher";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
-import { TermPopover } from "@/src/features/punisher/term-popover";
+import { TermPopover, type DeeperOrigin } from "@/src/features/punisher/term-popover";
 import { CodeBlock } from "./CodeBlock";
 import { MermaidBlock } from "./MermaidBlock";
 
@@ -33,7 +33,7 @@ export function SourcesList({ sources, title = "출처" }: { sources: DocumentLi
 interface BlockRendererProps {
   block: LectureBlock;
   /** Omitted in the streaming preview (no interactions while generating). */
-  onBeforeDeeper?: () => void;
+  onBeforeDeeper?: () => DeeperOrigin | void;
 }
 
 /** 모델이 문장 중간에 쓴 "@@term 용어"(지시어는 줄 맨 앞만 유효)는 지시어만 지우고 용어는 남긴다. */

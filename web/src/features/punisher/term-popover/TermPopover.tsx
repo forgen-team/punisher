@@ -7,13 +7,22 @@ import { InlineError, ReadingOverlay, toOverlayAnchor, type OverlayAnchor } from
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 import { useLaunchInstant } from "../instant-start";
 
+/** "더 깊게"를 누른 원 강의와 위치. */
+export interface DeeperOrigin {
+  lectureId: string;
+  anchor: string;
+}
+
 interface TermPopoverProps {
   term: string;
   conceptId: string;
   fallbackText?: string;
   proposed?: boolean;
-  /** Called before navigating to the deeper lecture (saves the current anchor). */
-  onBeforeDeeper: () => void;
+  /**
+   * Called before navigating to the deeper lecture (saves the current anchor).
+   * Returns the origin so the new lecture is linked under it ("이 강의에서 더 깊게 본 강의").
+   */
+  onBeforeDeeper: () => DeeperOrigin | void;
 }
 
 /**
@@ -29,9 +38,9 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
   const label = term || conceptId;
 
   async function goDeeper() {
-    onBeforeDeeper();
+    const origin = onBeforeDeeper();
     try {
-      await launch({ conceptId });
+      await launch(origin ? { conceptId, parentLectureId: origin.lectureId, parentAnchor: origin.anchor } : { conceptId });
     } catch {
       // 시트를 유지하고 오류를 아래에 표시한다.
       return;

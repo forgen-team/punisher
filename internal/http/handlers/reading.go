@@ -89,3 +89,41 @@ func (h *LearnHandler) Explain(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, res)
 }
+
+// Links handles GET /v1/lectures/{id}/links — lectures opened from this one via
+// "이 개념 더 깊게" (children) and the lectures this one was opened from (parents).
+func (h *LearnHandler) Links(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	parents, children, err := h.Store.LectureLinks(r.Context(), userID, chi.URLParam(r, "id"))
+	if err != nil {
+		writeServiceError(w, r, "lecture links", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"parents": parents, "children": children})
+}
+
+// DismissStudyRequest handles POST /v1/study-requests/{id}/dismiss — 학습 요청을 '목록에서 빼기'.
+func (h *LearnHandler) DismissStudyRequest(w http.ResponseWriter, r *http.Request) {
+	h.setStudyRequestDismissed(w, r, true)
+}
+
+// RestoreStudyRequest handles DELETE /v1/study-requests/{id}/dismiss — '목록에서 빼기' 되돌리기.
+func (h *LearnHandler) RestoreStudyRequest(w http.ResponseWriter, r *http.Request) {
+	h.setStudyRequestDismissed(w, r, false)
+}
+
+func (h *LearnHandler) setStudyRequestDismissed(w http.ResponseWriter, r *http.Request, dismissed bool) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	id := chi.URLParam(r, "id")
+	if err := h.Store.SetStudyRequestDismissed(r.Context(), userID, id, dismissed); err != nil {
+		writeServiceError(w, r, "dismiss study request", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"studyRequestId": id, "dismissed": dismissed})
+}

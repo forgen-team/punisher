@@ -19,4 +19,7 @@ Ported from
   packages/config (tokens, preset, theme, eslint) → web/src/styles, web/tailwind.preset.js,
                                     web/src/shared/lib/theme.ts, web/eslint.config.js
 
+Later syncs (see docs/SYNC.md)
+  v0.2.0     : witems 1574a0a..98308e6
+
 Monorepo history is not preserved; see the commit above for the original history.

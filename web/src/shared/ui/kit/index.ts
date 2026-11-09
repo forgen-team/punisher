@@ -1,6 +1,7 @@
 export * from "./lib/utils";
 export * from "./hooks/useBodyScrollLock";
 export * from "./hooks/useMediaQuery";
+export * from "./hooks/useIsSplitLayout";
 export * from "./hooks/useFocusTrap";
 
 // ── W5 프리미티브 (D1) — 새 화면은 이것만 사용. 사용 규칙: packages/ui/README.md

@@ -17,8 +17,18 @@ import (
 
 // Gloss returns the cached short gloss of a concept, generating it with the
 // fast model on a cache miss. cached reports whether no LLM call was made.
+// The shared cache holds default-prompt glosses only; a user who edited the
+// gloss block gets a private cache keyed by the block hash.
 func (s *Service) Gloss(ctx context.Context, userID, conceptID string) (gloss string, cached bool, err error) {
-	if gloss, err = s.Store.GetGloss(ctx, conceptID); err != nil || gloss != "" {
+	set := s.UserPrompts(ctx, userID)
+	custom := set.Overridden(prompts.BlockGlossSystem)
+	hash := set.Hash(prompts.BlockGlossSystem)
+	if custom {
+		gloss, err = s.Store.UserGloss(ctx, userID, conceptID, hash)
+	} else {
+		gloss, err = s.Store.GetGloss(ctx, conceptID)
+	}
+	if err != nil || gloss != "" {
 		return gloss, gloss != "", err
 	}
 	concept, err := s.Store.ConceptInfo(ctx, conceptID)
@@ -37,7 +47,7 @@ func (s *Service) Gloss(ctx context.Context, userID, conceptID string) (gloss st
 	}
 	var u usage
 	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{
-		Model: s.Cfg.FastModel, System: prompts.SystemGloss,
+		Model: s.Cfg.FastModel, System: set.Text(prompts.BlockGlossSystem, map[string]string{"concept_name": concept.Name}),
 		User: prompts.Gloss(concept.Name, concept.Area, concept.Summary), MaxTokens: 400, Timeout: 30 * time.Second,
 	}, &u)
 	s.recordUsage(ctx, userID, "gloss", conceptID, u, err)
@@ -45,7 +55,12 @@ func (s *Service) Gloss(ctx context.Context, userID, conceptID string) (gloss st
 		return "", false, err
 	}
 	gloss = strings.TrimSpace(text)
-	if err := s.Store.SaveGloss(ctx, conceptID, gloss, u.model); err != nil {
+	if custom {
+		err = s.Store.SaveUserGloss(ctx, userID, conceptID, hash, gloss, u.model)
+	} else {
+		err = s.Store.SaveGloss(ctx, conceptID, gloss, u.model)
+	}
+	if err != nil {
 		return "", false, err
 	}
 	return gloss, false, nil
@@ -119,7 +134,8 @@ func (s *Service) answer(ctx context.Context, userID string, q models.Question, 
 func (s *Service) answerWithKey(ctx context.Context, userID, apiKey string, q models.Question, known map[string]bool, prompt string) (models.Question, error) {
 	var u usage
 	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{
-		Model: s.Cfg.LectureModel, System: prompts.SystemQA, User: prompt, MaxTokens: 3000, Timeout: 2 * time.Minute,
+		Model: s.Cfg.LectureModel, System: s.UserPrompts(ctx, userID).Text(prompts.BlockQASystem, s.interactionVars(ctx, userID, q.ConceptID)),
+		User: prompt, MaxTokens: 3000, Timeout: 2 * time.Minute,
 	}, &u)
 	var out qaOutput
 	if err == nil {

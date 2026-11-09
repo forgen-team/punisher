@@ -66,6 +66,9 @@ type Config struct {
 	LibraryAhead      int    // library lectures to keep ready (0 = no ahead pre-generation)
 	StudyPregenerate  bool   // pre-generate the starting lecture of newly resolved study requests
 	LectureMaxTokens  int
+	// LibraryUsesUserPrompts applies the owner's prompt overrides to library
+	// lectures too (standalone: the single user is the library's only reader).
+	LibraryUsesUserPrompts bool
 }
 
 // Service bundles dependencies.

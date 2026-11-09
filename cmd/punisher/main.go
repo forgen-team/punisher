@@ -107,6 +107,8 @@ func run(cfg config.Config) error {
 			LibraryAhead:      cfg.LibraryAhead,
 			StudyPregenerate:  cfg.StudyPregenerate,
 			LectureMaxTokens:  cfg.LectureMaxTokens,
+			// 단독판은 사용자가 한 명이라 라이브러리(추천 미리 만들기) 강의도 그 사람의 프롬프트를 따른다.
+			LibraryUsesUserPrompts: true,
 		},
 	}
 

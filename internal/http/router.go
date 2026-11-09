@@ -37,7 +37,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	statusHandler := &handlers.StatusHandler{Claude: deps.Claude, AppVersion: deps.AppVersion, DataDir: deps.DataDir}
 	conceptsHandler := &handlers.ConceptsHandler{Store: deps.Store}
 	progressHandler := &handlers.ProgressHandler{Store: deps.Store}
-	studyRequestsHandler := &handlers.StudyRequestsHandler{Store: deps.Store}
+	studyRequestsHandler := &handlers.StudyRequestsHandler{Store: deps.Store, Svc: deps.Services}
 	learn := &handlers.LearnHandler{Store: deps.Store, Svc: deps.Services}
 
 	router.Route("/v1", func(r chi.Router) {
@@ -55,10 +55,19 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Get("/me/lectures", learn.ListMyLectures)
 		r.Get("/me/settings", learn.GetSettings)
 		r.Put("/me/settings", learn.PutSettings)
+		r.Get("/me/prompts", learn.ListPrompts)
+		r.Put("/me/prompts/{id}", learn.SavePrompt)
+		r.Delete("/me/prompts/{id}", learn.ResetPrompt)
+		r.Get("/me/prompts/{id}/history", learn.PromptHistory)
+		r.Post("/me/prompts/{id}/restore", learn.RestorePrompt)
+		r.Post("/me/prompts/{id}/preview", learn.PreviewPrompt)
 
 		r.Post("/study-requests", studyRequestsHandler.Create)
+		r.Post("/study-requests/{id}/resolve", studyRequestsHandler.Resolve)
 		r.Get("/study-requests", learn.ListStudyRequests)
 		r.Get("/study-requests/{id}", learn.GetStudyRequest)
+		r.Post("/study-requests/{id}/dismiss", learn.DismissStudyRequest)
+		r.Delete("/study-requests/{id}/dismiss", learn.RestoreStudyRequest)
 
 		r.Get("/today", learn.Today)
 		r.Post("/concepts/{id}/known", learn.MarkKnown)
@@ -74,6 +83,8 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Post("/lectures/{id}/dismiss", learn.Dismiss)
 		r.Delete("/lectures/{id}/dismiss", learn.Restore)
 		r.Post("/lectures/{id}/explain", learn.Explain)
+		r.Get("/lectures/{id}/links", learn.Links)
+		r.Post("/lectures/{id}/regenerate", learn.Regenerate)
 		r.Get("/lectures/{id}/questions", learn.ListQuestions)
 		r.Post("/lectures/{id}/questions", learn.Ask)
 		r.Get("/questions/{id}", learn.GetQuestion)

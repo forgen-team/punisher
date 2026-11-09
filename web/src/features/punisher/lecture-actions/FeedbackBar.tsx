@@ -1,5 +1,7 @@
 
+import { Link } from "@/src/shared/lib/router";
 import { useState } from "react";
+import { PencilLine } from "lucide-react";
 import { Chip } from "@/src/shared/ui/kit";
 import {
   FEEDBACK_LABELS,
@@ -12,6 +14,13 @@ import { InlineError } from "@/src/shared/ui/punisher";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 
 const FEEDBACK_ORDER: FeedbackKind[] = ["understood", "insufficient", "too_easy", "too_hard", "want_more"];
+
+/** 프롬프트에 반영할 수 있는 피드백(제안 문구가 있는 것) → 강사 원칙 블록 편집으로 연다(저장은 사용자가). */
+const PROMPT_FEEDBACK = new Set<FeedbackKind>(["insufficient", "too_easy", "too_hard", "want_more"]);
+
+function promptEditHref(kind: FeedbackKind): string {
+  return `/settings/prompts?block=teacher.system&from=${encodeURIComponent(kind)}`;
+}
 
 function AltExplanation({ id }: { id: string }) {
   const { data, error } = useQuestionPoll(id);
@@ -60,6 +69,15 @@ export function FeedbackBar({ lectureId, getAnchor }: FeedbackBarProps) {
       <div aria-live="polite">
         <InlineError error={mutation.error} />
         {last && <p className="text-xs text-fg-muted">피드백을 기록했습니다. 다음 강의 생성에 반영됩니다.</p>}
+        {last && PROMPT_FEEDBACK.has(last.feedback) && (
+          <Link
+            href={promptEditHref(last.feedback)}
+            className="mt-1 inline-flex min-h-touch items-center gap-1 text-sm text-accent-text underline-offset-2 hover:underline"
+          >
+            <PencilLine className="size-4" aria-hidden="true" />
+            이 피드백을 프롬프트에 반영
+          </Link>
+        )}
         {last?.altRequestError && (
           <p className="text-sm text-warning">재설명을 시작하지 못했습니다: {last.altRequestError}</p>
         )}
