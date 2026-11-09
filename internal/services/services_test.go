@@ -238,3 +238,21 @@ func TestSectionForAnchor(t *testing.T) {
 		t.Fatal("code should render fenced")
 	}
 }
+
+// TestUnknownDirectiveIsRejectedAndRegenerated: a draft with a directive the
+// markup does not define (seen live: @@dummy_placeholder_removed) never parses,
+// is not saved, and its parse error is fed into the regeneration notes.
+func TestUnknownDirectiveIsRejectedAndRegenerated(t *testing.T) {
+	bad := strings.Replace(validMarkup, "@@sources\n- [doc](https://example.org/doc)\n", "@@dummy_placeholder_removed\n", 1)
+	if _, _, err := testTarget().parseAndValidate(bad); err == nil || !strings.Contains(err.Error(), "unknown directive @@dummy_placeholder_removed") {
+		t.Fatalf("parse err = %v", err)
+	}
+	f := &fakeSteps{drafts: []string{bad, validMarkup}, reviews: []ReviewOutcome{pass}}
+	res, err := RunReviewLoop(context.Background(), 2, f.funcs())
+	if err != nil || res.Status != "published" || res.Final != 1 || res.Attempts[0].ParseErr == nil {
+		t.Fatalf("loop = %+v %v", res, err)
+	}
+	if len(f.notes) != 2 || !strings.Contains(f.notes[1], "unknown directive @@dummy_placeholder_removed") {
+		t.Fatalf("regeneration notes = %q", f.notes)
+	}
+}
