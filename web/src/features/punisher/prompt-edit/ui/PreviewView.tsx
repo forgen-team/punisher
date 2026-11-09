@@ -41,7 +41,7 @@ export function PreviewView({ blockId, draft }: { blockId: string; draft: string
       )}
       <PromptText label="시스템 프롬프트" text={p.system} />
       <PromptText label="사용자 프롬프트(개념·목표 등은 코드가 채움)" text={p.user} />
-      <Button size="sm" variant="ghost" onClick={() => mutate({ id: blockId, body: draft })}>
+      <Button size="sm" variant="ghost" className="self-start" onClick={() => mutate({ id: blockId, body: draft })}>
         다시 조립
       </Button>
     </div>

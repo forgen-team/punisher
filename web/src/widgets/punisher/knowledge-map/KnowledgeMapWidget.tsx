@@ -6,6 +6,7 @@ import { useFrontier, useGoalPath, useGoals, useGraph } from "@/src/entities/pun
 import { GoalsManager } from "@/src/features/punisher/goal-manage";
 import { KnownAreasSheet, KnownOnboardingPrompt, useKnownOnboardingPrompt } from "@/src/features/punisher/known-onboarding";
 import { describePunisherError } from "@/src/shared/api/punisher";
+import { useWideLayout } from "@/src/shared/lib/useWideLayout";
 import { ConceptDetailSheet } from "./ui/ConceptDetailSheet";
 import { CHAPTER_OPTION_PREFIX, MapControls } from "./ui/MapControls";
 import { chapterView } from "./lib/chapterView";
@@ -68,6 +69,8 @@ export function KnowledgeMapWidget() {
     [params, pathname, router],
   );
   const onSelect = useCallback((id: string) => setParams({ concept: id }), [setParams]);
+  const closeDetail = useCallback(() => setParams({ concept: null, request: null }), [setParams]);
+  const wide = useWideLayout();
   const showGoalPath = useCallback(
     (id: string, conceptId?: string) => setParams({ goal: id, concept: conceptId ?? null, panel: null }),
     [setParams],
@@ -137,21 +140,28 @@ export function KnowledgeMapWidget() {
       {onboarding.show && <KnownOnboardingPrompt onStart={() => setKnownOpen(true)} onDismiss={onboarding.dismiss} />}
       {goalId && <p className="text-xs text-fg-muted">목표에 필요한 선행 사슬만 표시합니다.</p>}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="-mx-4 h-[60dvh] min-h-80 overflow-hidden border-y border-line md:mx-0 md:rounded-lg md:border lg:h-[calc(100dvh-14rem)]">
+      {/* lg: 캔버스 | 18rem 목록, 상세는 오른쪽 시트. xl: 캔버스 | 22rem(2xl 26rem) 열 — 개념을 고르면 그 열이 상세 패널로 바뀐다(캔버스 폭 그대로). */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
+        <div className="-mx-4 h-[60dvh] min-h-80 overflow-hidden border-y border-line fold:mx-0 fold:rounded-lg fold:border lg:h-[calc(100dvh-14rem)]">
           {renderCanvas()}
         </div>
-        <div className="flex flex-col gap-6">
-          <PendingRequestList requests={graph.data?.pendingRequests ?? []} highlightId={requestId} />
-          <FrontierList items={frontier.data?.items ?? []} onSelect={onSelect} />
-          <CoverageList coverage={graph.data?.coverage ?? []} />
+        <div className="flex flex-col gap-6 xl:sticky xl:top-[calc(var(--app-header-offset)+1rem)] xl:max-h-[calc(100dvh-var(--app-header-offset)-2rem)] xl:self-start xl:overflow-y-auto">
+          {wide && selectedId ? (
+            <ConceptDetailSheet variant="panel" conceptId={selectedId} requests={selectedRequests} onClose={closeDetail} onSelect={onSelect} />
+          ) : (
+            <>
+              <PendingRequestList requests={graph.data?.pendingRequests ?? []} highlightId={requestId} />
+              <FrontierList items={frontier.data?.items ?? []} onSelect={onSelect} />
+              <CoverageList coverage={graph.data?.coverage ?? []} />
+            </>
+          )}
         </div>
       </div>
 
       <ConceptDetailSheet
-        conceptId={selectedId}
+        conceptId={wide === false ? selectedId : null}
         requests={selectedRequests}
-        onClose={() => setParams({ concept: null, request: null })}
+        onClose={closeDetail}
         onSelect={onSelect}
       />
       <MapLegendSheet open={legendOpen} onClose={() => setLegendOpen(false)} />

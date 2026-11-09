@@ -15,10 +15,10 @@ export function NextChapterCard({ prompt }: { prompt: NextChapterPrompt }) {
   const left = days(prompt.remainingMinutes, prompt.dailyMinutes);
   return (
     <Section variant="card" title="다음 챕터 고르기">
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 py-4">
         <Compass className="mt-0.5 size-5 shrink-0 text-accent-text" aria-hidden="true" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-fg">
+          <p className="break-keep text-sm text-fg">
             {left > 0
               ? `지금 지도에 남은 강의는 하루 ${prompt.dailyMinutes}분 기준 약 ${left}일 치예요.`
               : "지금 지도에서 배울 강의를 거의 다 마쳤어요."}{" "}

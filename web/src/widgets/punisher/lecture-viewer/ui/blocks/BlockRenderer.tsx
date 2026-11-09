@@ -5,6 +5,7 @@ import { Markdown, type RenderTerm } from "@/src/shared/ui/punisher/Markdown";
 import { TermPopover, type DeeperOrigin } from "@/src/features/punisher/term-popover";
 import { closeUnclosedFence } from "../../lib/fences";
 import { toInlineTermLinks } from "../../lib/inlineTerms";
+import { splitMermaid } from "../../lib/mermaidInMarkdown";
 import { CodeBlock } from "./CodeBlock";
 import { MermaidBlock } from "./MermaidBlock";
 
@@ -48,7 +49,17 @@ export function BlockRenderer({ block, onBeforeDeeper }: BlockRendererProps) {
     : undefined;
   switch (block.type) {
     case "markdown":
-      return <Markdown renderTerm={renderTerm}>{toInlineTermLinks(closeUnclosedFence(text))}</Markdown>;
+      return (
+        <>
+          {splitMermaid(toInlineTermLinks(closeUnclosedFence(text))).map((part, index) =>
+            part.kind === "mermaid" ? (
+              <MermaidBlock key={index} source={part.text} />
+            ) : (
+              <Markdown key={index} renderTerm={renderTerm}>{part.text}</Markdown>
+            ),
+          )}
+        </>
+      );
     case "code":
       return <CodeBlock code={text} lang={block.lang} />;
     case "log":

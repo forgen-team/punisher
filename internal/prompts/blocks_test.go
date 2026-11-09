@@ -92,7 +92,7 @@ func TestUnknownVars(t *testing.T) {
 }
 
 func TestAssumedKnowledgeRules(t *testing.T) {
-	if Version != "punisher-prompts-2026-11-09.2" {
+	if Version != "punisher-prompts-2026-11-09.3" {
 		t.Fatalf("version = %s (bump when default blocks change)", Version)
 	}
 	for _, want := range []string{"전제하지 않습니다", "첫 등장에서 정의합니다", "2~3문장", "\"당연히\""} {
@@ -126,5 +126,14 @@ func TestCatalogListedForLinking(t *testing.T) {
 	}}, "", "", Defaults())
 	if !strings.Contains(p, "- network: net.nat NAT, net.subnet 서브넷✓\n- os: os.signal 시그널\n") {
 		t.Fatalf("catalog block wrong:\n%s", p)
+	}
+}
+
+// 2026-11-09: 즉석 강의에서 @@markdown 안 mermaid 펜스가 그림 대신 코드로 보였다.
+func TestMarkupSpecKeepsDiagramsInMermaidBlocks(t *testing.T) {
+	for _, want := range []string{"반드시 따로 @@mermaid 블록", "코드펜스 없이 도식 문법만"} {
+		if !strings.Contains(MarkupSpec, want) {
+			t.Errorf("markup spec lacks %q", want)
+		}
 	}
 }

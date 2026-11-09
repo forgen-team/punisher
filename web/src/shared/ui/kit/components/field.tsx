@@ -53,9 +53,9 @@ export function Field({ label, hint, error, required, id, className, children }:
         </label>
         {children}
         {error ? (
-          <p id={errorId} role="alert" className="text-xs text-danger">{error}</p>
+          <p id={errorId} role="alert" className="break-keep text-xs text-danger">{error}</p>
         ) : hint ? (
-          <p id={hintId} className="text-xs text-fg-muted">{hint}</p>
+          <p id={hintId} className="break-keep text-xs text-fg-muted">{hint}</p>
         ) : null}
       </div>
     </FieldContext.Provider>
@@ -111,7 +111,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(function 
     <div className="relative">
       <select
         ref={ref}
-        className={cn(controlBase, "h-11 appearance-none pr-9 md:h-10", className)}
+        className={cn(controlBase, "h-11 min-w-0 appearance-none truncate pr-9 md:h-10", className)}
         {...fieldProps(field, props)}
       >
         {children}

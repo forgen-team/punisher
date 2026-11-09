@@ -1,6 +1,6 @@
 
 import { Check } from "lucide-react";
-import { cn, focusRing } from "@/src/shared/ui/kit";
+import { EmptyState, Skeleton, cn, focusRing } from "@/src/shared/ui/kit";
 import type { ChapterSuggestion } from "@/src/shared/api/punisher";
 import { MAX_PICKS, SUGGESTION_KIND_LABELS } from "./constants";
 
@@ -13,6 +13,9 @@ interface SuggestionCardsProps {
 /** 자동 제안 카드(여러 개 고를 수 있음) — 카드마다 왜 추천하는지 한 줄. */
 export function SuggestionCards({ suggestions, selected, onToggle }: SuggestionCardsProps) {
   const full = selected.size >= MAX_PICKS;
+  if (suggestions.length === 0) {
+    return <EmptyState compact title="지금은 추천할 주제가 없어요" description="아래에 공부하고 싶은 걸 직접 적어 주세요." />;
+  }
   return (
     <ul role="list" className="grid gap-2 fold:grid-cols-2">
       {suggestions.map((s) => {
@@ -42,12 +45,26 @@ export function SuggestionCards({ suggestions, selected, onToggle }: SuggestionC
               <span className="min-w-0 flex-1">
                 <span className="block text-xs font-medium text-fg-muted">{SUGGESTION_KIND_LABELS[s.kind] ?? s.kind}</span>
                 <span className="block text-base font-semibold text-fg">{s.title}</span>
-                <span className="mt-0.5 block text-sm text-fg-secondary">{s.reason}</span>
+                <span className="mt-0.5 block break-keep text-sm text-fg-secondary">{s.reason}</span>
               </span>
             </button>
           </li>
         );
       })}
+    </ul>
+  );
+}
+
+/** 불러오는 동안 카드와 같은 격자·높이를 잡아 둬서 로드 뒤 화면이 밀리지 않게 한다. */
+export function SuggestionCardsSkeleton() {
+  return (
+    <ul role="list" aria-hidden="true" className="grid gap-2 fold:grid-cols-2">
+      {Array.from({ length: 4 }, (_, index) => (
+        <li key={index} className="flex items-start gap-3 rounded-lg border border-line bg-canvas-elevated p-3">
+          <Skeleton variant="block" className="mt-0.5 size-5 shrink-0" />
+          <Skeleton lines={3} className="flex-1" />
+        </li>
+      ))}
     </ul>
   );
 }

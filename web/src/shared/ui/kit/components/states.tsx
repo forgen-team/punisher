@@ -16,7 +16,7 @@ export interface EmptyStateProps extends Omit<React.HTMLAttributes<HTMLDivElemen
 export function EmptyState({ icon, title, description, action, compact = false, className, ...props }: EmptyStateProps) {
   return (
     <div
-      className={cn("flex flex-col items-center px-4 text-center", compact ? "py-7" : "py-16", className)}
+      className={cn("flex flex-col items-center px-4 text-center", compact ? "py-8" : "py-16", className)}
       {...props}
     >
       {icon ? (

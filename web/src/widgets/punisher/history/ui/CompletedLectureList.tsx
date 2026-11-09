@@ -37,15 +37,18 @@ export function CompletedLectureList() {
   }
   return (
     <div className="flex flex-col gap-3">
-      <List>
+      {/* 원 강의 + '더 깊게' 묶음을 한 칸으로: 넓은 화면(xl)은 두 열로 나눠도 묶음이 갈라지지 않는다. */}
+      <div className="xl:grid xl:grid-cols-2 xl:gap-x-8 xl:[&>ul:nth-last-child(2):nth-child(odd)]:border-b-0">
         {groupByParent(items, (l) => l.id, (l) => l.parentLectureId).map(({ item, children }) => (
-          <DeeperGroup key={item.id} parent={<LectureRow lecture={item} />}>
-            {children.map((c) => (
-              <LectureRow key={c.id} lecture={c} />
-            ))}
-          </DeeperGroup>
+          <List key={item.id} className="border-b border-line last:border-b-0">
+            <DeeperGroup parent={<LectureRow lecture={item} />}>
+              {children.map((c) => (
+                <LectureRow key={c.id} lecture={c} />
+              ))}
+            </DeeperGroup>
+          </List>
         ))}
-      </List>
+      </div>
       <LoadMore hasNextPage={Boolean(lectures.hasNextPage)} isFetching={lectures.isFetchingNextPage} onLoad={() => lectures.fetchNextPage()} />
     </div>
   );

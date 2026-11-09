@@ -42,7 +42,7 @@ export function RegenerateSheet({ lectureId, open, onClose }: RegenerateSheetPro
         </>
       }
     >
-      <ul className="list-disc space-y-1 pl-5 text-sm text-fg-secondary">
+      <ul className="list-disc space-y-1 break-keep pl-5 text-sm text-fg-secondary">
         <li>같은 개념·학습 목표·깊이로, 지금 저장된 내 프롬프트를 써서 개요 → 본문 → 감수 순서로 만들어요.</li>
         <li>몇 분 걸려요. 만들어지면 이 강의 아래 &lsquo;새 프롬프트로 다시 만든 강의&rsquo;에 달려요.</li>
         <li>이미 앎·완료 표시와 진도는 바뀌지 않아요.</li>

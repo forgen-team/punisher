@@ -1,8 +1,8 @@
 
 import { Link } from "@/src/shared/lib/router";
-import { useEffect, useState } from "react";
-import { Check, Circle, Lock } from "lucide-react";
-import { BottomSheet, Button, ErrorState, List, ListRow, ListSkeleton, Section } from "@/src/shared/ui/kit";
+import { useEffect, useId, useState } from "react";
+import { Check, Circle, Lock, X } from "lucide-react";
+import { BottomSheet, Button, ErrorState, IconButton, List, ListRow, ListSkeleton, Section } from "@/src/shared/ui/kit";
 import {
   USER_STATE_LABELS,
   areaLabel,
@@ -65,10 +65,13 @@ interface ConceptDetailSheetProps {
   requests?: MapRequest[];
   onClose: () => void;
   onSelect: (id: string) => void;
+  /** sheet: 하단 시트(모바일)·오른쪽 시트(데스크톱). panel: 넓은 화면에서 캔버스 옆 열에 고정(시트 없이) */
+  variant?: "sheet" | "panel";
 }
 
-/** 개념 상세: 모바일 하단 시트 / 데스크톱 오른쪽 패널 (design §3.6 노드 클릭 → 개념 카드). */
-export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect }: ConceptDetailSheetProps) {
+/** 개념 상세: 모바일 하단 시트 / 데스크톱 오른쪽 시트 / 넓은 화면(xl) 캔버스 옆 고정 패널 (design §3.6 노드 클릭 → 개념 카드). */
+export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect, variant = "sheet" }: ConceptDetailSheetProps) {
+  const titleId = useId();
   const detail = useConceptDetail(conceptId ?? undefined);
   const known = useMarkKnown();
   const { launch, isPending, error } = useLaunchInstant();
@@ -96,26 +99,19 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
     ? `${areaLabel(c.area)} · 깊이 ${c.depth} · ${USER_STATE_LABELS[c.userState] ?? c.userState}${c.locked ? " · 잠김(선행 미완)" : ""}`
     : undefined;
 
-  return (
-    <BottomSheet
-      open={Boolean(conceptId)}
-      onClose={onClose}
-      title={c?.name ?? conceptId ?? ""}
-      description={description}
-      desktop="side"
-      footer={
-        c ? (
-          <>
-            <Button variant="secondary" disabled={learned || known.isSuccess} loading={known.isPending} onClick={() => known.mutate(c.id)}>
-              {known.isSuccess ? "이미 앎으로 표시됨" : "이미 앎"}
-            </Button>
-            <Button loading={isPending} onClick={() => start(c.id)}>
-              강의 시작
-            </Button>
-          </>
-        ) : null
-      }
-    >
+  const title = c?.name ?? conceptId ?? "";
+  const actions = c ? (
+    <>
+      <Button variant="secondary" disabled={learned || known.isSuccess} loading={known.isPending} onClick={() => known.mutate(c.id)}>
+        {known.isSuccess ? "이미 앎으로 표시됨" : "이미 앎"}
+      </Button>
+      <Button loading={isPending} onClick={() => start(c.id)}>
+        강의 시작
+      </Button>
+    </>
+  ) : null;
+  const body = (
+    <>
       {detail.isLoading ? (
         <ListSkeleton rows={3} />
       ) : detail.error ? (
@@ -175,6 +171,31 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
           <NotesGroup conceptId={c.id} />
         </div>
       ) : null}
+    </>
+  );
+
+  if (variant === "panel") {
+    if (!conceptId) { return null; }
+    return (
+      <section aria-labelledby={titleId} className="flex flex-col gap-4 rounded-xl border border-line bg-canvas-elevated p-4 shadow-xs">
+        <header className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <h2 id={titleId} className="break-keep text-lg font-semibold text-fg">{title}</h2>
+            {description && <p className="mt-0.5 text-xs text-fg-muted">{description}</p>}
+          </div>
+          <IconButton aria-label="개념 상세 닫기" onClick={onClose} className="-mr-2 -mt-1">
+            <X aria-hidden="true" />
+          </IconButton>
+        </header>
+        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+        {body}
+      </section>
+    );
+  }
+
+  return (
+    <BottomSheet open={Boolean(conceptId)} onClose={onClose} title={title} description={description} desktop="side" footer={actions}>
+      {body}
     </BottomSheet>
   );
 }

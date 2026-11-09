@@ -37,7 +37,7 @@ export function PromptSettingsWidget() {
   ) : null;
 
   const intro = (
-    <p className="mb-4 rounded-md bg-canvas-subtle px-3 py-2 text-sm text-fg-secondary">
+    <p className="mb-4 break-keep rounded-md bg-canvas-subtle px-3 py-2 text-sm text-fg-secondary">
       강의를 만드는 지시문을 직접 고칠 수 있어요. 바꾼 내용은 앞으로 만드는 강의(추천 강의 미리 만들기 포함)·질문 답변·구절 설명에 적용되고, 이미 만든 강의는 그대로예요.
     </p>
   );

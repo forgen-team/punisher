@@ -15,14 +15,17 @@ import { DeeperLecturesSection, ParentLectureLink } from "./ui/DeeperLectures";
 import { LectureBody } from "./ui/LectureBody";
 import { RegenerateSheet } from "./ui/RegenerateSheet";
 import { LectureHeader } from "./ui/LectureHeader";
-import { LectureAssistSheet } from "./ui/LectureSidePanel";
+import { LectureAssistPanel, LectureAssistSheet } from "./ui/LectureSidePanel";
+import { LectureLayout } from "./ui/LectureLayout";
 import { LectureTopBar } from "./ui/LectureTopBar";
-import { SectionToc, TocSheet } from "./ui/SectionToc";
+import { TocSheet } from "./ui/SectionToc";
+import { extractLectureTerms } from "./lib/lectureTerms";
+import { useActiveSection } from "./lib/useActiveSection";
 import { SourcesList } from "./ui/blocks";
 
 /**
  * 강의 뷰어(모바일 우선): 고정 상단 바(목차·질문/메모 시트·⋯) → 제목·메타 → 접힌 목표/범위 → 본문.
- * lg 이상은 왼쪽에 목차를 고정한다. 진도는 스크롤 앵커로 저장·복원된다.
+ * 넓은 화면 배치는 LectureLayout(lg 접은 목차 · xl 보조 열 · 2xl 펼친 목차). 진도는 스크롤 앵커로 저장·복원된다.
  */
 export function LectureViewer({ lectureId }: { lectureId: string }) {
   const router = useRouter();
@@ -54,6 +57,9 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
   }, [saveNow, setBookmark, lectureId, getAnchor, content?.title, lecture?.title]);
 
   const sources = useMemo<DocumentLink[]>(() => (Array.isArray(lecture?.sources) ? lecture.sources : []), [lecture?.sources]);
+  const terms = useMemo(() => (content ? extractLectureTerms(content) : []), [content]);
+  const anchorKey = useMemo(() => (content?.sections ?? []).map((s) => s.anchor).filter(Boolean).join("|"), [content]);
+  const activeAnchor = useActiveSection(anchorKey);
 
   if (lectureQuery.isLoading) {
     return (
@@ -136,37 +142,46 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
         onOpenAssist={() => setAssistOpen(true)}
         menuItems={menuItems}
       />
-      <div className="flex gap-8">
-        <aside className="sticky top-[calc(var(--app-header-offset)+4rem)] hidden max-h-[calc(100dvh-6rem)] w-56 shrink-0 self-start overflow-y-auto pb-10 pt-4 lg:block">
-          <SectionToc sections={content.sections} totalMinutes={totalMinutes} />
-        </aside>
-        <article className="mx-auto w-full min-w-0 max-w-2xl pb-16">
-          {parentLecture && <ParentLectureLink parent={parentLecture} />}
-          {showReturn && (
-            <div className="flex items-center gap-2 border-b border-line py-1 text-sm">
-              <Link href={returnHref} className="inline-flex min-h-touch min-w-0 flex-1 items-center gap-1 text-accent-text">
-                <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
-                <span className="truncate">읽던 강의로 돌아가기: {bookmark.title}</span>
-              </Link>
-              <Button variant="ghost" size="sm" onClick={() => setBookmark(null)}>
-                지우기
-              </Button>
-            </div>
-          )}
-          <LectureHeader lecture={lecture} content={content} concept={concept.data} />
-          <LectureActionStatus actions={actions} />
-          <div ref={bodyRef} className="mt-6">
-            <LectureBody content={content} onBeforeDeeper={onBeforeDeeper} />
+      <LectureLayout
+        sections={content.sections}
+        totalMinutes={totalMinutes}
+        activeAnchor={activeAnchor}
+        assist={
+          <LectureAssistPanel
+            lectureId={lectureId}
+            conceptId={lecture.conceptId}
+            getAnchor={getAnchor}
+            terms={terms}
+            onBeforeDeeper={onBeforeDeeper}
+            deeper={deeperLectures}
+          />
+        }
+      >
+        {parentLecture && <ParentLectureLink parent={parentLecture} />}
+        {showReturn && (
+          <div className="flex items-center gap-2 border-b border-line py-1 text-sm">
+            <Link href={returnHref} className="inline-flex min-h-touch min-w-0 flex-1 items-center gap-1 text-accent-text">
+              <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
+              <span className="truncate">읽던 강의로 돌아가기: {bookmark.title}</span>
+            </Link>
+            <Button variant="ghost" size="sm" onClick={() => setBookmark(null)}>
+              지우기
+            </Button>
           </div>
-          <SelectionExplain lectureId={lectureId} containerRef={bodyRef} />
-          <SourcesList sources={sources} title="이 강의의 출처" />
-          <DeeperLecturesSection ref={deeperRef} kind="deeper" lectures={deeperLectures} />
-          <DeeperLecturesSection kind="regenerated" lectures={regenerated} />
-          <div className="mt-10">
-            <LectureWrapup ref={wrapupRef} lectureId={lectureId} actions={actions} getAnchor={getAnchor} />
-          </div>
-        </article>
-      </div>
+        )}
+        <LectureHeader lecture={lecture} content={content} concept={concept.data} />
+        <LectureActionStatus actions={actions} />
+        <div ref={bodyRef} className="mt-6">
+          <LectureBody content={content} onBeforeDeeper={onBeforeDeeper} />
+        </div>
+        <SelectionExplain lectureId={lectureId} containerRef={bodyRef} />
+        <SourcesList sources={sources} title="이 강의의 출처" />
+        <DeeperLecturesSection ref={deeperRef} kind="deeper" lectures={deeperLectures} />
+        <DeeperLecturesSection kind="regenerated" lectures={regenerated} />
+        <div className="mt-10">
+          <LectureWrapup ref={wrapupRef} lectureId={lectureId} actions={actions} getAnchor={getAnchor} />
+        </div>
+      </LectureLayout>
       <TocSheet open={tocOpen} onClose={() => setTocOpen(false)} sections={content.sections} totalMinutes={totalMinutes} />
       <RegenerateSheet lectureId={lectureId} open={regenOpen} onClose={() => setRegenOpen(false)} />
       <LectureAssistSheet

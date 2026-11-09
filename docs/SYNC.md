@@ -10,6 +10,7 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | --- | --- | --- |
 | v0.1.0 (`0c03f16`) | `1574a0a` | 최초 이식 (NOTICE) |
 | v0.2.0 | `98308e6` | 학습 요청 완료 판정·즉시 해석, '더 깊게' 연결, 강의 프롬프트 편집 |
+| v0.3.1 | `bea5102` | 여백 정리(c72203f·216d16b·2357f42·266de35·d784205), Field break-keep(fcab7af), 넓은 화면 6커밋(eeab342·4a76756·d59f75d·9e50424·27e2e10·717290a), ← 규칙(6242513), 굵게 렌더(43fbb32), MermaidOutsideBlock·prompts 2026-11-09.3(bea5102). 셸 폭을 witems 학습 레이아웃(최대 1600px, px-4→fold 6→lg 8)에 맞춤. 단독판 MapControls·LearningSettingsForm 수정은 witems 가 같은 문제를 고쳐 witems 판으로 되돌림 |
 | v0.3.0 (+3차) | `c37c9a6` | e9959f6: 시도 기록(마이그레이션 008, attempt_log JSON TEXT), 즉석 자동 재작성 1회(StageRewriting, 다시 시도 버튼), mermaid 본문 삼킴 검출. 단독판 전용 `TestUnknownDirectiveIsRejectedAndRegenerated`(ac4f369)는 witems 의 `TestReviewLoopAttemptLogKeepsFailedParse`·`TestInstantRewritesOnceAfterBadMarkup` 와 겹쳐 삭제 |
 | v0.3.0 | `b15c724` | 50f68f6 다음 챕터(마이그레이션 007, visibleTo 사용자 격리, 챕터 고르기·지도 챕터 보기·하루 학습량), 1bc2ab4 중 UI kit(HeightReserve·시트 하단 여백)만. 제외: 534141d(학습 요청 흔적 정리 — 단독판은 요청 UI 유지), 1bc2ab4 의 RSS·오늘 홈 부분, rss-server |
 | v0.2.1 | `dfb61eb` | 81399aa(프롬프트 2026-11-09.2·인라인 용어·펜스 검증·reader_gaps·마이그레이션 006), 7485785(하단 여백), e7b8111·5e5c77a(헤더 정리, 단독판 셸에 맞게 일부만). 제외: f192b0e(학습 요청 대기열 UI 제거), 7f4bc8a(글 해설, RSS 전용) |
@@ -24,6 +25,7 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
    ```
    범위 안에 단독판에 해당하지 않는 커밋(RSS 전용, 학습 요청 대기열 제거 등)이 섞여 있으면 범위 대신 커밋별로 뽑아 골라 적용합니다:
    `scripts/witems-sync.sh <witems> <커밋>^ <커밋> .sync/pick-<커밋>` (v0.2.1 에서 사용).
+   '갈라진 곳' 파일이 `.rej` 로 남으면 `git merge-file -L standalone -L base -L witems <단독판 파일> <witems 이전판> <witems 새판>` 로 3-way 병합한다(witems 판은 같은 변환 규칙을 거친 것, v0.3.1 에서 사용).
    `.sync/<범위>/` 에 `commits.txt` · `files.txt`(보고서용 목록) · `server.patch` · `web.patch` · `kit.patch` · `store.diff` · `web-other.txt` 가 생깁니다.
 2. **서버 적용**: `git apply --recount --reject .sync/<범위>/server.patch` → `*.rej` 를 손으로 반영하고 지웁니다(대개 아래 '갈라진 곳' 파일).
 3. **저장소 포팅(손으로)**: `store.diff` 를 보고
@@ -94,15 +96,14 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | `web/src/shared/api/punisher/client.ts` | 로그인 리다이렉트·API 키 안내 제거, 503(Claude 미설치/미로그인) 안내 | 인증 없음 |
 | `web/src/shared/lib/{router.tsx,ThemeSync.tsx,theme.ts}`, `web/src/app`, `web/src/pages` | 단독판 셸 | Next.js 대신 Vite + React Router |
 | `web/src/widgets/punisher/lecture-viewer/lib/highlight.ts` | shiki 언어 29개만 | 바이너리 크기 |
-| `web/src/widgets/punisher/lecture-viewer/ui/LectureTopBar.tsx` | 뒤로(←) 버튼을 모든 폭에서 보임(witems 는 lg 이상만) | 단독판 셸 상단 바에는 [←]가 없음 |
+| `web/src/widgets/punisher/lecture-viewer/ui/LectureTopBar.tsx` | 뒤로(←) 버튼을 모든 폭에서 보임(witems 는 lg 이상만). 들어온 곳으로 가는 규칙(`canGoBack`)은 witems 와 같음 | 단독판 셸 상단 바에는 [←]가 없음 |
 | `web/src/widgets/punisher/nav/LearnNav.tsx` | '학습' 제목을 md 이상에서 보임(witems 는 lg) | 단독판 셸 상단 바는 화면 제목을 보이지 않음 |
 | `web/src/widgets/punisher/today/ui/StudyRequestList.tsx` 외 학습 요청 UI | witems f192b0e(대기열 UI 제거)·534141d(지도·추천의 학습 요청 흔적 정리)를 **가져오지 않음** — 지도의 '요청됨' 표시·`?request=`·대기 목록 유지 | 단독판은 직접 입력 학습 요청을 유지 |
-| `web/src/widgets/punisher/today/TodayWidget.tsx`, `knowledge-map/KnowledgeMapWidget.tsx` | 위 이유로 witems 와 import·요청 관련 줄이 다름(챕터 기능은 동일) | 이식 때 `.rej` 가 나면 요청 UI 를 남기고 챕터 쪽만 합친다 |
+| `web/src/widgets/punisher/today/TodayWidget.tsx` | witems 판에서 '글 해설' 자리(3단의 셋째 열)를 '학습 요청'(AddStudyRequestForm + StudyRequestList)으로 바꾼 것만 다름 | 이식 때는 witems 판을 가져와 그 한 곳만 바꾸는 편이 3-way 병합보다 쉽다 |
+| `web/src/widgets/punisher/knowledge-map/KnowledgeMapWidget.tsx`, `ui/ConceptDetailSheet.tsx` | 요청 관련(`PendingRequestList`, `requests` prop) 줄만 다름 | 이식 때 `git merge-file`(단독판 HEAD / witems 이전 / witems 새판)로 3-way 병합 |
 | `cmd/punisher/main.go`, `internal/config` | RSS 신호(`Signals`, `RSSServerURL`) 연결 없음 → `Service.Signals == nil` 이라 다음 챕터 제안의 RSS 관심사·트렌드(c)는 꺼짐 | 단독판에는 RSS 서버가 없음 |
-| `web/src/widgets/punisher/knowledge-map/ui/MapControls.tsx` | 412px 등 좁은 폭에서 영역·목표 선택을 세로로 쌓음(`flex-col sm:flex-row`) | '목표 경로 없음'이 잘림 — witems 에도 적용 권장 |
-| `web/src/features/punisher/learning-settings/LearningSettingsForm.tsx` | 필드 사이 `gap-5`(저장 상태 줄 `-mt-3`) | 필드 두 개가 붙어 보임 — witems 에도 적용 권장 |
 | `web/src/widgets/punisher/lecture-viewer/LectureViewer.tsx` | 강의를 못 불러올 때 '강의 화면으로 돌아가기' 링크 | 단독판 셸에 뒤로 버튼이 없음 |
-| `web/src/app/AppShell.tsx`, `web/src/shared/ui/BackLink.tsx`, `web/src/pages/*` | 본문 아래 여백은 셸 한 곳(`pb-[calc(3rem+var(--safe-bottom))]`), 하위 화면 맨 위 '← 상위' 링크 공통 | 여백·패딩 점검(2026-11-09) |
+| `web/src/app/AppShell.tsx`, `web/src/shared/ui/BackLink.tsx`, `web/src/pages/*` | 셸 폭·좌우 여백은 witems 학습 레이아웃과 같음(1600px, px-4/fold 6/lg 8). 아래 여백은 셸 한 곳. 하위 화면 맨 위 '← 상위'(witems DesktopBackLink 와 같은 들어온 곳 규칙, 단 모든 폭에서 보임) | 단독판 셸에 상단 바 ← 가 없음 |
 | `web/src/styles/brand.css`, `web/src/shared/ui/brand/*`, `assets/*`, `web/public/*` | forgen 패밀리 브랜딩(오렌지 액센트·로고) | 단독판 정체성. `design-tokens.css` 는 witems 원본 그대로 두고 `brand.css` 에서 액센트만 덮어쓴다 |
 
 ## 앞으로 들어올 것

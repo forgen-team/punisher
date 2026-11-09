@@ -8,7 +8,7 @@ import (
 )
 
 // Version is recorded in lectures.prompt_version.
-const Version = "punisher-prompts-2026-11-09.2"
+const Version = "punisher-prompts-2026-11-09.3"
 
 // ConceptRef is a concept the prompt may link to.
 type ConceptRef struct {
@@ -172,6 +172,7 @@ flowchart LR
 - 섹션은 정확히 4개, 위 순서. minutes 합계 25~35.
 - principles 와 walkthrough 에는 각각 @@sources 블록이 최소 1개 있어야 하며 https 공식 문서만 씁니다.
 - @@code / @@log 는 lang 을 반드시 지정합니다(bash, go, sql, yaml, text 등).
+- 도식(sequenceDiagram, flowchart, graph TD 등)은 반드시 따로 @@mermaid 블록에 씁니다. @@markdown 안에 mermaid 코드펜스나 도식 문법 줄을 넣으면 화면에 그림이 아니라 코드로 보입니다. @@mermaid 블록 안에는 코드펜스 없이 도식 문법만 씁니다.
 - 개념 링크는 마크다운 문장 안의 [표시할 용어](term:개념id) 하나뿐입니다. 개념id 는 "연결 가능한 기존 개념"·"아직 배우지 않은 선행 개념"·"지식 지도의 다른 개념" 목록의 id만 쓰고, 용어가 처음 나오는 곳에 한 번만 겁니다. 문장 중간에 "@@term"을 쓰지 않습니다(@@ 는 줄 맨 앞 지시어 전용).
 - @@term 블록은 목록에 없는 새 개념을 제안할 때만 씁니다(proposed 와 새 slug, 영역.이름 형식, 소문자-하이픈). 섹션 끝에 몰지 말고 그 용어가 처음 나온 문단 바로 다음에 둡니다.
 - 명령어 예시에서 처음 쓰는 도구와 옵션은 주석이나 바로 다음 문장에서 무엇을 하는지 한 줄로 밝힙니다.

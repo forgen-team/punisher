@@ -35,7 +35,7 @@ export function HistorySheet({ blockId, open, restoring, onClose, onRestore, onL
                 {dateFormat.format(new Date(entry.createdAt))} · {HISTORY_ACTION_LABELS[entry.action]}
               </p>
               <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-xs text-fg">{entry.body}</p>
-              <div className="mt-2 flex gap-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 <Button size="sm" variant="ghost" onClick={() => onLoad(entry)}>
                   편집기로 불러오기
                 </Button>

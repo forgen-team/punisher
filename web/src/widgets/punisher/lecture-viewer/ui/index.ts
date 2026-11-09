@@ -1,6 +1,7 @@
 export { LectureBody } from "./LectureBody";
 export { LectureHeader } from "./LectureHeader";
-export { LectureAssistSheet } from "./LectureSidePanel";
+export { LectureAssistPlaceholder, LectureAssistSheet } from "./LectureSidePanel";
+export { LectureLayout } from "./LectureLayout";
 export { LectureTopBar } from "./LectureTopBar";
 export { NotesPanel } from "./NotesPanel";
 export { QuestionsPanel } from "./QuestionsPanel";

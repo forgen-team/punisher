@@ -1,6 +1,8 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { Link } from "@/src/shared/lib/router";
+import { useRouter } from "@/src/shared/lib/router";
+import { canGoBack } from "@/src/shared/lib/in-app-history";
 import { ArrowLeft, ListOrdered, MessagesSquare } from "lucide-react";
 import { IconButton, Menu, cn, iconButtonVariants, type MenuItem } from "@/src/shared/ui/kit";
 
@@ -49,11 +51,22 @@ interface LectureTopBarProps {
  * 질문·메모를 하단 FAB이 아니라 여기 두어 하단 탭 바와 겹치지 않게 한다.
  */
 export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, menuItems }: LectureTopBarProps) {
+  const router = useRouter();
   const barRef = useRef<HTMLDivElement>(null);
   const titleAway = useTitleScrolledAway(barRef, title);
   return (
-    <div ref={barRef} className="sticky top-[var(--app-header-offset)] z-nav -mx-4 flex h-12 items-center gap-1 border-b border-line bg-canvas px-2 md:-mx-6 md:px-4">
-      <Link href={backHref} aria-label="강의 목록으로" className={iconButtonVariants({ variant: "ghost" })}>
+    <div ref={barRef} className="sticky top-[var(--app-header-offset)] z-nav -mx-4 flex h-12 items-center gap-1 border-b border-line bg-canvas px-2 fold:-mx-6 fold:px-4 lg:-mx-8 lg:px-6">
+      <Link
+        href={backHref}
+        onClick={(event) => {
+          // 앱 안에서 들어왔으면 들어온 곳(지도·기록 등)으로, 직접 들어왔으면 강의 화면으로.
+          if (canGoBack()) {
+            event.preventDefault();
+            router.back();
+          }
+        }}
+        // 단독판: 셸 상단 바에 ← 가 없어 모든 폭에서 보인다(witems 는 lg 이상만 — docs/SYNC.md).
+        aria-label="뒤로" className={iconButtonVariants({ variant: "ghost" })}>
         <ArrowLeft aria-hidden="true" />
       </Link>
       <p
@@ -68,7 +81,7 @@ export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, 
         </IconButton>
       )}
       {onOpenAssist && (
-        <IconButton aria-label="질문과 메모" onClick={onOpenAssist}>
+        <IconButton aria-label="질문과 메모" onClick={onOpenAssist} className="xl:hidden">
           <MessagesSquare aria-hidden="true" />
         </IconButton>
       )}

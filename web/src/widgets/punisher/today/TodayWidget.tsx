@@ -2,20 +2,20 @@
 import { Link } from "@/src/shared/lib/router";
 import { useState } from "react";
 import { Target } from "lucide-react";
-import { EmptyState, ErrorState, List, ListSkeleton, Section, buttonVariants } from "@/src/shared/ui/kit";
+import { EmptyState, ErrorState, List, ListSkeleton, Section, buttonVariants, cn } from "@/src/shared/ui/kit";
 import { groupByParent, useToday } from "@/src/entities/punisher";
 import { InstantQueryBox, ResolutionChoices, useLaunchInstant } from "@/src/features/punisher/instant-start";
 import { DismissedNotice, useResumeDismiss } from "@/src/features/punisher/resume-dismiss";
-import { AddStudyRequestForm } from "@/src/features/punisher/study-request-add";
 import { describePunisherError, type InstantResponse, type Recommendation } from "@/src/shared/api/punisher";
 import { DeeperGroup, InlineError } from "@/src/shared/ui/punisher";
+import { AddStudyRequestForm } from "@/src/features/punisher/study-request-add";
 import { NEW_CHAPTER_PATH, NextChapterCard, RecommendationRow, RecommendationSheet, ResumeRow, StudyRequestList } from "./ui";
 
 function resumeKey(item: Recommendation): string {
   return item.lectureId ?? item.conceptId;
 }
 
-/** 강의(오늘): 궁금한 것 입력 한 줄 → 이어보기 → 추천 목록 → 학습 요청 (design §3.5). */
+/** 강의(오늘): 궁금한 것 입력 한 줄 → 이어보기 → 추천 목록 → 학습 요청(단독판: 직접 입력. witems 는 이 자리가 RSS '학습 요청' — docs/SYNC.md). */
 export function TodayWidget() {
   const today = useToday();
   const { launch, isPending, error } = useLaunchInstant();
@@ -106,32 +106,48 @@ export function TodayWidget() {
     </Section>
   );
 
-  // 한 단: 입력 → 이어보기 → 오늘의 추천 → 학습 요청. 2단(≥600px, 폴드 펼침): 왼쪽 입력·오늘의 추천 / 오른쪽 이어보기·학습 요청.
-  // 열 묶음은 한 단에서 display:contents 라 order 로 위 순서를 지킨다(접기/펴기 때 같은 DOM 을 재배치만 → 상태 유지).
+  // 입력·선택 결과는 열들 위에 한 줄(전체 폭)로 둔다 — 2단에서 왼쪽 열만 입력 상자만큼 내려가
+  // '오늘의 추천'과 오른쪽 '이어보기/학습 요청' 제목 높이가 어긋나던 문제(2026-11-09).
+  // 한 단: 입력 → 이어보기 → (다음 챕터) → 오늘의 추천 → 학습 요청.
+  // 2단(fold): 왼쪽 (다음 챕터)·오늘의 추천 / 오른쪽 이어보기·학습 요청.
+  // 3단(xl): 오늘의 추천 | 이어보기·다음 챕터 | 학습 요청 — 세로로만 길어지지 않게 남는 폭을 열로 쓴다.
+  // 열 묶음은 좁은 폭에서 display:contents 라 order 로 위 순서를 지킨다(폭이 바뀌어도 같은 DOM 을 재배치만 → 상태 유지).
+  // 다음 챕터 카드는 2단·3단에서 놓이는 열이 달라 두 자리에 두고 폭에 따라 하나만 보인다(상태 없는 카드).
+  const nextChapter = today.data?.nextChapter;
+  const middle = Boolean(resumeSection || nextChapter);
   return (
-    <div className="flex w-full flex-col gap-6 fold:grid fold:grid-cols-2 fold:items-start fold:gap-4 md:gap-6">
-      <div className="contents fold:flex fold:min-w-0 fold:flex-col fold:gap-4 md:gap-6">
-        <div className="order-1 fold:order-none">
-          <InstantQueryBox />
-        </div>
-        <div aria-live="polite" className="order-2 empty:hidden fold:order-none">
-          <InlineError error={error} />
-          {pickResult && <ResolutionChoices response={pickResult} disabled={isPending} onPick={(id) => start(id)} />}
-        </div>
-        {today.data?.nextChapter && (
-          <div className="order-4 fold:order-none">
-            <NextChapterCard prompt={today.data.nextChapter} />
-          </div>
-        )}
-        <div className="order-4 fold:order-none">{recommendSection}</div>
+    <div className="flex w-full flex-col gap-6">
+      <InstantQueryBox />
+      <div aria-live="polite" className="empty:hidden">
+        <InlineError error={error} />
+        {pickResult && <ResolutionChoices response={pickResult} disabled={isPending} onPick={(id) => start(id)} />}
       </div>
-      <div className="contents fold:flex fold:min-w-0 fold:flex-col fold:gap-4 md:gap-6">
-        {resumeSection && <div className="order-3 fold:order-none">{resumeSection}</div>}
-        <div className="order-5 fold:order-none">
-          <Section variant="card" title="학습 요청">
-            <AddStudyRequestForm />
-            <StudyRequestList starting={isPending} onStart={(id, query) => start(id, query)} />
-          </Section>
+      <div className={cn("flex flex-col gap-6 fold:grid fold:grid-cols-2 fold:items-start fold:gap-4 md:gap-6", middle && "xl:grid-cols-3")}>
+        <div className="contents fold:flex fold:min-w-0 fold:flex-col fold:gap-4 md:gap-6">
+          {nextChapter && (
+            <div className="order-2 fold:order-none xl:hidden">
+              <NextChapterCard prompt={nextChapter} />
+            </div>
+          )}
+          <div className="order-3 fold:order-none">{recommendSection}</div>
+        </div>
+        <div className="contents fold:flex fold:min-w-0 fold:flex-col fold:gap-4 md:gap-6 xl:contents">
+          {middle && (
+            <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-6">
+              {resumeSection && <div className="order-1 fold:order-none">{resumeSection}</div>}
+              {nextChapter && (
+                <div className="hidden xl:block">
+                  <NextChapterCard prompt={nextChapter} />
+                </div>
+              )}
+            </div>
+          )}
+          <div className="order-4 min-w-0 fold:order-none">
+            <Section variant="card" title="학습 요청">
+              <AddStudyRequestForm />
+              <StudyRequestList starting={isPending} onStart={(id, query) => start(id, query)} />
+            </Section>
+          </div>
         </div>
       </div>
 

@@ -22,8 +22,9 @@ export function LearnedConceptList() {
   if (learned.length === 0) {
     return <EmptyState title="아직 완료하거나 알고 있다고 표시한 개념이 없습니다" description="지도에서 이미 아는 개념을 표시할 수 있습니다." />;
   }
+  // 넓은 화면(xl)은 두 열 — 짧은 행이 화면 끝까지 늘어나지 않게.
   return (
-    <List>
+    <List className="xl:grid xl:grid-cols-2 xl:gap-x-8 xl:[&>li:nth-last-child(2):nth-child(odd)]:border-b-0">
       {learned.map((c) => (
         <ListRow
           key={c.id}

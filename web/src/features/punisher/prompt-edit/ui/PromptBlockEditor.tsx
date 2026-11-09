@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowLeft, History } from "lucide-react";
 import { Badge, Button, SegmentedTabs, Textarea, iconButtonVariants } from "@/src/shared/ui/kit";
 import { useChangePrompt } from "@/src/entities/punisher";
 import { describePunisherError, type PromptBlock, type PromptHistoryEntry } from "@/src/shared/api/punisher";
+import { useWideLayout } from "@/src/shared/lib/useWideLayout";
 import { findUnknownVariables, withSuggestion } from "../lib/lineDiff";
 import { EDITOR_TABS, type EditorTab } from "./constants";
 import { DiffView } from "./DiffView";
@@ -22,7 +23,11 @@ interface PromptBlockEditorProps {
 export function PromptBlockEditor({ block, suggestion, onBack }: PromptBlockEditorProps) {
   const change = useChangePrompt();
   const [draft, setDraft] = useState(() => (suggestion ? withSuggestion(block.body, suggestion) : block.body));
-  const [tab, setTab] = useState<EditorTab>("edit");
+  const [tabChoice, setTab] = useState<EditorTab>("edit");
+  // 넓은 화면(xl)은 편집 옆에 '기본값과 비교'를 늘 펼쳐 두므로 비교 탭을 따로 두지 않는다.
+  const wide = useWideLayout() === true;
+  const tab: EditorTab = wide && tabChoice === "diff" ? "edit" : tabChoice;
+  const tabs = wide ? EDITOR_TABS.filter((t) => t.value !== "diff") : EDITOR_TABS;
   const [historyOpen, setHistoryOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [notice, setNotice] = useState("");
@@ -58,55 +63,62 @@ export function PromptBlockEditor({ block, suggestion, onBack }: PromptBlockEdit
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <header className="flex flex-col gap-1">
-        {onBack && (
-          <button type="button" onClick={onBack} className={iconButtonVariants({ variant: "ghost" })} aria-label="블록 목록으로">
-            <ArrowLeft aria-hidden="true" />
-          </button>
-        )}
-        <p className="text-xs font-semibold text-accent-text">{block.stageTitle}</p>
+        <div className="flex items-center gap-1">
+          {onBack && (
+            <button type="button" onClick={onBack} className={`${iconButtonVariants({ variant: "ghost", size: "sm" })} -ml-1.5`} aria-label="블록 목록으로">
+              <ArrowLeft aria-hidden="true" />
+            </button>
+          )}
+          <p className="text-xs font-semibold text-accent-text">{block.stageTitle}</p>
+        </div>
         <h2 className="flex items-center gap-2 text-lg font-semibold text-fg">
           {block.title}
           {block.overridden && <Badge tone="accent">수정됨</Badge>}
         </h2>
-        <p className="text-sm text-fg-secondary">{block.purpose}</p>
-        <p className="text-xs text-fg-muted">적용: {block.appliesTo}</p>
+        <p className="break-keep text-sm text-fg-secondary">{block.purpose}</p>
+        <p className="break-keep text-xs text-fg-muted">적용: {block.appliesTo}</p>
       </header>
 
       {block.warning && (
-        <p role="note" className="flex gap-2 rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">
+        <p role="note" className="flex gap-2 break-keep rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           {block.warning}
         </p>
       )}
 
-      <SegmentedTabs aria-label="보기" items={EDITOR_TABS} value={tab} onChange={setTab} fill />
+      <SegmentedTabs aria-label="보기" items={tabs} value={tab} onChange={setTab} fill />
 
       {tab === "edit" && (
-        <div className="flex flex-col gap-2">
-          <Textarea
-            aria-label={`${block.title} 본문`}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            rows={18}
-            spellCheck={false}
-            className="font-mono text-xs leading-5"
-          />
-          {block.vars.length > 0 && (
-            <p className="text-xs text-fg-muted">
-              쓸 수 있는 변수:{" "}
-              {block.vars.map((v, index) => (
-                <span key={v.name}>
-                  {index > 0 && " · "}
-                  <code className="text-fg-secondary">{`{{${v.name}}}`}</code> {v.description}
-                </span>
-              ))}
-            </p>
-          )}
-          {unknownNames.length > 0 && (
-            <p role="alert" className="text-xs text-warning">
-              이 블록이 모르는 변수는 바뀌지 않고 그대로 들어가요: {unknownNames.map((v) => `{{${v}}}`).join(", ")}
-            </p>
-          )}
+        <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
+          <div className="flex min-w-0 flex-col gap-2">
+            {/* 옆 '기본값과 비교'의 안내 줄과 높이를 맞춘다 */}
+            {wide && <p className="text-xs text-fg-muted">내 본문 · 고치면 오른쪽 비교가 바로 바뀌어요</p>}
+            <Textarea
+              aria-label={`${block.title} 본문`}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              rows={18}
+              spellCheck={false}
+              className="font-mono text-xs leading-5 xl:h-[60vh]"
+            />
+            {block.vars.length > 0 && (
+              <p className="text-xs text-fg-muted">
+                쓸 수 있는 변수:{" "}
+                {block.vars.map((v, index) => (
+                  <span key={v.name}>
+                    {index > 0 && " · "}
+                    <code className="text-fg-secondary">{`{{${v.name}}}`}</code> {v.description}
+                  </span>
+                ))}
+              </p>
+            )}
+            {unknownNames.length > 0 && (
+              <p role="alert" className="text-xs text-warning">
+                이 블록이 모르는 변수는 바뀌지 않고 그대로 들어가요: {unknownNames.map((v) => `{{${v}}}`).join(", ")}
+              </p>
+            )}
+          </div>
+          {wide && <DiffView before={block.default} after={draft} />}
         </div>
       )}
       {tab === "diff" && <DiffView before={block.default} after={draft} />}

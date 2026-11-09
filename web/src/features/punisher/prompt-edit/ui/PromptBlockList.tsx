@@ -16,7 +16,7 @@ function BlockRow({ block, selected, onSelect }: { block: PromptBlock; selected:
       onClick={() => onSelect(block.id)}
       selected={selected}
       title={block.title}
-      meta={block.purpose}
+      meta={<span className="line-clamp-2 whitespace-normal break-keep">{block.purpose}</span>}
       trailing={
         <>
           {block.overridden && <Badge tone="accent">수정됨</Badge>}

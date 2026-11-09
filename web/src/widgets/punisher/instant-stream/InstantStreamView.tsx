@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button, EmptyState, Spinner, buttonVariants } from "@/src/shared/ui/kit";
 import { invalidateLearningState, parsePartialMarkup } from "@/src/entities/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
-import { LectureBody, LectureHeader, LectureTopBar, SectionToc, TocSheet } from "../lecture-viewer";
+import { LectureAssistPlaceholder, LectureBody, LectureHeader, LectureLayout, LectureTopBar, TocSheet, useActiveSection } from "../lecture-viewer";
 import { useInstantStream, type StreamPhase } from "./useInstantStream";
 import { useRetryInstant } from "./useRetryInstant";
 
@@ -36,23 +36,27 @@ export function InstantStreamView({ jobId }: { jobId: string }) {
 
   const busy = phase === "connecting" || phase === "generating" || phase === "rewriting" || phase === "validating";
   const hasToc = content.sections.length > 0;
+  const anchorKey = useMemo(() => content.sections.map((s) => s.anchor).filter(Boolean).join("|"), [content]);
+  const activeAnchor = useActiveSection(anchorKey);
 
   return (
     <div className="flex w-full flex-col">
       <LectureTopBar title={content.title || "즉석 강의"} onOpenToc={hasToc ? () => setTocOpen(true) : undefined} />
-      <div className="flex gap-8">
-        <aside className="sticky top-[calc(var(--app-header-offset)+4rem)] hidden max-h-[calc(100dvh-6rem)] w-56 shrink-0 self-start overflow-y-auto pb-10 pt-4 lg:block">
-          {hasToc && <SectionToc sections={content.sections} totalMinutes={content.estimatedMinutes} />}
-        </aside>
-        <article className="mx-auto w-full min-w-0 max-w-2xl pb-16" aria-busy={busy}>
+      <LectureLayout
+        sections={content.sections}
+        totalMinutes={content.estimatedMinutes}
+        activeAnchor={activeAnchor}
+        assist={<LectureAssistPlaceholder />}
+      >
+        <div aria-busy={busy}>
           <p role="status" aria-live="polite" className="flex min-h-touch items-center gap-2 border-b border-line text-sm text-fg-secondary">
             {busy && <Spinner size="sm" label={null} />}
             즉석 강의 · {PHASE_LABELS[phase]}
           </p>
           {phase === "rewriting" && (
-            <p className="mt-2 rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">
+            <p className="mt-3 break-keep rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">
               처음 쓴 강의가 화면 형식 규칙을 지키지 않아 한 번 더 써요. 잠시만 기다려 주세요.
-              {rewriteReason && <span className="mt-1 block truncate text-xs text-fg-muted">사유: {rewriteReason}</span>}
+              {rewriteReason && <span className="mt-1 line-clamp-2 break-all text-xs text-fg-muted">사유: {rewriteReason}</span>}
             </p>
           )}
           {phase === "error" ? (
@@ -80,8 +84,8 @@ export function InstantStreamView({ jobId }: { jobId: string }) {
               </div>
             </>
           )}
-        </article>
-      </div>
+        </div>
+      </LectureLayout>
       {hasToc && (
         <TocSheet open={tocOpen} onClose={() => setTocOpen(false)} sections={content.sections} totalMinutes={content.estimatedMinutes} />
       )}

@@ -136,6 +136,11 @@ func validateBlock(path string, b Block, vc ValidationContext, add func(string, 
 		if b.Type != BlockMermaid && UnclosedFence(b.Text) {
 			add(path, "%s block has an unclosed ``` code fence (the rest of the text would render as code)", b.Type)
 		}
+		if b.Type != BlockMermaid {
+			if why := MermaidOutsideBlock(b.Text); why != "" {
+				add(path, "mermaid diagram inside a %s block (%s) — put the diagram in its own @@mermaid block, without ``` fences", b.Type, why)
+			}
+		}
 		if b.Type == BlockMermaid {
 			if why := MermaidSwallowedProse(b.Text); why != "" {
 				add(path, "mermaid block swallowed lecture prose (%s) — end the diagram and start a new @@markdown block", why)
@@ -203,6 +208,50 @@ func MermaidSwallowedProse(src string) string {
 			continue
 		}
 		afterBlank, run = false, 0
+	}
+	return ""
+}
+
+// mermaidHeaderRe matches a line that is only a mermaid diagram header
+// ("sequenceDiagram", "flowchart LR", "graph TD", ...). Prose that merely
+// mentions the word does not match because the whole line must be the header.
+var mermaidHeaderRe = regexp.MustCompile(`^\s*(sequenceDiagram|classDiagram|erDiagram|gantt|journey|mindmap|timeline|stateDiagram(-v2)?|pie(\s+(showData|title\b.*))?|(flowchart|graph)\s+(TD|TB|BT|RL|LR))\s*$`)
+
+// MermaidOutsideBlock returns why markdown text carries a mermaid diagram
+// that the renderer would show as plain code ("" when it does not): a
+// ```mermaid fence, a plain fence whose first line is a diagram header, or a
+// bare header line outside any fence (2026-11-09: a sequenceDiagram appeared
+// as raw code in an instant lecture).
+func MermaidOutsideBlock(text string) string {
+	open, lang, first := "", "", true
+	for _, line := range strings.Split(text, "\n") {
+		t := strings.TrimLeft(line, " ")
+		indented := len(line)-len(t) > 3
+		if marker := fenceMarker(t); marker != "" && !indented {
+			if open == "" {
+				open, lang, first = marker, strings.ToLower(strings.TrimSpace(t[len(marker):])), true
+				if lang == "mermaid" {
+					return "```mermaid code fence"
+				}
+				continue
+			}
+			if marker[0] == open[0] && len(marker) >= len(open) && strings.TrimSpace(t[len(marker):]) == "" {
+				open = ""
+				continue
+			}
+		}
+		if open != "" {
+			if first && strings.TrimSpace(line) != "" {
+				first = false
+				if (lang == "" || lang == "text") && mermaidHeaderRe.MatchString(line) {
+					return "code fence starting with " + clipLine(strings.TrimSpace(line))
+				}
+			}
+			continue
+		}
+		if mermaidHeaderRe.MatchString(line) {
+			return "bare diagram header " + clipLine(strings.TrimSpace(line))
+		}
 	}
 	return ""
 }

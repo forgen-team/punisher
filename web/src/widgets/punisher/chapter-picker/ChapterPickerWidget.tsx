@@ -2,11 +2,11 @@
 import { useRouter } from "@/src/shared/lib/router";
 import { useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
-import { Button, ErrorState, Field, ListSkeleton, Section, Textarea } from "@/src/shared/ui/kit";
+import { Button, ErrorState, Section, Textarea } from "@/src/shared/ui/kit";
 import { useApplyChapterDraft, useChapterSuggestions, useCreateChapterDraft, useGraph } from "@/src/entities/punisher";
 import { PunisherApiError, describePunisherError } from "@/src/shared/api/punisher";
 import { DraftPreview } from "./ui/DraftPreview";
-import { SuggestionCards } from "./ui/SuggestionCards";
+import { SuggestionCards, SuggestionCardsSkeleton } from "./ui/SuggestionCards";
 import { FREE_TEXT_MAX, MAX_PICKS } from "./ui/constants";
 
 /** 422 CHAPTER_INVALID 이면 서버가 준 문제 목록을 함께 보여 준다. */
@@ -75,53 +75,63 @@ export function ChapterPickerWidget() {
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-col gap-1 pt-2">
-        <h1 className="text-xl font-semibold text-fg">{suggestions.data?.question ?? "다음엔 어떤 걸 공부해 보고 싶어요?"}</h1>
-        <p className="text-sm text-fg-secondary">
+      <header className="flex flex-col gap-1 pt-4 lg:pt-6">
+        <h1 className="break-keep text-xl font-semibold text-fg">{suggestions.data?.question ?? "다음엔 어떤 걸 공부해 보고 싶어요?"}</h1>
+        <p className="break-keep text-sm text-fg-secondary">
           제안 중에서 여러 개를 골라도 되고, 직접 적어도 돼요. 고른 것으로 개념 5~12개짜리 챕터를 설계해 미리 보여 드려요.
         </p>
       </header>
 
-      <Section title="추천" description={`최대 ${MAX_PICKS}개까지 고를 수 있어요`}>
-        {suggestions.isLoading ? (
-          <ListSkeleton rows={4} />
-        ) : suggestions.error ? (
-          <ErrorState compact message={describePunisherError(suggestions.error)} onRetry={() => suggestions.refetch()} />
-        ) : (
-          <SuggestionCards suggestions={suggestions.data?.suggestions ?? []} selected={selected} onToggle={toggle} />
-        )}
-      </Section>
+      {/* xl: 추천 카드 | 직접 입력·설계(오른쪽 열 sticky) — 카드를 고르며 내려가도 설계 버튼이 늘 보인다. */}
+      <div className="flex flex-col gap-5 xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start xl:gap-6">
+        <Section title="추천" description={`최대 ${MAX_PICKS}개까지 고를 수 있어요`}>
+          {suggestions.isLoading ? (
+            <SuggestionCardsSkeleton />
+          ) : suggestions.error ? (
+            <ErrorState compact message={describePunisherError(suggestions.error)} onRetry={() => suggestions.refetch()} />
+          ) : (
+            <SuggestionCards suggestions={suggestions.data?.suggestions ?? []} selected={selected} onToggle={toggle} />
+          )}
+        </Section>
 
-      <Field label="직접 입력" hint={`${freeText.length}/${FREE_TEXT_MAX}자`}>
-        <Textarea
-          value={freeText}
-          maxLength={FREE_TEXT_MAX}
-          rows={3}
-          placeholder="예) Kubernetes 네트워킹을 실무 수준으로"
-          onChange={(event) => setFreeText(event.target.value)}
-        />
-      </Field>
+        <Section
+          title="직접 입력"
+          description={`${freeText.length}/${FREE_TEXT_MAX}자`}
+          className="xl:sticky xl:top-[calc(var(--app-header-offset)+1.5rem)]"
+        >
+          <div className="flex flex-col gap-5 xl:rounded-xl xl:border xl:border-line xl:bg-canvas-elevated xl:p-4 xl:shadow-xs">
+            <Textarea
+              aria-label="직접 입력"
+              value={freeText}
+              maxLength={FREE_TEXT_MAX}
+              rows={3}
+              placeholder="예) Kubernetes 네트워킹을 실무 수준으로"
+              onChange={(event) => setFreeText(event.target.value)}
+            />
 
-      <div aria-live="polite" className="empty:hidden">
-        {create.error && (
-          <div role="alert" className="rounded-md bg-danger-subtle px-3 py-2 text-sm text-danger">
-            <p>{describePunisherError(create.error)}</p>
-            {problems.length > 0 && (
-              <ul className="mt-1 list-disc pl-5 text-xs">
-                {problems.slice(0, 5).map((p) => (
-                  <li key={p}>{p}</li>
-                ))}
-              </ul>
-            )}
+            <div aria-live="polite" className="empty:hidden">
+              {create.error && (
+                <div role="alert" className="break-keep rounded-md bg-danger-subtle px-3 py-2 text-sm text-danger">
+                  <p>{describePunisherError(create.error)}</p>
+                  {problems.length > 0 && (
+                    <ul className="mt-1 list-disc pl-5 text-xs">
+                      {problems.slice(0, 5).map((p) => (
+                        <li key={p}>{p}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={design} disabled={!canDesign} loading={create.isPending}>
+                <Sparkles className="size-4" aria-hidden="true" />
+                {create.isPending ? "챕터를 설계하는 중… (1~3분)" : "챕터 설계해 보기"}
+              </Button>
+            </div>
           </div>
-        )}
-      </div>
-
-      <div className="flex justify-end">
-        <Button onClick={design} disabled={!canDesign} loading={create.isPending}>
-          <Sparkles className="size-4" aria-hidden="true" />
-          {create.isPending ? "챕터를 설계하는 중… (1~3분)" : "챕터 설계해 보기"}
-        </Button>
+        </Section>
       </div>
     </div>
   );

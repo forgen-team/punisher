@@ -1,5 +1,6 @@
 import { Suspense, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { useTrackInAppNavigation } from "@/src/shared/lib/in-app-history";
 import { Settings } from "lucide-react";
 import { Link } from "@/src/shared/lib/router";
 import { ListSkeleton, cn, focusRing } from "@/src/shared/ui/kit";
@@ -26,17 +27,19 @@ function useDocumentTitle(pathname: string) {
 
 /**
  * 앱 셸: 고정 상단 바(로고 · 설정) + Claude 상태 배너 + 학습 탭(강의·지도·기록) + 본문.
+ * 폭·좌우 여백은 witems 학습 레이아웃과 같다(최대 1600px, px-4 → fold 6 → lg 8). 본문은 화면별로 가독 폭을 둔다.
  * 강의 뷰어·즉석 강의·설정 화면은 LearnNav 가 스스로 숨는다.
  */
 export function AppShell() {
   const { pathname } = useLocation();
   useDocumentTitle(pathname);
+  useTrackInAppNavigation(pathname);
   const onSettings = pathname.startsWith("/settings");
 
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-nav border-b border-line bg-canvas-translucent pt-safe-top backdrop-blur">
-        <div className="mx-auto flex h-12 w-full max-w-6xl items-center justify-between px-4 md:px-6">
+        <div className="mx-auto flex h-12 w-full max-w-[1600px] items-center justify-between px-4 fold:px-6 lg:px-8">
           <Link href="/" aria-label="Punisher 홈" className={cn("flex items-center rounded-md", focusRing)}>
             <BrandMark />
           </Link>
@@ -55,7 +58,7 @@ export function AppShell() {
           </Link>
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 pb-[calc(3rem+var(--safe-bottom))] pt-3 md:px-6">
+      <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 px-4 pb-[calc(3rem+var(--safe-bottom))] pt-3 fold:px-6 lg:px-8">
         <ClaudeStatusBanner />
         <LearnNav />
         <div className="flex min-w-0 flex-1 flex-col">

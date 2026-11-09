@@ -11,9 +11,11 @@ interface SectionTocProps {
   onNavigate?: () => void;
   /** 시트 안에서는 제목 줄을 생략 */
   hideHeading?: boolean;
+  /** 지금 읽는 섹션(강조) */
+  activeAnchor?: string;
 }
 
-export function SectionToc({ sections, totalMinutes, onNavigate, hideHeading = false }: SectionTocProps) {
+export function SectionToc({ sections, totalMinutes, onNavigate, hideHeading = false, activeAnchor }: SectionTocProps) {
   return (
     <nav aria-label="강의 목차" className="flex flex-col gap-1 text-sm">
       {!hideHeading && (
@@ -26,6 +28,7 @@ export function SectionToc({ sections, totalMinutes, onNavigate, hideHeading = f
           <li key={s.anchor || index}>
             <a
               href={`#pa-${s.anchor}`}
+              aria-current={activeAnchor && s.anchor === activeAnchor ? "location" : undefined}
               onClick={(event) => {
                 onNavigate?.();
                 // 시트가 닫히며 스크롤 잠금이 풀린 다음 프레임에 이동한다.
@@ -36,10 +39,11 @@ export function SectionToc({ sections, totalMinutes, onNavigate, hideHeading = f
               }}
               className={cn(
                 "flex min-h-touch items-center justify-between gap-2 rounded-md px-2 text-fg-secondary hover:bg-canvas-hover hover:text-fg md:min-h-9",
+                "aria-[current=location]:bg-canvas-hover aria-[current=location]:font-medium aria-[current=location]:text-fg",
                 focusRing,
               )}
             >
-              <span className="min-w-0">
+              <span className="min-w-0 break-keep">
                 {index + 1}. {s.title || SECTION_KIND_LABELS[s.kind] || s.kind}
               </span>
               {s.minutes > 0 && <span className="shrink-0 text-xs text-fg-muted">{s.minutes}분</span>}
