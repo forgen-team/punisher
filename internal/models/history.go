@@ -66,3 +66,25 @@ type LearningSettings struct {
 	DailyMinutes int        `json:"dailyMinutes"`
 	UpdatedAt    *time.Time `json:"updatedAt,omitempty"`
 }
+
+// CompletedItem is one entry of the "completed by area" history: a completed
+// lecture or an answered inquiry thread.
+type CompletedItem struct {
+	Kind            string    `json:"kind"` // lecture | inquiry
+	ID              string    `json:"id"`
+	Title           string    `json:"title"`
+	ConceptID       string    `json:"conceptId,omitempty"`
+	ConceptName     string    `json:"conceptName,omitempty"`
+	Area            string    `json:"area"`
+	Depth           int       `json:"depth,omitempty"`
+	LectureKind     string    `json:"lectureKind,omitempty"`
+	ParentLectureID string    `json:"parentLectureId,omitempty"`
+	FollowupCount   int       `json:"followupCount,omitempty"`
+	LastActivityAt  time.Time `json:"lastActivityAt"`
+}
+
+// CompletedArea is the number of completed items in one area.
+type CompletedArea struct {
+	Area  string `json:"area"`
+	Count int    `json:"count"`
+}

@@ -127,6 +127,17 @@ func validateSection(path string, s Section, vc ValidationContext, add func(stri
 	}
 }
 
+// ValidateBlock checks one block with the lecture rules (empty text, unclosed
+// fences, mermaid placement, code lang, term ids, https sources). Inquiry
+// explanations reuse it so they render with the same guarantees.
+func ValidateBlock(path string, b Block, vc ValidationContext) []Issue {
+	var issues []Issue
+	validateBlock(path, b, vc, func(p, format string, args ...any) {
+		issues = append(issues, Issue{Path: p, Message: fmt.Sprintf(format, args...)})
+	})
+	return issues
+}
+
 func validateBlock(path string, b Block, vc ValidationContext, add func(string, string, ...any)) {
 	switch b.Type {
 	case BlockMarkdown, BlockMermaid, BlockMisconception:

@@ -6,7 +6,7 @@ import { TocRail } from "./TocRail";
 
 const STICKY_TOP = "sticky top-[calc(var(--app-header-offset)+4rem)] shrink-0 self-start pt-4";
 // 펼친 열은 화면 높이 안에서 따로 스크롤. 접은 목차는 펼침 패널이 열 밖으로 나가야 해서 overflow 를 두지 않는다.
-const STICKY = `${STICKY_TOP} max-h-[calc(100dvh-var(--app-header-offset)-5rem)] overflow-y-auto pb-10`;
+const STICKY = `${STICKY_TOP} max-h-[calc(100dvh-var(--app-header-offset)-5rem)] overflow-y-auto overflow-x-hidden pb-10`;
 
 interface LectureLayoutProps {
   sections: LectureSection[];

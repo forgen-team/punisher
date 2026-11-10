@@ -54,6 +54,7 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, onSe
           unlocks: n.unlocks,
           requested: n.requests?.length ?? 0,
           proposed: n.status === "proposed",
+          inquiries: n.inquiries?.length ?? 0,
           dimmed: highlightIds !== null && !highlightIds.has(n.id),
           highlighted: highlightIds?.has(n.id) ?? false,
           selected: n.id === selectedId,

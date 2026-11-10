@@ -1,5 +1,6 @@
 
 import { memo } from "react";
+import { MessageCircleQuestion } from "lucide-react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { cn } from "@/src/shared/ui/kit";
 import {
@@ -19,6 +20,8 @@ export interface ConceptNodeData extends Record<string, unknown> {
   requested: number;
   /** 커리큘럼 밖에서 요청으로 제안된 개념 */
   proposed: boolean;
+  /** 이 개념에 대한 내 질문('이 질문에 답하기' 해설) 수 */
+  inquiries: number;
   dimmed: boolean;
   highlighted: boolean;
   selected: boolean;
@@ -37,7 +40,7 @@ function ConceptNodeImpl({ id, data }: NodeProps<ConceptFlowNode>) {
         type="button"
         onClick={() => data.onSelect(id)}
         aria-pressed={data.selected}
-        aria-label={`${data.name}, ${MAP_STATE_LABELS[data.displayState]}${recommended ? `, 열리는 개념 ${data.unlocks}개` : ""}${data.requested > 0 ? ", 학습 요청됨" : ""}${data.proposed ? ", 제안 개념" : ""}`}
+        aria-label={`${data.name}, ${MAP_STATE_LABELS[data.displayState]}${recommended ? `, 열리는 개념 ${data.unlocks}개` : ""}${data.requested > 0 ? ", 학습 요청됨" : ""}${data.proposed ? ", 제안 개념" : ""}${data.inquiries > 0 ? `, 내 질문 ${data.inquiries}개` : ""}`}
         style={{
           width: nodeWidth(data.depth),
           height: NODE_HEIGHT,
@@ -61,10 +64,16 @@ function ConceptNodeImpl({ id, data }: NodeProps<ConceptFlowNode>) {
           {data.requested > 0 && (
             <span className="shrink-0 rounded-sm bg-accent-solid px-1 font-semibold text-accent-on">요청됨</span>
           )}
-          <span className="truncate">
+          <span className="min-w-0 truncate">
             {data.proposed ? "제안 개념" : MAP_STATE_LABELS[data.displayState]}
             {recommended && data.unlocks > 0 && ` · +${data.unlocks}개 열림`}
           </span>
+          {data.inquiries > 0 && (
+            <span aria-hidden="true" className="ml-auto inline-flex shrink-0 items-center gap-0.5 rounded-sm bg-accent-subtle px-1 font-medium text-accent-text">
+              <MessageCircleQuestion className="size-3" />
+              {data.inquiries}
+            </span>
+          )}
         </span>
       </button>
       <Handle type="source" position={Position.Right} className="!size-1.5 !border-0 !bg-line-strong" />

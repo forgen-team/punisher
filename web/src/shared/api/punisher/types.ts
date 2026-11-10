@@ -1,4 +1,5 @@
 import type { GraphChapter, NextChapterPrompt } from "./chapterTypes";
+import type { MapInquiry } from "./inquiryTypes";
 import type { MapRequest } from "./learningTypes";
 
 // DTOs mirrored from apps/punisher-server/internal/{models,learning,services,lecture,store}.
@@ -76,6 +77,8 @@ export interface GraphNode {
   unlocks: number;
   /** 이 개념으로 연결된 대기 학습 요청(개념을 마치면 비어 있음) */
   requests?: MapRequest[];
+  /** 이 개념에 대한 내 질문('이 질문에 답하기' 해설) */
+  inquiries?: MapInquiry[];
   /** 내 챕터 개념이면 그 챕터 id */
   chapterId?: string;
 }

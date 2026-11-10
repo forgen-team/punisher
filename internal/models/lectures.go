@@ -170,3 +170,37 @@ type ProposedConcept struct {
 	Prerequisites []string `json:"prerequisites"`
 	Objectives    []string `json:"objectives"`
 }
+
+// Inquiry is a free-form question answered as a lecture-style explanation
+// ("이 질문에 답하기"). Content uses the lecture section/block structure.
+type Inquiry struct {
+	ID                 string          `json:"id"`
+	Question           string          `json:"question"`
+	Status             string          `json:"status"` // pending | answered | failed
+	Content            json.RawMessage `json:"content,omitempty"`
+	ConceptIDs         []string        `json:"conceptIds"`
+	ProposedConceptIDs []string        `json:"proposedConceptIds"`
+	Concepts           []ConceptLink   `json:"concepts"`
+	Model              string          `json:"model"`
+	PromptVersion      string          `json:"promptVersion"`
+	Error              string          `json:"error,omitempty"`
+	ReadAt             *time.Time      `json:"readAt,omitempty"`
+	CreatedAt          time.Time       `json:"createdAt"`
+	UpdatedAt          time.Time       `json:"updatedAt"`
+	AnsweredAt         *time.Time      `json:"answeredAt,omitempty"`
+	// Followups: 이어서 묻기(스레드 순서대로, 상세 응답에서만). FollowupCount 는 목록에서도 채워진다.
+	Followups     []InquiryFollowup `json:"followups,omitempty"`
+	FollowupCount int               `json:"followupCount"`
+}
+
+// InquiryFollowup is one follow-up question and its answer in an inquiry thread.
+type InquiryFollowup struct {
+	ID         string          `json:"id"`
+	Question   string          `json:"question"`
+	Quote      string          `json:"quote,omitempty"`
+	Status     string          `json:"status"` // pending | answered | failed
+	Section    json.RawMessage `json:"section,omitempty"`
+	Error      string          `json:"error,omitempty"`
+	CreatedAt  time.Time       `json:"createdAt"`
+	AnsweredAt *time.Time      `json:"answeredAt,omitempty"`
+}

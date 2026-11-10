@@ -3,13 +3,13 @@ import { Link } from "@/src/shared/lib/router";
 import { useState } from "react";
 import { Target } from "lucide-react";
 import { EmptyState, ErrorState, List, ListSkeleton, Section, buttonVariants, cn } from "@/src/shared/ui/kit";
-import { groupByParent, useToday } from "@/src/entities/punisher";
+import { groupByParent, useInquiries, useToday } from "@/src/entities/punisher";
 import { InstantQueryBox, ResolutionChoices, useLaunchInstant } from "@/src/features/punisher/instant-start";
 import { DismissedNotice, useResumeDismiss } from "@/src/features/punisher/resume-dismiss";
 import { describePunisherError, type InstantResponse, type Recommendation } from "@/src/shared/api/punisher";
 import { DeeperGroup, InlineError } from "@/src/shared/ui/punisher";
 import { AddStudyRequestForm } from "@/src/features/punisher/study-request-add";
-import { NEW_CHAPTER_PATH, NextChapterCard, RecommendationRow, RecommendationSheet, ResumeRow, StudyRequestList } from "./ui";
+import { InquiryList, NEW_CHAPTER_PATH, NextChapterCard, RecommendationRow, RecommendationSheet, ResumeRow, StudyRequestList } from "./ui";
 
 function resumeKey(item: Recommendation): string {
   return item.lectureId ?? item.conceptId;
@@ -22,6 +22,7 @@ export function TodayWidget() {
   const [pickResult, setPickResult] = useState<InstantResponse | null>(null);
   const [detail, setDetail] = useState<Recommendation | null>(null);
   const resumeDismiss = useResumeDismiss();
+  const inquiries = useInquiries({ open: true });
 
   async function start(conceptId: string, query?: string) {
     setPickResult(null);
@@ -108,13 +109,14 @@ export function TodayWidget() {
 
   // 입력·선택 결과는 열들 위에 한 줄(전체 폭)로 둔다 — 2단에서 왼쪽 열만 입력 상자만큼 내려가
   // '오늘의 추천'과 오른쪽 '이어보기/학습 요청' 제목 높이가 어긋나던 문제(2026-11-09).
-  // 한 단: 입력 → 이어보기 → (다음 챕터) → 오늘의 추천 → 학습 요청.
-  // 2단(fold): 왼쪽 (다음 챕터)·오늘의 추천 / 오른쪽 이어보기·학습 요청.
-  // 3단(xl): 오늘의 추천 | 이어보기·다음 챕터 | 학습 요청 — 세로로만 길어지지 않게 남는 폭을 열로 쓴다.
+  // 한 단: 입력 → 질문 해설 → 이어보기 → (다음 챕터) → 오늘의 추천 → 학습 요청.
+  // 2단(fold): 왼쪽 (다음 챕터)·오늘의 추천 / 오른쪽 질문 해설·이어보기·학습 요청.
+  // 3단(xl): 오늘의 추천 | 질문 해설·이어보기·다음 챕터 | 학습 요청 — 세로로만 길어지지 않게 남는 폭을 열로 쓴다.
   // 열 묶음은 좁은 폭에서 display:contents 라 order 로 위 순서를 지킨다(폭이 바뀌어도 같은 DOM 을 재배치만 → 상태 유지).
   // 다음 챕터 카드는 2단·3단에서 놓이는 열이 달라 두 자리에 두고 폭에 따라 하나만 보인다(상태 없는 카드).
   const nextChapter = today.data?.nextChapter;
-  const middle = Boolean(resumeSection || nextChapter);
+  const showInquiries = Boolean(inquiries.error) || (inquiries.data?.length ?? 0) > 0;
+  const middle = Boolean(resumeSection || nextChapter || showInquiries);
   return (
     <div className="flex w-full flex-col gap-6">
       <InstantQueryBox />
@@ -134,6 +136,11 @@ export function TodayWidget() {
         <div className="contents fold:flex fold:min-w-0 fold:flex-col fold:gap-4 md:gap-6 xl:contents">
           {middle && (
             <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-6">
+              {showInquiries && (
+                <div className="order-1 fold:order-none">
+                  <InquiryList inquiries={inquiries.data} error={inquiries.error} onRetry={() => void inquiries.refetch()} />
+                </div>
+              )}
               {resumeSection && <div className="order-1 fold:order-none">{resumeSection}</div>}
               {nextChapter && (
                 <div className="hidden xl:block">

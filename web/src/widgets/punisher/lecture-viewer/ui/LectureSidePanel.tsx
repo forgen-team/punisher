@@ -1,6 +1,6 @@
 
 import { Link } from "@/src/shared/lib/router";
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Layers } from "lucide-react";
 import { BottomSheet, List, ListRow, SegmentedTabs, Section } from "@/src/shared/ui/kit";
 import { lectureHref } from "@/src/features/punisher/instant-start";
@@ -97,10 +97,10 @@ export function LectureAssistPanel({ lectureId, conceptId, getAnchor, terms, onB
 }
 
 /** 생성 중(즉석 강의) 보조 열 자리 — 완성된 강의로 바뀔 때 본문이 옆으로 밀리지 않도록 같은 폭을 미리 잡는다. */
-export function LectureAssistPlaceholder() {
+export function LectureAssistPlaceholder({ children }: { children?: ReactNode }) {
   return (
     <p className="break-keep rounded-xl border border-line bg-canvas-elevated p-4 text-sm text-fg-muted shadow-xs">
-      강의가 완성되면 여기서 질문·메모를 남기고 용어 설명을 볼 수 있어요.
+      {children ?? "강의가 완성되면 여기서 질문·메모를 남기고 용어 설명을 볼 수 있어요."}
     </p>
   );
 }

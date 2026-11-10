@@ -15,6 +15,9 @@ import (
 
 const staleJobAge = 20 * time.Minute
 
+// inquirySweepInterval: how often interrupted question explanations are ended.
+const inquirySweepInterval = 2 * time.Minute
+
 // Scheduler ticks every Interval after an initial delay.
 type Scheduler struct {
 	Svc          *services.Service
@@ -24,6 +27,7 @@ type Scheduler struct {
 
 // Run blocks until ctx is cancelled.
 func (s *Scheduler) Run(ctx context.Context) {
+	go s.sweepInquiries(ctx)
 	if s.Svc.Cfg.OwnerUserID == "" {
 		log.Println("[scheduler] PUNISHER_OWNER_USER_ID not set: background generation disabled")
 		return
@@ -37,6 +41,30 @@ func (s *Scheduler) Run(ctx context.Context) {
 		case <-timer.C:
 			s.tick(ctx)
 			timer.Reset(s.Interval)
+		}
+	}
+}
+
+// sweepInquiries ends question explanations whose generation is gone: at boot
+// every pending row belongs to the previous process, and afterwards anything
+// older than services.StaleInquiryAge. Runs without an owner too.
+func (s *Scheduler) sweepInquiries(ctx context.Context) {
+	sweep := func(age time.Duration) {
+		if n, err := s.Svc.Store.SweepStaleInquiries(ctx, age); err != nil {
+			log.Printf("[scheduler] sweep inquiries: %v", err)
+		} else if n > 0 {
+			log.Printf("[scheduler] ended %d interrupted inquiries", n)
+		}
+	}
+	sweep(0)
+	ticker := time.NewTicker(inquirySweepInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			sweep(services.StaleInquiryAge)
 		}
 	}
 }

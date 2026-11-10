@@ -25,6 +25,20 @@ func (s *SQLiteStore) LoadMapExtras(ctx context.Context, userID string, data *mo
 		return fmt.Errorf("map requests: %w", err)
 	}
 
+	data.Inquiries, err = collect(s.c().query(ctx, `
+		SELECT id, question, concept_ids, proposed_concept_ids FROM inquiries
+		WHERE user_id = $1 AND answered_at IS NOT NULL
+		ORDER BY created_at DESC LIMIT 200`, userID), func(row rowScanner) (models.MapInquiry, error) {
+		var q models.MapInquiry
+		var related, proposed []string
+		err := row.Scan(&q.ID, &q.Question, strs(&related), strs(&proposed))
+		q.ConceptIDs = append(related, proposed...)
+		return q, err
+	})
+	if err != nil {
+		return fmt.Errorf("map inquiries: %w", err)
+	}
+
 	loaded := make(map[string]bool, len(data.Concepts))
 	for _, c := range data.Concepts {
 		loaded[c.ID] = true
@@ -32,6 +46,15 @@ func (s *SQLiteStore) LoadMapExtras(ctx context.Context, userID string, data *mo
 	var missing []string
 	for _, r := range data.Requests {
 		for _, id := range r.ConceptIDs {
+			if !loaded[id] {
+				loaded[id] = true
+				missing = append(missing, id)
+			}
+		}
+	}
+	// 질문 해설이 지도에 새로 제안한 개념도 노드로 보인다.
+	for _, q := range data.Inquiries {
+		for _, id := range q.ConceptIDs {
 			if !loaded[id] {
 				loaded[id] = true
 				missing = append(missing, id)

@@ -7,6 +7,11 @@ export function lectureHref(id: string): string {
   return `/lectures/${encodeURIComponent(id)}`;
 }
 
+/** '이 질문에 답하기' 해설 화면. */
+export function inquiryHref(id: string): string {
+  return `/inquiries/${encodeURIComponent(id)}`;
+}
+
 export function instantHref(jobId: string): string {
   return `/instant/${encodeURIComponent(jobId)}`;
 }

@@ -191,6 +191,13 @@ func buildGraph(data *models.GraphData, area string) models.Graph {
 		}
 	}
 
+	inquiriesByConcept := map[string][]models.MapInquiry{}
+	for _, q := range data.Inquiries {
+		for _, id := range q.ConceptIDs {
+			inquiriesByConcept[id] = append(inquiriesByConcept[id], q)
+		}
+	}
+
 	included := make(map[string]bool, len(data.Concepts))
 	coverage := map[string]*models.AreaCoverage{}
 	for _, c := range data.Concepts {
@@ -209,6 +216,7 @@ func buildGraph(data *models.GraphData, area string) models.Graph {
 		graph.Nodes = append(graph.Nodes, models.GraphNode{
 			ID: c.ID, Name: c.Name, Area: c.Area, Depth: c.Depth, Status: c.Status,
 			State: a.State, Locked: a.Locked, Frontier: a.Frontier, Unlocks: a.Unlocks, Requests: requests,
+			Inquiries: inquiriesByConcept[c.ID],
 			ChapterID: c.ChapterID,
 		})
 	}

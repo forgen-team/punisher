@@ -31,6 +31,7 @@ func (s *SQLiteStore) ChapterSignals(ctx context.Context, userID string) (propos
 			(SELECT COUNT(*) FROM lectures l JOIN user_lecture_progress p ON p.lecture_id = l.id AND p.user_id = $1
 			 WHERE l.content LIKE '%' || c.id || '%')
 			+ (SELECT COUNT(*) FROM lecture_questions q WHERE q.user_id = $1 AND q.proposed_concepts LIKE '%' || c.name || '%')
+			+ (SELECT COUNT(*) FROM inquiries i WHERE i.user_id = $1 AND EXISTS (SELECT 1 FROM json_each(i.proposed_concept_ids) WHERE value = c.id))
 		FROM concepts c
 		WHERE c.status = 'proposed' AND c.proposed_by = $1
 		ORDER BY c.created_at DESC LIMIT 50`, userID), func(r rowScanner) (learning.ProposedSignal, error) {

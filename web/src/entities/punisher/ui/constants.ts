@@ -20,6 +20,7 @@ export const AREA_LABELS: Record<PunisherArea, string> = {
 };
 
 export function areaLabel(area: string): string {
+  if (area === "other") { return "기타"; }
   return AREA_LABELS[area as PunisherArea] ?? area;
 }
 
@@ -92,6 +93,19 @@ export const SECTION_KIND_LABELS: Record<string, string> = {
   principles: "배경·원리",
   walkthrough: "코드·로그·도식 해설",
   "judgment_next": "판단 기준·다음 연결",
+  // '이 질문에 답하기' 해설
+  summary: "먼저 답",
+  causes: "원인 사슬",
+  assumptions: "내 환경 추정",
+  verify: "확인 방법",
+  fix: "대처",
+  followup: "이어서 묻기",
+};
+
+export const INQUIRY_STATUS_LABELS: Record<string, string> = {
+  pending: "해설 쓰는 중",
+  answered: "해설 완료",
+  failed: "만들지 못함",
 };
 
 export const RESOLUTION_METHOD_LABELS: Record<string, string> = {

@@ -7,6 +7,7 @@ import { KnowledgeMapWidget } from "@/src/widgets/punisher/knowledge-map";
 import { HistoryWidget } from "@/src/widgets/punisher/history";
 import { LectureViewer } from "@/src/widgets/punisher/lecture-viewer";
 import { InstantStreamView } from "@/src/widgets/punisher/instant-stream";
+import { InquiryView } from "@/src/widgets/punisher/inquiry-view";
 
 export function TodayPage() {
   return <TodayWidget />;
@@ -31,6 +32,11 @@ export function HistoryPage() {
 export function LecturePage() {
   const { id = "" } = useParams();
   return <LectureViewer key={id} lectureId={id} />;
+}
+
+export function InquiryPage() {
+  const { id = "" } = useParams();
+  return <InquiryView key={id} inquiryId={id} />;
 }
 
 export function InstantPage() {

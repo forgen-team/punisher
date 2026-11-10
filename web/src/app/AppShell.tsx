@@ -13,6 +13,7 @@ const TITLES: Array<[RegExp, string]> = [
   [/^\/history/, "학습 기록"],
   [/^\/chapters\/new/, "다음 챕터 고르기"],
   [/^\/lectures\//, "강의"],
+  [/^\/inquiries\//, "질문 해설"],
   [/^\/instant\//, "즉석 강의 생성 중"],
   [/^\/settings\/prompts/, "강의 프롬프트"],
   [/^\/settings/, "설정"],

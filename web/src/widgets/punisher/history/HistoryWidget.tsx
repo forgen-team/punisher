@@ -1,28 +1,31 @@
 
 import { usePathname, useRouter, useSearchParams } from "@/src/shared/lib/router";
 import { Chip } from "@/src/shared/ui/kit";
-import { CompletedLectureList } from "./ui/CompletedLectureList";
+import { CompletedByArea } from "./ui/CompletedByArea";
+import { InquiryHistoryList } from "./ui/InquiryHistoryList";
 import { LearnedConceptList } from "./ui/LearnedConceptList";
 import { NoteHistoryList } from "./ui/NoteHistoryList";
 import { QuestionHistoryList } from "./ui/QuestionHistoryList";
 
-type HistoryTab = "lectures" | "learned" | "questions" | "notes";
+type HistoryTab = "lectures" | "learned" | "inquiries" | "questions" | "notes";
 
 const TABS: { id: HistoryTab; label: string }[] = [
   { id: "lectures", label: "완료한 강의" },
   { id: "learned", label: "개념" },
-  { id: "questions", label: "질문" },
+  { id: "inquiries", label: "질문 해설" },
+  { id: "questions", label: "강의 중 질문" },
   { id: "notes", label: "메모" },
 ];
 
 const PANELS: Record<HistoryTab, () => React.JSX.Element> = {
-  lectures: CompletedLectureList,
+  lectures: CompletedByArea,
   learned: LearnedConceptList,
+  inquiries: InquiryHistoryList,
   questions: QuestionHistoryList,
   notes: NoteHistoryList,
 };
 
-/** 기록: [완료한 강의 · 개념(완료·이미 앎) · 질문 · 메모] — 상단 세그먼트와 겹치지 않게 칩으로 고른다(?tab=). */
+/** 기록: [완료한 강의 · 개념(완료·이미 앎) · 질문 해설 · 강의 중 질문 · 메모] — 상단 세그먼트와 겹치지 않게 칩으로 고른다(?tab=). */
 export function HistoryWidget() {
   const router = useRouter();
   const pathname = usePathname();

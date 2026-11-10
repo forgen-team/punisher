@@ -23,6 +23,11 @@ export const punisherKeys = {
   prompts: () => ["punisher", "prompts"] as const,
   chapterSuggestions: () => ["punisher", "chapter-suggestions"] as const,
   promptHistory: (id: string) => ["punisher", "prompt-history", id] as const,
+  inquiries: (filter: { open?: boolean; concept?: string } = {}) =>
+    ["punisher", "inquiries", filter.open ? "open" : "all", filter.concept ?? ""] as const,
+  inquiry: (id: string) => ["punisher", "inquiry", id] as const,
+  completed: (filter: { area?: string; q?: string }) => ["punisher", "completed", filter.area ?? "", filter.q ?? ""] as const,
+  completedAreas: (q?: string) => ["punisher", "completed-areas", q ?? ""] as const,
 };
 
 /** Keys whose data depends on the user's learning state. */
@@ -35,6 +40,8 @@ export const punisherLearningStateKeys = [
   ["punisher", "goal-path"],
   ["punisher", "study-requests"],
   ["punisher", "my-lectures"],
+  ["punisher", "completed"],
+  ["punisher", "completed-areas"],
   ["punisher", "concept-lectures"],
   ["punisher", "lecture-links"],
 ] as const;

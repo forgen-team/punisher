@@ -1,38 +1,65 @@
 
 import { Link } from "@/src/shared/lib/router";
+import { MessageSquare } from "lucide-react";
 import { ErrorState, List, ListRow, ListSkeleton, Section } from "@/src/shared/ui/kit";
-import { QUESTION_STATUS_LABELS, useMyQuestions } from "@/src/entities/punisher";
-import { lectureHref } from "@/src/features/punisher/instant-start";
+import { INQUIRY_STATUS_LABELS, InquiryStatusIcon, QUESTION_STATUS_LABELS, inquiryRowTitle, useInquiries, useMyQuestions } from "@/src/entities/punisher";
+import { inquiryHref, lectureHref } from "@/src/features/punisher/instant-start";
 import { describePunisherError } from "@/src/shared/api/punisher";
 
+/**
+ * 이 개념에 대한 내 질문 — '이 질문에 답하기' 해설(해설에 이 개념이 나온 것, 다 본 것 포함)과
+ * 강의 안에서 한 질문(최신 20개). 해설은 관련 개념 노드마다 붙어서 나중에 개념을 볼 때 함께 보인다.
+ */
 function QuestionRows({ conceptId }: { conceptId: string }) {
   const questions = useMyQuestions(conceptId);
+  const inquiries = useInquiries({ concept: conceptId });
   const items = questions.data?.pages.flatMap((p) => p.items) ?? [];
-  if (questions.isLoading) { return <ListSkeleton rows={1} />; }
-  if (questions.error) {
-    return <ErrorState compact message={describePunisherError(questions.error)} onRetry={() => questions.refetch()} />;
+  const asked = inquiries.data ?? [];
+  if (questions.isLoading || inquiries.isLoading) { return <ListSkeleton rows={1} />; }
+  const error = questions.error ?? inquiries.error;
+  if (error) {
+    return (
+      <ErrorState
+        compact
+        message={describePunisherError(error)}
+        onRetry={() => {
+          void questions.refetch();
+          void inquiries.refetch();
+        }}
+      />
+    );
   }
-  if (items.length === 0) { return <p className="text-xs text-fg-muted">질문이 없습니다.</p>; }
+  if (items.length === 0 && asked.length === 0) { return <p className="text-xs text-fg-muted">질문이 없어요.</p>; }
   return (
     <List>
+      {asked.map((q) => (
+        <ListRow
+          key={q.id}
+          href={inquiryHref(q.id)}
+          linkAs={Link}
+          leading={<InquiryStatusIcon status={q.status} />}
+          title={inquiryRowTitle(q)}
+          meta={`질문 해설 · ${INQUIRY_STATUS_LABELS[q.status] ?? q.status}`}
+        />
+      ))}
       {items.map((q) =>
         q.lectureId ? (
           <ListRow
             key={q.id}
             href={`${lectureHref(q.lectureId)}${q.anchor ? `#pa-${q.anchor}` : ""}`}
             linkAs={Link}
+            leading={<MessageSquare aria-hidden="true" />}
             title={q.question}
-            meta={QUESTION_STATUS_LABELS[q.status]}
+            meta={`강의 중 질문 · ${QUESTION_STATUS_LABELS[q.status]}`}
           />
         ) : (
-          <ListRow key={q.id} title={q.question} meta={QUESTION_STATUS_LABELS[q.status]} />
+          <ListRow key={q.id} leading={<MessageSquare aria-hidden="true" />} title={q.question} meta={QUESTION_STATUS_LABELS[q.status]} />
         ),
       )}
     </List>
   );
 }
 
-/** 이 개념과 관련해 내가 한 질문(최신 20개). */
 export function ConceptQuestionsSection({ conceptId }: { conceptId: string }) {
   return (
     <Section title="내 질문" headingLevel={3}>

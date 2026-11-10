@@ -75,6 +75,9 @@ type GraphNode struct {
 	// Requests are the caller's pending study requests resolved to this concept
 	// (only while the concept is not completed/known).
 	Requests []MapRequest `json:"requests,omitempty"`
+	// Inquiries: the caller's answered questions ('이 질문에 답하기') about this concept
+	// (kept after the concept is learned — 나중에 개념을 볼 때 내 질문도 함께).
+	Inquiries []MapInquiry `json:"inquiries,omitempty"`
 	// ChapterID: the caller's chapter this concept belongs to (map grouping).
 	ChapterID string `json:"chapterId,omitempty"`
 }
@@ -85,6 +88,13 @@ type MapRequest struct {
 	Query      string   `json:"query"`
 	Source     string   `json:"source"`
 	Status     string   `json:"status"`
+	ConceptIDs []string `json:"-"`
+}
+
+// MapInquiry is an answered question shown on the concepts it is about.
+type MapInquiry struct {
+	ID         string   `json:"id"`
+	Question   string   `json:"question"`
 	ConceptIDs []string `json:"-"`
 }
 
@@ -137,6 +147,7 @@ type GraphData struct {
 	States            map[string]string
 	// Map extras (GET /v1/graph only; see store.LoadMapExtras).
 	Requests  []MapRequest
+	Inquiries []MapInquiry
 	Dismissed map[string]bool
 }
 

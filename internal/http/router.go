@@ -69,6 +69,17 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Post("/study-requests/{id}/dismiss", learn.DismissStudyRequest)
 		r.Delete("/study-requests/{id}/dismiss", learn.RestoreStudyRequest)
 
+		r.Post("/inquiries", learn.CreateInquiry)
+		r.Get("/inquiries", learn.ListInquiries)
+		r.Get("/inquiries/{id}", learn.GetInquiry)
+		r.Post("/inquiries/{id}/regenerate", learn.RegenerateInquiry)
+		r.Post("/inquiries/{id}/read", learn.MarkInquiryRead)
+		r.Delete("/inquiries/{id}/read", learn.MarkInquiryRead)
+		r.Post("/inquiries/{id}/followups", learn.CreateFollowup)
+		r.Post("/inquiries/{id}/followups/{followupId}/retry", learn.RetryFollowup)
+		r.Get("/me/completed", learn.ListCompleted)
+		r.Get("/me/completed/areas", learn.CompletedAreas)
+
 		r.Get("/today", learn.Today)
 		r.Post("/concepts/{id}/known", learn.MarkKnown)
 		r.Get("/terms/{conceptId}/gloss", learn.Gloss)

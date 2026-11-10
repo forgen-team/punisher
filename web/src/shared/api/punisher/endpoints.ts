@@ -29,6 +29,7 @@ import type {
 import type { ExampleLanguage, LearningSettingsResponse, LectureLinks, SelectionExplanation } from "./learningTypes";
 import type { PromptHistoryEntry, PromptPreview, PromptSaveResponse, PromptsResponse } from "./promptTypes";
 import type { ChapterDraftResponse, ChapterSuggestionsResponse } from "./chapterTypes";
+import type { CompletedArea, CompletedItem, Inquiry, InquiryFollowup } from "./inquiryTypes";
 
 const enc = encodeURIComponent;
 
@@ -135,6 +136,27 @@ export const punisherApi = {
   getLearningSettings: () => punisherFetch<LearningSettingsResponse>("/me/settings"),
   saveLearningSettings: (patch: { exampleLanguage?: ExampleLanguage; dailyMinutes?: number }) =>
     punisherFetch<LearningSettingsResponse>("/me/settings", { method: "PUT", json: patch }),
+
+  // Inquiries ('이 질문에 답하기')
+  createInquiry: (question: string) => punisherFetch<Inquiry>("/inquiries", { method: "POST", json: { question } }),
+  listInquiries: (filter: { open?: boolean; concept?: string } = {}) =>
+    punisherFetch<{ inquiries: Inquiry[] }>(
+      `/inquiries${query({ open: filter.open ? "1" : undefined, concept: filter.concept })}`,
+    ).then((r) => r.inquiries),
+  getInquiry: (id: string) => punisherFetch<Inquiry>(`/inquiries/${enc(id)}`),
+  regenerateInquiry: (id: string) => punisherFetch<Inquiry>(`/inquiries/${enc(id)}/regenerate`, { method: "POST" }),
+  createFollowup: (id: string, body: { question: string; quote?: string }) =>
+    punisherFetch<InquiryFollowup>(`/inquiries/${enc(id)}/followups`, { method: "POST", json: body }),
+  retryFollowup: (id: string, followupId: string) =>
+    punisherFetch<InquiryFollowup>(`/inquiries/${enc(id)}/followups/${enc(followupId)}/retry`, { method: "POST" }),
+  listCompleted: (params: { area?: string; q?: string; limit?: number; cursor?: string }) =>
+    punisherFetch<{ items: CompletedItem[]; nextCursor: string }>(`/me/completed${query(params)}`).then(
+      (r): Page<CompletedItem> => ({ items: r.items, nextCursor: r.nextCursor }),
+    ),
+  completedAreas: (q?: string) =>
+    punisherFetch<{ areas: CompletedArea[] }>(`/me/completed/areas${query({ q })}`).then((r) => r.areas),
+  setInquiryRead: (id: string, read: boolean) =>
+    punisherFetch<void>(`/inquiries/${enc(id)}/read`, { method: read ? "POST" : "DELETE" }),
 
   // Next chapter
   chapterSuggestions: () => punisherFetch<ChapterSuggestionsResponse>("/chapters/suggestions"),

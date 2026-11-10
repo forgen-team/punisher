@@ -13,3 +13,5 @@ export { MapStateIcon } from "./ui/MapStateIcon";
 export { groupByParent, type LectureGroup } from "./lib/groupByParent";
 export * from "./model/prompts";
 export * from "./model/chapters";
+export * from "./model/inquiries";
+export { InquiryStatusIcon, inquiryRowTitle } from "./ui/InquiryStatusIcon";
