@@ -97,8 +97,8 @@ func TestBuildTodayNeverRecommendsDone(t *testing.T) {
 		Requests: []RequestInput{{ID: "r1", Query: "B", ConceptIDs: []string{"b"}}},
 		Goals:    []GoalInput{{ID: "g", Title: "goal", Path: []string{"a", "b", "c"}}},
 	})
-	if !res.Exhausted || len(res.Items) != 1 || res.Items[0].Kind != RecResume {
-		t.Fatalf("done concepts must not be recommended, but a half-read lecture stays: %+v", res)
+	if !res.Exhausted || len(res.Items) != 0 {
+		t.Fatalf("done concepts must not be recommended or resumed: %+v", res)
 	}
 }
 
@@ -112,7 +112,7 @@ func TestBuildTodayListsEveryInProgressLecture(t *testing.T) {
 	}
 	res := BuildToday(TodayInput{Concepts: concepts, Limit: 1, Resume: []ResumeItem{
 		{LectureID: "l1", ConceptID: "a", Percent: 10},
-		{LectureID: "l2", ConceptID: "b", Percent: 20},
+		{LectureID: "l2", ConceptID: "b", Percent: 20}, // 개념을 끝냈으므로 빠진다
 		{LectureID: "l3", ConceptID: "a", Percent: 30},
 		{LectureID: "gone", ConceptID: "removed-from-map", Percent: 40},
 	}})
@@ -125,7 +125,7 @@ func TestBuildTodayListsEveryInProgressLecture(t *testing.T) {
 			others++
 		}
 	}
-	if strings.Join(resume, ",") != "l1,l2,l3" {
+	if strings.Join(resume, ",") != "l1,l3" {
 		t.Fatalf("resume = %v", resume)
 	}
 	if others != 1 || res.Exhausted {

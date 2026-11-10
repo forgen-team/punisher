@@ -160,11 +160,11 @@ func BuildToday(in TodayInput) TodayResult {
 	}
 	b := &todayBuilder{in: in, used: map[string]bool{}, an: Analyze(nodes, in.Edges, states)}
 
-	// 읽다 만 강의는 전부 보여 준다. 개념이 이미 끝난 상태여도(다른 강의로 익힘, 더 깊게 본 강의) 이 강의는 아직
-	// 다 읽지 않았고, 원치 않으면 '이어보기에서 제거'로 뺀다. 지도에서 사라진 개념의 강의만 뺀다.
+	// 읽다 만 강의는 전부 보여 준다. 개념을 끝냈거나 '이미 앎'으로 표시했으면 더 읽을 이유가 없으니 빼고,
+	// 지도에서 사라진 개념의 강의도 뺀다.
 	// 읽고 있는 개념은 같은 개념을 또 추천하지 않도록 add 가 used 로 표시한다(의도).
 	for _, r := range in.Resume {
-		if c, ok := in.Concepts[r.ConceptID]; ok {
+		if c, ok := in.Concepts[r.ConceptID]; ok && !IsDone(NormalizeState(c.State)) {
 			b.add(c, Recommendation{Kind: RecResume, LectureID: r.LectureID, Title: r.Title, Anchor: r.Anchor,
 				Percent: r.Percent, EstimatedMinutes: remainingMinutes(r), ParentLectureID: r.ParentLectureID,
 				Reason: fmt.Sprintf("지난번 %d%%까지 본 강의입니다. 멈춘 위치에서 이어서 끝내면 흐름이 끊기지 않습니다.", r.Percent)})

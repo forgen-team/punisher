@@ -87,7 +87,7 @@ export function ResumeList({ items, columns = false, dismissing, onDismiss, expa
             )}
           >
             <List>
-              <DeeperGroup parent={renderRow(item)}>{children.map(renderRow)}</DeeperGroup>
+              <DeeperGroup parent={renderRow(item)}>{children.map((child) => renderRow(child))}</DeeperGroup>
             </List>
           </li>
         ))}
