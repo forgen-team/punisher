@@ -151,6 +151,9 @@ func validateBlock(path string, b Block, vc ValidationContext, add func(string, 
 			if why := MermaidOutsideBlock(b.Text); why != "" {
 				add(path, "mermaid diagram inside a %s block (%s) — put the diagram in its own @@mermaid block, without ``` fences", b.Type, why)
 			}
+			if d := StrayDirective(b.Text); d != "" {
+				add(path, "%s inside the text of a %s block — directives go only at the very start of a line; link a term in a sentence as [용어](term:개념id)", d, b.Type)
+			}
 		}
 		if b.Type == BlockMermaid {
 			if why := MermaidSwallowedProse(b.Text); why != "" {
@@ -219,6 +222,40 @@ func MermaidSwallowedProse(src string) string {
 			continue
 		}
 		afterBlank, run = false, 0
+	}
+	return ""
+}
+
+var (
+	strayDirectiveRe = regexp.MustCompile(`@@(?:lecture|section|end|markdown|mermaid|code|log|misconception|term|sources)\b`)
+	inlineCodeRe     = regexp.MustCompile("`[^`]*`")
+)
+
+// StrayDirective returns the first block directive left inside markdown text
+// ("" when none). Directives only work at the start of a line, so anywhere
+// else the model's "@@term" is meaningless and the sentence loses a word
+// (2026-11-10: "이 점은 @@term 에서 다루는 ALU 설계"). Code fences and inline
+// code are exempt so a lecture can still show the literal text.
+func StrayDirective(text string) string {
+	open := ""
+	for _, line := range strings.Split(text, "\n") {
+		t := strings.TrimLeft(line, " ")
+		if marker := fenceMarker(t); marker != "" && len(line)-len(t) <= 3 {
+			if open == "" {
+				open = marker
+				continue
+			}
+			if marker[0] == open[0] && len(marker) >= len(open) && strings.TrimSpace(t[len(marker):]) == "" {
+				open = ""
+				continue
+			}
+		}
+		if open != "" {
+			continue
+		}
+		if d := strayDirectiveRe.FindString(inlineCodeRe.ReplaceAllString(line, "")); d != "" {
+			return d
+		}
 	}
 	return ""
 }

@@ -6,7 +6,7 @@ import (
 )
 
 // InquiryVersion tags explanations generated with InquiryTask (stored per answer).
-const InquiryVersion = "punisher-inquiry-2026-11-10.2"
+const InquiryVersion = "punisher-inquiry-2026-11-10.3"
 
 // InquiryContext is the input of one "이 질문에 답하기" explanation.
 type InquiryContext struct {
@@ -74,6 +74,7 @@ sequenceDiagram
 - new_concept 줄은 지도에 없지만 이 해설의 핵심인 개념만, 최대 3줄입니다(없으면 쓰지 않음). slug 는 소문자-하이픈, 영역 id 는 아래 목록 중 하나.
 - 개념 링크는 마크다운 문장 안의 [표시할 용어](term:개념id) 하나뿐입니다. 아래 목록의 id 또는 new_concept 로 제안한 id만 쓰고, 처음 나오는 곳에 한 번만 겁니다.
 - 블록은 @@markdown, @@code lang=..., @@log lang=..., @@mermaid, @@misconception, @@sources 를 씁니다. @@code / @@log 는 lang 을 반드시 지정합니다.
+- @@ 표기는 줄의 맨 앞에서만 씁니다. 문장 안에 @@term 같은 표기를 쓰면 화면에서 그 자리가 빈칸이 되고 검증에 실패합니다.
 - 도식은 반드시 따로 @@mermaid 블록에 씁니다. @@markdown 안에 mermaid 코드펜스나 도식 문법 줄을 넣지 않고, @@mermaid 블록 안에는 코드펜스 없이 도식 문법만 씁니다.
 - @@sources 는 https 공식 문서만 씁니다. 확신할 수 없는 URL 은 만들지 않습니다.
 - 구체적인 숫자·기본값·버전 동작이 확실하지 않으면 지어내지 말고 "환경·버전에 따라 다르다"고 씁니다.
@@ -157,6 +158,7 @@ new_concept: 영역접두어.slug | 이름 | 영역 id | 가장 가까운 선행
 - new_concept 줄은 지도에 없지만 이 답의 핵심인 개념만, 최대 2줄입니다(없으면 쓰지 않음).
 - 개념 링크는 [표시할 용어](term:개념id) 하나뿐이고, 아래 목록의 id 또는 new_concept 로 제안한 id만 씁니다.
 - 필요하면 @@code lang=..., @@log lang=..., @@mermaid, @@sources 블록을 씁니다(도식은 @@mermaid 블록에만, 코드펜스 없이). @@sources 는 https 공식 문서만.
+- @@ 표기는 줄의 맨 앞에서만 씁니다. 문장 안에 @@term 같은 표기를 쓰면 화면에서 그 자리가 빈칸이 되고 검증에 실패합니다.
 - 처음 나오는 전문 용어는 그 문장에서 한 줄로 풉니다. 확실하지 않은 숫자·기본값은 지어내지 않습니다.
 - 이 글은 강의가 아니라 해설입니다. 다른 섹션은 kind 이름이 아니라 제목으로 가리킵니다.
 - 마지막 줄은 반드시 @@end 입니다.`
