@@ -64,7 +64,7 @@ func (s *SQLiteStore) LoadToday(ctx context.Context, userID string) (*TodayData,
 		FROM user_lecture_progress p
 		JOIN lectures l ON l.id = p.lecture_id
 		WHERE p.user_id = $1 AND p.completed_at IS NULL AND p.dismissed_at IS NULL AND p.percent < 100
-		ORDER BY p.last_seen_at DESC LIMIT 5`, userID), func(row rowScanner) (learning.ResumeItem, error) {
+		ORDER BY p.last_seen_at DESC LIMIT 200`, userID), func(row rowScanner) (learning.ResumeItem, error) {
 		var r learning.ResumeItem
 		err := row.Scan(&r.LectureID, &r.ConceptID, &r.Title, &r.Anchor, &r.Percent, &r.EstimatedMinutes, &r.ParentLectureID)
 		return r, err

@@ -1,11 +1,9 @@
 
 import { useRouter } from "@/src/shared/lib/router";
-import { useStartInstant } from "@/src/entities/punisher";
+import { lectureHref, useStartInstant } from "@/src/entities/punisher";
 import type { InstantRequest, InstantResponse } from "@/src/shared/api/punisher";
 
-export function lectureHref(id: string): string {
-  return `/lectures/${encodeURIComponent(id)}`;
-}
+export { lectureHref };
 
 /** '이 질문에 답하기' 해설 화면. */
 export function inquiryHref(id: string): string {

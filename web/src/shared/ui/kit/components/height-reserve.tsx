@@ -26,6 +26,8 @@ interface HeightReserveProps {
   skeleton: ReactNode;
   children: ReactNode;
   className?: string;
+  /** false 면 지금 높이를 기억하지 않는다(일시적으로 펼친 상태 등 — 다음 방문의 예약 높이를 왜곡하지 않게) */
+  remember?: boolean;
 }
 
 /**
@@ -33,14 +35,14 @@ interface HeightReserveProps {
  * 다음 로딩 때 스켈레톤 자리를 정확히 그 높이로 잡는다(스켈레톤이 더 길거나 짧아도 자리는 같음).
  * 처음 한 번은 skeleton 자체 높이로 잡으므로 skeleton 은 최종 모양과 비슷하게 그린다.
  */
-export function HeightReserve({ id, ready, skeleton, children, className }: HeightReserveProps) {
+export function HeightReserve({ id, ready, skeleton, children, className, remember = true }: HeightReserveProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [key] = useState(() => storageKey(id));
   const [remembered] = useState(() => (typeof window === "undefined" ? 0 : readHeight(key)));
 
   useEffect(() => {
     const el = ref.current;
-    if (!ready || !el || typeof ResizeObserver === "undefined") {return;}
+    if (!ready || !remember || !el || typeof ResizeObserver === "undefined") {return;}
     const save = () => {
       try {
         window.localStorage.setItem(key, String(Math.round(el.getBoundingClientRect().height)));
@@ -51,7 +53,7 @@ export function HeightReserve({ id, ready, skeleton, children, className }: Heig
     const observer = new ResizeObserver(save);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [key, ready]);
+  }, [key, ready, remember]);
 
   return (
     <div ref={ref} className={className} style={!ready && remembered > 0 ? { height: remembered, overflow: "hidden" } : undefined}>

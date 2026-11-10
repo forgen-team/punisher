@@ -36,6 +36,8 @@ export type ListRowProps = Omit<React.HTMLAttributes<HTMLElement>, "title" | "on
     emphasized?: boolean;
     /** 제목 최대 줄 수 (기본 2) */
     titleLines?: 1 | 2;
+    /** 메타 최대 줄 수 (기본 1: 한 줄 말줄임). 2면 두 줄까지 보이고 줄바꿈(\n)을 지킨다. "all"은 자르지 않는다 */
+    metaLines?: 1 | 2 | "all";
   };
 
 /**
@@ -45,7 +47,7 @@ export type ListRowProps = Omit<React.HTMLAttributes<HTMLElement>, "title" | "on
  */
 export function ListRow(props: ListRowProps) {
   const {
-    title, meta, leading, trailing, selected = false, emphasized = false, titleLines = 2,
+    title, meta, leading, trailing, selected = false, emphasized = false, titleLines = 2, metaLines = 1,
     href, linkAs, onClick, disabled, className, ...rest
   } = props;
   const inList = React.useContext(ListContext);
@@ -64,7 +66,16 @@ export function ListRow(props: ListRowProps) {
         >
           {title}
         </span>
-        {meta ? <span className="mt-0.5 block truncate text-xs text-fg-muted">{meta}</span> : null}
+        {meta ? (
+          <span
+            className={cn(
+              "mt-0.5 block text-xs text-fg-muted",
+              metaLines === 1 ? "truncate" : metaLines === 2 ? "line-clamp-2 whitespace-pre-line break-keep" : "whitespace-pre-line break-keep",
+            )}
+          >
+            {meta}
+          </span>
+        ) : null}
       </span>
     </>
   );

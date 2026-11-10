@@ -2,6 +2,7 @@ package learning
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -96,8 +97,39 @@ func TestBuildTodayNeverRecommendsDone(t *testing.T) {
 		Requests: []RequestInput{{ID: "r1", Query: "B", ConceptIDs: []string{"b"}}},
 		Goals:    []GoalInput{{ID: "g", Title: "goal", Path: []string{"a", "b", "c"}}},
 	})
-	if !res.Exhausted || len(res.Items) != 0 {
-		t.Fatalf("done concepts must not be recommended: %+v", res)
+	if !res.Exhausted || len(res.Items) != 1 || res.Items[0].Kind != RecResume {
+		t.Fatalf("done concepts must not be recommended, but a half-read lecture stays: %+v", res)
+	}
+}
+
+// 2026-11-10: "이어보기도 무조건 하나만 나오네" — 읽던 강의는 추천 개수와 상관없이 최근 순서대로 전부.
+func TestBuildTodayListsEveryInProgressLecture(t *testing.T) {
+	concepts := map[string]TodayConcept{
+		"a": {ID: "a", Name: "A", Area: "os", Depth: 1, HasPending: true},
+		"b": {ID: "b", Name: "B", Area: "os", Depth: 1, State: Completed},
+		"c": {ID: "c", Name: "C", Area: "ds", Depth: 1, HasPending: true},
+		"d": {ID: "d", Name: "D", Area: "ds", Depth: 1, HasPending: true},
+	}
+	res := BuildToday(TodayInput{Concepts: concepts, Limit: 1, Resume: []ResumeItem{
+		{LectureID: "l1", ConceptID: "a", Percent: 10},
+		{LectureID: "l2", ConceptID: "b", Percent: 20},
+		{LectureID: "l3", ConceptID: "a", Percent: 30},
+		{LectureID: "gone", ConceptID: "removed-from-map", Percent: 40},
+	}})
+	var resume []string
+	others := 0
+	for _, it := range res.Items {
+		if it.Kind == RecResume {
+			resume = append(resume, it.LectureID)
+		} else {
+			others++
+		}
+	}
+	if strings.Join(resume, ",") != "l1,l2,l3" {
+		t.Fatalf("resume = %v", resume)
+	}
+	if others != 1 || res.Exhausted {
+		t.Fatalf("limit applies to suggestions only: others=%d exhausted=%v", others, res.Exhausted)
 	}
 }
 
