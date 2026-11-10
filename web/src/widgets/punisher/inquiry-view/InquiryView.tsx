@@ -15,6 +15,7 @@ import { FollowupQuestion, inquirySectionNote } from "./ui/sectionNote";
 const HOME = "/";
 const NO_SECTIONS: LectureSection[] = [];
 const NO_FOLLOWUPS: InquiryFollowup[] = [];
+const FOLLOWUP_ANNOUNCEMENTS = { pending: "답을 쓰는 중이에요", answered: "답이 도착했어요", failed: "답을 만들지 못했어요" } as const;
 const dateFormat = new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" });
 
 /**
@@ -85,10 +86,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
   const unanswered = followups.filter((f) => f.status !== "answered");
   const followupBusy = unanswered.some((f) => f.status === "pending");
   const lastFollowup = followups[followups.length - 1];
-  let followupAnnouncement = "";
-  if (lastFollowup?.status === "pending") { followupAnnouncement = "답을 쓰는 중이에요"; }
-  else if (lastFollowup?.status === "answered") { followupAnnouncement = "답이 도착했어요"; }
-  else if (lastFollowup?.status === "failed") { followupAnnouncement = "답을 만들지 못했어요"; }
+  const followupAnnouncement = lastFollowup ? FOLLOWUP_ANNOUNCEMENTS[lastFollowup.status] : "";
   const pickQuote = useCallback((text: string) => {
     setQuote(text);
     composerRef.current?.focus();
