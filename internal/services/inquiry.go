@@ -100,7 +100,7 @@ func (s *Service) GetInquiry(ctx context.Context, userID, id string) (models.Inq
 	if err != nil {
 		return q, err
 	}
-	q.Concepts, err = s.Store.InquiryConcepts(ctx, userID, inquiry.MergeIDs(q.ConceptIDs, q.ProposedConceptIDs, 2*store.MaxThreadConcepts))
+	q.Concepts, err = s.Store.InquiryConcepts(ctx, userID, inquiry.MergeIDs(q.ConceptIDs, q.ProposedConceptIDs, len(q.ConceptIDs)+len(q.ProposedConceptIDs)))
 	return PublicInquiry(q), err
 }
 

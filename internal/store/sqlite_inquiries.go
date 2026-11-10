@@ -162,23 +162,24 @@ func threadConcepts(ctx context.Context, c conn, userID, id string) (related, pr
 // mergeThreadConcepts adds an answer's concepts to the thread: nothing is lost
 // to a later answer, a proposed concept is listed once, and the size is capped.
 func mergeThreadConcepts(related, proposed, addRelated, addProposed []string) (mergedRelated, mergedProposed []string) {
-	mergedProposed = appendUnique(proposed, addProposed, nil)
+	// 제안 개념은 상한 없이 둔다(답마다 개수가 제한돼 있고, 새로 제안한 개념이 빠지면 지도에 카드가 안 생긴다).
+	mergedProposed = appendUnique(proposed, addProposed, nil, 0)
 	drop := make(map[string]bool, len(mergedProposed))
 	for _, id := range mergedProposed {
 		drop[id] = true
 	}
-	mergedRelated = appendUnique(related, addRelated, drop)
+	mergedRelated = appendUnique(related, addRelated, drop, MaxThreadConcepts)
 	return mergedRelated, mergedProposed
 }
 
-// MaxThreadConcepts bounds the nodes a whole thread is attached to, per list.
+// MaxThreadConcepts bounds the existing map nodes a whole thread is attached to.
 const MaxThreadConcepts = 12
 
-func appendUnique(base, add []string, drop map[string]bool) []string {
+func appendUnique(base, add []string, drop map[string]bool, limit int) []string {
 	out := make([]string, 0, len(base)+len(add))
 	seen := map[string]bool{}
 	for _, id := range append(append([]string{}, base...), add...) {
-		if id != "" && !seen[id] && !drop[id] && len(out) < MaxThreadConcepts {
+		if id != "" && !seen[id] && !drop[id] && (limit == 0 || len(out) < limit) {
 			seen[id] = true
 			out = append(out, id)
 		}
