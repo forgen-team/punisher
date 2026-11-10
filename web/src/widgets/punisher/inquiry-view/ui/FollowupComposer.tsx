@@ -1,6 +1,6 @@
 import { forwardRef, useImperativeHandle, useRef, useState, type KeyboardEvent } from "react";
 import { X } from "lucide-react";
-import { Button, IconButton, Section, Textarea, useMediaQuery } from "@/src/shared/ui/kit";
+import { Button, IconButton, Section, Textarea } from "@/src/shared/ui/kit";
 import { useCreateFollowup } from "@/src/entities/punisher";
 import { INQUIRY_MAX_FOLLOWUPS, INQUIRY_MAX_FOLLOWUP_CHARS } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
@@ -22,7 +22,6 @@ export const FollowupComposer = forwardRef<HTMLTextAreaElement, FollowupComposer
   const [text, setText] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useImperativeHandle(ref, () => inputRef.current as HTMLTextAreaElement);
-  const coarse = useMediaQuery("(pointer: coarse)");
   const create = useCreateFollowup(inquiryId);
   const left = INQUIRY_MAX_FOLLOWUPS - used;
   const disabled = busy || create.isPending || !text.trim() || left <= 0;
@@ -80,7 +79,8 @@ export const FollowupComposer = forwardRef<HTMLTextAreaElement, FollowupComposer
         />
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs tabular-nums text-fg-muted">
-            {text.length}/{INQUIRY_MAX_FOLLOWUP_CHARS}{!coarse && " · ⌘/Ctrl+Enter로 보내요"}
+            {text.length}/{INQUIRY_MAX_FOLLOWUP_CHARS}
+            <span className="[@media(pointer:coarse)]:hidden"> · ⌘/Ctrl+Enter로 보내요</span>
           </span>
           <Button onClick={send} disabled={disabled} loading={create.isPending}>
             물어보기

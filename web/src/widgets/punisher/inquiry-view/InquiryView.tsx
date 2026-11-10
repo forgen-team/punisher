@@ -224,7 +224,13 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
             </Button>
           )}
           {hasContent && (
-            <Button variant="ghost" onClick={askRegenerate} loading={regenerate.isPending} disabled={generating || followupBusy}>
+            <Button
+              variant="ghost"
+              onClick={askRegenerate}
+              loading={regenerate.isPending}
+              disabled={generating || followupBusy}
+              title={followupBusy ? "이어서 묻기 답을 쓰는 중에는 다시 만들 수 없어요" : undefined}
+            >
               다시 만들기
             </Button>
           )}

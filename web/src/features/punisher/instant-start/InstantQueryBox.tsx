@@ -1,7 +1,7 @@
 import { useRouter } from "@/src/shared/lib/router";
 import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { ArrowRight, BookOpen, MessageCircleQuestion } from "lucide-react";
-import { Chip, IconButton, Spinner, Textarea, cn, useMediaQuery } from "@/src/shared/ui/kit";
+import { Chip, IconButton, Spinner, Textarea, cn } from "@/src/shared/ui/kit";
 import { useCreateInquiry } from "@/src/entities/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import type { InstantResponse } from "@/src/shared/api/punisher";
@@ -52,7 +52,6 @@ export function InstantQueryBox() {
   const error = mode === "answer" ? inquiry.error : instant.error;
   // 모드를 바꿔도 쓴 글은 그대로 둔다 — 한도를 넘으면 경고하고 보내기만 막는다.
   const tooLong = query.trim().length > current.max;
-  const coarse = useMediaQuery("(pointer: coarse)");
 
   async function submit() {
     const trimmed = query.trim();
@@ -160,9 +159,11 @@ export function InstantQueryBox() {
       </form>
       <div className="flex items-start justify-between gap-3 text-xs text-fg-muted">
         <p id="instant-query-hint" className="break-keep">
-          {current.hint}{!coarse && ` ${current.shortcut}`}
+          {current.hint}
+          {/* JS 미디어쿼리는 첫 렌더 뒤에 바뀌어 모바일에서 줄이 밀리므로 CSS 로 숨긴다. */}
+          <span className="[@media(pointer:coarse)]:hidden"> {current.shortcut}</span>
         </p>
-        <span aria-hidden={!tooLong} className={cn("shrink-0 tabular-nums", tooLong && "font-medium text-danger")}>
+        <span role={tooLong ? "alert" : undefined} aria-hidden={!tooLong} className={cn("shrink-0 tabular-nums", tooLong && "font-medium text-danger")}>
           {tooLong && `${current.max}자까지 쓸 수 있어요 · `}
           {query.length}/{current.max}
         </span>
