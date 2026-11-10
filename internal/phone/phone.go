@@ -212,7 +212,7 @@ func (m *Manager) checkServable(sc serveConfig, ts, host string) error {
 	occupied := errors.New("이 Mac의 Tailscale 주소를 이미 다른 프로그램이 쓰고 있어요. 그 설정을 지우지 않으려고 멈췄어요. " + msgAskOwner)
 	for _, c := range configs {
 		if c.AllowFunnel[key] {
-			return fmt.Errorf("이 Mac에 인터넷 공개 기능(Tailscale Funnel)이 켜져 있어요. Punisher는 로그인 화면이 없어서 공개되면 위험해요. 터미널에 아래를 입력해 끈 뒤 다시 실행해 주세요.\n  %q funnel --https=443 off", ts)
+			return fmt.Errorf("이 Mac에 인터넷 공개 기능(Tailscale Funnel)이 켜져 있어요. Punisher는 로그인 화면이 없어서 공개되면 위험해요. 터미널에 아래를 입력해 끈 뒤 다시 실행해 주세요. 이 명령은 이 Mac의 443 포트 설정만 지우고(거기서 공개하던 서비스도 함께 꺼져요), 다른 포트는 건드리지 않아요.\n  %q funnel --https=443 off", ts)
 		}
 		if c.TCP[httpsPort].TCPForward != "" {
 			return occupied

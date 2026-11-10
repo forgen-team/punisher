@@ -195,7 +195,7 @@ func TestOnRefuses(t *testing.T) {
 		o    opts
 		want string
 	}{
-		{"funnel on", opts{serveJSON: ourServe(true)}, "Funnel"},
+		{"funnel on", opts{serveJSON: ourServe(true)}, "funnel --https=443 off"},
 		{"funnel in a foreground session", opts{serveJSON: `{"Foreground":{"abc":{"AllowFunnel":{"` + testHost + `:443":true}}}}`}, "Funnel"},
 		{"other service", opts{serveJSON: otherServe}, "다른 프로그램"},
 		{"file handler at root", opts{serveJSON: `{"Web":{"` + testHost + `:443":{"Handlers":{"/":{"Path":"/tmp/site"}}}}}`}, "다른 프로그램"},
@@ -379,6 +379,30 @@ func TestOffLeavesSharedAddressAlone(t *testing.T) {
 	}
 	if strings.Contains(read(f.tsLog), " off") || !strings.Contains(f.out.String(), "그대로") {
 		t.Fatalf("tailscale calls:\n%s\noutput: %s", read(f.tsLog), f.out.String())
+	}
+}
+
+func TestOffFinishesAfterCancel(t *testing.T) {
+	f := newFixture(t, opts{})
+	if err := f.m.On(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := f.m.Off(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if fileExists(f.m.plistPath()) || fileExists(filepath.Join(f.m.DataDir, settingsFile)) || fileExists(filepath.Join(f.dir, "loaded")) {
+		t.Fatal("cancel left state behind")
+	}
+}
+
+func TestOffKeepsBothErrors(t *testing.T) {
+	f := newFixture(t, opts{serveStatusFails: true})
+	f.m.Launchctl = fakeScript(t, f.dir, "launchctl-broken", f.lcLog, `[ "$1" = print ] && exit 0; echo broken >&2; exit 1`)
+	err := f.m.Off(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "bootout") || !strings.Contains(err.Error(), "Tailscale 연결 설정") {
+		t.Fatalf("err = %v", err)
 	}
 }
 
