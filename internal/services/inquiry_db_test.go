@@ -47,7 +47,7 @@ func TestInquiryRewritesThenCachesAndAttachesToMap(t *testing.T) {
 	slug := "infra.test-probe"
 	fake := &sequenceLLM{texts: []string{inquiryMarkup(a, b, slug, false), inquiryMarkup(a, b, slug, true)}}
 	s.LLM = fake
-	q, _, err := s.Store.CreateInquiry(ctx, user, "pod가 커넥션 풀을 다 물고 있는데 CORS가 나요", time.Minute)
+	q, _, err := s.Store.CreateInquiry(ctx, user, "pod가 커넥션 풀을 다 물고 있는데 CORS가 나요", time.Minute, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestInquiryFailureDedupeAndSweep(t *testing.T) {
 	s, user := dbService(t)
 	ctx := context.Background()
 	s.LLM = &sequenceLLM{texts: []string{"@@lecture\ntitle: x\n@@end"}}
-	q, _, _ := s.Store.CreateInquiry(ctx, user, "질문", time.Minute)
+	q, _, _ := s.Store.CreateInquiry(ctx, user, "질문", time.Minute, 3)
 	if err := s.runInquiry(ctx, "k", user, q); err != nil {
 		t.Fatal(err)
 	}
@@ -112,8 +112,8 @@ func TestInquiryFailureDedupeAndSweep(t *testing.T) {
 	if got.Status != "failed" || got.AnsweredAt != nil || PublicInquiry(got).Error != inquiryFailedMessage {
 		t.Fatalf("got %+v", got)
 	}
-	a, created, _ := s.Store.CreateInquiry(ctx, user, "같은 질문", time.Minute)
-	b, again, _ := s.Store.CreateInquiry(ctx, user, "같은 질문", time.Minute)
+	a, created, _ := s.Store.CreateInquiry(ctx, user, "같은 질문", time.Minute, 3)
+	b, again, _ := s.Store.CreateInquiry(ctx, user, "같은 질문", time.Minute, 3)
 	if !created || again || a.ID != b.ID {
 		t.Fatalf("double submit: %v %v", created, again)
 	}
@@ -133,7 +133,7 @@ func TestFollowupThread(t *testing.T) {
 	ctx := context.Background()
 	a, b, c := threeConcepts(t, s, user)
 	s.LLM = &sequenceLLM{texts: []string{inquiryMarkup(a, b, "infra.fq-one", true)}}
-	q, _, _ := s.Store.CreateInquiry(ctx, user, "원 질문", time.Minute)
+	q, _, _ := s.Store.CreateInquiry(ctx, user, "원 질문", time.Minute, 3)
 	if err := s.runInquiry(ctx, "k", user, q); err != nil {
 		t.Fatal(err)
 	}
@@ -161,8 +161,25 @@ func TestFollowupThread(t *testing.T) {
 	if strings.Join(got.ConceptIDs, ",") != a+","+b+","+c || strings.Join(got.ProposedConceptIDs, ",") != "infra.fq-one,infra.fq-two" {
 		t.Fatalf("thread concepts = %v %v", got.ConceptIDs, got.ProposedConceptIDs)
 	}
-	if _, err := s.Store.CreateFollowup(ctx, user, q.ID, "다음", ""); err != nil {
+	s.LLM = &sequenceLLM{texts: []string{inquiryMarkup(b, a, "infra.fq-one", true)}}
+	if err := s.runInquiry(ctx, "k", user, q); err != nil {
 		t.Fatal(err)
+	}
+	if merged, _ := s.Store.GetInquiry(ctx, user, q.ID); strings.Join(merged.ConceptIDs, ",") != b+","+a+","+c {
+		t.Fatalf("regeneration lost thread concepts: %v", merged.ConceptIDs)
+	}
+	next, err := s.Store.CreateFollowup(ctx, user, q.ID, "다음", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Store.CreateFollowup(ctx, user, q.ID, "동시", ""); !errors.Is(err, store.ErrInquiryBusy) {
+		t.Fatalf("second pending follow-up: %v", err)
+	}
+	if _, err := s.Store.SetFollowupPending(ctx, user, "other-thread", next.ID); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("retry must check the thread: %v", err)
+	}
+	if _, err := s.RegenerateInquiry(ctx, user, q.ID); !errors.Is(err, ErrInquiryBusy) {
+		t.Fatalf("no regeneration while a follow-up is being written: %v", err)
 	}
 	if _, err := s.StartFollowup(ctx, user, q.ID, "또", ""); !errors.Is(err, ErrInquiryBusy) {
 		t.Fatalf("one at a time: %v", err)

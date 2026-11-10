@@ -7,6 +7,7 @@ import { INQUIRY_MAX_QUOTE_CHARS } from "@/src/shared/api/punisher";
 
 const BUTTON_GAP = 10;
 const MIN_CHARS = 2;
+const TOP_CLEARANCE = 112;
 
 /** 해설에서 고른 구절 옆 '여기 더 자세히' — 누르면 그 구절을 인용으로 붙여 이어서 묻기로 간다. */
 export function QuoteAsk({ containerRef, onQuote }: { containerRef: RefObject<HTMLElement>; onQuote: (text: string) => void }) {
@@ -17,7 +18,8 @@ export function QuoteAsk({ containerRef, onQuote }: { containerRef: RefObject<HT
     <div
       className="absolute z-panel"
       style={{
-        top: (coarse ? selection.rect.bottom + BUTTON_GAP : selection.rect.top - BUTTON_GAP - 40) + window.scrollY,
+        // 선택이 화면 위쪽이면 고정 상단 바에 가리지 않게 아래로 내린다.
+        top: Math.max(TOP_CLEARANCE, coarse ? selection.rect.bottom + BUTTON_GAP : selection.rect.top - BUTTON_GAP - 40) + window.scrollY,
         left: Math.max(8, Math.min(selection.rect.left, window.innerWidth - 180)) + window.scrollX,
       }}
     >

@@ -91,7 +91,7 @@ type Store interface {
 
 	// study requests
 	// inquiries (이 질문에 답하기, 이어서 묻기)
-	CreateInquiry(ctx context.Context, userID, question string, dedupeWindow time.Duration) (models.Inquiry, bool, error)
+	CreateInquiry(ctx context.Context, userID, question string, dedupeWindow time.Duration, maxPending int) (models.Inquiry, bool, error)
 	CountPendingInquiries(ctx context.Context, userID string) (int, error)
 	GetInquiry(ctx context.Context, userID, id string) (models.Inquiry, error)
 	ListInquiries(ctx context.Context, userID string, f InquiryFilter) ([]models.Inquiry, error)
@@ -103,7 +103,7 @@ type Store interface {
 	InquiryConcepts(ctx context.Context, userID string, ids []string) ([]models.ConceptLink, error)
 	ListFollowups(ctx context.Context, userID, inquiryID string) ([]models.InquiryFollowup, error)
 	CreateFollowup(ctx context.Context, userID, inquiryID, question, quote string) (models.InquiryFollowup, error)
-	SetFollowupPending(ctx context.Context, userID, id string) (models.InquiryFollowup, error)
+	SetFollowupPending(ctx context.Context, userID, inquiryID, id string) (models.InquiryFollowup, error)
 	AnswerFollowup(ctx context.Context, userID, inquiryID, id string, a FollowupAnswer) error
 	FailFollowup(ctx context.Context, userID, id, model, errMsg string) error
 	ListCompleted(ctx context.Context, userID string, f CompletedFilter, cursor string) ([]models.CompletedItem, string, error)

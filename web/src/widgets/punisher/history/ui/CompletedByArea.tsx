@@ -31,8 +31,8 @@ function CompletedRow({ item }: { item: CompletedItem }) {
     <ListRow
       href={lectureHref(item.id)}
       linkAs={Link}
-      title={item.conceptName || item.title}
-      meta={[item.title && item.title !== item.conceptName ? item.title : "", item.lectureKind === "instant" ? "즉석" : "라이브러리", date].filter(Boolean).join(" · ")}
+      title={item.title || item.conceptName}
+      meta={[item.conceptName && item.conceptName !== item.title ? item.conceptName : "", item.lectureKind === "instant" ? "즉석" : "라이브러리", date].filter(Boolean).join(" · ")}
     />
   );
 }
@@ -134,9 +134,9 @@ export function CompletedByArea() {
     body = <ErrorState message={describePunisherError(areas.error)} onRetry={() => areas.refetch()} retrying={areas.isRefetching} />;
   } else if (shown.length === 0) {
     body = urlQuery || selected ? (
-      <EmptyState title="찾는 기록이 없어요" description="다른 말로 찾거나 분야를 바꿔 보세요." />
+      <EmptyState title="찾는 기록이 없어요" description={selected ? "다른 말로 찾거나 '전체'로 바꿔 보세요." : "다른 말로 찾아 보세요."} />
     ) : (
-      <EmptyState title="아직 완료한 강의가 없어요" description="강의를 끝까지 읽거나 질문 해설을 받으면 여기에 쌓여요." />
+      <EmptyState title="아직 완료한 기록이 없어요" description="강의를 끝까지 읽거나 질문 해설을 받으면 여기에 쌓여요." />
     );
   } else {
     body = (
@@ -154,18 +154,17 @@ export function CompletedByArea() {
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden="true" />
         <Input aria-label="완료 기록 찾기" value={text} onChange={(event) => changeText(event.target.value)} placeholder="제목이나 개념 이름으로 찾기" className="pl-9" />
       </div>
-      {list.length > 0 && (
-        <div role="group" aria-label="분야" className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1.5 fold:mx-0 fold:flex-wrap fold:px-0">
-          <Chip selected={!selected} onClick={() => setParam({ area: "" })}>
-            전체 {total}
+      {/* 칩 줄은 불러오는 중에도, 결과가 없어도 자리를 지켜 아래가 밀리지 않는다. */}
+      <div role="group" aria-label="분야" aria-busy={areas.isLoading} className="-mx-4 flex min-h-11 gap-2 overflow-x-auto px-4 py-1.5 fold:mx-0 fold:flex-wrap fold:px-0">
+        <Chip selected={!selected} onClick={() => setParam({ area: "" })}>
+          전체{areas.isLoading ? "" : ` ${total}`}
+        </Chip>
+        {list.map((a) => (
+          <Chip key={a.area} selected={selected === a.area} onClick={() => setParam({ area: selected === a.area ? "" : a.area })}>
+            {areaLabel(a.area)} {a.count}
           </Chip>
-          {list.map((a) => (
-            <Chip key={a.area} selected={selected === a.area} onClick={() => setParam({ area: selected === a.area ? "" : a.area })}>
-              {areaLabel(a.area)} {a.count}
-            </Chip>
-          ))}
-        </div>
-      )}
+        ))}
+      </div>
       {body}
     </div>
   );

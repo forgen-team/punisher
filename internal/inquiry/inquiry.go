@@ -40,8 +40,6 @@ const (
 	// MaxFollowupRelated / MaxFollowupNew bound what one follow-up adds to the thread.
 	MaxFollowupRelated = 3
 	MaxFollowupNew     = 2
-	// MaxThreadConcepts bounds the nodes a whole thread is attached to.
-	MaxThreadConcepts = 12
 )
 
 // Answer is a parsed explanation.

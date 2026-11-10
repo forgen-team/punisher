@@ -1,6 +1,6 @@
-import { forwardRef, useState, type KeyboardEvent } from "react";
+import { forwardRef, useImperativeHandle, useRef, useState, type KeyboardEvent } from "react";
 import { X } from "lucide-react";
-import { Button, IconButton, Section, Textarea } from "@/src/shared/ui/kit";
+import { Button, IconButton, Section, Textarea, useMediaQuery } from "@/src/shared/ui/kit";
 import { useCreateFollowup } from "@/src/entities/punisher";
 import { INQUIRY_MAX_FOLLOWUPS, INQUIRY_MAX_FOLLOWUP_CHARS } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
@@ -20,6 +20,9 @@ export const FollowupComposer = forwardRef<HTMLTextAreaElement, FollowupComposer
   ref,
 ) {
   const [text, setText] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  useImperativeHandle(ref, () => inputRef.current as HTMLTextAreaElement);
+  const coarse = useMediaQuery("(pointer: coarse)");
   const create = useCreateFollowup(inquiryId);
   const left = INQUIRY_MAX_FOLLOWUPS - used;
   const disabled = busy || create.isPending || !text.trim() || left <= 0;
@@ -32,6 +35,8 @@ export const FollowupComposer = forwardRef<HTMLTextAreaElement, FollowupComposer
         onSuccess: () => {
           setText("");
           onClearQuote();
+          // 버튼이 비활성으로 바뀌어도 키보드 위치를 잃지 않게.
+          inputRef.current?.focus();
         },
       },
     );
@@ -53,7 +58,7 @@ export const FollowupComposer = forwardRef<HTMLTextAreaElement, FollowupComposer
   }
 
   return (
-    <Section title="이어서 묻기" description={`해설을 읽고 더 궁금한 것을 물어보세요 · ${left}번 더 물을 수 있어요`} className="mt-10">
+    <Section title="이어서 묻기" description={`본문에서 문장을 고르면 그 부분을 인용해 물을 수 있어요 · ${left}번 더 물을 수 있어요`} className="mt-10">
       <div className="flex flex-col gap-2">
         {quote && (
           <div className="flex items-start gap-2 rounded-md bg-canvas-subtle py-1 pl-3 pr-1">
@@ -64,7 +69,7 @@ export const FollowupComposer = forwardRef<HTMLTextAreaElement, FollowupComposer
           </div>
         )}
         <Textarea
-          ref={ref}
+          ref={inputRef}
           aria-label="이어서 물어볼 내용"
           value={text}
           maxLength={INQUIRY_MAX_FOLLOWUP_CHARS}
@@ -75,7 +80,7 @@ export const FollowupComposer = forwardRef<HTMLTextAreaElement, FollowupComposer
         />
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs tabular-nums text-fg-muted">
-            {text.length}/{INQUIRY_MAX_FOLLOWUP_CHARS}
+            {text.length}/{INQUIRY_MAX_FOLLOWUP_CHARS}{!coarse && " · ⌘/Ctrl+Enter로 보내요"}
           </span>
           <Button onClick={send} disabled={disabled} loading={create.isPending}>
             물어보기

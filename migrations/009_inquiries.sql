@@ -36,3 +36,5 @@ CREATE TABLE IF NOT EXISTS inquiry_followups (
     answered_at          TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_inquiry_followups_thread ON inquiry_followups (inquiry_id, created_at);
+-- 스레드당 답을 쓰는 중인 후속 질문은 하나(동시 요청도 DB 에서 막는다).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inquiry_followups_one_pending ON inquiry_followups (inquiry_id) WHERE status = 'pending';

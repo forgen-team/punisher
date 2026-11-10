@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/wooo-jin/punisher/internal/curriculum"
@@ -30,7 +31,7 @@ var completedItemsSQL = `
 		SELECT 'inquiry', i.id, COALESCE(NULLIF(json_extract(i.content, '$.title'), ''), i.question), COALESCE(c.id, ''), COALESCE(c.name, ''),
 			COALESCE(c.area, '` + AreaOther + `'), 0, '', '',
 			(SELECT COUNT(*) FROM inquiry_followups f WHERE f.inquiry_id = i.id),
-			i.updated_at,
+			MAX(i.answered_at, COALESCE((SELECT MAX(f.answered_at) FROM inquiry_followups f WHERE f.inquiry_id = i.id), i.answered_at)),
 			i.question || ' ' || COALESCE(json_extract(i.content, '$.title'), '') || ' ' || COALESCE(
 				(SELECT group_concat(n.name, ' ') FROM concepts n WHERE n.id IN (
 					SELECT value FROM json_each(i.concept_ids) UNION SELECT value FROM json_each(i.proposed_concept_ids))), '')
@@ -105,8 +106,21 @@ func (s *SQLiteStore) CompletedAreas(ctx context.Context, userID, query string) 
 	for _, c := range list {
 		counts[c.area] = c.count
 	}
+	order := append([]string{}, curriculum.Areas...)
+	known := make(map[string]bool, len(order)+1)
+	for _, area := range order {
+		known[area] = true
+	}
+	// 영역 목록에 없는 값도 칩·목록에서 닿을 수 있게 뒤에 둔다.
+	var extra []string
+	for area := range counts {
+		if !known[area] && area != AreaOther {
+			extra = append(extra, area)
+		}
+	}
+	sort.Strings(extra)
 	out := []models.CompletedArea{}
-	for _, area := range append(append([]string{}, curriculum.Areas...), AreaOther) {
+	for _, area := range append(append(order, extra...), AreaOther) {
 		if counts[area] > 0 {
 			out = append(out, models.CompletedArea{Area: area, Count: counts[area]})
 		}

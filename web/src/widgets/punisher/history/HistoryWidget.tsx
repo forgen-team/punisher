@@ -10,7 +10,7 @@ import { QuestionHistoryList } from "./ui/QuestionHistoryList";
 type HistoryTab = "lectures" | "learned" | "inquiries" | "questions" | "notes";
 
 const TABS: { id: HistoryTab; label: string }[] = [
-  { id: "lectures", label: "완료한 강의" },
+  { id: "lectures", label: "완료" },
   { id: "learned", label: "개념" },
   { id: "inquiries", label: "질문 해설" },
   { id: "questions", label: "강의 중 질문" },

@@ -3,7 +3,7 @@ import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { BottomSheet, Button, ErrorState, Skeleton, Spinner, buttonVariants, type MenuItem } from "@/src/shared/ui/kit";
 import { useInquiry, useRegenerateInquiry, useRetryFollowup, useSetInquiryRead } from "@/src/entities/punisher";
-import { describePunisherError, type Inquiry, type InquiryFollowup, type LectureSection } from "@/src/shared/api/punisher";
+import { INQUIRY_MAX_FOLLOWUPS, describePunisherError, type Inquiry, type InquiryFollowup, type LectureSection } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { LectureAssistPlaceholder, LectureBody, LectureLayout, LectureTopBar, TocSheet, useActiveSection } from "../lecture-viewer";
 import { InquiryConcepts } from "./ui/InquiryConcepts";
@@ -21,13 +21,14 @@ const dateFormat = new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeS
  * 해설 상태 줄 — 항상 같은 자리·같은 높이(쓰는 중 ↔ 완료가 바뀌어도 본문이 밀리지 않음)이고, aria-busy 밖의
  * 라이브 영역이라 완료도 읽어 준다.
  */
-function StatusRow({ inquiry, hasContent }: { inquiry: Inquiry | undefined; hasContent: boolean }) {
+function StatusRow({ inquiry, hasContent, unstable }: { inquiry: Inquiry | undefined; hasContent: boolean; unstable: boolean }) {
   let content: ReactNode = <Skeleton className="w-40" />;
   if (inquiry?.status === "pending") {
     content = (
       <>
         <Spinner size="sm" label={null} />
-        {hasContent ? "새 해설을 쓰는 중이에요 · 끝나면 바뀌어요" : "해설을 쓰는 중이에요 · 보통 1~3분, 나가도 계속 써요"}
+        {unstable && "연결이 불안정해요 · 다시 확인하는 중"}
+        {!unstable && (hasContent ? "새 해설을 쓰는 중이에요 · 끝나면 바뀌어요" : "해설을 쓰는 중이에요 · 보통 1~3분, 나가도 계속 써요")}
       </>
     );
   } else if (inquiry?.status === "failed") {
@@ -83,6 +84,11 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
   const sectionNote = useCallback((section: LectureSection) => inquirySectionNote(section, followupByAnchor), [followupByAnchor]);
   const unanswered = followups.filter((f) => f.status !== "answered");
   const followupBusy = unanswered.some((f) => f.status === "pending");
+  const lastFollowup = followups[followups.length - 1];
+  let followupAnnouncement = "";
+  if (lastFollowup?.status === "pending") { followupAnnouncement = "답을 쓰는 중이에요"; }
+  else if (lastFollowup?.status === "answered") { followupAnnouncement = "답이 도착했어요"; }
+  else if (lastFollowup?.status === "failed") { followupAnnouncement = "답을 만들지 못했어요"; }
   const pickQuote = useCallback((text: string) => {
     setQuote(text);
     composerRef.current?.focus();
@@ -110,7 +116,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
   const menuItems: MenuItem[] = q
     ? [
         { key: "read", label: read ? "목록에 다시 두기" : "다 봤어요", disabled: generating || setRead.isPending, onSelect: toggleRead },
-        { key: "regenerate", label: "다시 만들기", disabled: generating || regenerate.isPending, onSelect: askRegenerate },
+        { key: "regenerate", label: "다시 만들기", disabled: generating || followupBusy || regenerate.isPending, onSelect: askRegenerate },
       ]
     : [];
 
@@ -127,7 +133,9 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
         menuItems={menuItems}
       />
       <LectureLayout sections={sections} totalMinutes={totalMinutes} activeAnchor={activeAnchor} assist={assist}>
-        <StatusRow inquiry={q} hasContent={hasContent} />
+        <StatusRow inquiry={q} hasContent={hasContent} unstable={Boolean(q && inquiry.error)} />
+        {/* 후속 답의 진행은 늘 있는 라이브 영역으로 읽어 준다(내용만 바뀜). */}
+        <p role="status" aria-live="polite" className="sr-only">{followupAnnouncement}</p>
         {q && !generating && q.error && hasContent && (
           <p role="alert" className="mt-3 flex flex-wrap items-center gap-2 break-keep rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">
             다시 만들기에 실패해 이전 해설을 보여 드려요.
@@ -158,7 +166,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
               <FollowupQuestion followup={f} />
               {f.status === "pending" ? (
                 <div className="flex flex-col gap-3">
-                  <p role="status" className="flex items-center gap-2 text-sm text-fg-secondary">
+                  <p className="flex items-center gap-2 text-sm text-fg-secondary">
                     <Spinner size="sm" label={null} />
                     답을 쓰는 중이에요 · 보통 1분 안팎
                   </p>
@@ -184,7 +192,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
               onClearQuote={() => setQuote("")}
             />
           )}
-          {hasContent && <QuoteAsk containerRef={bodyRef} onQuote={pickQuote} />}
+          {hasContent && !generating && followups.length < INQUIRY_MAX_FOLLOWUPS && <QuoteAsk containerRef={bodyRef} onQuote={pickQuote} />}
           {!hasContent && (!q || generating) && (
             <div className="mt-6 flex flex-col gap-6" aria-hidden="true">
               <Skeleton lines={4} />
@@ -216,7 +224,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
             </Button>
           )}
           {hasContent && (
-            <Button variant="ghost" onClick={askRegenerate} loading={regenerate.isPending} disabled={generating}>
+            <Button variant="ghost" onClick={askRegenerate} loading={regenerate.isPending} disabled={generating || followupBusy}>
               다시 만들기
             </Button>
           )}
@@ -248,6 +256,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
       >
         <ul className="list-disc space-y-1 break-keep pl-5 text-sm text-fg-secondary">
           <li>새 해설이 완성되면 지금 해설을 대신해요. 그동안은 지금 해설을 그대로 볼 수 있어요.</li>
+          <li>이어서 물은 내용은 그대로 남아요.</li>
           <li>만들기에 실패하면 지금 해설이 남아요.</li>
           <li>생성 사용량이 한 번 더 들어요.</li>
         </ul>

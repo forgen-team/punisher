@@ -1,7 +1,7 @@
 import { useRouter } from "@/src/shared/lib/router";
 import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { ArrowRight, BookOpen, MessageCircleQuestion } from "lucide-react";
-import { Chip, IconButton, Spinner, Textarea } from "@/src/shared/ui/kit";
+import { Chip, IconButton, Spinner, Textarea, cn, useMediaQuery } from "@/src/shared/ui/kit";
 import { useCreateInquiry } from "@/src/entities/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import type { InstantResponse } from "@/src/shared/api/punisher";
@@ -10,11 +10,12 @@ import { inquiryHref, useLaunchInstant } from "./useLaunchInstant";
 
 type QueryMode = "answer" | "study";
 
-const MODES: { value: QueryMode; label: string; hint: string; placeholder: string; max: number; icon: typeof BookOpen }[] = [
+const MODES: { value: QueryMode; label: string; hint: string; shortcut: string; placeholder: string; max: number; icon: typeof BookOpen }[] = [
   {
     value: "answer",
     label: "이 질문에 답하기",
-    hint: "겪은 상황을 그대로 적으면 원인·확인 방법·대처까지 해설을 써 드려요(1~3분). Enter는 줄바꿈, 보내기는 화살표나 ⌘/Ctrl+Enter.",
+    hint: "겪은 상황을 그대로 적으면 원인·확인 방법·대처까지 해설을 써 드려요(1~3분).",
+    shortcut: "Enter는 줄바꿈, ⌘/Ctrl+Enter로 보내요.",
     placeholder: "예) 서버는 살아 있는데 API를 쏘면 CORS 오류가 나요. 원인이 궁금해요",
     max: 1000,
     icon: MessageCircleQuestion,
@@ -22,7 +23,8 @@ const MODES: { value: QueryMode; label: string; hint: string; placeholder: strin
   {
     value: "study",
     label: "이 개념 공부하기",
-    hint: "개념 이름이나 짧은 말로 지도에서 개념을 찾아 바로 강의를 열어요. Enter로 보내요.",
+    hint: "개념 이름이나 짧은 말로 지도에서 개념을 찾아 바로 강의를 열어요.",
+    shortcut: "Enter로 보내요.",
     placeholder: "예) Pod가 죽었다, 커넥션 풀",
     max: 500,
     icon: BookOpen,
@@ -48,10 +50,13 @@ export function InstantQueryBox() {
   const current = MODES.find((m) => m.value === mode) ?? MODES[0];
   const isPending = instant.isPending || inquiry.isPending || navigating;
   const error = mode === "answer" ? inquiry.error : instant.error;
+  // 모드를 바꿔도 쓴 글은 그대로 둔다 — 한도를 넘으면 경고하고 보내기만 막는다.
+  const tooLong = query.trim().length > current.max;
+  const coarse = useMediaQuery("(pointer: coarse)");
 
   async function submit() {
     const trimmed = query.trim();
-    if (!trimmed || isPending) { return; }
+    if (!trimmed || isPending || trimmed.length > current.max) { return; }
     setResult(null);
     setSubmitted(trimmed);
     try {
@@ -103,8 +108,6 @@ export function InstantQueryBox() {
 
   function pickMode(next: QueryMode) {
     setMode(next);
-    // 공부하기는 500자까지라 긴 글은 줄여서 넘긴다(서버 400 방지).
-    setQuery((text) => text.slice(0, (MODES.find((m) => m.value === next) ?? MODES[0]).max));
     setResult(null);
     inquiry.reset();
     instant.reset();
@@ -137,7 +140,7 @@ export function InstantQueryBox() {
           aria-label={current.label}
           aria-describedby="instant-query-hint"
           value={query}
-          maxLength={current.max}
+          maxLength={1000}
           rows={3}
           enterKeyHint={mode === "answer" ? "enter" : "send"}
           onChange={(event) => setQuery(event.target.value)}
@@ -149,7 +152,7 @@ export function InstantQueryBox() {
           type="submit"
           size="sm"
           aria-label={isPending ? "보내는 중" : current.label}
-          disabled={isPending || !query.trim()}
+          disabled={isPending || !query.trim() || tooLong}
           className="absolute bottom-2 right-2"
         >
           {isPending ? <Spinner size="sm" label={null} /> : <ArrowRight aria-hidden="true" />}
@@ -157,9 +160,10 @@ export function InstantQueryBox() {
       </form>
       <div className="flex items-start justify-between gap-3 text-xs text-fg-muted">
         <p id="instant-query-hint" className="break-keep">
-          {current.hint}
+          {current.hint}{!coarse && ` ${current.shortcut}`}
         </p>
-        <span aria-hidden="true" className="shrink-0 tabular-nums">
+        <span aria-hidden={!tooLong} className={cn("shrink-0 tabular-nums", tooLong && "font-medium text-danger")}>
+          {tooLong && `${current.max}자까지 쓸 수 있어요 · `}
           {query.length}/{current.max}
         </span>
       </div>

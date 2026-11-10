@@ -61,12 +61,9 @@ func (s *Service) StartInquiry(ctx context.Context, userID, question string) (mo
 	if err != nil {
 		return models.Inquiry{}, err
 	}
-	if err := s.checkPendingLimit(ctx, userID); err != nil {
-		return models.Inquiry{}, err
-	}
-	q, created, err := s.Store.CreateInquiry(ctx, userID, question, inquiryDedupeWindow)
+	q, created, err := s.Store.CreateInquiry(ctx, userID, question, inquiryDedupeWindow, maxPendingInquiries)
 	if err != nil || !created {
-		return q, err
+		return q, busyErr(err)
 	}
 	s.inBackground(q.ID, func(bg context.Context) error { return s.runInquiry(bg, apiKey, userID, q) })
 	return q, nil
@@ -75,11 +72,18 @@ func (s *Service) StartInquiry(ctx context.Context, userID, question string) (mo
 // RegenerateInquiry writes a new explanation for the same question ('다시 만들기').
 // The previous answer stays visible until the new one is saved.
 func (s *Service) RegenerateInquiry(ctx context.Context, userID, id string) (models.Inquiry, error) {
-	if _, err := s.Store.GetInquiry(ctx, userID, id); err != nil {
+	current, err := s.Store.GetInquiry(ctx, userID, id)
+	if err != nil {
 		return models.Inquiry{}, err
+	}
+	if followupPending(current) {
+		return models.Inquiry{}, ErrInquiryBusy // 후속 답을 쓰는 동안은 다시 만들지 않는다.
 	}
 	apiKey, err := s.inquiryKey(ctx, userID)
 	if err != nil {
+		return models.Inquiry{}, err
+	}
+	if err := s.checkPendingLimit(ctx, userID); err != nil {
 		return models.Inquiry{}, err
 	}
 	q, started, err := s.Store.SetInquiryPending(ctx, userID, id)
@@ -96,7 +100,7 @@ func (s *Service) GetInquiry(ctx context.Context, userID, id string) (models.Inq
 	if err != nil {
 		return q, err
 	}
-	q.Concepts, err = s.Store.InquiryConcepts(ctx, userID, inquiry.MergeIDs(q.ConceptIDs, q.ProposedConceptIDs, 2*inquiry.MaxThreadConcepts))
+	q.Concepts, err = s.Store.InquiryConcepts(ctx, userID, inquiry.MergeIDs(q.ConceptIDs, q.ProposedConceptIDs, 2*store.MaxThreadConcepts))
 	return PublicInquiry(q), err
 }
 
@@ -271,10 +275,8 @@ func (s *Service) StartFollowup(ctx context.Context, userID, inquiryID, question
 	if len(q.Followups) >= MaxFollowups {
 		return models.InquiryFollowup{}, ErrFollowupLimit
 	}
-	for _, f := range q.Followups {
-		if f.Status == "pending" {
-			return models.InquiryFollowup{}, ErrInquiryBusy
-		}
+	if q.Status == "pending" || followupPending(q) {
+		return models.InquiryFollowup{}, ErrInquiryBusy
 	}
 	apiKey, err := s.inquiryKey(ctx, userID)
 	if err != nil {
@@ -285,7 +287,7 @@ func (s *Service) StartFollowup(ctx context.Context, userID, inquiryID, question
 	}
 	f, err := s.Store.CreateFollowup(ctx, userID, inquiryID, question, quote)
 	if err != nil {
-		return f, err
+		return f, busyErr(err)
 	}
 	s.inBackground(f.ID, func(bg context.Context) error { return s.runFollowup(bg, apiKey, userID, inquiryID, f) })
 	return f, nil
@@ -293,13 +295,23 @@ func (s *Service) StartFollowup(ctx context.Context, userID, inquiryID, question
 
 // RetryFollowup answers a failed follow-up again.
 func (s *Service) RetryFollowup(ctx context.Context, userID, inquiryID, id string) (models.InquiryFollowup, error) {
+	q, err := s.Store.GetInquiry(ctx, userID, inquiryID)
+	if err != nil {
+		return models.InquiryFollowup{}, err
+	}
+	if q.Status == "pending" {
+		return models.InquiryFollowup{}, ErrInquiryBusy
+	}
 	apiKey, err := s.inquiryKey(ctx, userID)
 	if err != nil {
 		return models.InquiryFollowup{}, err
 	}
-	f, err := s.Store.SetFollowupPending(ctx, userID, id)
+	if err := s.checkPendingLimit(ctx, userID); err != nil {
+		return models.InquiryFollowup{}, err
+	}
+	f, err := s.Store.SetFollowupPending(ctx, userID, inquiryID, id)
 	if err != nil {
-		return f, err
+		return f, busyErr(err)
 	}
 	s.inBackground(f.ID, func(bg context.Context) error { return s.runFollowup(bg, apiKey, userID, inquiryID, f) })
 	return f, nil
@@ -356,28 +368,26 @@ func (s *Service) runFollowup(ctx context.Context, apiKey, userID, inquiryID str
 	if err != nil {
 		return s.Store.FailFollowup(done, userID, f.ID, u.model, err.Error())
 	}
-	// 앞선 답이 제안한 개념은 이제 지도에 있어 concepts: 줄에 다시 올 수 있다 — 제안 쪽에 한 번만 둔다.
-	proposedAll := inquiry.MergeIDs(q.ProposedConceptIDs, proposed, inquiry.MaxThreadConcepts)
 	return s.Store.AnswerFollowup(done, userID, inquiryID, f.ID, store.FollowupAnswer{
-		Section:            section,
-		ConceptIDs:         inquiry.MergeIDs(q.ConceptIDs, without(answer.ConceptIDs, proposedAll), inquiry.MaxThreadConcepts),
-		ProposedConceptIDs: proposedAll,
-		Model:              u.model,
+		Section: section, ConceptIDs: answer.ConceptIDs, ProposedConceptIDs: proposed, Model: u.model,
 	})
 }
 
-func without(ids, drop []string) []string {
-	skip := make(map[string]bool, len(drop))
-	for _, id := range drop {
-		skip[id] = true
-	}
-	out := make([]string, 0, len(ids))
-	for _, id := range ids {
-		if !skip[id] {
-			out = append(out, id)
+func followupPending(q models.Inquiry) bool {
+	for _, f := range q.Followups {
+		if f.Status == "pending" {
+			return true
 		}
 	}
-	return out
+	return false
+}
+
+// busyErr maps the store's busy signal to the user-facing error.
+func busyErr(err error) error {
+	if errors.Is(err, store.ErrInquiryBusy) {
+		return ErrInquiryBusy
+	}
+	return err
 }
 
 // followupContext builds the prompt input from the thread: the first

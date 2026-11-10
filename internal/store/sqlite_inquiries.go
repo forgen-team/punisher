@@ -41,23 +41,45 @@ func (s *SQLiteStore) inquiryRow(ctx context.Context, userID, id string) (models
 	return q, err
 }
 
+// ErrInquiryBusy: the user has too many generations running, or the thread already has one.
+var ErrInquiryBusy = errors.New("inquiry generation already running")
+
+const pendingInquiriesSQL = `
+	SELECT (SELECT COUNT(*) FROM inquiries WHERE user_id = $1 AND status = 'pending')
+	     + (SELECT COUNT(*) FROM inquiry_followups WHERE user_id = $1 AND status = 'pending')`
+
 // CreateInquiry inserts a pending inquiry. A pending inquiry with the same
-// question created within dedupeWindow is returned instead (double submit);
-// created reports whether a new row was made.
-func (s *SQLiteStore) CreateInquiry(ctx context.Context, userID, question string, dedupeWindow time.Duration) (q models.Inquiry, created bool, err error) {
-	q, err = scanInquiry(s.c().row(ctx, `
-		SELECT `+inquiryColumns+` FROM inquiries
-		WHERE user_id = $1 AND question = $2 AND status = 'pending' AND created_at > $3
-		ORDER BY created_at DESC LIMIT 1`, userID, question, time.Now().Add(-dedupeWindow)))
-	if err == nil {
-		return q, false, nil
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return q, false, fmt.Errorf("find pending inquiry: %w", err)
-	}
+// question created within dedupeWindow is returned instead (double submit),
+// and at most maxPending generations may run per user. The check and the insert are one transaction.
+func (s *SQLiteStore) CreateInquiry(ctx context.Context, userID, question string, dedupeWindow time.Duration, maxPending int) (q models.Inquiry, created bool, err error) {
 	id := NewID()
-	if _, err := s.c().exec(ctx, `INSERT INTO inquiries (id, user_id, question) VALUES ($1, $2, $3)`, id, userID, question); err != nil {
-		return q, false, fmt.Errorf("create inquiry: %w", err)
+	err = s.tx(ctx, func(c conn) error {
+		existing, err := scanInquiry(c.row(ctx, `
+			SELECT `+inquiryColumns+` FROM inquiries
+			WHERE user_id = $1 AND question = $2 AND status = 'pending' AND created_at > $3
+			ORDER BY created_at DESC LIMIT 1`, userID, question, time.Now().Add(-dedupeWindow)))
+		if err == nil {
+			q = existing
+			return nil
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("find pending inquiry: %w", err)
+		}
+		var pending int
+		if err := c.row(ctx, pendingInquiriesSQL, userID).Scan(&pending); err != nil {
+			return err
+		}
+		if pending >= maxPending {
+			return ErrInquiryBusy
+		}
+		if _, err := c.exec(ctx, `INSERT INTO inquiries (id, user_id, question) VALUES ($1, $2, $3)`, id, userID, question); err != nil {
+			return fmt.Errorf("create inquiry: %w", err)
+		}
+		created = true
+		return nil
+	})
+	if err != nil || !created {
+		return q, false, err
 	}
 	q, err = s.inquiryRow(ctx, userID, id)
 	return q, err == nil, err
@@ -66,9 +88,7 @@ func (s *SQLiteStore) CreateInquiry(ctx context.Context, userID, question string
 // CountPendingInquiries counts explanations being written for the user (first answers, regenerations and follow-ups).
 func (s *SQLiteStore) CountPendingInquiries(ctx context.Context, userID string) (int, error) {
 	var n int
-	err := s.c().row(ctx, `
-		SELECT (SELECT COUNT(*) FROM inquiries WHERE user_id = $1 AND status = 'pending')
-		     + (SELECT COUNT(*) FROM inquiry_followups WHERE user_id = $1 AND status = 'pending')`, userID).Scan(&n)
+	err := s.c().row(ctx, pendingInquiriesSQL, userID).Scan(&n)
 	return n, err
 }
 
@@ -132,23 +152,62 @@ type InquiryAnswer struct {
 	Attempts           []AttemptRecord
 }
 
-// AnswerInquiry stores a successful explanation (cache: reopening shows it as is).
-// Concepts proposed by an earlier version of the answer stay on the thread.
+// threadConcepts reads a thread's concept lists inside a transaction.
+func threadConcepts(ctx context.Context, c conn, userID, id string) (related, proposed []string, err error) {
+	err = c.row(ctx, `SELECT concept_ids, proposed_concept_ids FROM inquiries WHERE user_id = $1 AND id = $2`, userID, id).
+		Scan(strs(&related), strs(&proposed))
+	return related, proposed, err
+}
+
+// mergeThreadConcepts adds an answer's concepts to the thread: nothing is lost
+// to a later answer, a proposed concept is listed once, and the size is capped.
+func mergeThreadConcepts(related, proposed, addRelated, addProposed []string) (mergedRelated, mergedProposed []string) {
+	mergedProposed = appendUnique(proposed, addProposed, nil)
+	drop := make(map[string]bool, len(mergedProposed))
+	for _, id := range mergedProposed {
+		drop[id] = true
+	}
+	mergedRelated = appendUnique(related, addRelated, drop)
+	return mergedRelated, mergedProposed
+}
+
+// MaxThreadConcepts bounds the nodes a whole thread is attached to, per list.
+const MaxThreadConcepts = 12
+
+func appendUnique(base, add []string, drop map[string]bool) []string {
+	out := make([]string, 0, len(base)+len(add))
+	seen := map[string]bool{}
+	for _, id := range append(append([]string{}, base...), add...) {
+		if id != "" && !seen[id] && !drop[id] && len(out) < MaxThreadConcepts {
+			seen[id] = true
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// AnswerInquiry stores a successful explanation (cache: reopening shows it as
+// is). The new answer's concepts go first; concepts already on the thread
+// (an earlier version, follow-ups) stay, so map cards are not lost.
 func (s *SQLiteStore) AnswerInquiry(ctx context.Context, userID, id string, a InquiryAnswer) error {
 	log, err := json.Marshal(attemptsOrEmpty(a.Attempts))
 	if err != nil {
 		return err
 	}
-	_, err = s.c().exec(ctx, `
-		UPDATE inquiries SET status = 'answered', content = $3, concept_ids = $4,
-			proposed_concept_ids = (SELECT json_group_array(value) FROM (
-				SELECT value FROM json_each(inquiries.proposed_concept_ids) UNION SELECT value FROM json_each($5))),
-			model = $6, prompt_version = $7, attempt_log = $8, error = '', answered_at = NOW(), updated_at = NOW()
-		WHERE user_id = $1 AND id = $2`, userID, id, a.Content, nonNil(a.ConceptIDs), nonNil(a.ProposedConceptIDs), a.Model, a.PromptVersion, string(log))
-	if err != nil {
-		return fmt.Errorf("answer inquiry: %w", err)
-	}
-	return nil
+	return s.tx(ctx, func(c conn) error {
+		related, proposed, err := threadConcepts(ctx, c, userID, id)
+		if err != nil {
+			return fmt.Errorf("read inquiry concepts: %w", err)
+		}
+		mergedRelated, mergedProposed := mergeThreadConcepts(a.ConceptIDs, proposed, related, a.ProposedConceptIDs)
+		if _, err := c.exec(ctx, `
+			UPDATE inquiries SET status = 'answered', content = $3, concept_ids = $4, proposed_concept_ids = $5,
+				model = $6, prompt_version = $7, attempt_log = $8, error = '', answered_at = NOW(), updated_at = NOW()
+			WHERE user_id = $1 AND id = $2`, userID, id, a.Content, mergedRelated, mergedProposed, a.Model, a.PromptVersion, string(log)); err != nil {
+			return fmt.Errorf("answer inquiry: %w", err)
+		}
+		return nil
+	})
 }
 
 // FailInquiry records a failed generation (never stored as answered). A
@@ -262,6 +321,9 @@ func (s *SQLiteStore) CreateFollowup(ctx context.Context, userID, inquiryID, que
 		f, err = scanFollowup(c.row(ctx, `
 			INSERT INTO inquiry_followups (id, inquiry_id, user_id, question, quote)
 			VALUES ($1, $2, $3, $4, $5) RETURNING `+followupColumns, NewID(), inquiryID, userID, question, quote))
+		if isUniqueViolation(err) {
+			return ErrInquiryBusy
+		}
 		if err != nil {
 			return fmt.Errorf("create followup: %w", err)
 		}
@@ -272,12 +334,15 @@ func (s *SQLiteStore) CreateFollowup(ctx context.Context, userID, inquiryID, que
 }
 
 // SetFollowupPending restarts a failed follow-up (다시 시도).
-func (s *SQLiteStore) SetFollowupPending(ctx context.Context, userID, id string) (models.InquiryFollowup, error) {
+func (s *SQLiteStore) SetFollowupPending(ctx context.Context, userID, inquiryID, id string) (models.InquiryFollowup, error) {
 	f, err := scanFollowup(s.c().row(ctx, `
 		UPDATE inquiry_followups SET status = 'pending', error = '', updated_at = NOW()
-		WHERE user_id = $1 AND id = $2 AND status = 'failed' RETURNING `+followupColumns, userID, id))
+		WHERE user_id = $1 AND id = $2 AND inquiry_id = $3 AND status = 'failed' RETURNING `+followupColumns, userID, id, inquiryID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return f, ErrNotFound
+	}
+	if isUniqueViolation(err) {
+		return f, ErrInquiryBusy
 	}
 	return f, err
 }
@@ -299,9 +364,14 @@ func (s *SQLiteStore) AnswerFollowup(ctx context.Context, userID, inquiryID, id 
 			WHERE user_id = $1 AND id = $2`, userID, id, a.Section, a.Model); err != nil {
 			return fmt.Errorf("answer followup: %w", err)
 		}
+		related, proposed, err := threadConcepts(ctx, c, userID, inquiryID)
+		if err != nil {
+			return fmt.Errorf("read inquiry concepts: %w", err)
+		}
+		mergedRelated, mergedProposed := mergeThreadConcepts(related, proposed, a.ConceptIDs, a.ProposedConceptIDs)
 		if _, err := c.exec(ctx, `
 			UPDATE inquiries SET concept_ids = $3, proposed_concept_ids = $4, updated_at = NOW()
-			WHERE user_id = $1 AND id = $2`, userID, inquiryID, nonNil(a.ConceptIDs), nonNil(a.ProposedConceptIDs)); err != nil {
+			WHERE user_id = $1 AND id = $2`, userID, inquiryID, mergedRelated, mergedProposed); err != nil {
 			return fmt.Errorf("merge followup concepts: %w", err)
 		}
 		return nil
