@@ -18,6 +18,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	httpapi "github.com/wooo-jin/punisher/internal/http"
 	"github.com/wooo-jin/punisher/internal/llm"
 	"github.com/wooo-jin/punisher/internal/middleware"
+	"github.com/wooo-jin/punisher/internal/phone"
 	"github.com/wooo-jin/punisher/internal/scheduler"
 	"github.com/wooo-jin/punisher/internal/services"
 	"github.com/wooo-jin/punisher/internal/store"
@@ -39,12 +41,24 @@ import (
 var version = "dev"
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "phone" {
+		os.Exit(runPhone(os.Args[2:]))
+	}
 	cfg := config.Load()
 	showVersion := flag.Bool("version", false, "버전을 출력하고 종료")
 	flag.IntVar(&cfg.Port, "port", cfg.Port, "포트 (0 = 4710, 사용 중이면 빈 포트)")
 	flag.StringVar(&cfg.DataDir, "data-dir", cfg.DataDir, "데이터 폴더 (punisher.db 위치)")
 	noBrowser := flag.Bool("no-browser", false, "시작할 때 브라우저를 열지 않음")
+	flag.Usage = func() {
+		flag.CommandLine.SetOutput(os.Stderr)
+		flag.PrintDefaults()
+		fmt.Fprintln(os.Stderr, "\n"+phoneUsage)
+	}
 	flag.Parse()
+	if flag.NArg() > 0 {
+		fmt.Fprintln(os.Stderr, phoneUsage)
+		os.Exit(2)
+	}
 	if *showVersion {
 		fmt.Printf("punisher %s\npart of the forgen family — https://github.com/wooo-jin/forgen\n© 2026 jang-ujin · MIT License\n", version)
 		return
@@ -55,6 +69,79 @@ func main() {
 	if err := run(cfg); err != nil {
 		log.Fatalf("punisher: %v", err)
 	}
+}
+
+const phoneUsage = `폰 연결 (순서는 README.ko.md의 8번을 보세요):
+  punisher phone on    내 폰에서 열 수 있게 켜기. Tailscale 앱이 필요하고, Mac에 로그인할 때 자동으로 켜져요
+  punisher phone off   끄기. 자동 시작도 함께 꺼져요`
+
+// runPhone handles `punisher phone on|off` and returns the exit code.
+func runPhone(args []string) int {
+	if len(args) != 1 || (args[0] != "on" && args[0] != "off") {
+		fmt.Fprintln(os.Stderr, phoneUsage)
+		return 2
+	}
+	if runtime.GOOS != "darwin" {
+		fmt.Fprintln(os.Stderr, "폰 연결은 지금은 macOS에서만 쓸 수 있어요.")
+		return 1
+	}
+	m, err := newPhoneManager()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	// The first Ctrl+C cleans up; a second one is free to end the process.
+	context.AfterFunc(ctx, stop)
+	if args[0] == "on" {
+		err = m.On(ctx)
+	} else {
+		err = m.Off(ctx)
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return 0
+}
+
+func newPhoneManager() (*phone.Manager, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return nil, fmt.Errorf("실행 파일 위치를 찾지 못했어요: %w", err)
+	}
+	if exe, err = filepath.EvalSymlinks(exe); err != nil {
+		return nil, fmt.Errorf("실행 파일 위치를 찾지 못했어요: %w", err)
+	}
+	if strings.Contains(exe, "/go-build") {
+		return nil, errors.New("go run 으로는 켤 수 없어요. 설치한 punisher 로 실행해 주세요.")
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("홈 폴더를 찾지 못했어요: %w", err)
+	}
+	cfg := config.Load()
+	// launchd starts with a minimal environment; keep what finding claude needs
+	// and this user's Punisher settings.
+	var env []string
+	for _, kv := range os.Environ() {
+		if strings.HasPrefix(kv, "PATH=") || strings.HasPrefix(kv, "LANG=") || strings.HasPrefix(kv, "PUNISHER_") {
+			env = append(env, kv)
+		}
+	}
+	return phone.New(cfg.DataDir, cfg.DataDir != config.DefaultDataDir(), exe, home, env), nil
+}
+
+// loadPhoneAccess reads the phone-access settings. A broken file means phone
+// access stays off rather than failing the app.
+func loadPhoneAccess(dataDir string) phone.Access {
+	access, err := phone.LoadAccess(dataDir)
+	if err != nil {
+		log.Printf("폰 연결 설정을 무시합니다: %v", err)
+		return phone.Access{}
+	}
+	return access
 }
 
 func run(cfg config.Config) error {
@@ -112,10 +199,12 @@ func run(cfg config.Config) error {
 		},
 	}
 
+	access := loadPhoneAccess(cfg.DataDir)
 	// No WriteTimeout: instant lectures stream over SSE for minutes.
 	srv := &http.Server{
 		Handler: httpapi.NewRouter(httpapi.RouterDependencies{
 			Store: st, Services: svc, Claude: claude, UI: webui.Handler(), AppVersion: version, DataDir: cfg.DataDir,
+			AllowedHost: access.Host, AllowedLogin: access.Login,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}

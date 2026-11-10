@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"mime"
 	"net"
 	"net/http"
 	"net/url"
@@ -24,6 +25,10 @@ type RouterDependencies struct {
 	// AppVersion and DataDir are shown on the settings screen.
 	AppVersion string
 	DataDir    string
+	// AllowedHost and AllowedLogin are the Tailscale Serve name and its owner
+	// allowed besides loopback ("" = none, the default; set by `punisher phone on`).
+	AllowedHost  string
+	AllowedLogin string
 }
 
 func NewRouter(deps RouterDependencies) http.Handler {
@@ -31,7 +36,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 
 	router.Use(middleware.RequestID)
 	router.Use(middleware.Recoverer)
-	router.Use(localOnly)
+	router.Use(localOnly(deps.AllowedHost, deps.AllowedLogin))
 
 	healthHandler := &handlers.HealthHandler{Store: deps.Store}
 	statusHandler := &handlers.StatusHandler{Claude: deps.Claude, AppVersion: deps.AppVersion, DataDir: deps.DataDir}
@@ -123,24 +128,66 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	return router
 }
 
-// localOnly rejects requests that did not come from this machine's own UI:
-// the Host must be a loopback name (blocks DNS rebinding) and a cross-site
-// Origin may not call the API (blocks other web pages driving generation).
-func localOnly(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !isLoopbackHost(r.Host) {
-			http.Error(w, "forbidden host", http.StatusForbidden)
-			return
+// localOnly rejects requests that did not come from this machine's own UI or,
+// when phone access is on, from Tailscale Serve for exactly that host and that
+// owner. The server always binds 127.0.0.1; this check is the only thing
+// between a proxied request and an app that has no login, so it fails closed:
+//   - Funnel (public internet) traffic is refused whatever its Host says;
+//   - the Host must be loopback or exactly allowedHost (blocks DNS rebinding);
+//   - a loopback Host must carry no proxy headers: a proxied client picks its
+//     own Host, so a loopback Host proves nothing about where it came from;
+//   - allowedHost requires Tailscale-User-Login to be the owner. Serve sets it
+//     in Q-encoded form (and strips clients' copies), so other tailnet users
+//     and tagged devices do not pass;
+//   - a browser Origin must match the host's own origin (blocks other web
+//     pages driving generation).
+func localOnly(allowedHost, allowedLogin string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if reason := refuseReason(r, allowedHost, allowedLogin); reason != "" {
+				http.Error(w, reason, http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func refuseReason(r *http.Request, allowedHost, allowedLogin string) string {
+	if r.Header.Get("Tailscale-Funnel-Request") != "" {
+		return "forbidden: public access"
+	}
+	if isLoopbackHost(r.Host) {
+		if looksProxied(r.Header) {
+			return "forbidden host"
 		}
 		if origin := r.Header.Get("Origin"); origin != "" {
 			u, err := url.Parse(origin)
 			if err != nil || !isLoopbackHost(u.Host) {
-				http.Error(w, "forbidden origin", http.StatusForbidden)
-				return
+				return "forbidden origin"
 			}
 		}
-		next.ServeHTTP(w, r)
-	})
+		return ""
+	}
+	if allowedHost == "" || (r.Host != allowedHost && r.Host != allowedHost+":443") {
+		return "forbidden host"
+	}
+	if allowedLogin == "" || r.Header.Get("Tailscale-User-Login") != mime.QEncoding.Encode("utf-8", allowedLogin) {
+		return "forbidden: not the owner via tailscale serve"
+	}
+	if origin := r.Header.Get("Origin"); origin != "" && origin != "https://"+allowedHost {
+		return "forbidden origin"
+	}
+	return ""
+}
+
+func looksProxied(h http.Header) bool {
+	for name := range h {
+		if strings.HasPrefix(name, "Tailscale-") || strings.HasPrefix(name, "X-Forwarded-") {
+			return true
+		}
+	}
+	return h.Get("Forwarded") != "" || h.Get("X-Real-Ip") != "" || h.Get("Via") != ""
 }
 
 func isLoopbackHost(hostport string) bool {

@@ -82,6 +82,7 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 
 | 파일 | 단독판에서 다른 점 | 이유 |
 | --- | --- | --- |
+| `internal/phone/*`, `internal/http/router.go` `localOnly`, `web/public/manifest.webmanifest` | 폰 연결(Tailscale Serve, launchd). witems 에 없는 단독판 전용 | 단독판은 로그인 없이 내 Mac 에서만 돌아서, 내 기기 접속을 따로 열어야 함 |
 | `internal/store/*` , `migrations/*` | SQLite 구현 | 단독판 원칙(서버·DB 설치 없음) |
 | `migrations/004_lecture_links.sql` | witems 005 의 `kind IN ('deeper','regenerated')` 를 처음부터 포함 | SQLite 는 CHECK 제약을 바꿀 수 없음. v0.1.0 DB 에는 004·005 가 둘 다 새로 적용되므로 결과가 같음 |
 | `internal/services/prompts.go` `libraryTarget` | `Cfg.LibraryUsesUserPrompts`(단독판 `true`)면 라이브러리 강의도 사용자 프롬프트 사용 | witems 라이브러리는 여러 사용자가 공유 → 기본값 고정. 단독판 라이브러리(추천 미리 만들기)는 그 한 사람만 읽음 |
