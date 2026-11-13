@@ -65,6 +65,11 @@ export function selfGradeStep(detail: CheckDetail): SelfGradeStep | null {
   return null;
 }
 
+/** 화면에 카드로 보이는 문항: 끝났거나, 지금 문항이거나, 문답이 있는 문항. */
+export function isShownItem(item: CheckItem, currentId: string | null, turnCount: number): boolean {
+  return item.done || item.id === currentId || turnCount > 0;
+}
+
 /** 그 문항의 턴(seq 순). 첫 물음(ask)은 문항 prompt 와 같아 문항 머리에서 보여 주므로 뺀다. */
 export function itemTurns(turns: CheckTurn[], itemId: string): CheckTurn[] {
   return turns.filter((t) => t.itemId === itemId && t.move !== "ask").sort((a, b) => a.seq - b.seq);

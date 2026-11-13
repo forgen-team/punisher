@@ -23,13 +23,15 @@ interface CheckItemCardProps {
   disputing: boolean;
   /** 복습: 끝난 문항 아래 그 강의의 한 장 요약 */
   showLectureSummary?: boolean;
+  /** 카드가 하나뿐이면 상단 바의 "문항 n/N"과 겹치므로 숨긴다 */
+  showIndex?: boolean;
 }
 
 /**
  * 문항 하나: 물음(prompt) + 자료(material, 강의 코드 블록) → 문답 → 끝났으면 판정·모범답(자기 채점은 답을 보내면 모범답·기준).
  * 이의 문답은 판정 아래.
  */
-export function CheckItemCard({ index, total, item, turns, missing, anchorHref, anchorLabel, retryTurnId, onRetry, retrying, onDispute, disputing, showLectureSummary }: CheckItemCardProps) {
+export function CheckItemCard({ index, total, item, turns, missing, anchorHref, anchorLabel, retryTurnId, onRetry, retrying, onDispute, disputing, showLectureSummary, showIndex = true }: CheckItemCardProps) {
   const dialogue = turns.filter((t) => t.move !== "dispute");
   const disputes = turns.filter((t) => t.move === "dispute");
   const renderTurn = (t: CheckTurn) => (
@@ -41,9 +43,11 @@ export function CheckItemCard({ index, total, item, turns, missing, anchorHref, 
       aria-label={`문항 ${index}/${total}`}
       className="flex scroll-mt-28 flex-col gap-3 border-t border-line pt-4 first:border-t-0"
     >
-      <p className="text-xs font-medium text-fg-muted">
-        문항 {index}/{total}
-      </p>
+      {showIndex && (
+        <p className="text-xs font-medium text-fg-muted">
+          문항 {index}/{total}
+        </p>
+      )}
       <div className="text-base">
         <BlockRenderer block={{ anchor: "", type: "markdown", text: item.prompt }} />
         {item.material?.code && <BlockRenderer block={{ anchor: "", type: "code", text: item.material.code, lang: item.material.lang }} />}

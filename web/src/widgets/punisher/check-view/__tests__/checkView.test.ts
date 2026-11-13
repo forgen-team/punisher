@@ -4,6 +4,7 @@ import {
   canSend,
   currentItemId,
   disputeTarget,
+  isShownItem,
   itemTurns,
   judgedTurn,
   orderedItems,
@@ -218,5 +219,14 @@ describe("복습(자기 채점)", () => {
       turns: [turn({ itemId: "i1", role: "learner", move: "self_grade", verdict: "partial", outcome: "unaided_partial", grader: "self" })],
     });
     expect(disputeTarget(d, d.items[0], NOW)).toBeNull();
+  });
+});
+
+describe("isShownItem", () => {
+  it("shows done, current, or answered items only", () => {
+    expect(isShownItem(item("a", { done: true }), "b", 0)).toBe(true);
+    expect(isShownItem(item("b"), "b", 0)).toBe(true);
+    expect(isShownItem(item("c"), "b", 2)).toBe(true);
+    expect(isShownItem(item("d"), "b", 0)).toBe(false);
   });
 });

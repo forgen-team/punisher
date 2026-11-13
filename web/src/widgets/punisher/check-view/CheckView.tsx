@@ -20,6 +20,7 @@ import {
   disputeTarget,
   isRecorded,
   isReview,
+  isShownItem,
   itemTurns,
   judgedTurn,
   orderedItems,
@@ -85,6 +86,7 @@ export function CheckView({ checkId }: { checkId: string }) {
   const chapterHref = chapterId ? chapterMapHref(chapterId) : undefined;
   const backHref = lectureId ? lectureHref(lectureId) : chapterHref;
   const barTitle = topBarTitle(title, d ? progressLabel(d) : "");
+  const shownCount = d ? d.items.filter((item) => isShownItem(item, currentId, itemTurns(d.turns, item.id).length)).length : 0;
   const open = status === "active" || status === "preparing";
   const menuItems: MenuItem[] = [
     {
@@ -179,7 +181,7 @@ export function CheckView({ checkId }: { checkId: string }) {
         <div className="flex flex-col gap-6 pt-4" aria-busy={detail.pending}>
           {items.map((item, index) => {
             const turns = itemTurns(detail.turns, item.id);
-            if (!item.done && item.id !== currentId && turns.length === 0) { return null; }
+            if (!isShownItem(item, currentId, turns.length)) { return null; }
             const target = disputeTarget(detail, item, now);
             const link = item.anchor ? anchorLink(item.anchor) : null;
             return (
@@ -198,6 +200,7 @@ export function CheckView({ checkId }: { checkId: string }) {
                 onDispute={target ? () => dispute.mutate({ turnId: target.id }) : undefined}
                 disputing={dispute.isPending && dispute.variables?.turnId === target?.id}
                 showLectureSummary={review}
+                showIndex={shownCount > 1}
               />
             );
           })}
