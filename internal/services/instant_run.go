@@ -62,6 +62,7 @@ func (s *Service) runInstant(apiKey, userID, jobID string, t Target, emit func(E
 
 	loop := s.lectureLoop(apiKey, t, "", &u)
 	loop.SkipReviewOnIssues = true
+	loop.NoAdvisoryRewrite = true // advisory only → publish at once (shorter wait)
 	loop.OnStage = func(stage string, n int) {
 		attempt = n
 		emit(stageEvent(stage, n, InstantRewrites, "", nil))

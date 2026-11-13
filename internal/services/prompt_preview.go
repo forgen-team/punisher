@@ -34,6 +34,9 @@ const (
 	previewQuestion  = "(예시 질문) 이 개념을 실무에서 언제 의식해야 하나요?"
 	previewSelection = "(예시 구절) 입력이 커질 때 비용이 어떤 모양으로 늘어나는지"
 	previewDraft     = "(감수할 강의 초안이 여기에 들어갑니다)"
+	previewQuote     = "(예시) 지적된 문장"
+	previewFinding   = "(예시) 이전 검수의 차단 지적이 여기에 들어갑니다"
+	previewBlock     = "(재작성 전·후 블록이 여기에 들어갑니다)"
 	previewQuery     = "(예시 학습 요청) 배포 후 API 응답이 갑자기 느려졌다"
 	// previewMisconception fills "이 수강생이 인정한 오개념" when the user has none, so the block shows.
 	previewMisconception = "(예시 오개념) 확인 결과에서 인정한 오개념이 여기에 들어갑니다"
@@ -74,7 +77,19 @@ func (s *Service) PreviewPrompt(ctx context.Context, userID, blockID string, dra
 		out.System, out.User = set.Text(prompts.BlockTeacherSystem, vars), prompts.Lecture(pc, "", "", set)
 		out.Version = set.Version(prompts.InstantBlocks...)
 	case prompts.StageReview:
-		out.System, out.User = set.Text(prompts.BlockReviewerSystem, vars), prompts.Review(pc, previewDraft, set)
+		switch blockID {
+		case prompts.BlockReviewRecheck:
+			out.System, out.User = set.Text(prompts.BlockReviewerSystem, vars), prompts.Recheck(pc,
+				[]prompts.RecheckFinding{{ID: 1, Kind: "factual_error", Section: "walkthrough", Quote: previewQuote,
+					Message: previewFinding, Before: []string{previewBlock}, After: []string{previewBlock}}},
+				[]prompts.RecheckBlock{{Section: "walkthrough", Text: previewBlock}}, set)
+		case prompts.BlockAdjudicator:
+			out.System, out.User = set.Text(prompts.BlockAdjudicator, vars), prompts.Adjudication(pc, prompts.AdjudicationCase{
+				Kind: "factual_error", Section: "walkthrough", Quote: previewQuote, Message: previewFinding,
+				ReaderImpact: "(예시) 독자가 그대로 따르면 이르는 틀린 결과", Blocks: []string{previewBlock}})
+		default:
+			out.System, out.User = set.Text(prompts.BlockReviewerSystem, vars), prompts.Review(pc, previewDraft, set)
+		}
 		out.Version = set.Version(prompts.FullBlocks...)
 	case prompts.StageGloss:
 		out.System = set.Text(prompts.BlockGlossSystem, vars)

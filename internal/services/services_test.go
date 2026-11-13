@@ -79,7 +79,8 @@ func (f *fakeSteps) funcs() LoopFuncs {
 
 var (
 	pass  = ReviewOutcome{Verdict: "pass", Issues: []ReviewIssue{{Severity: "minor", Message: "nit"}}}
-	major = ReviewOutcome{Verdict: "pass", Issues: []ReviewIssue{{Severity: "major", Kind: "factual_error", Message: "틀림"}}}
+	major = ReviewOutcome{Verdict: "pass", Issues: []ReviewIssue{{Severity: "major", Kind: "factual_error", Message: "틀림",
+		Confidence: 0.9, ReaderImpact: "틀린 값을 믿는다"}}}
 )
 
 func TestReviewLoopPublishesOnFirstPass(t *testing.T) {
@@ -136,7 +137,7 @@ func TestParseReviewNeverPassesGarbage(t *testing.T) {
 	if r := ParseReview("```json\n{\"verdict\":\"pass\",\"issues\":[]}\n```"); r.Blocking() {
 		t.Fatal("clean pass should not block")
 	}
-	if r := ParseReview(`{"verdict":"pass","issues":[{"severity":"critical"}]}`); !r.Blocking() {
+	if r := ParseReview(`{"verdict":"pass","issues":[{"severity":"critical","confidence":0.9,"reader_impact":"틀린 결과"}]}`); !r.Blocking() {
 		t.Fatal("critical issue must block even with verdict pass")
 	}
 }
@@ -255,7 +256,7 @@ func TestReviewReaderGapsParsedAndFedBack(t *testing.T) {
 	if len(r.ReaderGaps) != 1 || r.Blocking() {
 		t.Fatalf("reader gaps and assumed_knowledge are advisory, never blocking: %+v", r)
 	}
-	notes := RevisionNotes(Attempt{Reviewed: true, Review: r})
+	notes := RevisionNotes(Attempt{Reviewed: true, Review: r}, true)
 	if !strings.Contains(notes, "[전제 지식 · judgment_next]") || !strings.Contains(notes, "major/assumed_knowledge") ||
 		!strings.Contains(notes, "### 개선 권장") || strings.Contains(notes, "### 반드시 고칠 것") {
 		t.Fatalf("notes = %s", notes)

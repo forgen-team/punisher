@@ -27,6 +27,13 @@ func RenderMarkup(c Content) string {
 	return b.String()
 }
 
+// RenderBlock is one block as markup (a review quotes single blocks).
+func RenderBlock(blk Block) string {
+	var b strings.Builder
+	renderBlock(&b, blk)
+	return b.String()
+}
+
 func renderBlock(b *strings.Builder, blk Block) {
 	switch blk.Type {
 	case BlockCode, BlockLog, BlockDiff:

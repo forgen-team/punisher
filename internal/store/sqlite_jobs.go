@@ -138,6 +138,14 @@ type AttemptRecord struct {
 	Advisory []string `json:"advisory,omitempty"`
 	// Drift: how much a partial rewrite changed outside the findings.
 	Drift string `json:"drift,omitempty"`
+	// ReviewMode: full | targeted (previous blocking findings + changed blocks
+	// only) | full_fallback (the rewrite changed too much, or the targeted
+	// output could not be read).
+	ReviewMode string `json:"review_mode,omitempty"`
+	// Recheck: the targeted re-review verdict on each previous blocking finding.
+	Recheck []string `json:"recheck,omitempty"`
+	// Adjudication: the second opinion (uphold | dismiss) on blocking findings.
+	Adjudication []string `json:"adjudication,omitempty"`
 	// Published marks the attempt that was published.
 	Published bool `json:"published,omitempty"`
 }

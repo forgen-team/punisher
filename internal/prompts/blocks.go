@@ -17,6 +17,8 @@ const (
 	BlockLectureFormat  = "lecture.format"
 	BlockReviewTask     = "review.task"
 	BlockReviewerSystem = "reviewer.system"
+	BlockReviewRecheck  = "review.recheck"
+	BlockAdjudicator    = "review.adjudicate"
 	BlockGlossSystem    = "gloss.system"
 	BlockQASystem       = "qa.system"
 	BlockExplainSystem  = "explain.system"
@@ -96,6 +98,14 @@ var Blocks = []Block{
 		Purpose:   "초안의 사실 오류·구조·교수법·누락·과장·출처·용어 문제와 코드 출력 대조를 심각도와 함께 JSON으로 지적합니다.",
 		AppliesTo: appliesReview, Vars: lectureVars, Default: ReviewTask,
 		Warning: "JSON 출력 형식(verdict·issues)은 코드가 읽습니다. 형식 부분은 그대로 두세요."},
+	{ID: BlockReviewRecheck, Stage: StageReview, StageTitle: "감수", Title: "재작성 후 표적 재검수",
+		Purpose:   "부분 수정된 강의에서 이전 차단 지적이 해결됐는지와, 바뀐 블록에만 새 사실 오류가 생겼는지를 봅니다. 바뀌지 않은 부분은 처음 검수 판정을 그대로 씁니다.",
+		AppliesTo: appliesReview, Vars: lectureVars, Default: RecheckTask,
+		Warning: "JSON 출력 형식(previous·new_issues)은 코드가 읽습니다. 형식 부분은 그대로 두세요."},
+	{ID: BlockAdjudicator, Stage: StageReview, StageTitle: "감수", Title: "차단 지적 재판정(시스템)",
+		Purpose:   "발행을 막는 지적마다 '이 주장이 실제로 틀렸거나 독자를 오도하는가'를 따로 묻고, 아니면 차단에서 내립니다.",
+		AppliesTo: appliesReview, Default: SystemAdjudicator,
+		Warning: "판정은 JSON(decision·reason)으로 받습니다. 키 이름과 '출력은 JSON 하나뿐' 문장은 남겨 두세요."},
 	{ID: BlockGlossSystem, Stage: StageGloss, StageTitle: "용어 설명", Title: "용어 팝오버",
 		Purpose:   "본문 용어를 눌렀을 때 보이는 2~3문장 설명을 씁니다.",
 		AppliesTo: "내가 보는 용어 설명(바꾸면 내 전용 캐시로 새로 만들어요)", Vars: []Var{varConcept}, Default: SystemGloss},
@@ -223,8 +233,10 @@ func (s Set) Hash(ids ...string) string {
 
 // Blocks used per generation kind (for Version).
 var (
-	InstantBlocks = []string{BlockTeacherSystem, BlockLectureFormat, BlockReviewerSystem, BlockReviewTask}
-	FullBlocks    = []string{BlockOutlineTask, BlockTeacherSystem, BlockLectureFormat, BlockReviewerSystem, BlockReviewTask}
+	InstantBlocks = []string{BlockTeacherSystem, BlockLectureFormat, BlockReviewerSystem, BlockReviewTask,
+		BlockReviewRecheck, BlockAdjudicator}
+	FullBlocks = []string{BlockOutlineTask, BlockTeacherSystem, BlockLectureFormat, BlockReviewerSystem, BlockReviewTask,
+		BlockReviewRecheck, BlockAdjudicator}
 )
 
 // vars exposes lecture context values to block placeholders.

@@ -70,7 +70,7 @@ func TestLectureQualityRules(t *testing.T) {
 // TestReviewGateAndRevisionRules: the review JSON carries a gate, the
 // unverifiable-claim rule, depth-1 scope and the partial rewrite contract.
 func TestReviewGateAndRevisionRules(t *testing.T) {
-	for _, want := range []string{`"gate": "blocking|advisory"`, "조건 없이 단정한 경우에만 blocking", "advisory 만 있으면 pass", "처방 미해결", "에러·출력 불일치"} {
+	for _, want := range []string{`"gate": "blocking|advisory"`, "조건 없이 단정했고 틀렸을 근거를 댈 수 있을 때만 blocking", "advisory 만 있으면 pass", "처방 미해결", "에러·출력 불일치"} {
 		if !strings.Contains(ReviewTask, want) {
 			t.Errorf("review task lacks %q", want)
 		}
@@ -98,5 +98,43 @@ func TestReviewGateAndRevisionRules(t *testing.T) {
 		if !strings.Contains(rev, want) {
 			t.Errorf("revision prompt lacks %q", want)
 		}
+	}
+}
+
+// TestRecheckAndAdjudicationPrompts: the blocking evidence rule (confidence,
+// reader impact, no blocking for unverifiable compatibility or conditioned
+// sentences) reaches every review prompt, even with an edited review block;
+// the recheck carries the findings and changed blocks only; the adjudication
+// asks one question about one finding.
+func TestRecheckAndAdjudicationPrompts(t *testing.T) {
+	c := LectureContext{ConceptID: "db.relational", ConceptName: "관계형 모델", Depth: 1}
+	edited := NewSet(map[string]string{BlockReviewTask: "내 감수", BlockReviewRecheck: "내 재검수"})
+	recheck := Recheck(c, []RecheckFinding{{ID: 1, Kind: "typo", Section: "walkthrough", Quote: "INSERT", Message: "id 없음",
+		Before: []string{"@@code lang=sql\nINSERT"}, After: []string{"@@code lang=sql\nINSERT id"}}},
+		[]RecheckBlock{{Section: "walkthrough", Text: "@@code lang=sql\nINSERT id"}}, edited)
+	for name, p := range map[string]string{"review": Review(c, "@@lecture", edited), "recheck": recheck} {
+		for _, want := range []string{"## blocking 지적의 근거", "\"reader_impact\"", "0.7 미만", "렌더러 호환", "이미 조건", "## 사실 정확성 규칙"} {
+			if !strings.Contains(p, want) {
+				t.Errorf("%s prompt lacks %q", name, want)
+			}
+		}
+	}
+	for _, want := range []string{"### 지적 1 [typo · walkthrough]", "수정 전 블록", "INSERT id", "### 바뀐 블록 1 (walkthrough)", "내 재검수"} {
+		if !strings.Contains(recheck, want) {
+			t.Errorf("recheck lacks %q", want)
+		}
+	}
+	if strings.Contains(recheck, "<<<LECTURE") || !strings.Contains(RecheckTask, `"resolved": true`) || !strings.Contains(RecheckTask, "new_issues") {
+		t.Error("the recheck reads blocks, not the lecture, and answers resolved/new_issues")
+	}
+	adj := Adjudication(c, AdjudicationCase{Kind: "factual_error", Section: "principles", Quote: "기본으로 꺼져 있다",
+		Message: "빌드 옵션", ReaderImpact: "켜져 있다고 믿는다", Blocks: []string{"@@markdown\n기본으로 꺼져 있다"}})
+	for _, want := range []string{"기본으로 꺼져 있다", "켜져 있다고 믿는다", "실제로 틀렸거나 독자를 오도", "## 사실 정확성 규칙"} {
+		if !strings.Contains(adj, want) {
+			t.Errorf("adjudication lacks %q", want)
+		}
+	}
+	if !strings.Contains(SystemAdjudicator, `"decision": "uphold" | "dismiss"`) || strings.Contains(SystemAdjudicator, "기술 감수자") {
+		t.Error("adjudicator answers uphold|dismiss and is not the reviewer")
 	}
 }

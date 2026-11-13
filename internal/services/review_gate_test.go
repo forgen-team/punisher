@@ -17,7 +17,8 @@ var (
 	}}
 	blockingFact = ReviewOutcome{Verdict: "fail", Summary: "사실 오류", Issues: []ReviewIssue{
 		{Severity: "major", Gate: GateBlocking, Kind: "factual_error", Section: "walkthrough", Quote: "ERROR:  integer out of range",
-			Message: "출력이 실제와 다름", Suggestion: "출력 예시를 빼거나 조건을 붙임"},
+			Message: "출력이 실제와 다름", Suggestion: "출력 예시를 빼거나 조건을 붙임",
+			Confidence: 0.9, ReaderImpact: "다른 DB 에서도 같은 에러가 난다고 믿는다"},
 	}}
 	conditionalClaim = ReviewOutcome{Verdict: "pass", Issues: []ReviewIssue{
 		{Severity: "minor", Gate: GateAdvisory, Kind: "factual_error", Message: "확인 필요(조건이 붙어 있음)"},
@@ -34,10 +35,10 @@ func TestReviewGates(t *testing.T) {
 		{"advisory only, even with verdict fail", advisoryOnly, false},
 		{"blocking factual error", blockingFact, true},
 		{"conditional unverifiable claim is advisory", conditionalClaim, false},
-		{"legacy review without gate: major factual blocks", ReviewOutcome{Verdict: "pass", Issues: []ReviewIssue{{Severity: "major", Kind: "factual_error"}}}, true},
+		{"legacy review without gate: major factual blocks", ReviewOutcome{Verdict: "pass", Issues: []ReviewIssue{{Severity: "major", Kind: "factual_error", Confidence: 0.8, ReaderImpact: "r"}}}, true},
 		{"legacy review without gate: major pedagogy does not", ReviewOutcome{Verdict: "fail", Issues: []ReviewIssue{{Severity: "major", Kind: "pedagogy"}}}, false},
 		{"fail without any finding blocks", ReviewOutcome{Verdict: "fail", Issues: []ReviewIssue{}}, true},
-		{"unknown kind keeps the severity rule", ReviewOutcome{Verdict: "pass", Issues: []ReviewIssue{{Severity: "critical"}}}, true},
+		{"unknown kind keeps the severity rule", ReviewOutcome{Verdict: "pass", Issues: []ReviewIssue{{Severity: "critical", Confidence: 0.8, ReaderImpact: "r"}}}, true},
 	}
 	for _, tc := range cases {
 		if got := tc.r.Blocking(); got != tc.want {

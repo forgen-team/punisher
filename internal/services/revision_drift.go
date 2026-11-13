@@ -14,9 +14,20 @@ const driftWarnRatio = 0.3
 
 // Drift compares a partial rewrite with the draft it revised, block by block:
 // Unrelated = blocks of the previous draft no finding pointed at, Changed =
-// how many of those are no longer found verbatim in the same section.
+// how many of those are no longer found verbatim in the same section;
+// Blocks = blocks of the rewrite, Rewritten = how many of those the previous
+// draft did not have verbatim in the same section (what a targeted recheck reads).
 type Drift struct {
 	Unrelated, Changed int
+	Blocks, Rewritten  int
+}
+
+// RewrittenRatio is Rewritten / Blocks (1 when the rewrite has no block).
+func (d Drift) RewrittenRatio() float64 {
+	if d.Blocks == 0 {
+		return 1
+	}
+	return float64(d.Rewritten) / float64(d.Blocks)
 }
 
 // Ratio is Changed / Unrelated (0 when nothing was unrelated).
@@ -31,7 +42,8 @@ func (d Drift) Ratio() float64 {
 func (d Drift) Warn() bool { return d.Ratio() > driftWarnRatio }
 
 func (d Drift) String() string {
-	s := fmt.Sprintf("unrelated blocks changed %d/%d (%.0f%%)", d.Changed, d.Unrelated, d.Ratio()*100)
+	s := fmt.Sprintf("unrelated blocks changed %d/%d (%.0f%%); rewritten blocks %d/%d (%.0f%%)",
+		d.Changed, d.Unrelated, d.Ratio()*100, d.Rewritten, d.Blocks, d.RewrittenRatio()*100)
 	if d.Warn() {
 		s = "warning: " + s
 	}
@@ -44,13 +56,11 @@ func (d Drift) String() string {
 // counts the other blocks that next no longer has verbatim in the same section.
 func measureDrift(prev Attempt, next lecture.Content) *Drift {
 	flagged := flaggedBlocks(prev)
-	have := map[string]bool{}
+	have := sectionBlockKeys(next)
+	d := &Drift{Rewritten: len(rewrittenBlocks(prev.Content, next))}
 	for _, s := range next.Sections {
-		for _, b := range s.Blocks {
-			have[s.Kind+"\x00"+blockKey(b)] = true
-		}
+		d.Blocks += len(s.Blocks)
 	}
-	d := &Drift{}
 	for i, s := range prev.Content.Sections {
 		for j, b := range s.Blocks {
 			if flagged[[2]int{i, j}] {
@@ -63,6 +73,53 @@ func measureDrift(prev Attempt, next lecture.Content) *Drift {
 		}
 	}
 	return d
+}
+
+// sectionBlockKeys is the set of (section kind, block content) of c.
+func sectionBlockKeys(c lecture.Content) map[string]bool {
+	have := map[string]bool{}
+	for _, s := range c.Sections {
+		for _, b := range s.Blocks {
+			have[s.Kind+"\x00"+blockKey(b)] = true
+		}
+	}
+	return have
+}
+
+// rewrittenBlocks are the (section, block) positions of next that prev does
+// not have verbatim in the same section: the blocks a rewrite changed or added.
+func rewrittenBlocks(prev, next lecture.Content) map[[2]int]bool {
+	had := sectionBlockKeys(prev)
+	out := map[[2]int]bool{}
+	for i, s := range next.Sections {
+		for j, b := range s.Blocks {
+			if !had[s.Kind+"\x00"+blockKey(b)] {
+				out[[2]int{i, j}] = true
+			}
+		}
+	}
+	return out
+}
+
+// quoteBlocks are the positions of the blocks of c whose text contains the
+// quote (its first 40 runes, spaces normalized); none for an empty quote.
+func quoteBlocks(c lecture.Content, quote string) [][2]int {
+	q := normalizeSpace(quote)
+	if q == "" {
+		return nil
+	}
+	if r := []rune(q); len(r) > 40 {
+		q = string(r[:40])
+	}
+	var out [][2]int
+	for i, s := range c.Sections {
+		for j, b := range s.Blocks {
+			if strings.Contains(normalizeSpace(b.Text+" "+string(b.Data)), q) {
+				out = append(out, [2]int{i, j})
+			}
+		}
+	}
+	return out
 }
 
 // blockKey is a block's comparable content (anchors are positional).
@@ -96,22 +153,11 @@ func flaggedBlocks(prev Attempt) map[[2]int]bool {
 		fs = append(fs, finding{g.Section, g.Quote})
 	}
 	for _, f := range fs {
-		q := normalizeSpace(f.quote)
-		matched := false
-		if q != "" {
-			if r := []rune(q); len(r) > 40 {
-				q = string(r[:40])
-			}
-			for i, s := range secs {
-				for j, b := range s.Blocks {
-					if strings.Contains(normalizeSpace(b.Text+" "+string(b.Data)), q) {
-						out[[2]int{i, j}] = true
-						matched = true
-					}
-				}
-			}
+		matched := quoteBlocks(prev.Content, f.quote)
+		for _, p := range matched {
+			out[p] = true
 		}
-		if matched || f.section == "" {
+		if len(matched) > 0 || f.section == "" {
 			continue
 		}
 		for i, s := range secs {

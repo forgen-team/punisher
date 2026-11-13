@@ -7,7 +7,7 @@ import (
 )
 
 func TestRegistryCoversEditableBlocks(t *testing.T) {
-	want := []string{BlockOutlineTask, BlockTeacherSystem, BlockLectureFormat, BlockReviewerSystem, BlockReviewTask,
+	want := []string{BlockOutlineTask, BlockTeacherSystem, BlockLectureFormat, BlockReviewerSystem, BlockReviewTask, BlockReviewRecheck, BlockAdjudicator,
 		BlockGlossSystem, BlockQASystem, BlockExplainSystem, BlockResolveSystem, BlockCheckItems, BlockCheckTutor, BlockCheckPretest}
 	for _, id := range want {
 		b, ok := LookupBlock(id)
@@ -72,7 +72,7 @@ func TestVersionHash(t *testing.T) {
 	if !userVersionRe.MatchString(va) || va == vb {
 		t.Fatalf("versions %q %q", va, vb)
 	}
-	if va != NewSet(map[string]string{BlockTeacherSystem: "A"}).Version(BlockReviewTask, BlockLectureFormat, BlockReviewerSystem, BlockTeacherSystem) {
+	if va != NewSet(map[string]string{BlockTeacherSystem: "A"}).Version(BlockAdjudicator, BlockReviewTask, BlockLectureFormat, BlockReviewRecheck, BlockReviewerSystem, BlockTeacherSystem) {
 		t.Fatal("version must not depend on block order")
 	}
 	// An override of a block the generation does not use leaves the version alone.
@@ -92,7 +92,7 @@ func TestUnknownVars(t *testing.T) {
 }
 
 func TestAssumedKnowledgeRules(t *testing.T) {
-	if Version != "punisher-prompts-2026-11-13.3" {
+	if Version != "punisher-prompts-2026-11-13.4" {
 		t.Fatalf("version = %s (bump when default blocks change)", Version)
 	}
 	for _, want := range []string{"전제하지 않습니다", "첫 등장에서 정의합니다", "2~3문장", "\"당연히\""} {

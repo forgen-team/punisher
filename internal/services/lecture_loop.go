@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/wooo-jin/punisher/internal/lecture"
@@ -17,6 +18,9 @@ const (
 	draftTimeout  = 7 * time.Minute
 	reviewTimeout = 3 * time.Minute
 	attemptBudget = draftTimeout + reviewTimeout
+	// adjudicateTimeout bounds one adjudication (a short call; adjudications
+	// of one review run in parallel).
+	adjudicateTimeout = 90 * time.Second
 )
 
 // lectureLoop is the LLM-backed LoopFuncs of a lecture generation (library,
@@ -32,6 +36,7 @@ func (s *Service) lectureLoop(apiKey string, t Target, outlineJSON string, u *us
 	if maxTokens <= 0 {
 		maxTokens = defaultMaxTokens
 	}
+	var mu sync.Mutex // adjudications run in parallel and share u
 	return LoopFuncs{
 		Generate: func(ctx context.Context, rev Revision) (string, error) {
 			user := prompts.Lecture(pc, outlineJSON, rev.Notes, t.Prompts)
@@ -50,9 +55,37 @@ func (s *Service) lectureLoop(apiKey string, t Target, outlineJSON string, u *us
 			}
 			return ParseReview(text), nil
 		},
-		Parse:         t.parseAndValidate,
-		DraftTimeout:  draftTimeout,
-		ReviewTimeout: reviewTimeout,
+		Recheck: func(ctx context.Context, in RecheckInput) (RecheckOutcome, error) {
+			text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel,
+				System: t.Prompts.Text(prompts.BlockReviewerSystem, vars),
+				User:   prompts.Recheck(pc, in.Findings, in.Changed, t.Prompts), MaxTokens: 3000, Timeout: reviewTimeout}, u)
+			if err != nil {
+				return RecheckOutcome{}, err
+			}
+			return ParseRecheck(text), nil
+		},
+		Adjudicate: func(ctx context.Context, in AdjudicationInput) (AdjudicationResult, error) {
+			var lu usage
+			text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel,
+				System: t.Prompts.Text(prompts.BlockAdjudicator, vars),
+				User: prompts.Adjudication(pc, prompts.AdjudicationCase{Kind: in.Issue.Kind, Section: in.Issue.Section,
+					Quote: in.Issue.Quote, Message: in.Issue.Message, ReaderImpact: in.Issue.ReaderImpact, Blocks: in.Blocks}),
+				MaxTokens: 800, Timeout: adjudicateTimeout, Priority: llm.ShortUnlessBackground(ctx)}, &lu)
+			mu.Lock()
+			u.input, u.output = u.input+lu.input, u.output+lu.output
+			if lu.model != "" {
+				u.model = lu.model
+			}
+			mu.Unlock()
+			if err != nil {
+				return AdjudicationResult{}, err
+			}
+			return ParseAdjudication(text), nil
+		},
+		Parse:             t.parseAndValidate,
+		DraftTimeout:      draftTimeout,
+		ReviewTimeout:     reviewTimeout,
+		AdjudicateTimeout: adjudicateTimeout,
 	}
 }
 
