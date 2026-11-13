@@ -68,6 +68,10 @@ Stop it with `Ctrl+C`. Running it again while it is up just reopens the page.
 
 Data lives in `~/Library/Application Support/Punisher/punisher.db` (one SQLite file — copy the folder to back it up). Upgrades migrate it automatically; see [CHANGELOG.md](CHANGELOG.md).
 
+## Phone access
+
+`punisher phone on` publishes the app to your own devices with Tailscale Serve and keeps it running with a LaunchAgent; `punisher phone off` undoes it. The app stays bound to 127.0.0.1, Funnel is never used, and a Mac that is asleep cannot be reached. See [section 8 of the Korean guide](README.ko.md#8-폰에서-보기).
+
 ## Build from source
 
 ```sh
