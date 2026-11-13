@@ -98,6 +98,9 @@ func (i ReviewIssue) gatedBlocking() bool {
 	if advisoryKinds[i.Kind] {
 		return false
 	}
+	if i.seriousFactual() {
+		return true
+	}
 	switch strings.ToLower(strings.TrimSpace(i.Gate)) {
 	case GateBlocking:
 		return true
@@ -116,12 +119,26 @@ func (i ReviewIssue) Downgrade() string {
 		return DowngradeDismissed
 	case i.OutsideChange:
 		return DowngradeOutsideChange
+	case i.seriousFactual():
+		return "" // only an adjudication dismiss releases it
 	case float64(i.Confidence) < minBlockingConfidence:
 		return DowngradeLowConfidence
 	case strings.TrimSpace(i.ReaderImpact) == "":
 		return DowngradeNoReaderImpact
 	}
 	return ""
+}
+
+// seriousFactual: a critical/major finding of a factual kind. It blocks
+// whatever gate, confidence or reader impact the reviewer wrote — the reviewer
+// gated such findings advisory and a wrong claim was published (실측
+// 2026-11-13, "RST = 서버 도달" overclaim/major) — and only an adjudication
+// dismiss releases it.
+func (i ReviewIssue) seriousFactual() bool {
+	if advisoryKinds[i.Kind] {
+		return false
+	}
+	return i.Severity == "critical" || i.Severity == "major"
 }
 
 // downgraded: gated blocking by the reviewer but not blocking.

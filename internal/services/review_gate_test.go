@@ -45,8 +45,12 @@ func TestReviewGates(t *testing.T) {
 			t.Errorf("%s: Blocking() = %v, want %v", tc.name, got, tc.want)
 		}
 	}
-	if r := ParseReview(`{"verdict":"fail","issues":[{"severity":"major","gate":"advisory","kind":"overclaim","message":"m"}]}`); r.Blocking() || r.Issues[0].Gate != GateAdvisory {
+	if r := ParseReview(`{"verdict":"fail","issues":[{"severity":"minor","gate":"advisory","kind":"overclaim","message":"m"}]}`); r.Blocking() || r.Issues[0].Gate != GateAdvisory {
 		t.Fatalf("gate must be parsed: %+v", r)
+	}
+	// 실측 2026-11-13: the reviewer gated a major overclaim advisory and the wrong claim was published.
+	if r := ParseReview(`{"verdict":"pass","issues":[{"severity":"major","gate":"advisory","kind":"overclaim","message":"m"}]}`); !r.Blocking() {
+		t.Fatalf("a major factual-kind finding blocks whatever the gate: %+v", r)
 	}
 }
 

@@ -117,16 +117,23 @@ func TestTargetedRecheckNewBlockingInChangedBlock(t *testing.T) {
 	}
 }
 
-// A blocking finding without confidence ≥ 0.7 or a reader impact is advisory.
+// A minor blocking finding without confidence ≥ 0.7 or a reader impact is
+// advisory; a critical/major factual one is never downgraded that way — it goes
+// to adjudication instead.
 func TestBlockingNeedsConfidenceAndReaderImpact(t *testing.T) {
 	low := blockingAt("ERROR:  integer out of range", "렌더러 버전 확인 불가")
-	low.Confidence = 0.5
+	low.Severity, low.Confidence = "minor", 0.5
 	noImpact := blockingAt("ERROR:  integer out of range", "빌드 옵션에 따라 다를 수 있음")
-	noImpact.ReaderImpact = " "
-	for _, i := range []ReviewIssue{low, noImpact, {Severity: "major", Gate: GateBlocking, Kind: "factual_error", Message: "m"}} {
+	noImpact.Severity, noImpact.ReaderImpact = "minor", " "
+	for _, i := range []ReviewIssue{low, noImpact, {Severity: "minor", Gate: GateBlocking, Kind: "factual_error", Message: "m"}} {
 		if i.IsBlocking() || !i.downgraded() {
 			t.Errorf("must be downgraded: %+v (%s)", i, i.Downgrade())
 		}
+	}
+	serious := blockingAt("ERROR:  integer out of range", "렌더러 버전 확인 불가")
+	serious.Confidence = 0.5
+	if !serious.IsBlocking() {
+		t.Fatalf("a major factual finding with low confidence still blocks: %+v", serious)
 	}
 	r := ParseReview(`{"verdict":"fail","issues":[{"severity":"major","gate":"blocking","kind":"factual_error","message":"m","confidence":"0.9","reader_impact":"틀린 판단"}]}`)
 	if !r.Blocking() || float64(r.Issues[0].Confidence) != 0.9 {
@@ -238,5 +245,30 @@ func TestQuoteBlockMarksCut(t *testing.T) {
 	got := quoteBlock(long)
 	if !strings.HasSuffix(got, quotedCutMarker) {
 		t.Fatalf("long block not marked: %q", got[len(got)-80:])
+	}
+}
+
+// A critical/major factual finding blocks even when the reviewer gated it
+// advisory or left confidence/reader impact out; only a dismiss releases it.
+func TestSeriousFactualIgnoresGateAndConfidence(t *testing.T) {
+	gatedAdvisory := ReviewIssue{Kind: "overclaim", Severity: "major", Gate: GateAdvisory}
+	if !gatedAdvisory.IsBlocking() {
+		t.Fatal("major overclaim gated advisory must still block")
+	}
+	noFields := ReviewIssue{Kind: "factual_error", Severity: "critical", Gate: GateBlocking}
+	if !noFields.IsBlocking() {
+		t.Fatal("critical factual without confidence/reader impact must block")
+	}
+	dismissed := ReviewIssue{Kind: "factual_error", Severity: "major", Gate: GateBlocking, Adjudication: AdjudicationDismiss}
+	if dismissed.IsBlocking() {
+		t.Fatal("adjudication dismiss must release a serious factual finding")
+	}
+	minor := ReviewIssue{Kind: "factual_error", Severity: "minor", Gate: GateAdvisory}
+	if minor.IsBlocking() {
+		t.Fatal("minor factual gated advisory stays advisory")
+	}
+	pedagogy := ReviewIssue{Kind: "pedagogy", Severity: "major", Gate: GateBlocking}
+	if pedagogy.IsBlocking() {
+		t.Fatal("advisory kinds never block")
 	}
 }
