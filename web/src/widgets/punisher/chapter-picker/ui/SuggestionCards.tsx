@@ -24,7 +24,8 @@ export function SuggestionCards({ suggestions, selected, onToggle }: SuggestionC
           <li key={s.id}>
             <button
               type="button"
-              aria-pressed={on}
+              role="checkbox"
+              aria-checked={on}
               disabled={!on && full}
               onClick={() => onToggle(s.id)}
               className={cn(
@@ -36,7 +37,8 @@ export function SuggestionCards({ suggestions, selected, onToggle }: SuggestionC
               <span
                 aria-hidden="true"
                 className={cn(
-                  "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border",
+                  // 여러 개 고르는 선택이라 체크박스 모양(각진 네모) — 동그라미면 하나만 고르는 라디오로 읽힌다.
+                  "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-sm border-2",
                   on ? "border-accent-solid bg-accent-solid text-accent-on" : "border-line-strong",
                 )}
               >
@@ -61,7 +63,7 @@ export function SuggestionCardsSkeleton() {
     <ul role="list" aria-hidden="true" className="grid gap-2 fold:grid-cols-2">
       {Array.from({ length: 4 }, (_, index) => (
         <li key={index} className="flex items-start gap-3 rounded-lg border border-line bg-canvas-elevated p-3">
-          <Skeleton variant="block" className="mt-0.5 size-5 shrink-0" />
+          <Skeleton variant="block" className="mt-0.5 size-5 shrink-0 rounded-sm" />
           <Skeleton lines={3} className="flex-1" />
         </li>
       ))}

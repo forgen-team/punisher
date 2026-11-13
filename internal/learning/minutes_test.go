@@ -53,27 +53,29 @@ func TestSectionMinutes(t *testing.T) {
 		{Anchor: "b", Minutes: 9, Blocks: []lecture.Block{{Type: lecture.BlockMarkdown, Text: strings.Repeat("가", 900)}}}, // 1.5 → 2
 	}}
 	got := SectionMinutes(c)
-	// 각자 반올림(2+2)은 전체 계산(1800/600=3)과 1분 어긋날 수 있다.
-	if len(got) != 2 || got[0] != 2 || got[1] != 2 || EstimateMinutes(c) != 3 {
+	// 전체 시간은 섹션 분의 합(2+2) — 한꺼번에 계산(1800/600=3)하지 않는다.
+	if len(got) != 2 || got[0] != 2 || got[1] != 2 || EstimateMinutes(c) != 4 {
 		t.Fatalf("SectionMinutes = %v, total %d", got, EstimateMinutes(c))
 	}
 	raw := []byte(`{"title":"t","extra":true,"sections":[{"anchor":"a","minutes":9,"blocks":[{"type":"markdown","text":"` +
 		strings.Repeat("가", 1200) + `"}],"future":1}]}`)
 	var out struct {
-		Extra    bool `json:"extra"`
-		Sections []struct {
+		Extra            bool `json:"extra"`
+		EstimatedMinutes int  `json:"estimatedMinutes"`
+		Sections         []struct {
 			Minutes          int `json:"minutes"`
 			EstimatedMinutes int `json:"estimatedMinutes"`
 			Future           int `json:"future"`
 		} `json:"sections"`
 	}
-	if err := json.Unmarshal(WithSectionMinutes(raw), &out); err != nil {
+	withMinutes, total := WithSectionMinutes(raw)
+	if err := json.Unmarshal(withMinutes, &out); err != nil {
 		t.Fatal(err)
 	}
-	if !out.Extra || len(out.Sections) != 1 || out.Sections[0].EstimatedMinutes != 2 || out.Sections[0].Minutes != 9 || out.Sections[0].Future != 1 {
+	if total != 2 || out.EstimatedMinutes != 2 || !out.Extra || len(out.Sections) != 1 || out.Sections[0].EstimatedMinutes != 2 || out.Sections[0].Minutes != 9 || out.Sections[0].Future != 1 {
 		t.Fatalf("WithSectionMinutes = %+v", out)
 	}
-	if bad := []byte(`not json`); string(WithSectionMinutes(bad)) != "not json" {
+	if bad, total := WithSectionMinutes([]byte(`not json`)); string(bad) != "not json" || total != 0 {
 		t.Fatal("undecodable content must pass through")
 	}
 }
@@ -90,5 +92,21 @@ func TestSessionFor(t *testing.T) {
 		Resume: []ResumeItem{{LectureID: "l", ConceptID: "a", Percent: 50, EstimatedMinutes: 14}}})
 	if res.Session.LectureMinutes != 7 || res.Session.CheckMinutes != 7 || res.Review.LectureMinutes != 7 {
 		t.Fatalf("resume: half of 14 minutes left = %+v / review %+v", res.Session, res.Review)
+	}
+}
+
+func TestTodayUsesExistingLectureMinutes(t *testing.T) {
+	concepts := map[string]TodayConcept{
+		"a": {ID: "a", Area: "os", Depth: 1, HasPending: true, PendingDepths: 1},
+		"b": {ID: "b", Area: "net", Depth: 1, HasPending: true, PendingDepths: 1},
+	}
+	res := BuildToday(TodayInput{Concepts: concepts, LectureMinutes: map[string]int{"a": 13}})
+	got := map[string]int{}
+	for _, item := range res.Items {
+		got[item.ConceptID] = item.EstimatedMinutes
+	}
+	// 강의가 있는 개념은 그 강의 시간, 없는 개념은 기본값. 세션은 첫 추천과 같은 값.
+	if got["a"] != 13 || got["b"] != DefaultLectureMinutes || res.Session.LectureMinutes != res.Items[0].EstimatedMinutes {
+		t.Fatalf("items = %+v, session = %+v", res.Items, res.Session)
 	}
 }

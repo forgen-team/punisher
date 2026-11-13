@@ -108,8 +108,13 @@ func (h *LearnHandler) GetLecture(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, r, "get lecture", err)
 		return
 	}
-	// 섹션별 시간은 모델이 쓴 minutes 대신 서버 계산값(v2.2 §5)을 함께 준다.
-	lec.Content = learning.WithSectionMinutes(lec.Content)
+	// 섹션별 시간은 모델이 쓴 minutes 대신 서버 계산값(v2.2 §5)을 함께 준다. 전체 시간은 그 섹션 분의 합
+	// (저장된 값이 예전 계산이어도 머리말과 섹션 합이 어긋나지 않게).
+	var total int
+	lec.Content, total = learning.WithSectionMinutes(lec.Content)
+	if total > 0 {
+		lec.EstimatedMinutes = total
+	}
 	writeJSON(w, http.StatusOK, lec)
 }
 

@@ -4,7 +4,7 @@ import { GRADER_LABELS, MASTERY_MAX_LEVEL, masteryLabel } from "./constants";
 
 const DOTS = Array.from({ length: MASTERY_MAX_LEVEL }, (_, index) => index + 1);
 
-/** 목표 레벨 점(●●●○○) + 마지막 채점 주체(튜터/자기 채점)를 작게. */
+/** 목표 레벨 점(●●●○○) + 레벨 글자(L3) + 마지막 채점 주체(튜터/자기 채점)를 작게. 점만으로는 작고 다크에서 흐려 글자를 함께 둔다. */
 export function MasteryDots({ level, lastGrader, className }: { level: number; lastGrader?: CheckGrader | ""; className?: string }) {
   const label = masteryLabel(level);
   const grader = lastGrader ? GRADER_LABELS[lastGrader] : "";
@@ -15,9 +15,12 @@ export function MasteryDots({ level, lastGrader, className }: { level: number; l
           <span
             key={n}
             aria-hidden="true"
-            className={cn("size-1.5 rounded-full", n <= level ? "bg-accent" : "border border-line-strong")}
+            className={cn("size-2 rounded-full", n <= level ? "bg-accent" : "border border-line-strong")}
           />
         ))}
+      </span>
+      <span aria-hidden="true" className="text-xs tabular-nums text-fg-secondary">
+        L{level}
       </span>
       {grader && (
         <span aria-hidden="true" className="text-xs text-fg-muted">

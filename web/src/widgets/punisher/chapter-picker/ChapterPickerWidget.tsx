@@ -120,7 +120,8 @@ export function ChapterPickerWidget() {
           description={`${freeText.length}/${FREE_TEXT_MAX}자`}
           className="xl:sticky xl:top-[calc(var(--app-header-offset)+1.5rem)]"
         >
-          <div className="flex flex-col gap-5 xl:rounded-xl xl:border xl:border-line xl:bg-canvas-elevated xl:p-4 xl:shadow-xs">
+          {/* 좁은 폭과 같은 구성(상자 없이 입력란 + 오류) — 넓은 폭에서만 카드로 감싸면 두 폭의 모양이 달라진다. */}
+          <div className="flex flex-col gap-5">
             <Textarea
               aria-label="직접 입력"
               value={freeText}

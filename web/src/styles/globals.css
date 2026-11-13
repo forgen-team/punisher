@@ -57,7 +57,11 @@
     text-wrap: balance;
   }
 
-  p {
+  /* 문단·목록 줄(목록 행 제목·설명, 카드 설명 포함 — li 안은 상속)의 마지막 줄에 낱말 하나만 남지 않게 */
+  p,
+  li,
+  dt,
+  dd {
     text-wrap: pretty;
   }
 

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/wooo-jin/punisher/internal/learning"
 	"github.com/wooo-jin/punisher/internal/models"
 	"github.com/wooo-jin/punisher/internal/store"
 )
@@ -20,8 +21,8 @@ func TestCheckNeedsPassedReview(t *testing.T) {
 	if _, err := db.ExecContext(ctx, `DELETE FROM lecture_reviews WHERE lecture_id = ?`, f.lectureID); err != nil {
 		t.Fatal(err)
 	}
-	// 기존 강의(minutes_estimated 없음)는 조회 때 본문으로 시간을 계산한다(짧은 본문 → 최소 1분).
-	if lec, err := s.Store.GetLecture(ctx, user, f.lectureID); err != nil || lec.ReviewState != models.ReviewUnreviewed || lec.EstimatedMinutes != 1 {
+	// 기존 강의(minutes_estimated 없음)는 조회 때 본문으로 시간을 계산한다(짧은 섹션 2개 → 섹션마다 최소 1분, 합 2분).
+	if lec, err := s.Store.GetLecture(ctx, user, f.lectureID); err != nil || lec.ReviewState != models.ReviewUnreviewed || lec.EstimatedMinutes != 2 {
 		t.Fatalf("review state = %q minutes = %d (%v)", lec.ReviewState, lec.EstimatedMinutes, err)
 	}
 	if _, _, err := s.StartCheck(ctx, user, "check", f.lectureID); !errors.Is(err, ErrLectureNotReviewed) {
@@ -127,5 +128,26 @@ func TestDisputeAfterRelearnConflicts(t *testing.T) {
 	}
 	if a := masteryOf(t, s, user, f.conceptID, f.objA); a.Box != 0 || a.NextReviewAt != nil {
 		t.Fatalf("the relearn reset stays: %+v", a)
+	}
+}
+
+// TestRecommendedLectureMinutes: a recommendation whose next lecture already
+// exists shows that lecture's time (section sum); resume items and concepts
+// without a lecture are left to the default.
+func TestRecommendedLectureMinutes(t *testing.T) {
+	s, _, user, f := checkService(t)
+	ctx := context.Background()
+	items := []learning.Recommendation{
+		{Kind: learning.RecEssentialGap, ConceptID: f.conceptID},
+		{Kind: learning.RecResume, ConceptID: "resume.only"},
+		{Kind: learning.RecNewGoal, ConceptID: "no.such.concept"},
+	}
+	got := s.recommendedLectureMinutes(ctx, user, items)
+	lec, err := s.Store.GetLecture(ctx, user, f.lectureID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[f.conceptID] != lectureMinutes(lec) || got[f.conceptID] <= 0 {
+		t.Fatalf("minutes = %v, want %s: %d", got, f.conceptID, lectureMinutes(lec))
 	}
 }

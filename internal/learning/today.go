@@ -72,6 +72,9 @@ type TodayInput struct {
 	Review ReviewInput
 	// Lapsed: concepts with an objective lapsed RecheckLapses+ times without recovering (TodayResult.Recheck).
 	Lapsed map[string]LapsedConcept
+	// LectureMinutes: EstimateMinutes of the lecture a recommendation would open, by concept
+	// (absent = no lecture yet → DefaultLectureMinutes).
+	LectureMinutes map[string]int
 }
 
 // LapsedConcept is how a "다시 확인" card opens: today's review when one of the
@@ -162,6 +165,9 @@ func (b *todayBuilder) add(c TodayConcept, r Recommendation) {
 	}
 	if r.PracticalSituation == "" {
 		r.PracticalSituation = c.Summary
+	}
+	if r.EstimatedMinutes <= 0 {
+		r.EstimatedMinutes = b.in.LectureMinutes[c.ID]
 	}
 	if r.EstimatedMinutes <= 0 {
 		r.EstimatedMinutes = DefaultLectureMinutes

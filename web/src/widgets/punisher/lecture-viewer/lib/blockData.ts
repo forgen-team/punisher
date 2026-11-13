@@ -123,3 +123,10 @@ export function parseDiff(raw: unknown): Parsed<DiffData> {
   if (lineCount(raw.before) > MAX_DIFF_LINES || lineCount(raw.after) > MAX_DIFF_LINES) { return fail("줄 수"); }
   return { ok: true, data: { before: raw.before, after: raw.after, note: str(raw.note) } };
 }
+
+const HANGUL = /[ㄱ-ㆎ가-힣]/;
+
+/** trace 표에서 글(설명) 열 — 한국어가 든 칸이 하나라도 있는 열. 나머지(숫자·식·코드 값)는 고정폭으로 맞춘다. */
+export function traceProseColumns(data: Pick<TraceData, "columns" | "rows">): boolean[] {
+  return data.columns.map((_, c) => data.rows.some((row) => HANGUL.test(row[c] ?? "")));
+}

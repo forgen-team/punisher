@@ -37,23 +37,29 @@ func (t Target) promptVersion() string {
 // prompt/validation context. Returns learning.ErrNothingToLearn when every
 // objective at that depth is completed/known (dedup invariant).
 func (s *Service) BuildTarget(ctx context.Context, userID, conceptID string, depth int, query string) (Target, error) {
-	concept, err := s.Store.ConceptInfo(ctx, userID, conceptID)
+	concept, plan, err := s.planLecture(ctx, userID, conceptID, depth)
 	if err != nil {
 		return Target{}, err
 	}
+	return s.targetForPlan(ctx, userID, concept, plan, query)
+}
+
+// planLecture is the next lecture plan of the concept for the user (learning.PlanLecture).
+func (s *Service) planLecture(ctx context.Context, userID, conceptID string, depth int) (models.ConceptInfo, learning.LecturePlan, error) {
+	concept, err := s.Store.ConceptInfo(ctx, userID, conceptID)
+	if err != nil {
+		return concept, learning.LecturePlan{}, err
+	}
 	done, err := s.Store.DoneSet(ctx, userID, conceptID)
 	if err != nil {
-		return Target{}, err
+		return concept, learning.LecturePlan{}, err
 	}
 	refs := make([]learning.ObjectiveRef, 0, len(concept.Objectives))
 	for _, o := range concept.Objectives {
 		refs = append(refs, learning.ObjectiveRef{ID: o.ID, Depth: o.Depth, Ordinal: o.Ordinal})
 	}
 	plan, err := learning.PlanLecture(conceptID, refs, done, depth)
-	if err != nil {
-		return Target{}, err
-	}
-	return s.targetForPlan(ctx, userID, concept, plan, query)
+	return concept, plan, err
 }
 
 // TargetForLecture rebuilds the generation target of an existing lecture (same

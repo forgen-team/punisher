@@ -20,7 +20,7 @@ interface RecommendationRowProps {
   onOpen: (item: Recommendation) => void;
 }
 
-/** 추천 행: 제목 / 영역 · 약 N분 / 왜 오늘(한 줄). 상세는 시트로. */
+/** 추천 행: 제목 / 영역 · 약 N분 / 왜 오늘(두 줄까지). 상세는 시트로. */
 export function RecommendationRow({ item, onOpen }: RecommendationRowProps) {
   return (
     <ListRow
@@ -30,7 +30,7 @@ export function RecommendationRow({ item, onOpen }: RecommendationRowProps) {
         <>
           {lectureSubtitle(item) && <span className="block truncate text-fg-secondary">{lectureSubtitle(item)}</span>}
           {areaLabel(item.area)} · 약 {item.estimatedMinutes}분
-          {item.reason && <span className="block truncate text-fg-secondary">{item.reason}</span>}
+          {item.reason && <span className="line-clamp-2 whitespace-normal break-keep text-fg-secondary">{item.reason}</span>}
         </>
       }
     />

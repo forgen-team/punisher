@@ -2,7 +2,7 @@
 import { usePathname, useRouter, useSearchParams } from "@/src/shared/lib/router";
 import { Suspense, lazy, useCallback, useMemo, useState } from "react";
 import { BottomSheet, EmptyState, ErrorState, Skeleton } from "@/src/shared/ui/kit";
-import { useFrontier, useGoalPath, useGoals, useGraph, useMasteryBatch } from "@/src/entities/punisher";
+import { useFrontier, useGoalPath, useGoals, useGraph, useMasteryBatch, useToday } from "@/src/entities/punisher";
 import { GoalsManager } from "@/src/features/punisher/goal-manage";
 import { KnownAreasSheet, KnownOnboardingPrompt, useKnownOnboardingPrompt } from "@/src/features/punisher/known-onboarding";
 import { describePunisherError } from "@/src/shared/api/punisher";
@@ -55,6 +55,12 @@ export function KnowledgeMapWidget() {
   const mastery = useMasteryBatch(allIds);
   const masteredIds = useMemo(() => new Set((mastery.data ?? []).filter((m) => m.mastered).map((m) => m.conceptId)), [mastery.data]);
   const frontier = useFrontier(10);
+  // 이어보기(최근에 본 순) — 진행 중인 개념이 여럿이면 첫 화면을 가장 최근 것에 맞춘다.
+  const today = useToday();
+  const recentConceptIds = useMemo(
+    () => (today.data?.items ?? []).filter((item) => item.kind === "resume").map((item) => item.conceptId),
+    [today.data],
+  );
   const goals = useGoals();
   const goalPath = useGoalPath(goalId || undefined);
   const onboarding = useKnownOnboardingPrompt();
@@ -119,11 +125,22 @@ export function KnowledgeMapWidget() {
     if (nodes.length === 0) {
       return <EmptyState compact title="표시할 개념이 없어요" description="다른 영역이나 목표를 골라 보세요." />;
     }
-    return <MapCanvas nodes={nodes} edges={edges} highlightIds={pathIds} selectedId={selectedId} masteredIds={masteredIds} onSelect={onSelect} />;
+    return (
+      <MapCanvas
+        nodes={nodes}
+        edges={edges}
+        highlightIds={pathIds}
+        selectedId={selectedId}
+        masteredIds={masteredIds}
+        recentConceptIds={recentConceptIds}
+        onSelect={onSelect}
+      />
+    );
   }
 
   return (
-    <div className="flex w-full flex-col gap-3">
+    // lg+: 위젯이 화면 남은 높이(단독판: 상단 바·학습 머리 영역·아래 여백 13.75rem 제외 — witems 11rem)를 차지하고, 컨트롤·안내 줄을 뺀 나머지를 캔버스 줄이 채운다.
+    <div className="flex w-full flex-col gap-3 lg:h-[calc(100dvh-13.75rem)] lg:min-h-[28rem]">
       <MapControls
         area={chapterParam ? `${CHAPTER_OPTION_PREFIX}${chapterParam}` : areaParam}
         chapters={graph.data?.chapters ?? []}
@@ -145,12 +162,12 @@ export function KnowledgeMapWidget() {
       {goalId && <p className="text-xs text-fg-muted">목표에 필요한 선행 사슬만 보여요.</p>}
 
       {/* lg: 캔버스 | 18rem 목록, 상세는 오른쪽 시트. xl: 캔버스 | 22rem(2xl 26rem) 열 — 개념을 고르면 그 열이 상세 패널로 바뀐다(캔버스 폭 그대로).
-          오른쪽 열 높이는 캔버스와 같은 100dvh-14rem 을 넘지 않고, 넘치면 세로로만 스크롤한다. */}
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
-        <div className="-mx-4 h-[60dvh] min-h-80 overflow-hidden border-y border-line fold:mx-0 fold:rounded-lg fold:border lg:h-[calc(100dvh-14rem)]">
+          lg+: 이 줄이 남은 높이를 채우고(안내 줄이 있으면 그만큼 줄어든다), xl 오른쪽 열은 그 높이를 넘지 않고 넘치면 세로로만 스크롤한다. */}
+      <div className="grid gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_18rem] lg:grid-rows-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
+        <div className="-mx-4 h-[60dvh] min-h-80 overflow-hidden border-y border-line fold:mx-0 fold:rounded-lg fold:border lg:h-full lg:min-h-0">
           {renderCanvas()}
         </div>
-        <div className="flex min-w-0 flex-col gap-6 xl:sticky xl:top-[calc(var(--app-header-offset)+1rem)] xl:max-h-[calc(100dvh-14rem)] xl:self-start xl:overflow-y-auto xl:overflow-x-hidden xl:pr-3">
+        <div className="flex min-w-0 flex-col gap-6 xl:max-h-full xl:self-start xl:overflow-y-auto xl:overflow-x-hidden xl:pr-3">
           {wide && selectedId ? (
             <ConceptDetailSheet variant="panel" conceptId={selectedId} requests={selectedRequests} onClose={closeDetail} onSelect={onSelect} />
           ) : (

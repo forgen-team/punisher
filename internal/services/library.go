@@ -266,36 +266,3 @@ func (s *Service) saveLecture(ctx context.Context, t Target, c lecture.Content, 
 		Flagged: flagged, FlagReason: flagReason, EstimatedMinutes: c.EstimatedMinutes, GenerationJobID: jobID,
 	})
 }
-
-// todayInput converts store data into learning.TodayInput.
-func todayInput(d *store.TodayData, limit int) learning.TodayInput {
-	depthOf := make(map[string]int, len(d.Concepts))
-	for id, c := range d.Concepts {
-		depthOf[id] = c.Depth
-	}
-	in := learning.TodayInput{Concepts: d.Concepts, Edges: d.Edges, Resume: d.Resume, Requests: d.Requests, Limit: limit, Lapsed: d.Lapsed}
-	for _, g := range d.Goals {
-		for _, target := range g.Targets {
-			in.Goals = append(in.Goals, learning.GoalInput{ID: g.ID, Title: g.Title, Path: learning.PathTo(target, d.Edges, depthOf)})
-		}
-	}
-	return in
-}
-
-// Today builds the user's recommendations.
-func (s *Service) Today(ctx context.Context, userID string, limit int) (learning.TodayResult, error) {
-	st, serr := s.Store.GetLearningSettings(ctx, userID)
-	if serr != nil {
-		logf("learning settings for %s: %v (using defaults)", userID, serr)
-	}
-	s.releaseQueued(ctx, userID, st, s.now())
-	data, err := s.Store.LoadToday(ctx, userID, s.now())
-	if err != nil {
-		return learning.TodayResult{}, err
-	}
-	in := todayInput(data, limit)
-	in.Review = learning.ReviewInput{Counts: data.Review, ReviewMinutes: st.ReviewMinutes, Grader: s.reviewGrader(userID, st)}
-	res := learning.BuildToday(in)
-	res.NextChapter = learning.CheckNextChapter(learning.RemainingMinutes(data.Concepts), st.DailyMinutes)
-	return res, nil
-}

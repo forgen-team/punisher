@@ -97,4 +97,22 @@ describe("구조 블록 렌더", () => {
     const { container } = renderBlocks(SAMPLE.slice(4, 6));
     expect(container.querySelector('[data-lecture-anchor="o"]')).not.toBeNull();
   });
+
+  it("renders the pause question as markdown and keeps misconception line breaks", () => {
+    const { container } = renderBlocks([
+      { anchor: "p", type: "pause", text: "`x++` 다음 값은?" },
+      { anchor: "m", type: "misconception", text: "① 하나\n② 둘" },
+    ]);
+    expect(container.querySelector("code")?.textContent).toBe("x++");
+    expect(screen.queryByText(/`x\+\+`/)).not.toBeInTheDocument();
+    expect(container.querySelectorAll("aside br")).toHaveLength(1);
+  });
+
+  it("keeps trace number columns monospace and lets prose columns wrap", () => {
+    renderBlocks([{ anchor: "t", type: "trace", data: { caption: "", columns: ["i", "설명"], rows: [["1", "첫 값을 더한다"], ["2", "다음 값을 더한다"]], note: "" } }]);
+    const [num, prose] = screen.getAllByRole("cell");
+    expect(num).toHaveClass("font-mono");
+    expect(prose).not.toHaveClass("font-mono");
+    expect(prose.firstElementChild).toHaveClass("max-w-[18rem]");
+  });
 });

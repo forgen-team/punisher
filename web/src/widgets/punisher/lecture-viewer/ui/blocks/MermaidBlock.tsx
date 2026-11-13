@@ -17,14 +17,33 @@ function tokenColor(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
+/** 값이 있는 토큰만 mermaid 변수로 넘긴다(토큰을 못 읽으면 mermaid 기본값). */
+function tokenVariables(map: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(map).flatMap(([key, token]) => {
+    const value = tokenColor(token);
+    return value ? [[key, value]] : [];
+  }));
+}
+
 /** 다크 모드 간선 라벨: 기본(어두운 회색 반투명) 위 글자 대비가 낮아, 도식 면 색과 본문 글자 색으로 맞춘다. */
 function darkThemeVariables(): Record<string, string> {
-  const surface = tokenColor("--color-bg-elevated");
-  const text = tokenColor("--color-text");
-  return {
-    ...(surface ? { edgeLabelBackground: surface } : {}),
-    ...(text ? { textColor: text } : {}),
-  };
+  return tokenVariables({ edgeLabelBackground: "--color-bg-elevated", textColor: "--color-text" });
+}
+
+/** 라이트 모드: 기본 테마의 연보라 대신 앱 토큰(액센트 옅은 면·액센트 테두리·본문 글자)으로 그린다. */
+function lightThemeVariables(): Record<string, string> {
+  return tokenVariables({
+    primaryColor: "--color-accent-subtle",
+    primaryBorderColor: "--color-accent",
+    primaryTextColor: "--color-text",
+    secondaryColor: "--color-bg-subtle",
+    tertiaryColor: "--color-bg-elevated",
+    lineColor: "--color-text-secondary",
+    textColor: "--color-text",
+    edgeLabelBackground: "--color-bg-elevated",
+    clusterBkg: "--color-bg-subtle",
+    clusterBorder: "--color-border-strong",
+  });
 }
 
 /** Mermaid diagram rendered client-side (mermaid lazy-loaded, theme-aware). */
@@ -42,8 +61,8 @@ export function MermaidBlock({ source, title }: { source: string; title?: string
       mermaid.initialize({
         startOnLoad: false,
         securityLevel: "strict",
-        theme: theme === "dark" ? "dark" : "default",
-        themeVariables: theme === "dark" ? darkThemeVariables() : {},
+        theme: theme === "dark" ? "dark" : "base",
+        themeVariables: theme === "dark" ? darkThemeVariables() : lightThemeVariables(),
         // 이 옵션이 없으면 문법 오류 시 mermaid 가 "Syntax error" 그림을 <body>에 붙여 모든 화면에 남는다.
         suppressErrorRendering: true,
       });

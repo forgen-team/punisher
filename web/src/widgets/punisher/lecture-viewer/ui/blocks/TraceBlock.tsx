@@ -1,7 +1,7 @@
 
-import { useId, useState } from "react";
-import { Button } from "@/src/shared/ui/kit";
-import type { TraceData } from "../../lib/blockData";
+import { useId, useMemo, useState } from "react";
+import { Button, cn } from "@/src/shared/ui/kit";
+import { traceProseColumns, type TraceData } from "../../lib/blockData";
 import { initialReveal, revealNext } from "../../lib/blockGroups";
 import { BLOCK_LABELS } from "./constants";
 
@@ -11,11 +11,13 @@ export function TraceBlock({ data }: { data: TraceData }) {
   const [shown, setShown] = useState(() => initialReveal(total));
   const tableId = useId();
   const done = shown >= total;
+  const prose = useMemo(() => traceProseColumns(data), [data]);
   return (
     <figure className="my-4">
       {data.caption && <figcaption className="mb-2 text-sm font-semibold text-fg">{data.caption}</figcaption>}
       <div className="max-w-full overflow-x-auto" tabIndex={0} role="region" aria-label={data.caption || BLOCK_LABELS.traceTable}>
-        <table id={tableId} className="w-full min-w-max border-collapse text-sm tabular-nums">
+        {/* 숫자 칸은 고정폭·한 줄, 글 칸은 본문 글꼴로 18rem 에서 줄바꿈 — 설명 열 때문에 표가 화면 밖으로 길어지지 않게. */}
+        <table id={tableId} className="w-full border-collapse text-sm tabular-nums">
           <thead>
             <tr>
               {data.columns.map((col, index) => (
@@ -29,8 +31,8 @@ export function TraceBlock({ data }: { data: TraceData }) {
             {data.rows.slice(0, shown).map((row, r) => (
               <tr key={r}>
                 {row.map((value, c) => (
-                  <td key={c} className="border border-line px-2 py-1 font-mono">
-                    {value}
+                  <td key={c} className={cn("border border-line px-2 py-1 align-top", !prose[c] && "whitespace-nowrap font-mono")}>
+                    {prose[c] ? <div className="min-w-[8rem] max-w-[18rem] whitespace-normal">{value}</div> : value}
                   </td>
                 ))}
               </tr>

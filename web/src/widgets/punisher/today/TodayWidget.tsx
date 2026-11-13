@@ -46,9 +46,9 @@ export function TodayWidget() {
   // 복습 카드는 열들 위 전체 폭 띠(맨 앞) — 3단에서도 열 배치를 바꾸지 않고, '추천 소진' 안내와 다른 칸에 둔다.
   // 완료 여부(오늘 세션)를 받기 전에는 그리지 않는다(숨김 ↔ 접힌 완료가 깜빡이지 않게).
   const reviewState = reviewCardState(reviewToday, reviewSummary.data?.today);
-  // 세션 시간 합계(서버 계산)가 오면 '오늘의 추천' 머리말에 한 번만 보이고 복습 카드의 합계 줄은 뺀다.
+  // 세션 시간 합계(서버 계산 — 강의는 다음에 볼 강의, 이어보기가 있으면 그 남은 시간)는 '오늘의 추천' 밖 한 줄에만 보이고
+  // 복습 카드의 합계 줄은 뺀다. 추천 목록의 설명 자리에 두면 추천 항목들의 합으로 읽혀 헷갈린다.
   const sessionTime = sessionTimeLabel(today.data?.session);
-  const recommendDescription = sessionTime || "하루 30분, 기반 지식을 한 단계씩";
   const reviewReady = ready && (!reviewToday || !reviewSummary.isLoading);
   const showResume = ready && (resume.length > 0 || resumeDismiss.dismissed || resumeDismiss.error);
 
@@ -69,13 +69,13 @@ export function TodayWidget() {
 
   const recommendSection = today.isLoading ? (
     // 실제 화면(섹션 제목 + 카드 안 추천 5줄)과 같은 높이로 자리를 잡아 아래 '학습 요청'이 밀리지 않게 한다.
-    <Section variant="card" title="오늘의 추천" description="하루 30분, 기반 지식을 한 단계씩" aria-busy="true">
+    <Section variant="card" title="오늘의 추천" aria-busy="true">
       <ListSkeleton rows={5} />
     </Section>
   ) : today.error ? (
     <ErrorState message={describePunisherError(today.error)} onRetry={() => today.refetch()} retrying={today.isRefetching} />
   ) : (
-    <Section variant="card" title="오늘의 추천" description={recommendDescription}>
+    <Section variant="card" title="오늘의 추천">
       {rows.length > 0 ? (
         <List>
           {rows.map((row) =>
@@ -126,6 +126,7 @@ export function TodayWidget() {
         {pickResult && <ResolutionChoices response={pickResult} disabled={isPending} onPick={(id) => start(id)} />}
       </div>
       <HeightReserve id="learn-resume" ready={ready} skeleton={null} remember={!resumeExpanded && !resumeDismiss.dismissed} className="[&:empty:not([style])]:hidden">{resumeSection}</HeightReserve>
+      {sessionTime && <p className="-my-3 text-sm tabular-nums text-fg-secondary">{sessionTime}</p>}
       <div className={cn("flex flex-col gap-6 fold:grid fold:grid-cols-2 fold:items-start fold:gap-4 md:gap-6", middle && "xl:grid-cols-3")}>
         <div className="contents fold:flex fold:min-w-0 fold:flex-col fold:gap-4 md:gap-6">
           {nextChapter && (

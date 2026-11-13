@@ -1,10 +1,11 @@
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, History } from "lucide-react";
-import { Badge, Button, SegmentedTabs, Textarea } from "@/src/shared/ui/kit";
+import { AlertTriangle, History, Info } from "lucide-react";
+import { Badge, Button, IconButton, SegmentedTabs, Textarea } from "@/src/shared/ui/kit";
 import { useChangePrompt } from "@/src/entities/punisher";
 import { describePunisherError, type PromptBlock, type PromptHistoryEntry } from "@/src/shared/api/punisher";
 import { useWideLayout } from "@/src/shared/lib/useWideLayout";
+import { ReadingOverlay, toOverlayAnchor, type OverlayAnchor } from "@/src/shared/ui/punisher";
 import { findUnknownVariables, withSuggestion } from "../lib/lineDiff";
 import { EDITOR_LABELS, EDITOR_TABS, type EditorTab } from "./constants";
 import { DiffView } from "./DiffView";
@@ -19,7 +20,7 @@ interface PromptBlockEditorProps {
 
 /**
  * 블록 상세: 하는 일·경고 → 편집 / 기본값과 비교 / 미리보기 → 저장·되돌리기·이전 버전.
- * 적용 범위는 제목 툴팁에 둔다(헤더는 제목만). 모바일 뒤로가기는 셸 상단 바가 맡는다.
+ * 적용 범위는 제목 옆 정보 버튼의 팝오버(모바일은 시트)에 둔다(헤더는 제목만). 모바일 뒤로가기는 셸 상단 바가 맡는다.
  */
 export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps) {
   const change = useChangePrompt();
@@ -32,6 +33,7 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
   const [historyOpen, setHistoryOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [notice, setNotice] = useState("");
+  const [scopeAnchor, setScopeAnchor] = useState<OverlayAnchor | null>(null);
 
   // 다른 블록으로 바꾸거나 제안 문구가 바뀌면 초안을 새로 잡는다(저장 결과로 block.body 가 바뀔 때도).
   useEffect(() => {
@@ -65,10 +67,23 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
     <div className="flex min-w-0 flex-col gap-4">
       <header className="flex flex-col gap-1">
         <p className="text-xs font-semibold text-accent-text">{block.stageTitle}</p>
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-fg" title={EDITOR_LABELS.appliesTo(block.appliesTo)}>
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-fg">
           {block.title}
           {block.overridden && <Badge tone="accent">수정됨</Badge>}
+          <IconButton
+            size="sm"
+            variant="ghost"
+            aria-label={EDITOR_LABELS.appliesToTitle}
+            aria-haspopup="dialog"
+            aria-expanded={scopeAnchor !== null}
+            onClick={(event) => setScopeAnchor(toOverlayAnchor(event.currentTarget.getBoundingClientRect()))}
+          >
+            <Info aria-hidden="true" />
+          </IconButton>
         </h2>
+        <ReadingOverlay open={scopeAnchor !== null} onClose={() => setScopeAnchor(null)} anchor={scopeAnchor} title={EDITOR_LABELS.appliesToTitle}>
+          <p className="break-keep text-sm text-fg">{EDITOR_LABELS.appliesTo(block.appliesTo)}</p>
+        </ReadingOverlay>
         <p className="break-keep text-sm text-fg-secondary">{block.purpose}</p>
       </header>
 

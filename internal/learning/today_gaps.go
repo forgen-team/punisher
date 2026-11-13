@@ -42,7 +42,7 @@ func (b *todayBuilder) addEssentialGaps() {
 			if round < len(byArea[a]) {
 				c := byArea[a][round]
 				b.add(c, Recommendation{Kind: RecEssentialGap, Reason: fmt.Sprintf(
-					"선행 개념을 모두 갖춘 필수 기본기입니다. 상대적으로 덜 다룬 %s 영역의 공백을 채웁니다.", curriculum.AreaTitle(c.Area))})
+					"상대적으로 덜 다룬 %s 영역의 공백을 채우는 필수 기본기입니다. 선행 개념을 모두 갖췄습니다.", curriculum.AreaTitle(c.Area))})
 				added = true
 			}
 		}
@@ -63,7 +63,7 @@ func (b *todayBuilder) addNewGoal() {
 			continue
 		}
 		b.add(c, Recommendation{Kind: RecNewGoal, Reason: fmt.Sprintf(
-			"기본기를 갖춘 심화 주제입니다. 새 목표로 삼으면 %d개 개념이 이어서 열립니다.", f.Unlocks)})
+			"새 목표로 삼으면 %d개 개념이 이어서 열리는 심화 주제입니다. 기본기는 갖췄습니다.", f.Unlocks)})
 		return
 	}
 }

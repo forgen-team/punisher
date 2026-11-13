@@ -18,10 +18,11 @@ export const EDITOR_TABS: { value: EditorTab; label: string }[] = [
 ];
 
 /**
- * 편집기 라벨·툴팁(헤더·패널에는 제목만 두고 적용 범위는 제목 툴팁으로).
+ * 편집기 라벨(헤더·패널에는 제목만 두고 적용 범위는 제목 옆 정보 버튼의 팝오버로).
  * 단독판: 라이브러리(추천 강의 미리 만들기)도 사용자 프롬프트를 쓴다(LibraryUsesUserPrompts, docs/SYNC.md).
  */
 export const EDITOR_LABELS = {
   body: "내 본문",
+  appliesToTitle: "적용 범위",
   appliesTo: (scope: string) => `적용: ${scope} · 추천 강의 미리 만들기에도 적용, 이미 만든 강의는 그대로`,
 } as const;

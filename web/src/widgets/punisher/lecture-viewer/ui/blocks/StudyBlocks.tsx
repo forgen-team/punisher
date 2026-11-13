@@ -23,6 +23,9 @@ function CardTitle({ icon: Icon, className, children }: { icon: LucideIcon; clas
   );
 }
 
+/** '주의'·'흔한 오해' 상자(경고색) — 규칙·정의(액센트 막대 + 옅은 회색 면)와 다크에서도 구분되게 면 색을 나눈다. */
+export const WARNING_BOX = "my-4 rounded-md border-l-2 border-warning bg-warning-subtle px-3 py-2";
+
 /** `@@keypoint kind=…` — 강조 상자(제목은 종류 라벨) */
 export function KeypointBlock({ kind, text, renderTerm }: { kind?: string; text?: string; renderTerm?: RenderTerm }) {
   const caution = kind === "caution";
@@ -30,7 +33,7 @@ export function KeypointBlock({ kind, text, renderTerm }: { kind?: string; text?
   return (
     <aside
       role="note"
-      className={cn("my-4 rounded-md border-l-2 px-3 py-2", caution ? "border-warning bg-warning-subtle" : "border-accent bg-accent-subtle")}
+      className={caution ? WARNING_BOX : "my-4 rounded-md border-l-2 border-accent bg-canvas-subtle px-3 py-2"}
     >
       <CardTitle icon={icon} className={caution ? "text-warning" : "text-accent-text"}>
         {KEYPOINT_LABELS[kind ?? ""] ?? KEYPOINT_FALLBACK_LABEL}
@@ -40,12 +43,12 @@ export function KeypointBlock({ kind, text, renderTerm }: { kind?: string; text?
   );
 }
 
-/** `@@pause` — 질문 + 다음 출력 블록을 접어 둔다('출력 보기') */
-export function PauseBlock({ question, output }: { question?: string; output?: ReactNode }) {
+/** `@@pause` — 질문(본문과 같은 Markdown·용어 링크) + 다음 출력 블록을 접어 둔다('출력 보기') */
+export function PauseBlock({ question, output, renderTerm }: { question?: string; output?: ReactNode; renderTerm?: RenderTerm }) {
   return (
     <div className="my-4 rounded-md border border-line bg-canvas-elevated px-3 py-2">
       <CardTitle icon={NotebookPen} className="text-fg">{BLOCK_LABELS.pause}</CardTitle>
-      {question && <p className="mt-1">{question}</p>}
+      {question && <Body text={question} renderTerm={renderTerm} />}
       {output && <Reveal label={BLOCK_LABELS.showOutput}>{output}</Reveal>}
     </div>
   );

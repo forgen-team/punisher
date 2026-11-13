@@ -10,7 +10,8 @@ import { splitMermaid } from "../../lib/mermaidInMarkdown";
 import { CodeBlock } from "./CodeBlock";
 import { MermaidBlock } from "./MermaidBlock";
 import { StructuredBlock } from "./StructuredBlock";
-import { AnswerBlock, ExerciseBlock, KeypointBlock, PauseBlock, SummaryBlock } from "./StudyBlocks";
+import { AnswerBlock, ExerciseBlock, KeypointBlock, PauseBlock, SummaryBlock, WARNING_BOX } from "./StudyBlocks";
+import { keepLineBreaks } from "../../lib/lineBreaks";
 
 /** 링크 글자의 마지막 낱말과 아이콘을 한 덩어리로 묶어 아이콘만 다음 줄로 떨어지지 않게 한다. */
 function SourceLabel({ text }: { text: string }) {
@@ -79,7 +80,7 @@ function termRenderer(onBeforeDeeper: BlockRendererProps["onBeforeDeeper"]): Ren
 export function BlockGroupRenderer({ group, onBeforeDeeper }: { group: BlockGroup; onBeforeDeeper?: BlockRendererProps["onBeforeDeeper"] }) {
   if (group.type === "pause") {
     const output = group.output ? <BlockRenderer block={group.output} onBeforeDeeper={onBeforeDeeper} /> : undefined;
-    return <PauseBlock question={group.pause.text} output={output} />;
+    return <PauseBlock question={group.pause.text} output={output} renderTerm={termRenderer(onBeforeDeeper)} />;
   }
   if (group.type === "exercise") {
     return (
@@ -113,12 +114,13 @@ export function BlockRenderer({ block, onBeforeDeeper }: BlockRendererProps) {
       return <MermaidBlock source={text} />;
     case "misconception":
       return (
-        <aside role="note" className="my-4 border-l-2 border-warning bg-warning-subtle px-3 py-2">
+        <aside role="note" className={WARNING_BOX}>
           <p className="flex items-center gap-1.5 text-sm font-semibold text-warning">
             <AlertOctagon className="size-4" aria-hidden="true" />
             흔한 오해
           </p>
-          <Markdown renderTerm={renderTerm}>{toInlineTermLinks(closeUnclosedFence(text))}</Markdown>
+          {/* 원문의 ①②③ 은 줄바꿈 하나로 나뉘어 있다 — 이 블록에서만 줄바꿈을 살린다. */}
+          <Markdown renderTerm={renderTerm}>{keepLineBreaks(toInlineTermLinks(closeUnclosedFence(text)))}</Markdown>
         </aside>
       );
     case "term":
@@ -150,7 +152,7 @@ export function BlockRenderer({ block, onBeforeDeeper }: BlockRendererProps) {
       return <StructuredBlock block={block} />;
     case "pause":
       // 다음 출력 블록과 묶는 일은 LectureBody(groupBlocks)가 한다. 여기서는 짝 없는 질문만.
-      return <PauseBlock question={text} />;
+      return <PauseBlock question={text} renderTerm={renderTerm} />;
     case "exercise":
       return <ExerciseBlock text={text} renderTerm={renderTerm} />;
     case "answer":

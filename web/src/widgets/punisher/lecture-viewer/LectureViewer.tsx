@@ -23,6 +23,7 @@ import { LectureLayout } from "./ui/LectureLayout";
 import { LectureTopBar } from "./ui/LectureTopBar";
 import { TocSheet } from "./ui/SectionToc";
 import { extractLectureTerms } from "./lib/lectureTerms";
+import { sourcesNotInSections } from "./lib/lectureSources";
 import { useActiveSection } from "./lib/useActiveSection";
 import { SourcesList } from "./ui/blocks";
 
@@ -63,7 +64,11 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
     return { lectureId, anchor };
   }, [saveNow, setBookmark, lectureId, getAnchor, content?.title, lecture?.title]);
 
-  const sources = useMemo<DocumentLink[]>(() => (Array.isArray(lecture?.sources) ? lecture.sources : []), [lecture?.sources]);
+  // 섹션별 출처 블록에 이미 나온 링크는 강의 끝에서 다시 나열하지 않는다(남는 것이 없으면 목록을 숨김).
+  const sources = useMemo<DocumentLink[]>(
+    () => sourcesNotInSections(Array.isArray(lecture?.sources) ? lecture.sources : [], content ?? { sections: [] }),
+    [lecture?.sources, content],
+  );
   const terms = useMemo(() => (content ? extractLectureTerms(content) : []), [content]);
   const anchorKey = useMemo(() => (content?.sections ?? []).map((s) => s.anchor).filter(Boolean).join("|"), [content]);
   const activeAnchor = useActiveSection(anchorKey);

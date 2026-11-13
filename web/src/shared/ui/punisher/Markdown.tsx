@@ -4,6 +4,7 @@ import ReactMarkdown, { defaultUrlTransform, type Components } from "react-markd
 import remarkGfm from "remark-gfm";
 import { cn } from "@/src/shared/ui/kit";
 import { remarkCjkStrong } from "@/src/shared/ui/kit";
+import { TableFrame } from "./TableFrame";
 
 /** 강의 본문의 인라인 개념 링크 [용어](term:개념id) — 렌더러가 없으면 글자만 보인다. */
 export type RenderTerm = (conceptId: string, label: ReactNode) => ReactNode;
@@ -41,20 +42,21 @@ const components: Components = {
       {children}
     </pre>
   ),
-  // 좁은 폭(412px)에서 열을 찌그러뜨리지 않고 가로로 스크롤한다 — 표는 내용 폭(칸당 최대 18rem), 감싼 상자가 스크롤.
+  // 좁은 폭(md 미만)에서는 열을 찌그러뜨리지 않고 가로로 스크롤한다 — 표는 내용 폭(칸당 최대 18rem), 감싼 상자가 스크롤.
+  // md 이상은 표를 본문 폭에 맞추고 칸 폭을 자르지 않는다. 넘칠 때만 TableFrame 이 가장자리 단서를 그린다.
   table: ({ children }) => (
-    <div role="region" aria-label="표" tabIndex={0} className="my-3 max-w-full overflow-x-auto">
-      <table className="w-max min-w-full border-collapse text-sm">{children}</table>
-    </div>
+    <TableFrame>
+      <table className="w-max min-w-full border-collapse text-sm md:w-full">{children}</table>
+    </TableFrame>
   ),
   th: ({ children }) => (
     <th className="border border-line bg-canvas-subtle px-2 py-1 text-left align-top font-semibold">
-      <div className="max-w-[18rem] break-keep">{children}</div>
+      <div className="max-w-[18rem] break-keep md:max-w-none">{children}</div>
     </th>
   ),
   td: ({ children }) => (
     <td className="border border-line px-2 py-1 align-top">
-      <div className="max-w-[18rem] break-keep">{children}</div>
+      <div className="max-w-[18rem] break-keep md:max-w-none">{children}</div>
     </td>
   ),
 };
