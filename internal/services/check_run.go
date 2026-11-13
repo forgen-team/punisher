@@ -3,13 +3,11 @@ package services
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/wooo-jin/punisher/internal/check"
 	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/lecture"
 	"github.com/wooo-jin/punisher/internal/models"
 	"github.com/wooo-jin/punisher/internal/prompts"
 	"github.com/wooo-jin/punisher/internal/store"
@@ -77,36 +75,6 @@ func checkPromptVersion(set prompts.Set) string {
 		return prompts.CheckVersion + "+u:" + h
 	}
 	return prompts.CheckVersion
-}
-
-// checkItemsContext renders the lecture body with its anchors for the item prompt.
-func checkItemsContext(cl checkLecture) (prompts.CheckItemsContext, check.SetContext) {
-	ic := prompts.CheckItemsContext{ConceptName: cl.info.Name, LectureTitle: cl.lec.Title}
-	sc := check.SetContext{ObjectiveIDs: cl.objectiveIDs(), Anchors: map[string]bool{}}
-	for _, o := range cl.objectives {
-		ic.Objectives = append(ic.Objectives, prompts.CheckObjective{ID: o.ID, Text: o.Text})
-	}
-	for _, sec := range cl.content.Sections {
-		var b strings.Builder
-		fmt.Fprintf(&b, "### [%s] %s\n", sec.Anchor, sec.Title)
-		addAnchor(&ic, sc, sec.Anchor)
-		for _, blk := range sec.Blocks {
-			addAnchor(&ic, sc, blk.Anchor)
-			switch blk.Type {
-			case lecture.BlockMarkdown, lecture.BlockMisconception, lecture.BlockCode, lecture.BlockLog:
-				fmt.Fprintf(&b, "[%s] %s\n", blk.Anchor, blk.Text)
-			}
-		}
-		ic.Sections = append(ic.Sections, b.String())
-	}
-	return ic, sc
-}
-
-func addAnchor(ic *prompts.CheckItemsContext, sc check.SetContext, anchor string) {
-	if anchor != "" && !sc.Anchors[anchor] {
-		sc.Anchors[anchor] = true
-		ic.Anchors = append(ic.Anchors, anchor)
-	}
 }
 
 // runCheckTurn grades the current item's latest answer and makes the next move
@@ -187,7 +155,7 @@ func (s *Service) tutorReply(ctx context.Context, apiKey, userID, conceptID stri
 			problems = []string{"JSON 을 해석할 수 없습니다: " + perr.Error()}
 			continue
 		}
-		reply, probs := check.ValidateTutorReply(raw, stage, item.Rubric.Answer, learner)
+		reply, probs := check.ValidateTutorReply(raw, stage, item.Rubric.Must, item.Rubric.Answer, learner)
 		if problems = probs; len(problems) == 0 {
 			return reply, u, nil
 		}
@@ -295,7 +263,7 @@ func (s *Service) regrade(ctx context.Context, apiKey string, item store.CheckIt
 			problems = []string{"JSON 을 해석할 수 없습니다: " + perr.Error()}
 			continue
 		}
-		reply, probs := check.ValidateRegrade(raw, answer)
+		reply, probs := check.ValidateRegrade(raw, item.Rubric.Must, answer)
 		if problems = probs; len(problems) == 0 {
 			return reply, u, nil
 		}

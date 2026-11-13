@@ -8,6 +8,7 @@ import { InlineError } from "@/src/shared/ui/punisher";
 import { DIAGNOSTIC_LABELS } from "@/src/features/punisher/pretest";
 import { showPrediction, suggestRelearn, type ResultRow } from "../lib/checkView";
 import { PREDICTION_LABELS, RESULT_ACTION_LABELS } from "./constants";
+import { LectureSummary } from "./LectureSummary";
 import { MisconceptionList } from "./MisconceptionList";
 
 const TODAY_HREF = "/";
@@ -21,6 +22,8 @@ interface CheckResultProps {
   acknowledgedTurnIds: ReadonlySet<string>;
   /** 앵커 → '다시 볼 곳' 링크·글자 */
   anchorLink: (anchor: string) => { href: string; label: string } | null;
+  /** 확인: 그 강의의 한 장 요약(없으면 생략) */
+  lectureSummary?: string;
   /** 아래 동작(확인: 강의 완료로 표시 · 복습: 오늘 더 하기) */
   children?: ReactNode;
 }
@@ -73,7 +76,7 @@ function NextReview({ row }: { row: ResultRow }) {
 
 /** 결과 요약(design §4.4, 끝난 세션의 맨 위): 목표별 레벨 변화 · 놓친 기준 한 줄 · 다시 볼 곳 · 드러난 오개념 · 다음 복습일 · 다시 배우기 + 아래 동작. */
 export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function CheckResult(
-  { checkId, rows, acknowledgedTurnIds, anchorLink, children },
+  { checkId, rows, acknowledgedTurnIds, anchorLink, lectureSummary, children },
   ref,
 ) {
   const relearn = useRelearn();
@@ -135,6 +138,11 @@ export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function Ch
           );
         })}
       </ul>
+      {lectureSummary && (
+        <div className="mt-2">
+          <LectureSummary text={lectureSummary} />
+        </div>
+      )}
       <div className="mt-4 flex flex-wrap items-center gap-2 empty:hidden">{children}</div>
       <div aria-live="polite" className="mt-2 empty:hidden">
         {relearn.error && (

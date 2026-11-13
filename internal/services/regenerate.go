@@ -15,7 +15,7 @@ import (
 // outline → lecture → review loop, owned by the user. It bypasses the
 // published-lecture reuse on purpose (the user asked for a new version) and
 // links the result under the original (lecture_links kind=regenerated).
-// Progress is streamed as status/done/error events on the instant stream URL.
+// Progress is streamed as stage events (and the legacy done/error) on the instant stream URL.
 func (s *Service) RegenerateLecture(ctx context.Context, userID, lectureID string) (InstantResponse, error) {
 	lec, err := s.Store.GetLecture(ctx, userID, lectureID)
 	if err != nil {
@@ -71,18 +71,27 @@ func (s *Service) RegenerateLecture(ctx context.Context, userID, lectureID strin
 	return resp, nil
 }
 
-// runRegenerate runs the reviewed pipeline detached from the request.
+// runRegenerate runs the reviewed pipeline detached from the request, streaming
+// stage events (maxAttempts = its one regeneration) and the legacy done/error.
 func (s *Service) runRegenerate(apiKey, jobID string, t Target, emit func(Event)) {
 	ctx := context.Background()
-	emit(Event{Type: EventStatus, Data: map[string]string{"stage": "generating"}})
-	lec, err := s.runLibraryJob(ctx, apiKey, jobID, t)
+	const rewrites = libraryAttempts - 1
+	lec, err := s.runLibraryJob(ctx, apiKey, jobID, t, func(stage string, attempt int) {
+		emit(stageEvent(stage, attempt, rewrites, "", nil))
+	})
 	if err != nil {
 		logf("regenerate job %s failed: %v", jobID, err)
-		emit(Event{Type: EventError, Data: map[string]string{"code": "regenerate_failed", "message": err.Error()}})
+		emit(stageEvent(StageFailed, rewrites, rewrites, "", []string{ReasonGenerationError}))
+		emit(Event{Type: EventError, Data: map[string]string{"code": "regenerate_failed", "message": ReasonGenerationError}})
 		return
 	}
 	if err := s.Store.ResolveLinkJob(ctx, jobID, lec.ID); err != nil {
 		logf("resolve links of job %s: %v", jobID, err)
+	}
+	if lec.Status == "published" {
+		emit(stageEvent(StagePublished, rewrites, rewrites, lec.ID, nil))
+	} else { // 검수를 통과하지 못한 판은 needs_revision 으로 남고 발행되지 않는다.
+		emit(stageEvent(StageFailed, rewrites, rewrites, "", []string{reasonReview}))
 	}
 	emit(Event{Type: EventDone, Data: map[string]any{
 		"lectureId": lec.ID, "status": lec.Status, "flagged": lec.Flagged, "issues": []any{},

@@ -26,6 +26,7 @@ import {
   progressLabel,
   resultRows,
   retryableTurnId,
+  sessionLectureSummary,
   showComposer,
   topBarTitle,
 } from "./lib/checkView";
@@ -161,7 +162,14 @@ export function CheckView({ checkId }: { checkId: string }) {
         {statusLabel && <StatusLine>{statusLabel}</StatusLine>}
         {detail.session.status === "finished" && detail.placement && <PlacementResult ref={resultRef} placement={detail.placement} />}
         {detail.session.status === "finished" && !isRecorded(detail) && (
-          <CheckResult ref={resultRef} checkId={checkId} rows={rows} acknowledgedTurnIds={acknowledged} anchorLink={anchorLink}>
+          <CheckResult
+            ref={resultRef}
+            checkId={checkId}
+            rows={rows}
+            acknowledgedTurnIds={acknowledged}
+            anchorLink={anchorLink}
+            lectureSummary={review ? undefined : sessionLectureSummary(detail)}
+          >
             {review && <ReviewMoreAction remaining={summary.data?.due ?? 0} />}
             {!review && lectureId && (
               <LectureCompleteAction lectureId={lectureId} lectureCompleted={Boolean(lecture.data?.progress?.completedAt)} />
@@ -189,6 +197,7 @@ export function CheckView({ checkId }: { checkId: string }) {
                 retrying={retry.isPending}
                 onDispute={target ? () => dispute.mutate({ turnId: target.id }) : undefined}
                 disputing={dispute.isPending && dispute.variables?.turnId === target?.id}
+                showLectureSummary={review}
               />
             );
           })}

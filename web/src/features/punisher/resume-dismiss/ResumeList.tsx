@@ -1,7 +1,7 @@
 import { Link } from "@/src/shared/lib/router";
 import { PlayCircle } from "lucide-react";
 import { Button, List, ListRow, Menu, cn } from "@/src/shared/ui/kit";
-import { groupByParent, lectureHref } from "@/src/entities/punisher";
+import { READ_THROUGH_LABEL, groupByParent, isReadThrough, lectureHref } from "@/src/entities/punisher";
 import type { Recommendation } from "@/src/shared/api/punisher";
 import { DeeperGroup } from "@/src/shared/ui/punisher";
 import { resumePosition } from "./resumeProgress";
@@ -38,7 +38,8 @@ function ResumeRow({ item, onDismiss, dismissing }: ResumeRowProps) {
       meta={
         <>
           {subtitle && <span className="block whitespace-normal break-keep text-fg-secondary">{subtitle}</span>}
-          {position && `${position} · `}{percent}% 읽음 · 약 {item.estimatedMinutes}분 남음
+          {position && `${position} · `}
+          {isReadThrough(percent, false) ? READ_THROUGH_LABEL : `${percent}% 읽음 · 약 ${item.estimatedMinutes}분 남음`}
         </>
       }
       trailing={

@@ -21,13 +21,15 @@ interface CheckItemCardProps {
   retrying: boolean;
   onDispute?: () => void;
   disputing: boolean;
+  /** 복습: 끝난 문항 아래 그 강의의 한 장 요약 */
+  showLectureSummary?: boolean;
 }
 
 /**
  * 문항 하나: 물음(prompt) + 자료(material, 강의 코드 블록) → 문답 → 끝났으면 판정·모범답(자기 채점은 답을 보내면 모범답·기준).
  * 이의 문답은 판정 아래.
  */
-export function CheckItemCard({ index, total, item, turns, missing, anchorHref, anchorLabel, retryTurnId, onRetry, retrying, onDispute, disputing }: CheckItemCardProps) {
+export function CheckItemCard({ index, total, item, turns, missing, anchorHref, anchorLabel, retryTurnId, onRetry, retrying, onDispute, disputing, showLectureSummary }: CheckItemCardProps) {
   const dialogue = turns.filter((t) => t.move !== "dispute");
   const disputes = turns.filter((t) => t.move === "dispute");
   const renderTurn = (t: CheckTurn) => (
@@ -55,6 +57,7 @@ export function CheckItemCard({ index, total, item, turns, missing, anchorHref, 
           anchorLabel={anchorLabel}
           onDispute={onDispute}
           disputing={disputing}
+          showLectureSummary={showLectureSummary}
         />
       )}
       {disputes.length > 0 && <ul className="flex flex-col gap-3">{disputes.map((t) => renderTurn(t))}</ul>}

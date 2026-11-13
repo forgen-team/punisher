@@ -54,7 +54,8 @@ function getHighlighter(): Promise<HighlighterCore> {
   return highlighterPromise;
 }
 
-export async function highlightToHtml(code: string, lang: string | undefined): Promise<string> {
+/** 강조할 줄(1부터)에는 `line-changed` 클래스를 붙인다(diff 블록). */
+export async function highlightToHtml(code: string, lang: string | undefined, changedLines: readonly number[] = []): Promise<string> {
   const highlighter = await getHighlighter();
   const requested = (lang ?? "").toLowerCase();
   const normalized = LANG_ALIASES[requested] ?? requested;
@@ -70,5 +71,14 @@ export async function highlightToHtml(code: string, lang: string | undefined): P
     lang: resolved,
     themes: { light: "github-light", dark: "github-dark" },
     defaultColor: false,
+    transformers: changedLines.length
+      ? [
+          {
+            line(node, line) {
+              if (changedLines.includes(line)) { this.addClassToHast(node, "line-changed"); }
+            },
+          },
+        ]
+      : [],
   });
 }

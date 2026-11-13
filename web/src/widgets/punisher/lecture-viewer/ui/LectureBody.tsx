@@ -3,10 +3,19 @@ import type { LectureContent, LectureSection } from "@/src/shared/api/punisher";
 import { SECTION_KIND_LABELS } from "@/src/entities/punisher";
 import { anchorElementId } from "@/src/features/punisher/lecture-progress";
 import type { DeeperOrigin } from "@/src/features/punisher/term-popover";
-import { BlockRenderer } from "./blocks";
+import { groupBlocks, type BlockGroup } from "../lib/blockGroups";
+import { sectionMinutes } from "../lib/sectionMinutes";
+import { BlockGroupRenderer } from "./blocks";
 
 function anchorProps(anchor: string) {
   return anchor ? { id: anchorElementId(anchor), "data-lecture-anchor": anchor } : {};
+}
+
+/** 묶음의 첫 블록 앵커는 감싼 div 에, 접혀 있는 둘째 블록 앵커는 빈 표식으로 남겨 진도 복원이 끊기지 않게 한다. */
+function groupAnchors(group: BlockGroup): [string, string] {
+  if (group.type === "pause") { return [group.pause.anchor, group.output?.anchor ?? ""]; }
+  if (group.type === "exercise") { return [group.exercise.anchor, group.answer?.anchor ?? ""]; }
+  return [group.block.anchor, ""];
 }
 
 interface LectureBodyProps {
@@ -30,18 +39,22 @@ export function LectureBody({ content, onBeforeDeeper, sectionNote }: LectureBod
           <header className="mb-3 border-b border-line pb-2">
             <p className="text-xs font-medium text-fg-muted">
               {index + 1}. {SECTION_KIND_LABELS[section.kind] ?? section.kind}
-              {section.minutes > 0 && ` · 약 ${section.minutes}분`}
+              {sectionMinutes(section) > 0 && ` · 약 ${sectionMinutes(section)}분`}
             </p>
             <h2 id={`h-${section.anchor || index}`} className="text-xl font-semibold text-fg">
               {section.title || SECTION_KIND_LABELS[section.kind] || section.kind}
             </h2>
           </header>
           {sectionNote?.(section)}
-          {section.blocks.map((block, bi) => (
-            <div key={block.anchor || bi} {...anchorProps(block.anchor)} className="scroll-mt-28">
-              <BlockRenderer block={block} onBeforeDeeper={onBeforeDeeper} />
-            </div>
-          ))}
+          {groupBlocks(section.blocks).map((group, gi) => {
+            const [first, second] = groupAnchors(group);
+            return (
+              <div key={first || gi} {...anchorProps(first)} className="scroll-mt-28">
+                <BlockGroupRenderer group={group} onBeforeDeeper={onBeforeDeeper} />
+                {second && <span {...anchorProps(second)} className="block scroll-mt-28" />}
+              </div>
+            );
+          })}
         </section>
       ))}
     </div>

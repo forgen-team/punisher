@@ -16,24 +16,7 @@ import (
 	"github.com/wooo-jin/punisher/internal/store"
 )
 
-const validMarkup = `@@lecture
-title: t
-objectives: c#1
-new_scope: x
-@@section situation_question minutes=3 title=a
-상황
-@@section principles minutes=12 title=b
-원리
-@@sources
-- [doc](https://example.org/doc)
-@@section walkthrough minutes=10 title=c
-@@code lang=bash
-ls
-@@sources
-- [doc](https://example.org/doc2)
-@@section judgment_next minutes=5 title=d
-판단
-@@end`
+var validMarkup = lectureMarkupFor([]string{"c#1"})
 
 func testTarget() Target {
 	return Target{
@@ -99,7 +82,7 @@ func TestReviewLoopRegeneratesOnceWithFindings(t *testing.T) {
 }
 
 func TestReviewLoopNeedsRevisionAfterSecondFailure(t *testing.T) {
-	invalid := strings.Replace(validMarkup, "minutes=12", "minutes=1", 1) // total 19 → schema issue
+	invalid := strings.Replace(validMarkup, "minutes=9", "minutes=1", 1) // total 12 → schema issue
 	f := &fakeSteps{drafts: []string{invalid, validMarkup}, reviews: []ReviewOutcome{pass, major}}
 	res, err := RunReviewLoop(context.Background(), 2, f.funcs())
 	if err != nil || res.Status != "needs_revision" || res.Final != 1 || len(res.Attempts) != 2 {
@@ -145,9 +128,9 @@ func TestHubOneJobPerTargetAndReplay(t *testing.T) {
 	var runs int32
 	run := func(emit func(Event)) {
 		atomic.AddInt32(&runs, 1)
-		emit(Event{Type: EventDelta, Data: "a"})
+		emit(Event{Type: EventStage, Data: "a"})
 		<-release
-		emit(Event{Type: EventDelta, Data: "b"})
+		emit(Event{Type: EventStage, Data: "b"})
 		emit(Event{Type: EventDone, Data: "lec"})
 	}
 
@@ -236,8 +219,12 @@ func TestSectionForAnchor(t *testing.T) {
 	if s := SectionForAnchor(c, "walkthrough-1"); s.Kind != lecture.SectionWalkthrough {
 		t.Fatalf("got %s", s.Kind)
 	}
-	if !strings.Contains(RenderSection(SectionForAnchor(c, "walkthrough")), "```bash") {
-		t.Fatal("code should render fenced")
+	w := RenderSection(SectionForAnchor(c, "walkthrough"))
+	if !strings.Contains(w, "```sql") || !strings.Contains(w, "[예측 질문] 위 쿼리는") || !strings.Contains(w, "[직접 해 보기]") {
+		t.Fatalf("code should render fenced, material blocks labeled: %s", w)
+	}
+	if p := RenderSection(SectionForAnchor(c, "principles")); !strings.Contains(p, `[손계산 표 ] {"caption":"4비트 덧셈"`) {
+		t.Fatalf("trace renders its data: %s", p)
 	}
 }
 

@@ -14,6 +14,7 @@ import { SelectionExplain } from "@/src/features/punisher/reading-assist";
 import { LectureActionStatus, LectureWrapup, useLectureActions } from "@/src/features/punisher/lecture-actions";
 import { describePunisherError, type DocumentLink } from "@/src/shared/api/punisher";
 import { DeeperLecturesSection, ParentLectureLink } from "./ui/DeeperLectures";
+import { FlaggedBanner } from "./ui/FlaggedBanner";
 import { LectureBody } from "./ui/LectureBody";
 import { RegenerateSheet } from "./ui/RegenerateSheet";
 import { LectureHeader } from "./ui/LectureHeader";
@@ -89,7 +90,8 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
     return <EmptyState title="강의 본문이 없습니다" description="강의가 아직 생성 중이거나 비어 있습니다." />;
   }
 
-  const totalMinutes = content.estimatedMinutes || lecture.estimatedMinutes;
+  // 표시 시간은 서버가 분량으로 계산한 값(v2.2 §5). 예전 응답(0)이면 섹션 합.
+  const totalMinutes = lecture.estimatedMinutes || content.estimatedMinutes;
   const parentLecture = links.data?.parents[0];
   const deeperLectures = (links.data?.children ?? []).filter((l) => l.linkKind !== "regenerated");
   const regenerated = (links.data?.children ?? []).filter((l) => l.linkKind === "regenerated");
@@ -176,7 +178,8 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
             </Button>
           </div>
         )}
-        <LectureHeader lecture={lecture} content={content} concept={concept.data} mastery={mastery.data} />
+        <LectureHeader lecture={lecture} content={content} concept={concept.data} mastery={mastery.data} minutes={totalMinutes} />
+        {lecture.reviewState === "flagged" && <FlaggedBanner lectureId={lectureId} reason={lecture.flagReason} />}
         <PretestPanel detail={pretest.data} />
         <LectureActionStatus actions={actions} />
         <div aria-live="polite" className="empty:hidden">

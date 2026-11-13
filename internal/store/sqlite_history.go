@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -101,7 +102,8 @@ func (s *SQLiteStore) ListMyLectures(ctx context.Context, userID, status string,
 	}
 	items, err := collect(s.c().query(ctx, `
 		SELECT l.id, l.concept_id, c.name, l.title, l.depth, l.kind, l.estimated_minutes,
-			p.percent, p.started_at, p.last_seen_at, p.completed_at, `+parentLectureSQL("l.id")+`, `+sortCol+`
+			p.percent, p.started_at, p.last_seen_at, p.completed_at, `+parentLectureSQL("l.id")+`, `+sortCol+`,
+			CASE WHEN l.minutes_estimated THEN NULL ELSE l.content END
 		FROM user_lecture_progress p
 		JOIN lectures l ON l.id = p.lecture_id AND (l.kind = 'library' OR l.requested_by = p.user_id)
 		JOIN concepts c ON c.id = l.concept_id
@@ -109,8 +111,12 @@ func (s *SQLiteStore) ListMyLectures(ctx context.Context, userID, status string,
 		ORDER BY `+sortCol+` DESC, l.id DESC LIMIT $4`,
 		userID, cur.At, cur.ID, limit+1), func(r rowScanner) (row, error) {
 		var m row
+		var legacy json.RawMessage
 		err := r.Scan(&m.ID, &m.ConceptID, &m.ConceptName, &m.Title, &m.Depth, &m.Kind, &m.EstimatedMinutes,
-			&m.Percent, ts(&m.StartedAt), ts(&m.LastSeenAt), nts(&m.CompletedAt), &m.ParentLectureID, ts(&m.sortAt))
+			&m.Percent, ts(&m.StartedAt), ts(&m.LastSeenAt), nts(&m.CompletedAt), &m.ParentLectureID, ts(&m.sortAt), rawJSON(&legacy))
+		if err == nil && legacy != nil {
+			m.EstimatedMinutes = contentMinutes(legacy, m.EstimatedMinutes)
+		}
 		return m, err
 	})
 	if err != nil {
@@ -143,10 +149,11 @@ func (s *SQLiteStore) ListConceptLectures(ctx context.Context, userID, conceptID
 	list, err := collect(s.c().query(ctx, `
 		SELECT id, title, depth, kind, version, estimated_minutes, published_at,
 			CASE WHEN completed_at IS NOT NULL THEN 'completed' WHEN started_at IS NOT NULL THEN 'in_progress'
-				ELSE 'not_started' END, percent
+				ELSE 'not_started' END, percent, legacy
 		FROM (
 			SELECT l.id AS id, l.title, l.depth, l.kind, l.version, l.estimated_minutes, l.published_at,
 				p.completed_at, p.started_at, COALESCE(p.percent, 0) AS percent, l.created_at,
+				CASE WHEN l.minutes_estimated THEN NULL ELSE l.content END AS legacy,
 				ROW_NUMBER() OVER (
 					PARTITION BY l.objective_key, l.depth
 					ORDER BY (l.kind = 'library') DESC, l.version DESC, l.created_at DESC
@@ -158,8 +165,12 @@ func (s *SQLiteStore) ListConceptLectures(ctx context.Context, userID, conceptID
 		WHERE rn = 1
 		ORDER BY depth, created_at DESC LIMIT 50`, conceptID, userID), func(r rowScanner) (models.ConceptLecture, error) {
 		var m models.ConceptLecture
+		var legacy json.RawMessage
 		err := r.Scan(&m.ID, &m.Title, &m.Depth, &m.Kind, &m.Version, &m.EstimatedMinutes, nts(&m.PublishedAt),
-			&m.ProgressState, &m.Percent)
+			&m.ProgressState, &m.Percent, rawJSON(&legacy))
+		if err == nil && legacy != nil {
+			m.EstimatedMinutes = contentMinutes(legacy, m.EstimatedMinutes)
+		}
 		return m, err
 	})
 	if err != nil {

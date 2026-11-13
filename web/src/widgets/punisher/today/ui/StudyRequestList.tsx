@@ -141,7 +141,7 @@ export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
   return (
     <div className="space-y-2">
       {active.length === 0 ? (
-        <EmptyState compact title="진행 중인 학습 요청이 없습니다" description="공부하고 싶은 주제를 위에 적어 두면 개념을 찾아 강의를 미리 만들어 둬요." />
+        <EmptyState compact title="진행 중인 학습 요청이 없어요" description="공부하고 싶은 주제를 위에 적어 두면 개념을 찾아 강의를 미리 만들어 둬요." />
       ) : (
         <List>{active.map((req) => renderActive(req))}</List>
       )}

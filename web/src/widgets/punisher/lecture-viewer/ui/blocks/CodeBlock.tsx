@@ -1,22 +1,36 @@
 
 import { useEffect, useState } from "react";
 import { Copy } from "lucide-react";
+import { cn } from "@/src/shared/ui/kit";
+
+type ChangeTone = "removed" | "added";
 
 interface CodeBlockProps {
   code: string;
   lang?: string;
   isLog?: boolean;
+  /** 머리줄 이름(기본: 언어·로그) */
+  label?: string;
+  /** 강조할 줄(1부터, diff 블록) */
+  changedLines?: readonly number[];
+  changeTone?: ChangeTone;
 }
 
+const CHANGE_TONE: Record<ChangeTone, string> = {
+  removed: "[&_.line-changed]:bg-danger-subtle [&_.line-changed]:shadow-[inset_3px_0_0_var(--color-danger)]",
+  added: "[&_.line-changed]:bg-success-subtle [&_.line-changed]:shadow-[inset_3px_0_0_var(--color-success)]",
+};
+const NO_LINES: readonly number[] = [];
+
 /** Code/log block; shiki is lazy-loaded and themed via CSS variables (light/dark). */
-export function CodeBlock({ code, lang, isLog }: CodeBlockProps) {
+export function CodeBlock({ code, lang, isLog, label, changedLines = NO_LINES, changeTone = "added" }: CodeBlockProps) {
   const [html, setHtml] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     import("../../lib/highlight")
-      .then(({ highlightToHtml }) => highlightToHtml(code, isLog ? "log" : lang))
+      .then(({ highlightToHtml }) => highlightToHtml(code, isLog ? "log" : lang, changedLines))
       .then((result) => {
         if (!cancelled) { setHtml(result); }
       })
@@ -24,7 +38,7 @@ export function CodeBlock({ code, lang, isLog }: CodeBlockProps) {
     return () => {
       cancelled = true;
     };
-  }, [code, lang, isLog]);
+  }, [code, lang, isLog, changedLines]);
 
   async function copy() {
     try {
@@ -36,12 +50,13 @@ export function CodeBlock({ code, lang, isLog }: CodeBlockProps) {
     }
   }
 
-  const label = isLog ? `로그${lang ? ` · ${lang}` : ""}` : lang || "코드";
+  const heading = label ?? (isLog ? `로그${lang ? ` · ${lang}` : ""}` : lang || "코드");
+  const marking = changedLines.length > 0;
 
   return (
     <figure className="punisher-code my-4 overflow-hidden rounded-md border border-line bg-canvas-subtle">
       <figcaption className="flex items-center justify-between border-b border-line pl-3 text-xs text-fg-muted">
-        <span>{label}</span>
+        <span>{heading}</span>
         <button
           type="button"
           onClick={copy}
@@ -54,13 +69,25 @@ export function CodeBlock({ code, lang, isLog }: CodeBlockProps) {
       </figcaption>
       {html ? (
         <div
-          className="overflow-x-auto p-3 text-sm leading-6 [&_pre]:!bg-transparent [&_span]:text-[var(--shiki-light)] [[data-theme=dark]_&_span]:text-[var(--shiki-dark)]"
+          className={cn(
+            "overflow-x-auto p-3 text-sm leading-6 [&_pre]:!bg-transparent [&_span]:text-[var(--shiki-light)] [[data-theme=dark]_&_span]:text-[var(--shiki-dark)]",
+            marking && "[&_.line]:inline-block [&_.line]:min-w-full",
+            marking && CHANGE_TONE[changeTone],
+          )}
           // shiki output is generated locally from text tokens (escaped), not from raw HTML input.
           dangerouslySetInnerHTML={{ __html: html }}
         />
       ) : (
-        <pre className="overflow-x-auto p-3 text-sm leading-6 text-fg">
-          <code>{code}</code>
+        <pre className={cn("overflow-x-auto p-3 text-sm leading-6 text-fg", marking && CHANGE_TONE[changeTone])}>
+          <code>
+            {marking
+              ? code.split("\n").map((line, index) => (
+                  <span key={index} className={cn("block min-w-full", changedLines.includes(index + 1) && "line-changed")}>
+                    {line || " "}
+                  </span>
+                ))
+              : code}
+          </code>
         </pre>
       )}
     </figure>

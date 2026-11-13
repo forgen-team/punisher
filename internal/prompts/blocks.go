@@ -73,27 +73,28 @@ var (
 
 const (
 	appliesLecture   = "내 즉석 강의(더 깊게·직접 시작)와 '새 프롬프트로 다시 만들기'"
-	appliesRegenOnly = "'새 프롬프트로 다시 만들기'(개요→본문→감수)에서만 쓰여요. 일반 즉석 강의는 본문을 한 번에 만들어 이 블록을 쓰지 않아요"
+	appliesRegenOnly = "'새 프롬프트로 다시 만들기'(개요→본문→감수)에서만 쓰여요. 일반 즉석 강의는 개요 없이 본문을 바로 써서 이 블록을 쓰지 않아요"
+	appliesReview    = "내 즉석 강의의 검수(통과해야 발행)와 '새 프롬프트로 다시 만들기'"
 )
 
 // Blocks is the registry, in UI order. Library (shared) lectures always use Default.
 var Blocks = []Block{
 	{ID: BlockOutlineTask, Stage: StageOutline, StageTitle: "개요 짜기", Title: "개요 설계 지시",
-		Purpose:   "30분 강의의 섹션 4개와 분량·다룰 오해·출처를 JSON 개요로 먼저 설계합니다.",
+		Purpose:   "20분 강의의 섹션 4개와 핵심 정의·선행 계산·논지 점검·다룰 오해·출처를 JSON 개요로 먼저 설계합니다.",
 		AppliesTo: appliesRegenOnly, Vars: lectureVars, Default: OutlineTask},
 	{ID: BlockTeacherSystem, Stage: StageLecture, StageTitle: "본문 쓰기", Title: "강사 원칙(시스템)",
 		Purpose:   "강사의 태도와 원칙 — 실무 상황에서 출발, 단계별 메커니즘, 공식 문서 근거, 이미 배운 것은 링크만.",
 		AppliesTo: appliesLecture, Vars: lectureVars, Default: SystemTeacher},
 	{ID: BlockLectureFormat, Stage: StageLecture, StageTitle: "본문 쓰기", Title: "본문 출력 형식",
-		Purpose:   "강의 본문을 화면이 읽을 수 있는 @@ 마크업(섹션 4개·블록 종류·출처)으로 쓰게 합니다.",
+		Purpose:   "강의 본문을 화면이 읽을 수 있는 @@ 마크업(섹션 4개·정의·손계산·예측·연습·요약 블록·출처)으로 쓰게 합니다.",
 		AppliesTo: appliesLecture, Vars: lectureVars, Default: MarkupSpec,
 		Warning: "형식 규칙입니다. @@ 지시어·섹션 이름·순서를 바꾸면 강의 저장이 실패하거나 화면이 깨질 수 있어요. 문장 표현만 고치는 것을 권합니다."},
 	{ID: BlockReviewerSystem, Stage: StageReview, StageTitle: "감수", Title: "감수자 태도(시스템)",
 		Purpose:   "강사와 다른 시니어 감수자 역할 — 칭찬 없이 문제만 찾습니다.",
-		AppliesTo: appliesRegenOnly, Default: SystemReviewer},
+		AppliesTo: appliesReview, Default: SystemReviewer},
 	{ID: BlockReviewTask, Stage: StageReview, StageTitle: "감수", Title: "감수 기준",
-		Purpose:   "초안의 사실 오류·누락·과장·출처·용어·교수법 문제를 심각도와 함께 JSON으로 지적합니다.",
-		AppliesTo: appliesRegenOnly, Vars: lectureVars, Default: ReviewTask,
+		Purpose:   "초안의 사실 오류·구조·교수법·누락·과장·출처·용어 문제와 코드 출력 대조를 심각도와 함께 JSON으로 지적합니다.",
+		AppliesTo: appliesReview, Vars: lectureVars, Default: ReviewTask,
 		Warning: "JSON 출력 형식(verdict·issues)은 코드가 읽습니다. 형식 부분은 그대로 두세요."},
 	{ID: BlockGlossSystem, Stage: StageGloss, StageTitle: "용어 설명", Title: "용어 팝오버",
 		Purpose:   "본문 용어를 눌렀을 때 보이는 2~3문장 설명을 씁니다.",
@@ -222,7 +223,7 @@ func (s Set) Hash(ids ...string) string {
 
 // Blocks used per generation kind (for Version).
 var (
-	InstantBlocks = []string{BlockTeacherSystem, BlockLectureFormat}
+	InstantBlocks = []string{BlockTeacherSystem, BlockLectureFormat, BlockReviewerSystem, BlockReviewTask}
 	FullBlocks    = []string{BlockOutlineTask, BlockTeacherSystem, BlockLectureFormat, BlockReviewerSystem, BlockReviewTask}
 )
 

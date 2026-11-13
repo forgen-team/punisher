@@ -11,27 +11,29 @@ function mapHref(conceptId: string): string {
 
 interface LectureHeaderProps {
   /** 즉석 생성 스트리밍 중에는 강의 레코드가 없다 */
-  lecture?: Pick<Lecture, "kind" | "status" | "flagged" | "flagReason" | "depth" | "promptVersion">;
+  lecture?: Pick<Lecture, "kind" | "status" | "flagged" | "flagReason" | "reviewState" | "depth" | "promptVersion">;
   content: Pick<LectureContent, "title" | "estimatedMinutes" | "objectiveIds" | "newScope" | "prerequisitesReferenced">;
   concept?: ConceptDetail;
   /** 목표별 숙달(레벨 점) */
   mastery?: ConceptMastery;
   /** 제목 대체 문구 (스트리밍 시작 전) */
   fallbackTitle?: string;
+  /** 표시할 예상 시간(서버 계산값). 없으면 content.estimatedMinutes */
+  minutes?: number;
 }
 
 /**
  * 개념 이름(고정) → 제목(h1) + 메타 한 줄(영역 · 깊이 · 약 N분 · 내 상태) + 배지 최대 1개.
  * 학습 목표 · 새로 다루는 범위 · 이전에 배운 개념은 접힌 상태로 둬 본문이 첫 화면에 보이게 한다.
  */
-export function LectureHeader({ lecture, content, concept, mastery, fallbackTitle }: LectureHeaderProps) {
+export function LectureHeader({ lecture, content, concept, mastery, fallbackTitle, minutes = content.estimatedMinutes }: LectureHeaderProps) {
   const objectiveText = new Map((concept?.objectives ?? []).map((o) => [o.id, o.text]));
   const objectiveMastery = new Map((mastery?.objectives ?? []).map((o) => [o.objectiveId, o]));
   const prereqNames = new Map((concept?.prerequisites ?? []).map((p) => [p.id, p.name]));
   const meta = [
     concept ? areaLabel(concept.area) : "",
     lecture ? `깊이 ${lecture.depth}` : "",
-    content.estimatedMinutes ? `약 ${content.estimatedMinutes}분` : "",
+    minutes ? `약 ${minutes}분` : "",
     concept ? (USER_STATE_LABELS[concept.userState] ?? concept.userState) : "",
   ].filter(Boolean);
   const hasScope =
@@ -43,7 +45,10 @@ export function LectureHeader({ lecture, content, concept, mastery, fallbackTitl
         // 강의 제목은 생성마다 달라지므로, 무엇을 배우는지(개념 이름)를 제목 위에 고정해 둔다.
         <p className="text-sm font-semibold text-accent-text">{concept.name}</p>
       )}
-      <h1 id={LECTURE_TITLE_ID} className="text-xl font-semibold text-fg md:text-2xl">{content.title || fallbackTitle}</h1>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <h1 id={LECTURE_TITLE_ID} className="text-xl font-semibold text-fg md:text-2xl">{content.title || fallbackTitle}</h1>
+        {lecture && <LectureReviewBadges lecture={lecture} />}
+      </div>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-muted">
         {concept ? (
           <Link href={mapHref(concept.id)} className="hover:text-fg hover:underline">
@@ -52,7 +57,6 @@ export function LectureHeader({ lecture, content, concept, mastery, fallbackTitl
         ) : (
           <span>{meta.join(" · ")}</span>
         )}
-        {lecture && <LectureReviewBadges lecture={lecture} />}
         {lecture?.promptVersion?.includes("+u:") && (
           <Link
             href="/settings/prompts"

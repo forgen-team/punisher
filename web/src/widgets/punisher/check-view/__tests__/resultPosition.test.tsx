@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { CheckDetail, ObjectiveMastery } from "@/src/shared/api/punisher";
@@ -75,5 +75,30 @@ describe("끝난 복습 세션", () => {
     expect(screen.getByText("인정함").tagName).toBe("SPAN");
     expect(screen.queryByRole("button", { name: /인정/ })).toBeNull();
     expect(screen.queryByText(/처음 예측/)).toBeNull();
+  });
+
+  it("'이 강의 한 장 요약'은 접혀 있다가 펼치면 보인다 — 확인은 결과 아래 한 번, 복습은 문항 아래, 요약이 없으면 없다", () => {
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    const withSummary = { ...base.items[0], lectureSummary: "- 읽기는 메모리에서" };
+    finished = { ...base, session: { ...base.session, kind: "check", lectureId: "l1" }, items: [withSummary] };
+    const { unmount } = render(<CheckView checkId="s1" />);
+    const result = screen.getByRole("heading", { name: "결과" }).closest("section")!;
+    const toggle = within(result).getByRole("button", { name: "이 강의 한 장 요약" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("읽기는 메모리에서")).toBeNull();
+    fireEvent.click(toggle);
+    expect(screen.getByText("읽기는 메모리에서")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "이 강의 한 장 요약" })).toHaveLength(1);
+    unmount();
+
+    finished = { ...base, items: [withSummary] };
+    const review = render(<CheckView checkId="s1" />);
+    const item = screen.getByRole("region", { name: "문항 1/1" });
+    expect(within(item).getByRole("button", { name: "이 강의 한 장 요약" })).toBeInTheDocument();
+    review.unmount();
+
+    finished = base;
+    render(<CheckView checkId="s1" />);
+    expect(screen.queryByRole("button", { name: "이 강의 한 장 요약" })).toBeNull();
   });
 });

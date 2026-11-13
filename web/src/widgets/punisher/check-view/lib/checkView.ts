@@ -35,6 +35,11 @@ export function isReview(detail: CheckDetail): boolean {
   return detail.session.kind === "review";
 }
 
+/** 확인 결과의 '이 강의 한 장 요약' — 한 강의의 세션이라 첫 요약 하나(없으면 undefined). */
+export function sessionLectureSummary(detail: CheckDetail): string | undefined {
+  return detail.items.find((item) => item.lectureSummary)?.lectureSummary;
+}
+
 /** 상단 진행 글자 "문항 n/N"(확인·복습·진단 모두 같다). 문항이 없으면 "". */
 export function progressLabel(detail: CheckDetail): string {
   const { index, total } = progressOf(detail);

@@ -11,6 +11,7 @@ import { InlineError } from "@/src/shared/ui/punisher";
 import { AddStudyRequestForm } from "@/src/features/punisher/study-request-add";
 import { todayRows } from "./lib/recheck";
 import { reviewCardState } from "./lib/reviewCard";
+import { sessionTimeLabel } from "./lib/sessionTime";
 import { InquiryList, NEW_CHAPTER_PATH, NextChapterCard, RecheckRow, RecommendationRow, RecommendationSheet, ReviewCard, StudyRequestList } from "./ui";
 
 /** 강의(오늘): 복습 카드 → 궁금한 것 입력 한 줄 → 이어보기 → 추천 목록 → 학습 요청(단독판: 직접 입력. witems 는 이 자리가 RSS '학습 요청' — docs/SYNC.md). */
@@ -45,6 +46,9 @@ export function TodayWidget() {
   // 복습 카드는 열들 위 전체 폭 띠(맨 앞) — 3단에서도 열 배치를 바꾸지 않고, '추천 소진' 안내와 다른 칸에 둔다.
   // 완료 여부(오늘 세션)를 받기 전에는 그리지 않는다(숨김 ↔ 접힌 완료가 깜빡이지 않게).
   const reviewState = reviewCardState(reviewToday, reviewSummary.data?.today);
+  // 세션 시간 합계(서버 계산)가 오면 '오늘의 추천' 머리말에 한 번만 보이고 복습 카드의 합계 줄은 뺀다.
+  const sessionTime = sessionTimeLabel(today.data?.session);
+  const recommendDescription = sessionTime || "하루 30분, 기반 지식을 한 단계씩";
   const reviewReady = ready && (!reviewToday || !reviewSummary.isLoading);
   const showResume = ready && (resume.length > 0 || resumeDismiss.dismissed || resumeDismiss.error);
 
@@ -71,7 +75,7 @@ export function TodayWidget() {
   ) : today.error ? (
     <ErrorState message={describePunisherError(today.error)} onRetry={() => today.refetch()} retrying={today.isRefetching} />
   ) : (
-    <Section variant="card" title="오늘의 추천" description="하루 30분, 기반 지식을 한 단계씩">
+    <Section variant="card" title="오늘의 추천" description={recommendDescription}>
       {rows.length > 0 ? (
         <List>
           {rows.map((row) =>
@@ -86,7 +90,7 @@ export function TodayWidget() {
         <EmptyState
           compact
           icon={<Target />}
-          title="추천할 다음 강의가 없습니다"
+          title="추천할 다음 강의가 없어요"
           description="지금 지도에서 배울 강의를 다 마쳤어요. 다음 챕터를 골라 새 개념을 열어 보세요."
           action={
             <Link href={NEW_CHAPTER_PATH} className={buttonVariants({ variant: "secondary", size: "sm" })}>
@@ -95,7 +99,7 @@ export function TodayWidget() {
           }
         />
       ) : (
-        <EmptyState compact title="오늘 추천이 없습니다" />
+        <EmptyState compact title="오늘 추천이 없어요" />
       )}
     </Section>
   );
@@ -114,7 +118,7 @@ export function TodayWidget() {
   return (
     <div className="flex w-full flex-col gap-6">
       <HeightReserve id="learn-review" ready={reviewReady} skeleton={null} className="[&:empty:not([style])]:hidden">
-        {reviewState.kind !== "hidden" ? <ReviewCard state={reviewState} /> : null}
+        {reviewState.kind !== "hidden" ? <ReviewCard state={reviewState} showTotal={!sessionTime} /> : null}
       </HeightReserve>
       <InstantQueryBox />
       <div aria-live="polite" className="empty:hidden">

@@ -11,11 +11,10 @@ interface RegenerateSheetProps {
   onClose: () => void;
 }
 
-/** "이 강의 새 프롬프트로 다시 만들기" 확인 — 같은 개념·목표·깊이로 새 버전(개요→본문→감수)을 만든다. */
-export function RegenerateSheet({ lectureId, open, onClose }: RegenerateSheetProps) {
+/** 같은 개념·목표·깊이로 새 버전을 만들고 생성 화면(또는 바로 나온 강의)으로 간다. 시트·flagged 배너가 같이 쓴다. */
+export function useStartRegenerate(lectureId: string) {
   const router = useRouter();
   const regenerate = useRegenerateLecture();
-
   function start() {
     regenerate.mutate(lectureId, {
       onSuccess: (res) => {
@@ -24,6 +23,13 @@ export function RegenerateSheet({ lectureId, open, onClose }: RegenerateSheetPro
       },
     });
   }
+  return { start, isPending: regenerate.isPending, error: regenerate.error };
+}
+
+/** "이 강의 새 프롬프트로 다시 만들기" 확인 — 같은 개념·목표·깊이로 새 버전(개요→본문→감수)을 만든다. */
+export function RegenerateSheet({ lectureId, open, onClose }: RegenerateSheetProps) {
+  const regenerate = useStartRegenerate(lectureId);
+  const start = regenerate.start;
 
   return (
     <BottomSheet

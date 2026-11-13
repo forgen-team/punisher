@@ -113,6 +113,8 @@ func run(cfg config.Config) error {
 			CheckModel:           cfg.CheckModel,
 			CheckRegradeModel:    cfg.CheckRegradeModel,
 			DailyCheckTokenLimit: cfg.DailyCheckTokenLimit,
+
+			BackfillReviewEnabled: cfg.BackfillReviewEnabled,
 		},
 	}
 

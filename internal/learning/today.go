@@ -1,11 +1,6 @@
 package learning
 
-import (
-	"fmt"
-	"sort"
-
-	"github.com/wooo-jin/punisher/internal/curriculum"
-)
+import "fmt"
 
 // Recommendation kinds, in priority order (design §3.5).
 const (
@@ -16,8 +11,9 @@ const (
 	RecNewGoal      = "new_goal"
 )
 
-// DefaultLectureMinutes is the nominal lecture length.
-const DefaultLectureMinutes = 30
+// DefaultLectureMinutes is the nominal lecture length when no lecture exists
+// yet (quality design v2.2 Q3: ~20 minutes; a stored lecture shows EstimateMinutes).
+const DefaultLectureMinutes = 20
 
 // TodayConcept is the per-concept input for recommendations.
 type TodayConcept struct {
@@ -132,6 +128,8 @@ type TodayResult struct {
 	Review ReviewToday `json:"review"`
 	// Recheck: lapsed prerequisites of the goal paths' next concepts (separate from Items, never affects Exhausted).
 	Recheck []RecheckCard `json:"recheck"`
+	// Session: today's study session time "강의 n분 + 확인 n분 + 복습 n분" (SessionFor).
+	Session SessionMinutes `json:"session"`
 }
 
 type todayBuilder struct {
@@ -224,42 +222,14 @@ func BuildToday(in TodayInput) TodayResult {
 	if b.items == nil {
 		b.items = []Recommendation{}
 	}
-	return TodayResult{Items: b.items, Exhausted: b.recommended == 0,
+	res := TodayResult{Items: b.items, Exhausted: b.recommended == 0,
 		Review:  SummarizeReviews(in.Review.Counts, in.Review.ReviewMinutes, in.Review.Grader),
 		Recheck: recheckCards(in, states)}
-}
-
-// recheckCards: for each goal path's next concept, its direct prerequisites
-// that lapsed without recovering (in.Lapsed), once per concept, in goal order.
-func recheckCards(in TodayInput, states map[string]string) []RecheckCard {
-	out := []RecheckCard{}
-	if len(in.Lapsed) == 0 {
-		return out
+	res.Session = SessionFor(res.Items, res.Review)
+	if res.Session.LectureMinutes > 0 {
+		res.Review.LectureMinutes = res.Session.LectureMinutes
 	}
-	prereqs := map[string][]string{}
-	for _, e := range in.Edges {
-		prereqs[e.To] = append(prereqs[e.To], e.From)
-	}
-	seen := map[string]bool{}
-	for _, g := range in.Goals {
-		next := StartingPoint(g.Path, in.Edges, states)
-		if next == "" {
-			continue
-		}
-		ps := append([]string(nil), prereqs[next]...)
-		sort.Strings(ps)
-		for _, p := range ps {
-			lapsed, ok := in.Lapsed[p]
-			c, known := in.Concepts[p]
-			if !ok || !known || seen[p] {
-				continue
-			}
-			seen[p] = true
-			out = append(out, RecheckCard{ConceptID: p, ConceptName: c.Name, Area: c.Area, GoalID: g.ID,
-				Due: lapsed.Due, LectureID: lapsed.LectureID})
-		}
-	}
-	return out
+	return res
 }
 
 func remainingMinutes(r ResumeItem) int {
@@ -269,7 +239,7 @@ func remainingMinutes(r ResumeItem) int {
 	}
 	left := total * (100 - r.Percent) / 100
 	if left < 5 {
-		left = 5
+		left = min(5, total)
 	}
 	return left
 }
@@ -296,67 +266,6 @@ func (b *todayBuilder) addRequest(r RequestInput) {
 			reason = fmt.Sprintf("학습 요청 '%s'을(를) 이해하려면 먼저 필요한 선행 개념입니다.", r.Query)
 		}
 		b.add(c, Recommendation{Kind: RecStudyRequest, StudyRequestID: r.ID, Reason: reason})
-		return
-	}
-}
-
-// addEssentialGaps adds depth-1 frontier concepts, round-robin across areas
-// starting from the area with the fewest learned concepts.
-func (b *todayBuilder) addEssentialGaps() {
-	doneByArea := map[string]int{}
-	byArea := map[string][]TodayConcept{}
-	for _, c := range b.in.Concepts {
-		if IsDone(NormalizeState(c.State)) {
-			doneByArea[c.Area]++
-		}
-	}
-	for _, f := range b.an.Frontier { // already sorted by unlocks desc
-		c, ok := b.learnable(f.ID)
-		if ok && c.Depth == 1 && !c.Proposed {
-			byArea[c.Area] = append(byArea[c.Area], c)
-		}
-	}
-	areas := make([]string, 0, len(byArea))
-	for a := range byArea {
-		areas = append(areas, a)
-	}
-	sort.Slice(areas, func(i, j int) bool {
-		if doneByArea[areas[i]] != doneByArea[areas[j]] {
-			return doneByArea[areas[i]] < doneByArea[areas[j]]
-		}
-		return areas[i] < areas[j]
-	})
-	for round := 0; !b.full(); round++ {
-		added := false
-		for _, a := range areas {
-			if b.full() {
-				return
-			}
-			if round < len(byArea[a]) {
-				c := byArea[a][round]
-				b.add(c, Recommendation{Kind: RecEssentialGap, Reason: fmt.Sprintf(
-					"선행 개념을 모두 갖춘 필수 기본기입니다. 상대적으로 덜 다룬 %s 영역의 공백을 채웁니다.", curriculum.AreaTitle(c.Area))})
-				added = true
-			}
-		}
-		if !added {
-			return
-		}
-	}
-}
-
-// addNewGoal suggests one deeper frontier concept as a new goal.
-func (b *todayBuilder) addNewGoal() {
-	if b.full() {
-		return
-	}
-	for _, f := range b.an.Frontier {
-		c, ok := b.learnable(f.ID)
-		if !ok || c.Depth < 2 || c.Proposed {
-			continue
-		}
-		b.add(c, Recommendation{Kind: RecNewGoal, Reason: fmt.Sprintf(
-			"기본기를 갖춘 심화 주제입니다. 새 목표로 삼으면 %d개 개념이 이어서 열립니다.", f.Unlocks)})
 		return
 	}
 }

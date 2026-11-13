@@ -112,6 +112,9 @@ type CheckItemView struct {
 	Answer      string          `json:"answer,omitempty"`
 	Must        []string        `json:"must,omitempty"`
 	Anchor      string          `json:"anchor,omitempty"`
+	// LectureSummary: the item's lecture '한 장 요약' (markdown) once the item
+	// is done, check/review sessions only; omitted when the lecture has none.
+	LectureSummary string `json:"lectureSummary,omitempty"`
 }
 
 // CheckCurrent is what the learner can do now on the current item.

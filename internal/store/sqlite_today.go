@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -66,13 +67,18 @@ func (s *SQLiteStore) LoadToday(ctx context.Context, userID string, now time.Tim
 	}
 
 	if d.Resume, err = collect(s.c().query(ctx, `
-		SELECT l.id, l.concept_id, l.title, p.anchor, p.percent, l.estimated_minutes, `+parentLectureSQL("l.id")+`
+		SELECT l.id, l.concept_id, l.title, p.anchor, p.percent, l.estimated_minutes, `+parentLectureSQL("l.id")+`,
+		       CASE WHEN l.minutes_estimated THEN NULL ELSE l.content END
 		FROM user_lecture_progress p
 		JOIN lectures l ON l.id = p.lecture_id
 		WHERE p.user_id = $1 AND p.completed_at IS NULL AND p.dismissed_at IS NULL AND p.percent < 100
 		ORDER BY p.last_seen_at DESC LIMIT 200`, userID), func(row rowScanner) (learning.ResumeItem, error) {
 		var r learning.ResumeItem
-		err := row.Scan(&r.LectureID, &r.ConceptID, &r.Title, &r.Anchor, &r.Percent, &r.EstimatedMinutes, &r.ParentLectureID)
+		var legacy json.RawMessage // 기존 강의(섹션 분 합계)만 본문을 읽어 조회 때 계산한다.
+		err := row.Scan(&r.LectureID, &r.ConceptID, &r.Title, &r.Anchor, &r.Percent, &r.EstimatedMinutes, &r.ParentLectureID, rawJSON(&legacy))
+		if err == nil && legacy != nil {
+			r.EstimatedMinutes = contentMinutes(legacy, r.EstimatedMinutes)
+		}
 		return r, err
 	}); err != nil {
 		return nil, fmt.Errorf("today resume: %w", err)

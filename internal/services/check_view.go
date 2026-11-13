@@ -148,6 +148,9 @@ func (s *Service) checkDetail(ctx context.Context, userID string, st checkState)
 	if d.MisconceptionTurnIDs, err = s.Store.MisconceptionTurnIDs(ctx, userID, st.sess.ID); err != nil {
 		return d, err
 	}
+	if err = s.attachLectureSummaries(ctx, userID, st.sess.Kind, d.Items, st.items); err != nil {
+		return d, err
+	}
 	switch st.sess.Kind {
 	case check.PurposeCheck:
 		d.Predictions, err = s.Store.PretestAnswers(ctx, userID, objectives)
@@ -155,6 +158,37 @@ func (s *Service) checkDetail(ctx context.Context, userID string, st checkState)
 		d.Placement = s.placementResult(ctx, userID, st)
 	}
 	return d, err
+}
+
+// attachLectureSummaries sets each done item's lecture summary (§6 '이 강의
+// 한 장 요약'): check results and review items only — never before the answer,
+// and never on diagnostics (a pretest comes before the lecture). A review mixes
+// lectures, so the summary is per item.
+func (s *Service) attachLectureSummaries(ctx context.Context, userID, kind string, views []models.CheckItemView, items []store.CheckItem) error {
+	if kind != check.PurposeCheck && kind != check.PurposeReview {
+		return nil
+	}
+	ids := []string{}
+	seen := map[string]bool{}
+	for i, it := range items {
+		if views[i].Done && it.LectureID != "" && !seen[it.LectureID] {
+			seen[it.LectureID] = true
+			ids = append(ids, it.LectureID)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	summaries, err := s.Store.LectureSummaries(ctx, userID, ids)
+	if err != nil {
+		return err
+	}
+	for i, it := range items {
+		if views[i].Done {
+			views[i].LectureSummary = summaries[it.LectureID]
+		}
+	}
+	return nil
 }
 
 func currentView(st checkState, it store.CheckItem, pending bool) *models.CheckCurrent {

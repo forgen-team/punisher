@@ -11,10 +11,9 @@ import (
 	"github.com/wooo-jin/punisher/internal/models"
 	"github.com/wooo-jin/punisher/internal/prompts"
 	"github.com/wooo-jin/punisher/internal/store"
-	"github.com/wooo-jin/punisher/internal/llm"
 )
 
-// diagnosticTimeout bounds one diagnostic generation (FastModel, concept and objectives only).
+// diagnosticTimeout bounds one diagnostic generation (concept and objectives only; model by diagnosticModel).
 const diagnosticTimeout = 3 * time.Minute
 
 // pretestAttempts: the pretest is one FastModel call (design §5 P3); the
@@ -69,6 +68,16 @@ func (p diagnosticPlan) objectiveIDs() []string {
 func (s *Service) fastModel() string {
 	if s.Cfg.FastModel != "" {
 		return s.Cfg.FastModel
+	}
+	return s.Cfg.LectureModel
+}
+
+// diagnosticModel: only the pretest (예측 질문, no evidence) uses FastModel; the
+// '이미 앎' verification and the placement change mastery, so they use
+// LectureModel (quality design v2.2 §2.3).
+func (s *Service) diagnosticModel(kind string) string {
+	if kind == check.PurposePretest {
+		return s.fastModel()
 	}
 	return s.Cfg.LectureModel
 }
@@ -248,78 +257,6 @@ func (s *Service) createDiagnostic(ctx context.Context, userID string, plan diag
 	}
 	d, err := s.GetCheck(ctx, userID, sess.ID)
 	return &d, created, err
-}
-
-func (s *Service) runDiagnosticDetached(apiKey, userID, sessionID string, plan diagnosticPlan) {
-	runDetached("diagnostic items", sessionID, diagnosticTimeout, func(bg context.Context) error {
-		return s.runDiagnosticItems(bg, apiKey, userID, sessionID, plan)
-	}, s.failPreparing(userID, sessionID, ""))
-}
-
-// runDiagnosticItems writes the plan's items with the check.pretest block
-// (FastModel), records the tokens (kind check_items), stores the items and
-// asks the first one. Failure fails the session, never stores items.
-func (s *Service) runDiagnosticItems(ctx context.Context, apiKey, userID, sessionID string, plan diagnosticPlan) error {
-	done := context.WithoutCancel(ctx)
-	set := s.UserPrompts(ctx, userID)
-	conceptID := plan.conceptID
-	if conceptID == "" && len(plan.objectives) > 0 {
-		conceptID = conceptOf(plan.objectives[0].ID)
-	}
-	dc := prompts.DiagnosticContext{Purpose: plan.kind, Objectives: plan.objectives, Count: check.PretestCount(len(plan.objectives))}
-	vc := check.DiagnosticContext{Purpose: plan.kind, ObjectiveIDs: plan.objectiveIDs()}
-	items, u, _, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.fastModel(), attempts: plan.attempts,
-		priority: llm.PriorityInteractive, system: set.Text(prompts.BlockCheckPretest, s.interactionVars(ctx, userID, conceptID))},
-		func(revisions []string) string { dc.Revisions = revisions; return prompts.Diagnostic(dc) },
-		func(set check.ItemSet) []string { return check.ValidateDiagnostic(set, vc) })
-	s.recordUsage(done, userID, "check_items", conceptID, u, err)
-	var saved []store.CheckItem
-	if err == nil {
-		saved, err = s.Store.SaveDiagnosticItems(done, store.DiagnosticItems{PromptHash: set.Hash(prompts.BlockCheckPretest),
-			CreatedFor: userID, Model: u.model, PromptVersion: diagnosticPromptVersion(set), Items: check.NormalizeDiagnostic(items)})
-	}
-	if err == nil {
-		saved = orderByObjectives(saved, plan.objectiveIDs())
-		ids := make([]string, 0, len(saved))
-		for _, it := range saved {
-			ids = append(ids, it.ID)
-		}
-		ask := store.TurnWrite{ItemID: saved[0].ID, Role: "tutor", Move: check.MoveAsk, Text: saved[0].Prompt}
-		_, err = s.Store.ActivateCheckSession(done, userID, sessionID, ids, ask)
-	}
-	if err != nil {
-		if serr := s.Store.SetCheckSessionStatus(done, userID, sessionID, []string{"preparing"}, "failed", checkErrorText(err)); serr != nil && !errors.Is(serr, store.ErrCheckClosed) {
-			logf("diagnostic %s: fail session: %v", sessionID, serr)
-		}
-	}
-	return err
-}
-
-// conceptOf is the concept of an objective id (objective ids are "<concept>#<n>").
-func conceptOf(objectiveID string) string {
-	concept, _, _ := strings.Cut(objectiveID, "#")
-	return concept
-}
-
-// orderByObjectives keeps the plan's asking order (placement easy → hard);
-// items of the same objective keep their generated order.
-func orderByObjectives(items []store.CheckItem, objectiveIDs []string) []store.CheckItem {
-	out := make([]store.CheckItem, 0, len(items))
-	for _, id := range objectiveIDs {
-		for _, it := range items {
-			if it.ObjectiveID == id {
-				out = append(out, it)
-			}
-		}
-	}
-	return out
-}
-
-func diagnosticPromptVersion(set prompts.Set) string {
-	if h := set.Hash(prompts.BlockCheckPretest); h != "" {
-		return prompts.CheckVersion + "+u:" + h
-	}
-	return prompts.CheckVersion
 }
 
 // retryDiagnostic regenerates a failed verification or placement ('다시 시도');

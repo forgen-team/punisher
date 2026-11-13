@@ -1,36 +1,28 @@
 
 import { useEffect, useRef, useState } from "react";
 import { instantStreamUrl, punisherApi } from "@/src/shared/api/punisher";
-
-export type StreamPhase = "connecting" | "generating" | "rewriting" | "validating" | "done" | "error";
-
-export interface InstantStreamState {
-  phase: StreamPhase;
-  text: string;
-  lectureId?: string;
-  errorMessage?: string;
-  /** 첫 출력이 형식 검증에 실패해 자동으로 다시 쓰는 중이면 그 사유 */
-  rewriteReason?: string;
-}
+import { INITIAL_STAGE, reduceStage, type StageState, type StreamEventName } from "./lib/stageState";
 
 const MAX_RECONNECTS = 3;
 const RECONNECT_DELAY_MS = 2000;
+const EVENT_NAMES: StreamEventName[] = ["stage", "status", "delta", "done", "message"];
 
-function parseData<T>(event: Event): T | null {
+function parseData(event: Event): Record<string, unknown> | null {
   if (!(event instanceof MessageEvent) || typeof event.data !== "string") { return null; }
   try {
-    return JSON.parse(event.data) as T;
+    const value: unknown = JSON.parse(event.data);
+    return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null;
   } catch {
     return null;
   }
 }
 
 /**
- * Consumes GET /v1/lectures/instant/{jobId}/stream (SSE: status, delta, done, error).
- * The server replays all events to new subscribers, so each (re)connect resets the text.
+ * GET /v1/lectures/instant/{jobId}/stream 의 생성 단계만 받는다(초안 본문은 보이지 않는다, v2.2 Q2).
+ * 서버는 새 구독자에게 지난 이벤트를 다시 보내므로 (재)연결마다 상태를 처음부터 다시 쌓는다.
  */
-export function useInstantStream(jobId: string): InstantStreamState {
-  const [state, setState] = useState<InstantStreamState>({ phase: "connecting", text: "" });
+export function useInstantStream(jobId: string): StageState {
+  const [state, setState] = useState<StageState>(INITIAL_STAGE);
   const finished = useRef(false);
 
   useEffect(() => {
@@ -39,24 +31,32 @@ export function useInstantStream(jobId: string): InstantStreamState {
     let attempts = 0;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const finish = (next: Partial<InstantStreamState>) => {
-      finished.current = true;
-      source?.close();
-      setState((prev) => ({ ...prev, ...next }));
+    let current = INITIAL_STAGE;
+    const commit = (next: StageState) => {
+      if (next === current) { return; }
+      current = next;
+      setState(next);
+    };
+    const apply = (event: StreamEventName, data: Record<string, unknown> | null) => {
+      commit(reduceStage(current, event, data));
+      if (current.stage === "published" || current.stage === "failed") {
+        finished.current = true;
+        source?.close();
+      }
     };
 
     const recoverFromJob = async () => {
       try {
         const job = await punisherApi.getJob(jobId);
-        if (job.status === "succeeded" && job.lectureId) { return finish({ phase: "done", lectureId: job.lectureId }); }
+        if (job.status === "succeeded" && job.lectureId) { return apply("done", { lectureId: job.lectureId }); }
         if (job.status === "failed" || job.status === "skipped") {
-          return finish({ phase: "error", errorMessage: job.error || "강의 생성에 실패했습니다." });
+          return apply("error", { message: job.error || "강의 생성에 실패했습니다." });
         }
       } catch (err) {
         console.warn("punisher: job status check failed", err);
       }
       if (attempts >= MAX_RECONNECTS) {
-        finish({ phase: "error", errorMessage: "스트림 연결이 끊겼습니다. 잠시 후 새로고침해 주세요." });
+        apply("error", { message: "생성 작업과 연결이 끊겼습니다." });
         return;
       }
       retryTimer = setTimeout(connect, RECONNECT_DELAY_MS);
@@ -64,37 +64,19 @@ export function useInstantStream(jobId: string): InstantStreamState {
 
     function connect() {
       attempts += 1;
-      setState((prev) => ({ ...prev, phase: "connecting", text: "", rewriteReason: undefined }));
+      commit(INITIAL_STAGE);
       const es = new EventSource(instantStreamUrl(jobId));
       source = es;
-      es.addEventListener("status", (event) => {
-        const data = parseData<{ stage?: string; reason?: string }>(event);
-        if (data?.stage === "rewriting") {
-          // 서버가 처음부터 다시 쓴다 — 받은 본문을 비우고 안내를 띄운다(재연결 재생 때도 같은 순서로 온다).
-          setState((prev) => ({ ...prev, phase: "rewriting", text: "", rewriteReason: data.reason ?? "" }));
-          return;
-        }
-        const phase: StreamPhase = data?.stage === "validating" ? "validating" : "generating";
-        setState((prev) => (prev.phase === phase ? prev : { ...prev, phase }));
-      });
-      es.addEventListener("delta", (event) => {
-        const data = parseData<{ text?: string }>(event);
-        if (data?.text) {
-          setState((prev) => ({ ...prev, phase: prev.phase === "rewriting" ? "rewriting" : "generating", text: prev.text + data.text }));
-        }
-      });
-      es.addEventListener("done", (event) => {
-        const data = parseData<{ lectureId?: string }>(event);
-        if (data?.lectureId) {finish({ phase: "done", lectureId: data.lectureId });}
-        else {finish({ phase: "error", errorMessage: "강의가 저장되지 않았습니다." });}
-      });
+      for (const name of EVENT_NAMES) {
+        es.addEventListener(name, (event) => apply(name, parseData(event)));
+      }
       es.addEventListener("error", (event) => {
-        const data = parseData<{ code?: string; message?: string }>(event);
+        const data = parseData(event);
         if (data) {
-          finish({ phase: "error", errorMessage: data.message || data.code || "강의 생성에 실패했습니다." });
+          apply("error", data);
           return;
         }
-        // Transport error (no payload): close and recover via job status.
+        // 전송 오류(내용 없음): 닫고 잡 상태로 복구한다.
         es.close();
         if (!finished.current) { void recoverFromJob(); }
       });

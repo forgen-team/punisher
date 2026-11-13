@@ -3,6 +3,7 @@ import { Link } from "@/src/shared/lib/router";
 import { forwardRef } from "react";
 import { ArrowLeft, Layers } from "lucide-react";
 import { List, ListRow, Section } from "@/src/shared/ui/kit";
+import { READ_THROUGH_LABEL, isReadThrough } from "@/src/entities/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import type { LinkedLecture } from "@/src/shared/api/punisher";
 
@@ -10,6 +11,7 @@ const dateFormat = new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" });
 
 function progressLabel(l: LinkedLecture): string {
   if (l.completedAt) { return "완료"; }
+  if (isReadThrough(l.percent, false)) { return READ_THROUGH_LABEL; }
   if (l.percent > 0) { return `${l.percent}% 읽음`; }
   return "아직 안 읽음";
 }

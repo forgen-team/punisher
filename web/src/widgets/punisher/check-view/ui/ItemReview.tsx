@@ -6,6 +6,7 @@ import { OUTCOME_LABELS } from "@/src/entities/punisher";
 import type { CheckItem } from "@/src/shared/api/punisher";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 import { OUTCOME_TONE } from "./constants";
+import { LectureSummary } from "./LectureSummary";
 
 interface ItemReviewProps {
   item: CheckItem;
@@ -17,6 +18,8 @@ interface ItemReviewProps {
   /** '내 답이 맞아요'(없으면 버튼을 두지 않는다) */
   onDispute?: () => void;
   disputing?: boolean;
+  /** 복습: 문항 아래 그 강의의 한 장 요약(문항마다 강의가 다를 수 있다) */
+  showLectureSummary?: boolean;
 }
 
 function Part({ title, children }: { title: string; children: ReactNode }) {
@@ -28,8 +31,8 @@ function Part({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/** 끝난 문항: 판정(+ 이의) · 놓친 기준 · 모범답 · 기준 · 다시 볼 곳. */
-export function ItemReview({ item, missing, anchorHref, anchorLabel, onDispute, disputing }: ItemReviewProps) {
+/** 끝난 문항: 판정(+ 이의) · 놓친 기준 · 모범답 · 기준 · 다시 볼 곳 (· 복습은 한 장 요약). */
+export function ItemReview({ item, missing, anchorHref, anchorLabel, onDispute, disputing, showLectureSummary }: ItemReviewProps) {
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-line p-3 text-sm">
       {item.outcome && (
@@ -72,6 +75,7 @@ export function ItemReview({ item, missing, anchorHref, anchorLabel, onDispute, 
           </Link>
         </Part>
       )}
+      {showLectureSummary && <LectureSummary text={item.lectureSummary} />}
     </div>
   );
 }

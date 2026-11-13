@@ -123,13 +123,17 @@ func TestPreviewAssemblesWithoutLLM(t *testing.T) {
 	}
 }
 
-// recordingLLM returns a fixed lecture and records the system prompts it got.
+// recordingLLM returns a fixed lecture (a passing review to the reviewer) and
+// records the system prompts of the drafts.
 type recordingLLM struct {
 	text    string
 	systems []string
 }
 
 func (r *recordingLLM) Create(_ context.Context, _ string, req llm.MessagesRequest) (llm.MessagesResult, error) {
+	if strings.Contains(req.System, "기술 감수자") {
+		return llm.MessagesResult{Text: reviewPass, Model: "fake"}, nil
+	}
 	r.systems = append(r.systems, req.System)
 	return llm.MessagesResult{Text: r.text, Model: "fake"}, nil
 }
@@ -219,5 +223,78 @@ func TestStandaloneLibraryCheckItemsUseOwnerPrompts(t *testing.T) {
 	k := s.checkItemKey(ctx, user, "lib-lecture")
 	if k.PromptHash == "" || k.CreatedFor != user || k.PromptHash != s.UserPrompts(ctx, user).Hash(prompts.BlockCheckItems) {
 		t.Fatalf("edited block must key the set to the owner: %+v", k)
+	}
+}
+
+// userRecordingLLM answers a library job (outline → draft → review) and records
+// every call's user prompt.
+type userRecordingLLM struct {
+	lecture string
+	users   []string
+}
+
+func (r *userRecordingLLM) Create(_ context.Context, _ string, req llm.MessagesRequest) (llm.MessagesResult, error) {
+	r.users = append(r.users, req.User)
+	switch {
+	case strings.Contains(req.System, "기술 감수자"):
+		return llm.MessagesResult{Text: reviewPass, Model: "fake"}, nil
+	case strings.Contains(req.User, "단독판 개요 지시"):
+		return llm.MessagesResult{Text: `{"sections":[]}`, Model: "fake"}, nil
+	}
+	return llm.MessagesResult{Text: r.lecture, Model: "fake"}, nil
+}
+
+func (r *userRecordingLLM) Stream(ctx context.Context, key string, req llm.MessagesRequest, onDelta func(string) error) (llm.MessagesResult, error) {
+	res, err := r.Create(ctx, key, req)
+	_ = onDelta(res.Text)
+	return res, err
+}
+
+// TestStandaloneLibraryKeepsFactualRules (quality design v2.2 §3.1, 단독판
+// LibraryUsesUserPrompts): a library lecture built with the owner's edited
+// outline / format / review blocks still carries the fixed factual-accuracy
+// rules in every generation prompt — code appends them after the user's
+// blocks, so an edit can never drop them.
+func TestStandaloneLibraryKeepsFactualRules(t *testing.T) {
+	s, user := dbService(t)
+	s.Cfg.LibraryUsesUserPrompts = true
+	ctx := context.Background()
+	for block, text := range map[string]string{
+		prompts.BlockOutlineTask:   "단독판 개요 지시",
+		prompts.BlockLectureFormat: "단독판 본문 형식",
+		prompts.BlockReviewTask:    "단독판 검수 지시",
+	} {
+		if _, err := s.Store.SavePromptOverride(ctx, user, block, text, "save"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	conceptID := firstConceptWithObjectives(t, s)
+	lib, err := s.libraryTarget(ctx, user, conceptID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fake := &userRecordingLLM{lecture: lectureMarkupFor(lib.Plan.ObjectiveIDs)}
+	s.LLM = fake
+	job, _, err := s.Store.CreateJob(ctx, store.NewJob{
+		IdempotencyKey: "test-library-rules:" + user, Kind: "library", ConceptID: conceptID,
+		ObjectiveKey: lib.Plan.ObjectiveKey, Depth: lib.Plan.Depth, Reason: "test",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.runLibraryJob(ctx, "k", job.ID, lib, nil); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.users) != 3 {
+		t.Fatalf("outline, draft and review expected: %d calls", len(fake.users))
+	}
+	for i, want := range []string{"단독판 개요 지시", "단독판 본문 형식", "단독판 검수 지시"} {
+		u := fake.users[i]
+		if !strings.Contains(u, want) {
+			t.Errorf("call %d must use the owner's block %q", i, want)
+		}
+		if !strings.Contains(u, "## 사실 정확성 규칙") || !strings.Contains(u, "자리올림/오버플로") {
+			t.Errorf("call %d (%s) lacks the factual-accuracy rules", i, want)
+		}
 	}
 }

@@ -82,7 +82,7 @@ func (s *Service) runKnownVerifyItems(ctx context.Context, apiKey, userID string
 	set := s.UserPrompts(ctx, userID)
 	dc := prompts.DiagnosticContext{Purpose: check.PurposeKnownVerify, Objectives: objectives}
 	vc := check.DiagnosticContext{Purpose: check.PurposeKnownVerify, ObjectiveIDs: diagnosticPlan{objectives: objectives}.objectiveIDs()}
-	items, u, tries, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.fastModel(), attempts: checkAttempts,
+	items, u, tries, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.diagnosticModel(check.PurposeKnownVerify), attempts: checkAttempts,
 		priority: llm.PriorityBackground, system: set.Text(prompts.BlockCheckPretest, s.interactionVars(ctx, userID, t.ConceptID))},
 		func(revisions []string) string { dc.Revisions = revisions; return prompts.Diagnostic(dc) },
 		func(set check.ItemSet) []string { return check.ValidateDiagnostic(set, vc) })

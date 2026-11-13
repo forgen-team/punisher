@@ -160,7 +160,8 @@ func (s *SQLiteStore) objectiveMastery(ctx context.Context, userID, where string
 // objective's read state is removed (it can be generated/learned again), the
 // concept goes back to in_progress directly (bypassing SetConceptState, so a
 // completed/known concept changes too), and the mastery drops to box 0 with
-// lapses 0 and no review date, not waiting in the inflow or verification queue (best is kept). Returns the objective's concept.
+// lapses 0 and no review date, not waiting in the inflow or verification queue (best is kept). The evidence
+// marker moves to a fresh value, so a later accepted dispute of an earlier grade is a conflict. Returns the objective's concept.
 func (s *SQLiteStore) ReopenObjective(ctx context.Context, userID, objectiveID string) (string, error) {
 	var conceptID string
 	err := s.tx(ctx, func(c conn) error {
@@ -180,8 +181,10 @@ func (s *SQLiteStore) ReopenObjective(ctx context.Context, userID, objectiveID s
 			ON CONFLICT (user_id, concept_id) DO UPDATE SET state = 'in_progress', updated_at = NOW()`, userID, conceptID); err != nil {
 			return fmt.Errorf("reopen concept state: %w", err)
 		}
+		// 근거 표지를 새 값으로 바꾼다: 다시 배우기 전의 판정에 대한 이의가 받아들여져도 초기화를 덮지 않고 충돌로 끝난다.
 		if _, err := c.exec(ctx, `UPDATE user_objective_mastery SET box = 0, grad_step = 0, lapses = 0, next_review_at = NULL,
-			queued = 0, verify_queued = 0, updated_at = $3 WHERE user_id = $1 AND objective_id = $2`, userID, objectiveID, clockNow()); err != nil {
+			queued = 0, verify_queued = 0, last_evidence_turn_id = $4, updated_at = $3 WHERE user_id = $1 AND objective_id = $2`,
+			userID, objectiveID, clockNow(), NewID()); err != nil {
 			return fmt.Errorf("reopen mastery: %w", err)
 		}
 		return nil

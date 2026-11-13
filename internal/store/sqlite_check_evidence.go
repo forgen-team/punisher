@@ -253,7 +253,7 @@ func restoreEvidence(ctx context.Context, c conn, d DisputeResolve) (bool, error
 	if err != nil {
 		return false, err
 	}
-	// 충돌 = 그 판정 뒤에 다른 근거가 반영됨(표지가 바뀜). 통합 크레딧·대기 해제·stale·다시 배우기는 표지를 건드리지 않는다.
+	// 충돌 = 그 판정 뒤에 다른 근거가 반영됐거나 다시 배우기로 초기화됨(표지가 바뀜). 통합 크레딧·대기 해제·stale 은 표지를 건드리지 않는다.
 	conflict := l.Exists && (judged.AppliedAt == nil || !l.Updated.Equal(*judged.AppliedAt))
 	if judged.Mark != nil {
 		conflict = l.Exists && l.Mark != *judged.Mark

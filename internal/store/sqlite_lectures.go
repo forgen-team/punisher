@@ -7,24 +7,46 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/wooo-jin/punisher/internal/learning"
+	"github.com/wooo-jin/punisher/internal/lecture"
 	"github.com/wooo-jin/punisher/internal/models"
 )
 
 const lectureColumns = `l.id, l.concept_id, l.objective_ids, l.objective_key, l.depth, l.kind, l.status,
 	l.version, l.title, l.content, l.content_hash, l.sources, l.model, l.prompt_version,
 	COALESCE(l.requested_by, ''), l.flagged, l.flag_reason, l.estimated_minutes,
-	COALESCE(l.generation_job_id, ''), l.created_at, l.published_at`
+	COALESCE(l.generation_job_id, ''), l.created_at, l.published_at, l.minutes_estimated,
+	EXISTS (SELECT 1 FROM lecture_reviews r WHERE r.lecture_id = l.id AND r.verdict = 'pass')`
 
 func scanLecture(row rowScanner) (models.Lecture, error) {
 	var l models.Lecture
+	var minutesEstimated bool
 	err := row.Scan(&l.ID, &l.ConceptID, strs(&l.ObjectiveIDs), &l.ObjectiveKey, &l.Depth, &l.Kind, &l.Status,
 		&l.Version, &l.Title, rawJSON(&l.Content), &l.ContentHash, rawJSON(&l.Sources), &l.Model, &l.PromptVersion,
 		&l.RequestedBy, &l.Flagged, &l.FlagReason, &l.EstimatedMinutes,
-		&l.GenerationJobID, ts(&l.CreatedAt), nts(&l.PublishedAt))
-	return l, err
+		&l.GenerationJobID, ts(&l.CreatedAt), nts(&l.PublishedAt), &minutesEstimated, &l.Reviewed)
+	if err != nil {
+		return l, err
+	}
+	l.ReviewState = models.LectureReviewState(l.Reviewed, l.Flagged)
+	if !minutesEstimated {
+		l.EstimatedMinutes = contentMinutes(l.Content, l.EstimatedMinutes)
+	}
+	return l, nil
 }
 
-// NewLecture is the insert payload. Version is assigned by InsertLecture.
+// contentMinutes is learning.EstimateMinutes of stored content (lectures saved
+// before the estimate recorded section sums); fallback when it does not decode.
+func contentMinutes(raw []byte, fallback int) int {
+	var c lecture.Content
+	if len(raw) == 0 || json.Unmarshal(raw, &c) != nil {
+		return fallback
+	}
+	return learning.EstimateMinutes(c)
+}
+
+// NewLecture is the insert payload. Version is assigned by InsertLecture;
+// EstimatedMinutes must be learning.EstimateMinutes of the content.
 type NewLecture struct {
 	ConceptID        string
 	ObjectiveIDs     []string
@@ -61,11 +83,11 @@ func (s *SQLiteStore) InsertLecture(ctx context.Context, l NewLecture) (models.L
 		if _, err := c.exec(ctx, `
 			INSERT INTO lectures (id, concept_id, objective_ids, objective_key, depth, kind, status, version,
 				title, content, content_hash, sources, model, prompt_version, requested_by,
-				flagged, flag_reason, estimated_minutes, generation_job_id, published_at)
+				flagged, flag_reason, estimated_minutes, generation_job_id, published_at, minutes_estimated)
 			SELECT $1, $2, $3, $4, $5, $6, $7,
 				(SELECT COALESCE(MAX(version), 0) + 1 FROM lectures WHERE concept_id = $2 AND objective_key = $4 AND depth = $5),
 				$8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
-				CASE WHEN $7 = 'published' THEN NOW() END`,
+				CASE WHEN $7 = 'published' THEN NOW() END, 1`,
 			id, l.ConceptID, nonNil(l.ObjectiveIDs), l.ObjectiveKey, l.Depth, l.Kind, l.Status,
 			l.Title, nonNullJSON(l.Content, "{}"), l.ContentHash, nonNullJSON(l.Sources, "[]"), l.Model, l.PromptVersion,
 			requestedBy, l.Flagged, l.FlagReason, l.EstimatedMinutes, jobID); err != nil {
@@ -125,6 +147,41 @@ func (s *SQLiteStore) PublishedLectureCovering(ctx context.Context, userID, conc
 		return models.Lecture{}, ErrNotFound
 	}
 	return l, err
+}
+
+// LectureSummaries returns the @@summary text of the given lectures the user
+// may see (library, or instant ones they requested), by lecture id; lectures
+// without a summary block are left out.
+func (s *SQLiteStore) LectureSummaries(ctx context.Context, userID string, lectureIDs []string) (map[string]string, error) {
+	out := map[string]string{}
+	if len(lectureIDs) == 0 {
+		return out, nil
+	}
+	type row struct {
+		id  string
+		raw json.RawMessage
+	}
+	rows, err := collect(s.c().query(ctx, `
+		SELECT l.id, l.content FROM lectures l
+		WHERE l.id IN (SELECT value FROM json_each($1)) AND (l.kind = 'library' OR l.requested_by = $2)`, lectureIDs, userID),
+		func(r rowScanner) (row, error) {
+			var x row
+			err := r.Scan(&x.id, rawJSON(&x.raw))
+			return x, err
+		})
+	if err != nil {
+		return nil, fmt.Errorf("lecture summaries: %w", err)
+	}
+	for _, x := range rows {
+		var c lecture.Content
+		if err := json.Unmarshal(x.raw, &c); err != nil {
+			return nil, fmt.Errorf("decode lecture %s: %w", x.id, err)
+		}
+		if text := c.SummaryText(); text != "" {
+			out[x.id] = text
+		}
+	}
+	return out, nil
 }
 
 // GetLecture loads a lecture with the user's progress and its reviews.

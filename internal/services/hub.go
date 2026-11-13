@@ -5,13 +5,45 @@ import (
 	"time"
 )
 
-// Stream event types sent over SSE.
+// Stream event types sent over SSE (event: <type>, data: JSON).
+//
+// Since quality design v2.2 §2.1 the draft text is not streamed: generation
+// reports stage events, and the legacy terminal events (done / error) follow
+// the terminal stage so older clients still finish. delta is no longer sent.
 const (
-	EventDelta  = "delta"  // {"text": "..."}
-	EventStatus = "status" // {"stage": "generating" | "validating"}
-	EventDone   = "done"   // {"lectureId", "status", "flagged", "issues"}
-	EventError  = "error"  // {"code", "message"}
+	EventStage  = "stage"  // StageEvent
+	EventStatus = "status" // legacy {"stage": ...}: only for a job running in another process
+	EventDone   = "done"   // legacy, after stage published: {"lectureId", "status", "flagged", "issues"}
+	EventError  = "error"  // legacy, after stage failed: {"code", "message"} (message = user-facing summary)
 )
+
+// Generation stages (StageEvent.Stage).
+const (
+	StageWriting   = "writing"   // first draft
+	StageChecking  = "checking"  // format validation + machine checks
+	StageReviewing = "reviewing" // review pass
+	StageRewriting = "rewriting" // rewriting with the findings (attempt = rewrite number)
+	StagePublished = "published" // saved and published (lectureId)
+	StageFailed    = "failed"    // not published (reasons)
+)
+
+// StageEvent is the data of an EventStage. Attempt is the rewrite number of
+// the draft in progress (0 = first draft, 1..MaxAttempts = rewrites);
+// MaxAttempts is the maximum number of rewrites.
+type StageEvent struct {
+	Type        string   `json:"type"`
+	Stage       string   `json:"stage"`
+	Attempt     int      `json:"attempt"`
+	MaxAttempts int      `json:"maxAttempts"`
+	LectureID   string   `json:"lectureId,omitempty"`
+	Reasons     []string `json:"reasons,omitempty"`
+}
+
+// stageEvent builds an EventStage.
+func stageEvent(stage string, attempt, maxAttempts int, lectureID string, reasons []string) Event {
+	return Event{Type: EventStage, Data: StageEvent{Type: EventStage, Stage: stage, Attempt: attempt,
+		MaxAttempts: maxAttempts, LectureID: lectureID, Reasons: reasons}}
+}
 
 // Event is one stream event.
 type Event struct {

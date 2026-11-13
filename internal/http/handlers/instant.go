@@ -52,9 +52,15 @@ func (h *LearnHandler) InstantCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 // InstantStream handles GET /v1/lectures/instant/{jobId}/stream as SSE.
-// Events: status, delta {text}, done {lectureId,status,flagged,issues}, error {code,message}.
+// Events (quality design v2.2 §2.1 — the draft text is not streamed):
+//   - stage {type:"stage", stage:writing|checking|reviewing|rewriting|published|failed,
+//     attempt, maxAttempts, lectureId?, reasons?} — every step; published carries lectureId,
+//     failed carries up to 3 learner-facing reasons
+//   - done {lectureId,status,flagged,issues} after stage published, error {code,message}
+//     after stage failed (legacy terminal events for older clients)
+//
 // Late subscribers receive a replay; for unknown/finished jobs the final state
-// is read from generation_jobs.
+// is read from generation_jobs (services.InstantFinalEvents).
 func (h *LearnHandler) InstantStream(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -88,7 +94,11 @@ func (h *LearnHandler) InstantStream(w http.ResponseWriter, r *http.Request) {
 	replay, ch, cancel, live := h.Svc.Hub.Subscribe(jobID)
 	defer cancel()
 	if !live {
-		send(finalEvent(job.Status, job.LectureID, job.Reason, job.Error))
+		for _, e := range services.InstantFinalEvents(job) {
+			if !send(e) {
+				return
+			}
+		}
 		return
 	}
 	for _, e := range replay {
@@ -115,16 +125,6 @@ func (h *LearnHandler) InstantStream(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-}
-
-func finalEvent(status, lectureID, reason, errMsg string) services.Event {
-	switch status {
-	case "succeeded":
-		return services.Event{Type: services.EventDone, Data: map[string]any{"lectureId": lectureID, "status": reason}}
-	case "failed", "skipped":
-		return services.Event{Type: services.EventError, Data: map[string]string{"code": status, "message": errMsg}}
-	}
-	return services.Event{Type: services.EventStatus, Data: map[string]string{"stage": status}}
 }
 
 // JobStatus handles GET /v1/jobs/{jobId}.

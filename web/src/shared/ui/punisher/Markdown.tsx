@@ -41,13 +41,22 @@ const components: Components = {
       {children}
     </pre>
   ),
+  // 좁은 폭(412px)에서 열을 찌그러뜨리지 않고 가로로 스크롤한다 — 표는 내용 폭(칸당 최대 18rem), 감싼 상자가 스크롤.
   table: ({ children }) => (
-    <div className="my-3 overflow-x-auto">
-      <table className="w-full border-collapse text-sm">{children}</table>
+    <div role="region" aria-label="표" tabIndex={0} className="my-3 max-w-full overflow-x-auto">
+      <table className="w-max min-w-full border-collapse text-sm">{children}</table>
     </div>
   ),
-  th: ({ children }) => <th className="border border-line bg-canvas-subtle px-2 py-1 text-left font-semibold">{children}</th>,
-  td: ({ children }) => <td className="border border-line px-2 py-1">{children}</td>,
+  th: ({ children }) => (
+    <th className="border border-line bg-canvas-subtle px-2 py-1 text-left align-top font-semibold">
+      <div className="max-w-[18rem] break-keep">{children}</div>
+    </th>
+  ),
+  td: ({ children }) => (
+    <td className="border border-line px-2 py-1 align-top">
+      <div className="max-w-[18rem] break-keep">{children}</div>
+    </td>
+  ),
 };
 
 /**

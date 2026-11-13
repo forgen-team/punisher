@@ -57,6 +57,7 @@ func Diagnostic(c DiagnosticContext) string {
 		task = fmt.Sprintf(task, c.Count)
 	}
 	b.WriteString(task)
+	writeFactualRules(&b)
 	writeRevisions(&b, c.Revisions)
 	return b.String()
 }

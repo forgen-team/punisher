@@ -55,6 +55,10 @@ type Store interface {
 
 	// lectures
 	InsertLecture(ctx context.Context, l NewLecture) (models.Lecture, error)
+	LectureSummaries(ctx context.Context, userID string, lectureIDs []string) (map[string]string, error)
+	RequestLectureReview(ctx context.Context, lectureID string) error
+	LecturesToReview(ctx context.Context, limit int) ([]models.Lecture, error)
+	SetLectureReviewOutcome(ctx context.Context, lectureID string, passed bool, reason string) error
 	InsertReview(ctx context.Context, lectureID string, r models.LectureReview) error
 	LatestLectureForTarget(ctx context.Context, kind, conceptID, objectiveKey string, depth int, statuses []string) (models.Lecture, error)
 	PublishedLectureCovering(ctx context.Context, userID, conceptID string, depth int, objectiveIDs []string) (models.Lecture, error)

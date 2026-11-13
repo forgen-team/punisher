@@ -36,7 +36,7 @@ export function LectureAssistSheet({ open, onClose, lectureId, conceptId, getAnc
   const panelId = useId();
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="질문과 메모" description="지금 읽는 위치에 연결됩니다" desktop="side">
+    <BottomSheet open={open} onClose={onClose} title="질문과 메모" desktop="side">
       <SegmentedTabs
         aria-label="질문 또는 메모"
         items={TABS.map((t) => ({ ...t, panelId }))}

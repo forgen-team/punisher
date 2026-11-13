@@ -90,7 +90,7 @@ export function QuestionsPanel({ lectureId, getAnchor, onJump }: QuestionsPanelP
   return (
     <div className="flex flex-col gap-3">
       <form onSubmit={submit} className="flex flex-col gap-2">
-        <Field label="지금 읽는 부분에 대해 질문" hint="섹션 문맥과 내 학습 이력을 함께 보내 답변합니다">
+        <Field label="지금 읽는 부분에 대해 질문">
           <FieldTextarea value={text} maxLength={2000} rows={3} onChange={(event) => setText(event.target.value)} />
         </Field>
         <Button type="submit" size="sm" variant="secondary" loading={ask.isPending} disabled={!text.trim()} className="self-end">

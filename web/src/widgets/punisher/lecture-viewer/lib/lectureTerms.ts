@@ -11,6 +11,9 @@ export interface LectureTerm {
 
 const INLINE_TERM = /\[([^\]]+)\]\(term:([\w.-]+)\)/g;
 
+/** 본문을 마크다운으로 그리는 블록 — 문장 안 용어 링크가 있을 수 있다(서버 lecture.markdownBodied 와 같음). */
+const MARKDOWN_BODIED = new Set<string>(["markdown", "misconception", "keypoint", "exercise", "answer", "summary"]);
+
 /**
  * 강의에 나온 용어 목록(보조 열 '용어' 탭) — 용어 블록과 문장 안 [용어](term:id) 링크를 나온 순서대로,
  * 같은 개념은 한 번만.
@@ -27,7 +30,7 @@ export function extractLectureTerms(content: Pick<LectureContent, "sections">): 
         add(block.conceptId, block.term ?? "", section.anchor);
         continue;
       }
-      if (block.type !== "markdown" && block.type !== "misconception") { continue; }
+      if (!MARKDOWN_BODIED.has(block.type)) { continue; }
       for (const match of toInlineTermLinks(block.text ?? "").matchAll(INLINE_TERM)) {
         add(match[2], match[1], section.anchor);
       }

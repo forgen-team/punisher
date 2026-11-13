@@ -19,6 +19,8 @@ type SetContext struct {
 	ObjectiveIDs []string
 	// Anchors: section/block anchors of the lecture (rubric.anchor must be one).
 	Anchors map[string]bool
+	// LectureCode: the lecture's code/log blocks (a predict item must not reuse one — design v2.2 §4).
+	LectureCode []string
 }
 
 var formats = map[string]bool{FormatRecall: true, FormatPredict: true, FormatApply: true, FormatIntegrative: true}
@@ -90,6 +92,9 @@ func validateItem(it Item, sc SetContext, label string) []string {
 	}
 	if len(it.Material) > 0 && !isJSONObject(it.Material) {
 		p = append(p, label+": material 은 JSON 객체입니다")
+	}
+	if it.Format == FormatPredict && CopiesLectureCode(it.Material, sc.LectureCode) {
+		p = append(p, label+": predict 문항의 material.code 가 강의의 코드 블록과 같습니다. 강의에 없는 새 입력·새 코드로 바꾸세요")
 	}
 	return p
 }

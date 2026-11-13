@@ -31,7 +31,7 @@ import type { PromptHistoryEntry, PromptPreview, PromptSaveResponse, PromptsResp
 import type { ChapterDraftResponse, ChapterSuggestionsResponse } from "./chapterTypes";
 import type { CompletedArea, CompletedItem, Inquiry, InquiryFollowup } from "./inquiryTypes";
 import type { CheckDetail, ConceptMastery, DiagnosticChoice, DiagnosticRequest } from "./checkTypes";
-import type { CheckHistoryPage, ConceptMasterySummary, MasteryMetrics, ReviewSummary } from "./reviewTypes";
+import type { CheckHistoryKind, CheckHistoryPage, ConceptMasterySummary, MasteryMetrics, ReviewSummary } from "./reviewTypes";
 import type { Misconception, MisconceptionStatus } from "./misconceptionTypes";
 
 const enc = encodeURIComponent;
@@ -212,7 +212,7 @@ export const punisherApi = {
   /** 자기 채점 — 답을 보낸 뒤(current.canSelfGrade)에만. */
   selfGradeCheck: (id: string, verdict: "correct" | "partial" | "incorrect") =>
     punisherFetch<CheckDetail>(`/checks/${enc(id)}/self-grade`, { method: "POST", json: { verdict } }),
-  listCheckHistory: (params: { kind?: "check" | "review"; limit?: number; cursor?: string } = {}) =>
+  listCheckHistory: (params: { kind?: CheckHistoryKind; limit?: number; cursor?: string } = {}) =>
     punisherFetch<CheckHistoryPage>(`/checks/history${query(params)}`),
   // 간격 복습 — 오늘 세션 생성/반환(201·200·202), 할 것이 없으면 409 NO_REVIEWS.
   startReview: () => punisherFetch<CheckDetail>("/reviews", { method: "POST" }),

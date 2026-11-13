@@ -250,9 +250,20 @@ func RenderSection(s lecture.Section) string {
 			for _, src := range blk.Sources {
 				fmt.Fprintf(&b, "[출처] %s %s\n", src.Title, src.URL)
 			}
+		case lecture.BlockTrace, lecture.BlockChart, lecture.BlockDiff:
+			fmt.Fprintf(&b, "[%s %s] %s\n", sectionBlockLabels[blk.Type], blk.Lang, blk.Data)
+		case lecture.BlockKeypoint, lecture.BlockPause, lecture.BlockExercise, lecture.BlockAnswer, lecture.BlockSummary:
+			fmt.Fprintf(&b, "[%s] %s\n", sectionBlockLabels[blk.Type], blk.Text)
 		default:
 			b.WriteString(blk.Text + "\n")
 		}
 	}
 	return b.String()
+}
+
+// sectionBlockLabels name the material blocks in prompt text.
+var sectionBlockLabels = map[string]string{
+	lecture.BlockTrace: "손계산 표", lecture.BlockChart: "차트", lecture.BlockDiff: "전후 비교",
+	lecture.BlockKeypoint: "핵심", lecture.BlockPause: "예측 질문", lecture.BlockExercise: "직접 해 보기",
+	lecture.BlockAnswer: "풀이", lecture.BlockSummary: "한 장 요약",
 }

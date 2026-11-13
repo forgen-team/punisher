@@ -16,8 +16,12 @@ const ChapterRunwayDays = 14
 // DefaultDailyMinutes is the daily pace when the user has not set one.
 const DefaultDailyMinutes = 30
 
-// RemainingMinutes estimates what is left to learn: one lecture
-// (DefaultLectureMinutes) per depth that still has a pending objective, over
+// SessionMinutesPerLecture: one lecture's study session (lecture ~20 + prediction
+// + check + review ≈ 30 minutes, quality design v2.2 Q3) — the runway unit.
+const SessionMinutesPerLecture = 30
+
+// RemainingMinutes estimates what is left to learn: one study session
+// (SessionMinutesPerLecture) per depth that still has a pending objective, over
 // concepts that are learnable (not completed/known, not merely proposed).
 func RemainingMinutes(concepts map[string]TodayConcept) int {
 	total := 0
@@ -25,7 +29,7 @@ func RemainingMinutes(concepts map[string]TodayConcept) int {
 		if c.Proposed || IsDone(NormalizeState(c.State)) {
 			continue
 		}
-		total += c.PendingDepths * DefaultLectureMinutes
+		total += c.PendingDepths * SessionMinutesPerLecture
 	}
 	return total
 }

@@ -272,7 +272,8 @@ func TestReviewBacklogQueuesNewChecks(t *testing.T) {
 		t.Fatalf("backlogged summary = %+v (%v)", sum, err)
 	}
 	if today, err := s.Today(ctx, user, 5); err != nil || today.Review.Due != 4 || !today.Review.Backlogged || today.Review.Queued != 2 ||
-		today.Review.EstimatedMinutes != 1 || today.Review.LectureMinutes != 30 {
+		today.Review.EstimatedMinutes != 1 || today.Review.LectureMinutes != learning.DefaultLectureMinutes ||
+		today.Session.ReviewMinutes != 1 || today.Session.CheckMinutes != 7 {
 		t.Fatalf("today review = %+v (%v)", today.Review, err)
 	}
 

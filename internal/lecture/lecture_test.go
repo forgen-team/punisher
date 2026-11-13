@@ -12,9 +12,9 @@ title: 프로세스는 무엇을 가지고 있나
 objectives: os.process#1, os.process#2
 new_scope: 프로세스가 가진 자원과 PID
 prerequisites: os.kernel-and-syscall
-@@section situation_question minutes=3 title=상황과 오늘의 질문
+@@section situation_question minutes=2 title=상황과 오늘의 질문
 배포 후 서비스가 사라졌다.
-@@section principles minutes=12 title=배경과 원리
+@@section principles minutes=9 title=배경과 원리
 @@markdown
 프로세스는 실행 중인 프로그램이다.
 @@term concept=os.kernel-and-syscall term=시스템 콜
@@ -25,7 +25,7 @@ prerequisites: os.kernel-and-syscall
 스레드와 프로세스는 같다? 아니다.
 @@sources
 - [fork(2)](https://man7.org/linux/man-pages/man2/fork.2.html)
-@@section walkthrough minutes=10 title=코드와 로그로 보기
+@@section walkthrough minutes=6 title=코드와 로그로 보기
 @@code lang=bash
 ps -ef --forest
 @@ -1,2 +1,2 @@ diff hunk stays in the block
@@ -33,7 +33,7 @@ ps -ef --forest
 graph TD; A-->B
 @@sources
 - [ps(1)](https://man7.org/linux/man-pages/man1/ps.1.html)
-@@section judgment_next minutes=5 title=판단 기준과 다음 연결
+@@section judgment_next minutes=3 title=판단 기준과 다음 연결
 @@markdown
 다음은 컨테이너.
 @@end
@@ -52,7 +52,7 @@ func TestParseMarkupBuildsSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if c.Title == "" || len(c.Sections) != 4 || c.EstimatedMinutes != 30 || c.ConceptID != "os.process" {
+	if c.Title == "" || len(c.Sections) != 4 || c.EstimatedMinutes != 20 || c.ConceptID != "os.process" {
 		t.Fatalf("unexpected content: %+v", c)
 	}
 	principles := c.Sections[1]
@@ -125,8 +125,8 @@ func TestValidateRules(t *testing.T) {
 		{"wrong order", func(s string) string {
 			return strings.Replace(s, "@@section situation_question", "@@section principles_x", 1)
 		}, `expected section "situation_question"`},
-		{"too short", func(s string) string { return strings.Replace(s, "minutes=12", "minutes=2", 1) }, "total minutes"},
-		{"too long", func(s string) string { return strings.Replace(s, "minutes=12", "minutes=20", 1) }, "total minutes"},
+		{"too short", func(s string) string { return strings.Replace(s, "minutes=9", "minutes=2", 1) }, "total minutes"},
+		{"too long", func(s string) string { return strings.Replace(s, "minutes=9", "minutes=20", 1) }, "total minutes"},
 		{"unknown term", func(s string) string {
 			return strings.Replace(s, "concept=os.kernel-and-syscall term", "concept=os.nope term", 1)
 		}, "does not exist and is not marked proposed"},

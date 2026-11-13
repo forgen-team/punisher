@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -35,5 +37,13 @@ func TestCheckErrorCode(t *testing.T) {
 	}
 	if got := checkErrorCode(fmt.Errorf("%w: x", services.ErrInvalidCheck)); got != ErrorBadRequest {
 		t.Fatalf("uncoded = %s", got)
+	}
+}
+
+func TestLectureNotReviewedIs409(t *testing.T) {
+	rec := httptest.NewRecorder()
+	writeCheckError(rec, httptest.NewRequest(http.MethodPost, "/v1/checks", nil), "start check", services.ErrLectureNotReviewed)
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), `"LECTURE_NOT_REVIEWED"`) {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
 	}
 }

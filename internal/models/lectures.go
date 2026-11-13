@@ -7,29 +7,51 @@ import (
 
 // Lecture is an immutable, versioned lecture record.
 type Lecture struct {
-	ID               string           `json:"id"`
-	ConceptID        string           `json:"conceptId"`
-	ObjectiveIDs     []string         `json:"objectiveIds"`
-	ObjectiveKey     string           `json:"objectiveKey"`
-	Depth            int              `json:"depth"`
-	Kind             string           `json:"kind"`
-	Status           string           `json:"status"`
-	Version          int              `json:"version"`
-	Title            string           `json:"title"`
-	Content          json.RawMessage  `json:"content,omitempty"`
-	ContentHash      string           `json:"contentHash"`
-	Sources          json.RawMessage  `json:"sources"`
-	Model            string           `json:"model"`
-	PromptVersion    string           `json:"promptVersion"`
-	RequestedBy      string           `json:"-"`
-	Flagged          bool             `json:"flagged"`
-	FlagReason       string           `json:"flagReason,omitempty"`
+	ID            string          `json:"id"`
+	ConceptID     string          `json:"conceptId"`
+	ObjectiveIDs  []string        `json:"objectiveIds"`
+	ObjectiveKey  string          `json:"objectiveKey"`
+	Depth         int             `json:"depth"`
+	Kind          string          `json:"kind"`
+	Status        string          `json:"status"`
+	Version       int             `json:"version"`
+	Title         string          `json:"title"`
+	Content       json.RawMessage `json:"content,omitempty"`
+	ContentHash   string          `json:"contentHash"`
+	Sources       json.RawMessage `json:"sources"`
+	Model         string          `json:"model"`
+	PromptVersion string          `json:"promptVersion"`
+	RequestedBy   string          `json:"-"`
+	Flagged       bool            `json:"flagged"`
+	FlagReason    string          `json:"flagReason"`
+	// ReviewState: unreviewed (no pass review yet) | passed | flagged (a review found problems).
+	ReviewState string `json:"reviewState"`
+	// Reviewed: a pass review exists (check items are only written for reviewed lectures).
+	Reviewed         bool             `json:"-"`
 	EstimatedMinutes int              `json:"estimatedMinutes"`
 	GenerationJobID  string           `json:"generationJobId,omitempty"`
 	CreatedAt        time.Time        `json:"createdAt"`
 	PublishedAt      *time.Time       `json:"publishedAt,omitempty"`
 	Progress         *LectureProgress `json:"progress,omitempty"`
 	Reviews          []LectureReview  `json:"reviews,omitempty"`
+}
+
+// Lecture review states (quality design v2.2 §2.2).
+const (
+	ReviewUnreviewed = "unreviewed"
+	ReviewPassed     = "passed"
+	ReviewFlagged    = "flagged"
+)
+
+// LectureReviewState: flagged wins (a later review found problems), then a pass record.
+func LectureReviewState(reviewed, flagged bool) string {
+	switch {
+	case flagged:
+		return ReviewFlagged
+	case reviewed:
+		return ReviewPassed
+	}
+	return ReviewUnreviewed
 }
 
 // LectureProgress is the caller's reading position.

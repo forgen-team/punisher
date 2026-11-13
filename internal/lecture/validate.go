@@ -3,14 +3,14 @@ package lecture
 import (
 	"fmt"
 	"net/url"
-	"regexp"
 	"strings"
 )
 
-// Minutes bounds for a whole lecture (design §3: ~30 minutes).
+// Minutes bounds of the section minutes a new lecture declares (quality
+// design v2.2 §3.2: ~20 minutes). The displayed time is learning.EstimateMinutes.
 const (
-	MinTotalMinutes = 25
-	MaxTotalMinutes = 35
+	MinTotalMinutes = 15
+	MaxTotalMinutes = 25
 )
 
 // ValidationContext carries the facts the validator checks against.
@@ -113,6 +113,7 @@ func validateSection(path string, s Section, vc ValidationContext, add func(stri
 	for j, b := range s.Blocks {
 		bpath := fmt.Sprintf("%s.blocks[%d]", path, j)
 		validateBlock(bpath, b, vc, add)
+		validateSequence(bpath, s.Blocks, j, add)
 		if b.Type == BlockSources {
 			sources += len(b.Sources)
 		} else {
@@ -124,6 +125,47 @@ func validateSection(path string, s Section, vc ValidationContext, add func(stri
 	}
 	if FactualSections[s.Kind] && sources == 0 {
 		add(path, "factual section %q must cite at least one source", s.Kind)
+	}
+}
+
+// validateSequence checks the pairing rules of §6: @@pause is followed by
+// the output it hides (log/code), @@exercise by its @@answer, and an @@answer
+// only follows an @@exercise.
+func validateSequence(path string, blocks []Block, j int, add func(string, string, ...any)) {
+	next := ""
+	if j+1 < len(blocks) {
+		next = blocks[j+1].Type
+	}
+	switch blocks[j].Type {
+	case BlockPause:
+		if next != BlockLog && next != BlockCode {
+			add(path, "@@pause must be followed directly by the @@log or @@code it asks about")
+		}
+	case BlockExercise:
+		if next != BlockAnswer {
+			add(path, "@@exercise must be followed directly by its @@answer")
+		}
+	case BlockAnswer:
+		if j == 0 || blocks[j-1].Type != BlockExercise {
+			add(path, "@@answer must come right after its @@exercise")
+		}
+	}
+}
+
+// validateProse checks a markdown-bodied block: text present, fences closed,
+// no mermaid outside @@mermaid, no directive inside the text.
+func validateProse(path string, b Block, add func(string, string, ...any)) {
+	if strings.TrimSpace(b.Text) == "" {
+		add(path, "%s block is empty", b.Type)
+	}
+	if UnclosedFence(b.Text) {
+		add(path, "%s block has an unclosed ``` code fence (the rest of the text would render as code)", b.Type)
+	}
+	if why := MermaidOutsideBlock(b.Text); why != "" {
+		add(path, "mermaid diagram inside a %s block (%s) — put the diagram in its own @@mermaid block, without ``` fences", b.Type, why)
+	}
+	if d := StrayDirective(b.Text); d != "" {
+		add(path, "%s inside the text of a %s block — directives go only at the very start of a line; link a term in a sentence as [용어](term:개념id)", d, b.Type)
 	}
 }
 
@@ -140,25 +182,35 @@ func ValidateBlock(path string, b Block, vc ValidationContext) []Issue {
 
 func validateBlock(path string, b Block, vc ValidationContext, add func(string, string, ...any)) {
 	switch b.Type {
-	case BlockMarkdown, BlockMermaid, BlockMisconception:
+	case BlockMermaid:
 		if strings.TrimSpace(b.Text) == "" {
 			add(path, "%s block is empty", b.Type)
 		}
-		if b.Type != BlockMermaid && UnclosedFence(b.Text) {
-			add(path, "%s block has an unclosed ``` code fence (the rest of the text would render as code)", b.Type)
+		if why := MermaidSwallowedProse(b.Text); why != "" {
+			add(path, "mermaid block swallowed lecture prose (%s) — end the diagram and start a new @@markdown block", why)
 		}
-		if b.Type != BlockMermaid {
-			if why := MermaidOutsideBlock(b.Text); why != "" {
-				add(path, "mermaid diagram inside a %s block (%s) — put the diagram in its own @@mermaid block, without ``` fences", b.Type, why)
-			}
-			if d := StrayDirective(b.Text); d != "" {
-				add(path, "%s inside the text of a %s block — directives go only at the very start of a line; link a term in a sentence as [용어](term:개념id)", d, b.Type)
-			}
+	case BlockMarkdown, BlockMisconception, BlockExercise, BlockAnswer:
+		validateProse(path, b, add)
+	case BlockKeypoint:
+		if b.Kind != KeypointDefinition && b.Kind != KeypointCaution && b.Kind != KeypointRule {
+			add(path, "keypoint kind must be definition|caution|rule, got %q", b.Kind)
 		}
-		if b.Type == BlockMermaid {
-			if why := MermaidSwallowedProse(b.Text); why != "" {
-				add(path, "mermaid block swallowed lecture prose (%s) — end the diagram and start a new @@markdown block", why)
-			}
+		validateProse(path, b, add)
+	case BlockSummary:
+		validateProse(path, b, add)
+		if n := countBullets(b.Text); n < SummaryMinBullet || n > SummaryMaxBullet {
+			add(path, "summary needs %d..%d bullets, got %d", SummaryMinBullet, SummaryMaxBullet, n)
+		}
+	case BlockPause:
+		if strings.TrimSpace(b.Text) == "" || strings.Contains(strings.TrimSpace(b.Text), "\n") {
+			add(path, "pause block is one question line")
+		}
+	case BlockTrace, BlockChart, BlockDiff:
+		for _, msg := range structuredProblems(b) {
+			add(path, "%s", msg)
+		}
+		if b.Type == BlockDiff && strings.TrimSpace(b.Lang) == "" {
+			add(path, "diff block needs lang")
 		}
 	case BlockCode, BlockLog:
 		if strings.TrimSpace(b.Text) == "" {
@@ -185,167 +237,6 @@ func validateBlock(path string, b Block, vc ValidationContext, add func(string, 
 	default:
 		add(path, "unknown block type %q", b.Type)
 	}
-}
-
-// mermaidProseRun: this many consecutive prose lines after a blank line means
-// the diagram's end was missed and the following text fell into it.
-const mermaidProseRun = 2
-
-var (
-	hangulRe        = regexp.MustCompile(`[\p{Hangul}]`)
-	mdHeadingRe     = regexp.MustCompile(`^#{1,6}\s`)
-	mermaidSyntaxRe = regexp.MustCompile(`-->|---|==>|-\.->|->>|-->>|--x|:::|^\s*(flowchart|graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|journey|participant|actor|subgraph|end|classDef|class|style|linkStyle|click|note|loop|alt|else|opt|par|rect|autonumber|activate|deactivate|state|direction|section|title|%%)\b|^\s*[\w.-]+\s*[\[\(\{>]`)
-)
-
-// MermaidSwallowedProse returns why a mermaid source contains lecture prose
-// ("" when it looks like a diagram): a markdown heading (## ), an @@ directive,
-// or, after a blank line, mermaidProseRun+ consecutive Korean lines that are
-// not diagram syntax.
-func MermaidSwallowedProse(src string) string {
-	afterBlank, run := false, 0
-	for _, line := range strings.Split(src, "\n") {
-		t := strings.TrimSpace(line)
-		switch {
-		case mdHeadingRe.MatchString(t):
-			return "markdown heading " + clipLine(t)
-		case strings.Contains(t, "@@"):
-			return "@@ directive " + clipLine(t)
-		case t == "":
-			afterBlank, run = true, 0
-			continue
-		}
-		if afterBlank && hangulRe.MatchString(t) && !mermaidSyntaxRe.MatchString(t) {
-			run++
-			if run >= mermaidProseRun {
-				return "prose paragraph " + clipLine(t)
-			}
-			continue
-		}
-		afterBlank, run = false, 0
-	}
-	return ""
-}
-
-var (
-	strayDirectiveRe = regexp.MustCompile(`@@(?:lecture|section|end|markdown|mermaid|code|log|misconception|term|sources)\b`)
-	inlineCodeRe     = regexp.MustCompile("`[^`]*`")
-)
-
-// StrayDirective returns the first block directive left inside markdown text
-// ("" when none). Directives only work at the start of a line, so anywhere
-// else the model's "@@term" is meaningless and the sentence loses a word
-// (2026-11-10: "이 점은 @@term 에서 다루는 ALU 설계"). Code fences and inline
-// code are exempt so a lecture can still show the literal text.
-func StrayDirective(text string) string {
-	open := ""
-	for _, line := range strings.Split(text, "\n") {
-		t := strings.TrimLeft(line, " ")
-		if marker := fenceMarker(t); marker != "" && len(line)-len(t) <= 3 {
-			if open == "" {
-				open = marker
-				continue
-			}
-			if marker[0] == open[0] && len(marker) >= len(open) && strings.TrimSpace(t[len(marker):]) == "" {
-				open = ""
-				continue
-			}
-		}
-		if open != "" {
-			continue
-		}
-		if d := strayDirectiveRe.FindString(inlineCodeRe.ReplaceAllString(line, "")); d != "" {
-			return d
-		}
-	}
-	return ""
-}
-
-// mermaidHeaderRe matches a line that is only a mermaid diagram header
-// ("sequenceDiagram", "flowchart LR", "graph TD", ...). Prose that merely
-// mentions the word does not match because the whole line must be the header.
-var mermaidHeaderRe = regexp.MustCompile(`^\s*(sequenceDiagram|classDiagram|erDiagram|gantt|journey|mindmap|timeline|stateDiagram(-v2)?|pie(\s+(showData|title\b.*))?|(flowchart|graph)\s+(TD|TB|BT|RL|LR))\s*$`)
-
-// MermaidOutsideBlock returns why markdown text carries a mermaid diagram
-// that the renderer would show as plain code ("" when it does not): a
-// ```mermaid fence, a plain fence whose first line is a diagram header, or a
-// bare header line outside any fence (2026-11-09: a sequenceDiagram appeared
-// as raw code in an instant lecture).
-func MermaidOutsideBlock(text string) string {
-	open, lang, first := "", "", true
-	for _, line := range strings.Split(text, "\n") {
-		t := strings.TrimLeft(line, " ")
-		indented := len(line)-len(t) > 3
-		if marker := fenceMarker(t); marker != "" && !indented {
-			if open == "" {
-				open, lang, first = marker, strings.ToLower(strings.TrimSpace(t[len(marker):])), true
-				if lang == "mermaid" {
-					return "```mermaid code fence"
-				}
-				continue
-			}
-			if marker[0] == open[0] && len(marker) >= len(open) && strings.TrimSpace(t[len(marker):]) == "" {
-				open = ""
-				continue
-			}
-		}
-		if open != "" {
-			if first && strings.TrimSpace(line) != "" {
-				first = false
-				if (lang == "" || lang == "text") && mermaidHeaderRe.MatchString(line) {
-					return "code fence starting with " + clipLine(strings.TrimSpace(line))
-				}
-			}
-			continue
-		}
-		if mermaidHeaderRe.MatchString(line) {
-			return "bare diagram header " + clipLine(strings.TrimSpace(line))
-		}
-	}
-	return ""
-}
-
-func clipLine(s string) string {
-	r := []rune(s)
-	if len(r) > 40 {
-		return string(r[:40]) + "…"
-	}
-	return s
-}
-
-// UnclosedFence reports whether markdown text opens a ``` / ~~~ code fence it
-// never closes (CommonMark: a fence closes with the same character, at least
-// as long, on its own line).
-func UnclosedFence(text string) bool {
-	open := ""
-	for _, line := range strings.Split(text, "\n") {
-		t := strings.TrimLeft(line, " ")
-		if len(line)-len(t) > 3 {
-			continue
-		}
-		marker := fenceMarker(t)
-		if marker == "" {
-			continue
-		}
-		if open == "" {
-			open = marker
-		} else if marker[0] == open[0] && len(marker) >= len(open) && strings.TrimSpace(t[len(marker):]) == "" {
-			open = ""
-		}
-	}
-	return open != ""
-}
-
-func fenceMarker(line string) string {
-	for _, ch := range []byte{'`', '~'} {
-		n := 0
-		for n < len(line) && line[n] == ch {
-			n++
-		}
-		if n >= 3 {
-			return line[:n]
-		}
-	}
-	return ""
 }
 
 func isHTTPSURL(raw string) bool {

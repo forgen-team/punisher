@@ -43,6 +43,10 @@ type Config struct {
 	CheckModel           string
 	CheckRegradeModel    string
 	DailyCheckTokenLimit int
+	// BackfillReviewEnabled: the scheduler reviews stored lectures without a
+	// pass review (lecture quality design v2.2 §2.2; also the lectures already
+	// in a user's database). Runs only when SchedulerEnabled.
+	BackfillReviewEnabled bool
 }
 
 // Load reads PUNISHER_* env vars over the defaults.
@@ -65,13 +69,15 @@ func Load() Config {
 		DailyCallLimit:    readInt("PUNISHER_DAILY_CALL_LIMIT", 0),
 		LibraryAhead:      readInt("PUNISHER_LIBRARY_AHEAD", 1),
 		StudyPregenerate:  readEnv("PUNISHER_STUDY_PREGENERATE", "true") != "false",
-		LectureMaxTokens:  readInt("PUNISHER_LECTURE_MAX_TOKENS", 16000),
+		LectureMaxTokens:  readInt("PUNISHER_LECTURE_MAX_TOKENS", 24000),
 		SchedulerEnabled:  readEnv("PUNISHER_SCHEDULER_ENABLED", "true") != "false",
 		SchedulerInterval: readDuration("PUNISHER_SCHEDULER_INTERVAL", 60*time.Minute),
 
 		CheckModel:           checkModel,
 		CheckRegradeModel:    readEnv("PUNISHER_CHECK_REGRADE_MODEL", otherModel(checkModel, lectureModel, fastModel)),
 		DailyCheckTokenLimit: readInt("PUNISHER_DAILY_CHECK_TOKEN_LIMIT", 0),
+
+		BackfillReviewEnabled: readEnv("PUNISHER_BACKFILL_REVIEW_ENABLED", "true") != "false",
 	}
 }
 

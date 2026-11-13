@@ -175,6 +175,14 @@ export interface TodayResponse {
   nextChapter?: NextChapterPrompt;
   /** 목표 경로 카드 앞의 "○○ 다시 확인"(추천·exhausted 와 별개) */
   recheck?: RecheckCard[];
+  /** 오늘 학습 세션 시간 합계(v2.2 §5) */
+  session?: TodaySession;
+}
+
+export interface TodaySession {
+  lectureMinutes: number;
+  checkMinutes: number;
+  reviewMinutes: number;
 }
 
 export interface PathStep {
@@ -219,7 +227,10 @@ export interface InstantResponse {
   resolution?: Resolution;
 }
 
-export type BlockType = "markdown" | "mermaid" | "code" | "log" | "misconception" | "term" | "sources";
+export type BlockType =
+  | "markdown" | "mermaid" | "code" | "log" | "misconception" | "term" | "sources"
+  // 구조 블록(v2.2 §6) — data 는 trace·chart·diff, kind 는 keypoint 종류
+  | "keypoint" | "trace" | "chart" | "diff" | "pause" | "exercise" | "answer" | "summary";
 
 export interface LectureBlock {
   anchor: string;
@@ -230,13 +241,20 @@ export interface LectureBlock {
   conceptId?: string;
   proposed?: boolean;
   sources?: DocumentLink[];
+  /** 구조 블록 데이터(JSON 객체) — 화면이 검증한 뒤 그린다 */
+  data?: unknown;
+  /** keypoint 종류: definition | caution | rule */
+  kind?: string;
 }
 
 export interface LectureSection {
   anchor: string;
   kind: string;
   title: string;
+  /** 모델이 쓴 분(표시에는 estimatedMinutes 우선) */
   minutes: number;
+  /** 서버 계산 섹션 시간(GET /lectures/{id}, v2.2 §5) — 섹션마다 반올림해 합이 총시간과 1~2분 다를 수 있다 */
+  estimatedMinutes?: number;
   blocks: LectureBlock[];
 }
 
@@ -269,6 +287,8 @@ export interface LectureReview {
   createdAt: string;
 }
 
+export type LectureReviewState = "unreviewed" | "passed" | "flagged";
+
 export interface Lecture {
   id: string;
   conceptId: string;
@@ -282,6 +302,8 @@ export interface Lecture {
   sources: DocumentLink[] | null;
   flagged: boolean;
   flagReason?: string;
+  /** 검수 상태(v2.2) — 없으면 예전 응답(flagged·status 로 판단) */
+  reviewState?: LectureReviewState;
   /** 생성에 쓴 프롬프트 버전 — 내 프롬프트를 썼으면 '+u:<해시8>' 가 붙는다 */
   promptVersion?: string;
   estimatedMinutes: number;
@@ -391,6 +413,7 @@ export interface GenerationJob {
   reason: string;
   error?: string;
   lectureId?: string;
+  startedAt?: string;
 }
 
 export interface MyQuestion extends Question {

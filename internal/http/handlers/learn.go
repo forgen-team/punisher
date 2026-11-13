@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/wooo-jin/punisher/internal/learning"
 	"github.com/wooo-jin/punisher/internal/llm"
 	"github.com/wooo-jin/punisher/internal/services"
 	"github.com/wooo-jin/punisher/internal/store"
@@ -85,7 +86,8 @@ func (h *LearnHandler) Today(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, r, "today", err)
 		return
 	}
-	payload := map[string]any{"items": res.Items, "exhausted": res.Exhausted, "review": res.Review, "recheck": res.Recheck}
+	payload := map[string]any{"items": res.Items, "exhausted": res.Exhausted, "review": res.Review, "recheck": res.Recheck,
+		"session": res.Session}
 	if res.NextChapter != nil {
 		payload["nextChapter"] = res.NextChapter
 	}
@@ -106,6 +108,8 @@ func (h *LearnHandler) GetLecture(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, r, "get lecture", err)
 		return
 	}
+	// 섹션별 시간은 모델이 쓴 minutes 대신 서버 계산값(v2.2 §5)을 함께 준다.
+	lec.Content = learning.WithSectionMinutes(lec.Content)
 	writeJSON(w, http.StatusOK, lec)
 }
 

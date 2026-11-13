@@ -34,6 +34,7 @@ describe("history rows", () => {
     expect(historyTitle(session())).toBe("확인 · 페이지 캐시 · 읽기 경로");
     expect(historyTitle(session({ lectureTitle: "페이지 캐시" }))).toBe("확인 · 페이지 캐시");
     expect(historyTitle(session({ kind: "review", conceptName: undefined, lectureTitle: undefined }))).toBe("복습");
+    expect(historyTitle(session({ kind: "known_verify", lectureTitle: undefined }))).toBe("이미 앎 확인 · 페이지 캐시");
   });
 
   it("shows date, n/N, unaided count and an unfinished status", () => {

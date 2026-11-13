@@ -12,6 +12,7 @@ export { ConceptStateBadge, LectureReviewBadges } from "./ui/StateBadges";
 export { MapStateIcon } from "./ui/MapStateIcon";
 export { groupByParent, type LectureGroup } from "./lib/groupByParent";
 export { lectureHref } from "./lib/lectureHref";
+export { isReadThrough, READ_THROUGH_LABEL } from "./lib/readThrough";
 export * from "./model/prompts";
 export * from "./model/chapters";
 export * from "./model/inquiries";

@@ -5,12 +5,18 @@ import "regexp"
 // inlineTermRe matches an inline concept link in markdown: [표시 용어](term:concept-id).
 var inlineTermRe = regexp.MustCompile(`\[([^\]\n]+)\]\(term:([^)\s]*)\)`)
 
-// InlineTermLinks returns the concept ids linked inline in markdown/misconception blocks.
+// markdownBodied block types render their Text as markdown (inline term links allowed).
+var markdownBodied = map[string]bool{
+	BlockMarkdown: true, BlockMisconception: true, BlockKeypoint: true,
+	BlockExercise: true, BlockAnswer: true, BlockSummary: true,
+}
+
+// InlineTermLinks returns the concept ids linked inline in markdown-bodied blocks.
 func InlineTermLinks(c Content) []string {
 	var ids []string
 	for _, s := range c.Sections {
 		for _, b := range s.Blocks {
-			if b.Type != BlockMarkdown && b.Type != BlockMisconception {
+			if !markdownBodied[b.Type] {
 				continue
 			}
 			for _, m := range inlineTermRe.FindAllStringSubmatch(b.Text, -1) {
@@ -29,7 +35,7 @@ func NormalizeInlineTerms(c *Content, known map[string]bool) int {
 	for si := range c.Sections {
 		for bi := range c.Sections[si].Blocks {
 			b := &c.Sections[si].Blocks[bi]
-			if b.Type != BlockMarkdown && b.Type != BlockMisconception {
+			if !markdownBodied[b.Type] {
 				continue
 			}
 			b.Text = inlineTermRe.ReplaceAllStringFunc(b.Text, func(link string) string {

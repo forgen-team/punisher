@@ -7,8 +7,8 @@ import type { ReviewCardState } from "../lib/reviewCard";
 
 type VisibleState = Exclude<ReviewCardState, { kind: "hidden" }>;
 
-/** 오늘 복습 카드 — "복습 n개 · 약 m분", 시간 합계, '복습 시작'/'오늘 더 하기'. 마친 날은 한 줄로 접는다. */
-export function ReviewCard({ state }: { state: VisibleState }) {
+/** 오늘 복습 카드 — "복습 n개 · 약 m분", 시간 합계(세션 합계가 따로 보이면 생략), '복습 시작'/'오늘 더 하기'. 마친 날은 한 줄로 접는다. */
+export function ReviewCard({ state, showTotal = true }: { state: VisibleState; showTotal?: boolean }) {
   const review = useLaunchReview();
   if (state.kind === "done") {
     return (
@@ -27,9 +27,11 @@ export function ReviewCard({ state }: { state: VisibleState }) {
           <p className="text-sm font-medium text-fg">
             복습 {state.due}개 · 약 {state.minutes}분
           </p>
-          <p className="text-xs text-fg-muted">
-            복습 {state.minutes}분 + 강의 {state.lectureMinutes}분
-          </p>
+          {showTotal && (
+            <p className="text-xs text-fg-muted">
+              복습 {state.minutes}분 + 강의 {state.lectureMinutes}분
+            </p>
+          )}
           {state.backlog !== null && <p className="text-xs text-warning">밀린 복습 {state.backlog}개</p>}
         </div>
         <Button size="sm" onClick={review.launch} loading={review.isPending}>

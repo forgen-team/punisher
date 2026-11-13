@@ -14,35 +14,6 @@ import (
 	"github.com/wooo-jin/punisher/internal/services"
 )
 
-func writeCheckError(w http.ResponseWriter, r *http.Request, op string, err error) {
-	switch {
-	case errors.Is(err, services.ErrInvalidCheck):
-		writeError(w, r, http.StatusBadRequest, checkErrorCode(err), err.Error())
-	case errors.Is(err, services.ErrCheckBusy), errors.Is(err, services.ErrCheckState):
-		writeError(w, r, http.StatusConflict, ErrorConflict, err.Error())
-	default:
-		writeServiceError(w, r, op, err)
-	}
-}
-
-// checkErrorCode is the cause's code of a bad check request (BAD_REQUEST when unknown).
-func checkErrorCode(err error) ErrorCode {
-	var ie *services.CheckInputError
-	if errors.As(err, &ie) && ie.Code != "" {
-		return ErrorCode(ie.Code)
-	}
-	return ErrorBadRequest
-}
-
-// writeCheck answers 202 while a tutor turn or the item generation runs (poll GET), else 200.
-func writeCheck(w http.ResponseWriter, d models.CheckDetail) {
-	status := http.StatusOK
-	if d.Pending {
-		status = http.StatusAccepted
-	}
-	writeJSON(w, status, d)
-}
-
 // StartCheck handles POST /v1/checks — '확인하기' {kind:"check", lectureId} and
 // the diagnostics (P3): {kind:"pretest", lectureId|jobId} · {kind:"known_verify",
 // conceptId} · {kind:"placement", chapterId}. The open session of the key is

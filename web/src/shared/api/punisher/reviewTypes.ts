@@ -48,10 +48,13 @@ export interface ReviewSummary {
   today: ReviewSessionRef | null;
 }
 
+/** 기록에 나오는 세션 종류(pretest·placement 는 제외). */
+export type CheckHistoryKind = "check" | "review" | "known_verify";
+
 /** GET /checks/history 의 세션 한 줄. */
 export interface CheckHistoryItem {
   id: string;
-  kind: "check" | "review";
+  kind: CheckHistoryKind;
   grader: CheckGrader;
   status: CheckSessionStatus;
   conceptId?: string;

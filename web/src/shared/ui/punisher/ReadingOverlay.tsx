@@ -127,7 +127,7 @@ export function ReadingOverlay({ open, onClose, anchor, title, description, chil
       const next = placeOverlay({
         anchor: { top: anchor.top - shift, bottom: anchor.bottom - shift, left: anchor.left },
         naturalHeight: panel.offsetHeight - scroller.clientHeight + scroller.scrollHeight,
-        width: POPOVER_WIDTH, viewportW: window.innerWidth, viewportH: window.innerHeight,
+        width: POPOVER_WIDTH, viewportW: document.documentElement.clientWidth, viewportH: window.innerHeight,
         topInset: insetPx("--app-header-offset"), bottomInset: insetPx("--app-bottom-offset"), gap: GAP, margin: MARGIN,
       });
       setPlacement({ ...next, top: next.top + window.scrollY, left: next.left + window.scrollX });

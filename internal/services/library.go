@@ -18,7 +18,7 @@ import (
 const (
 	libraryAttempts   = 2 // first draft + one regeneration
 	libraryJobTimeout = 15 * time.Minute
-	defaultMaxTokens  = 16000
+	defaultMaxTokens  = 24000
 )
 
 // libraryStatuses count as "already exists" — published or waiting for human review.
@@ -103,7 +103,7 @@ func (s *Service) generateLibrary(ctx context.Context, owner string, candidates 
 		if err != nil {
 			return rep, err
 		}
-		lec, err := s.runLibraryJob(ctx, apiKey, job.ID, target)
+		lec, err := s.runLibraryJob(ctx, apiKey, job.ID, target, nil)
 		if err != nil {
 			logf("library job %s (%s) failed: %v", job.ID, plan.ObjectiveKey, err)
 			rep.Failed = append(rep.Failed, plan.ObjectiveKey)
@@ -150,9 +150,10 @@ func (s *Service) libraryCandidates(ctx context.Context, userID string) ([]strin
 	return out, nil
 }
 
-// runLibraryJob: outline → lecture → review → validate (→ one regeneration).
-// LLM errors mark the job failed and store nothing.
-func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Target) (models.Lecture, error) {
+// runLibraryJob: outline → lecture → validate → review (→ one regeneration).
+// LLM errors mark the job failed and store nothing. onStage (optional)
+// receives the loop's stages (regenerate streams them).
+func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Target, onStage func(string, int)) (models.Lecture, error) {
 	ctx, cancel := context.WithTimeout(ctx, libraryJobTimeout)
 	defer cancel()
 	if err := s.Store.StartJob(ctx, jobID); err != nil {
@@ -172,34 +173,16 @@ func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Tar
 	}
 
 	pc := t.LectureContext()
-	vars := prompts.LectureVars(pc)
-	teacher := t.Prompts.Text(prompts.BlockTeacherSystem, vars)
 	outline, err := s.complete(ctx, apiKey, llm.MessagesRequest{
-		Model: s.Cfg.LectureModel, System: teacher, User: prompts.Outline(pc, t.Prompts), MaxTokens: 4000,
+		Model: s.Cfg.LectureModel, System: t.Prompts.Text(prompts.BlockTeacherSystem, prompts.LectureVars(pc)),
+		User: prompts.Outline(pc, t.Prompts), MaxTokens: 4000,
 	}, &u)
 	if err != nil {
 		return fail(fmt.Errorf("outline: %w", err))
 	}
-	maxTokens := s.Cfg.LectureMaxTokens
-	if maxTokens <= 0 {
-		maxTokens = defaultMaxTokens
-	}
-	result, err = RunReviewLoop(ctx, libraryAttempts, LoopFuncs{
-		Generate: func(ctx context.Context, notes string) (string, error) {
-			return s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel, System: teacher,
-				User: prompts.Lecture(pc, outline, notes, t.Prompts), MaxTokens: maxTokens, Timeout: 6 * time.Minute}, &u)
-		},
-		Review: func(ctx context.Context, markup string) (ReviewOutcome, error) {
-			text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel,
-				System: t.Prompts.Text(prompts.BlockReviewerSystem, vars),
-				User:   prompts.Review(pc, markup, t.Prompts), MaxTokens: 4000, Timeout: 4 * time.Minute}, &u)
-			if err != nil {
-				return ReviewOutcome{}, err
-			}
-			return ParseReview(text), nil
-		},
-		Parse: t.parseAndValidate,
-	})
+	loop := s.lectureLoop(apiKey, t, outline, &u)
+	loop.OnStage = onStage
+	result, err = RunReviewLoop(ctx, libraryAttempts, loop)
 	if err != nil {
 		return fail(err)
 	}
@@ -255,6 +238,7 @@ func (s *Service) storeAttempts(ctx context.Context, t Target, jobID string, res
 }
 
 func (s *Service) saveLecture(ctx context.Context, t Target, c lecture.Content, kind, status, requestedBy, jobID, model string, flagged bool, flagReason string) (models.Lecture, error) {
+	c.EstimatedMinutes = learning.EstimateMinutes(c) // 표시 시간은 본문 분량으로 계산한다(섹션 minutes 아님, v2.2 §5).
 	hash, err := lecture.Hash(c)
 	if err != nil {
 		return models.Lecture{}, err
@@ -271,7 +255,7 @@ func (s *Service) saveLecture(ctx context.Context, t Target, c lecture.Content, 
 		ConceptID: t.Plan.ConceptID, ObjectiveIDs: t.Plan.ObjectiveIDs, ObjectiveKey: t.Plan.ObjectiveKey,
 		Depth: t.Plan.Depth, Kind: kind, Status: status, Title: c.Title, Content: content, ContentHash: hash,
 		Sources: sources, Model: model, PromptVersion: t.promptVersion(), RequestedBy: requestedBy,
-		Flagged: flagged, FlagReason: flagReason, EstimatedMinutes: c.TotalMinutes(), GenerationJobID: jobID,
+		Flagged: flagged, FlagReason: flagReason, EstimatedMinutes: c.EstimatedMinutes, GenerationJobID: jobID,
 	})
 }
 

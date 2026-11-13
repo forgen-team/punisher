@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -127,29 +128,52 @@ type LoopResult struct {
 type LoopFuncs struct {
 	Generate func(ctx context.Context, revisionNotes string) (string, error)
 	Review   func(ctx context.Context, markup string) (ReviewOutcome, error)
-	Parse    func(markup string) (lecture.Content, []lecture.Issue, error)
+	// Parse: format validation and machine checks (issues = rewrite findings).
+	Parse func(markup string) (lecture.Content, []lecture.Issue, error)
+	// OnStage (optional) reports each step: writing/rewriting (attempt = rewrite
+	// number), checking, reviewing — the instant stream's stage events.
+	OnStage func(stage string, attempt int)
+	// SkipReviewOnIssues: a draft with format/machine issues is rewritten
+	// without a review call (the instant pipeline: format → machine → review).
+	SkipReviewOnIssues bool
 }
 
-// RunReviewLoop generates a draft, reviews and validates it; on failure it
-// regenerates once with the findings (maxAttempts=2 → one regeneration).
-// Any LLM error aborts with that error so the job is recorded as failed and
-// nothing is saved. If no attempt parsed, ErrUnusableOutput is returned.
+func (f LoopFuncs) stage(stage string, attempt int) {
+	if f.OnStage != nil {
+		f.OnStage(stage, attempt)
+	}
+}
+
+// RunReviewLoop generates a draft, validates and reviews it; on failure it
+// regenerates with the findings, up to maxAttempts drafts in all (library 2 =
+// one regeneration, instant 3 = two rewrites). Any LLM error aborts with that
+// error so the job is recorded as failed and nothing is saved. If no attempt
+// parsed, ErrUnusableOutput is returned.
 func RunReviewLoop(ctx context.Context, maxAttempts int, f LoopFuncs) (LoopResult, error) {
 	res := LoopResult{Final: -1}
 	notes := ""
 	for n := 1; n <= maxAttempts; n++ {
+		if n == 1 {
+			f.stage(StageWriting, 0)
+		} else {
+			f.stage(StageRewriting, n-1)
+		}
 		markup, err := f.Generate(ctx, notes)
 		if err != nil {
 			return res, fmt.Errorf("generate attempt %d: %w", n, err)
 		}
+		f.stage(StageChecking, n-1)
 		a := Attempt{Number: n, Markup: markup}
 		a.Content, a.Issues, a.ParseErr = f.Parse(markup)
-		if a.ParseErr == nil {
+		if a.ParseErr == nil && !(f.SkipReviewOnIssues && len(a.Issues) > 0) {
+			f.stage(StageReviewing, n-1)
 			a.Review, err = f.Review(ctx, markup)
 			if err != nil {
 				return res, fmt.Errorf("review attempt %d: %w", n, err)
 			}
 			a.Reviewed = true
+		}
+		if a.ParseErr == nil {
 			res.Final = len(res.Attempts)
 		}
 		res.Attempts = append(res.Attempts, a)
@@ -172,7 +196,10 @@ const maxGapNotes = 15
 // RevisionNotes formats an attempt's problems for the regeneration prompt.
 func RevisionNotes(a Attempt) string {
 	var b strings.Builder
-	if a.ParseErr != nil {
+	switch {
+	case errors.Is(a.ParseErr, lecture.ErrIncomplete):
+		b.WriteString("- [형식] 출력이 @@end 전에 끊겼습니다(출력 한도). 분량 규칙(본문 약 8,500자)을 지켜 줄이고 마지막 줄에 @@end 를 쓰세요.\n")
+	case a.ParseErr != nil:
 		fmt.Fprintf(&b, "- [형식] 마크업을 해석할 수 없습니다: %v. 형식 규칙을 정확히 지키고 마지막 줄에 @@end 를 쓰세요.\n", a.ParseErr)
 	}
 	for _, i := range a.Issues {

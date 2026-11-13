@@ -147,12 +147,16 @@ func (s *Service) exampleLanguageName(ctx context.Context, userID string) string
 	return learning.ExampleLanguages[s.Store.ExampleLanguageFor(ctx, userID)]
 }
 
-// parseAndValidate turns markup into content and structural issues.
+// parseAndValidate turns a new draft's markup into content and its issues:
+// structural validation, then the machine checks of quality design v2.2 §4
+// (self links, meta phrases, material blocks, volume). Stored lectures never
+// go through this.
 func (t Target) parseAndValidate(markup string) (lecture.Content, []lecture.Issue, error) {
 	content, err := lecture.ParseMarkup(markup, t.Plan.ConceptID, t.Plan.Depth)
 	if err != nil {
 		return content, nil, err
 	}
 	lecture.NormalizeInlineTerms(&content, t.Validation.KnownConceptIDs)
-	return content, lecture.Validate(content, t.Validation), nil
+	issues := lecture.Validate(content, t.Validation)
+	return content, append(issues, lecture.MachineCheck(content)...), nil
 }

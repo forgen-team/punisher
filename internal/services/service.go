@@ -73,6 +73,8 @@ type Config struct {
 	CheckModel           string // grading ("" = LectureModel)
 	CheckRegradeModel    string // dispute regrade ("" = FastModel)
 	DailyCheckTokenLimit int    // check tokens per KST day (0 = unlimited)
+	// BackfillReviewEnabled: review stored lectures without a pass review, BackfillReviewsPerTick per scheduler tick.
+	BackfillReviewEnabled bool
 }
 
 // Service bundles dependencies.

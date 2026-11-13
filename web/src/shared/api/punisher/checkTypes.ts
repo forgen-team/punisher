@@ -118,6 +118,8 @@ export interface CheckItem {
   answer?: string;
   must?: string[];
   anchor?: string;
+  /** 그 강의의 '한 장 요약'(마크다운) — 확인·복습의 끝난 문항에만, 요약 없는 강의는 생략 */
+  lectureSummary?: string;
 }
 
 export interface CheckGrade {

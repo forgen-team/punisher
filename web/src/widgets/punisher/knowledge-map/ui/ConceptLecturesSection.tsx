@@ -1,7 +1,7 @@
 
 import { Link } from "@/src/shared/lib/router";
 import { ErrorState, List, ListRow, ListSkeleton, Section } from "@/src/shared/ui/kit";
-import { USER_STATE_LABELS, useConceptLectures } from "@/src/entities/punisher";
+import { READ_THROUGH_LABEL, USER_STATE_LABELS, isReadThrough, useConceptLectures } from "@/src/entities/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import { describePunisherError, type ConceptLecture } from "@/src/shared/api/punisher";
 
@@ -11,9 +11,15 @@ function actionLabel(lecture: ConceptLecture): string {
   return "열기";
 }
 
+/** 진행 상태 — 끝까지 읽고 완료를 안 누른 강의(진행 중 100%)는 '다 읽음'. */
+function stateOf(l: ConceptLecture): string {
+  if (l.progressState !== "in_progress") { return USER_STATE_LABELS[l.progressState]; }
+  if (isReadThrough(l.percent, false)) { return READ_THROUGH_LABEL; }
+  return `${USER_STATE_LABELS[l.progressState]} ${l.percent}%`;
+}
+
 function metaOf(l: ConceptLecture): string {
-  const progress = l.progressState === "in_progress" ? ` ${l.percent}%` : "";
-  return `${actionLabel(l)} · 깊이 ${l.depth} · ${l.kind === "instant" ? "즉석" : "라이브러리"} · ${USER_STATE_LABELS[l.progressState]}${progress}`;
+  return `${actionLabel(l)} · 깊이 ${l.depth} · ${l.kind === "instant" ? "즉석" : "라이브러리"} · ${stateOf(l)}`;
 }
 
 function LectureRows({ conceptId }: { conceptId: string }) {

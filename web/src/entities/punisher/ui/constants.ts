@@ -2,6 +2,7 @@ import {
   CHECK_MAX_ANSWER_CHARS,
   CHECK_MAX_DISPUTE_CHARS,
   type CheckGrader,
+  type CheckHistoryKind,
   type CheckOutcome,
   type CheckVerdict,
   type FeedbackKind,
@@ -178,9 +179,10 @@ export const SELF_VERDICT_LABELS: Record<SelfVerdict, string> = {
 export const SELF_VERDICT_ORDER: SelfVerdict[] = ["correct", "partial", "incorrect"];
 
 /** 세션 종류 */
-export const CHECK_KIND_LABELS: Record<"check" | "review", string> = {
+export const CHECK_KIND_LABELS: Record<CheckHistoryKind, string> = {
   check: "확인",
   review: "복습",
+  "known_verify": "이미 앎 확인",
 };
 
 /** 설정의 복습 채점 방식 */

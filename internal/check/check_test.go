@@ -99,6 +99,8 @@ func TestStageMoves(t *testing.T) {
 	}
 }
 
+var mustA = []string{"a"}
+
 func reply(verdict, move, text string) TutorReply {
 	return TutorReply{Verdict: verdict, Confidence: 0.9, TutorMove: move, TutorText: text, Met: []string{"a"}, Quote: "메모리"}
 }
@@ -110,7 +112,7 @@ func TestCorrectNeedsQuote(t *testing.T) {
 	for _, quote := range []string{"", "디스크"} {
 		r := reply("correct", MoveNext, "맞아요.")
 		r.Quote = quote
-		got, p := ValidateTutorReply(r, Stage{Answers: 1}, answer, learner)
+		got, p := ValidateTutorReply(r, Stage{Answers: 1}, mustA, answer, learner)
 		if GradeVerdict(got.Verdict, got.Quote, got.Confidence) != "held" || len(p) != 0 {
 			t.Errorf("quote %q: verdict %s problems %v, want held", quote, GradeVerdict(got.Verdict, got.Quote, got.Confidence), p)
 		}
@@ -143,7 +145,7 @@ func TestValidateTutorReply(t *testing.T) {
 		{"bad verdict", reply("great", MoveNext, "다음으로"), Stage{Answers: 1}, "verdict"},
 	}
 	for _, c := range cases {
-		_, p := ValidateTutorReply(c.r, c.st, answer, learner)
+		_, p := ValidateTutorReply(c.r, c.st, mustA, answer, learner)
 		joined := strings.Join(p, "\n")
 		if (c.want == "") != (len(p) == 0) || (c.want != "" && !strings.Contains(joined, c.want)) {
 			t.Errorf("%s: problems %v, want %q", c.name, p, c.want)
@@ -154,13 +156,13 @@ func TestValidateTutorReply(t *testing.T) {
 func TestTutorReplyCleaning(t *testing.T) {
 	r := reply("correct", MoveNext, "좋은 답변이에요! 맞아요, 메모리에서 읽습니다.")
 	r.Quote = "지어낸 인용"
-	got, p := ValidateTutorReply(r, Stage{Answers: 1}, answer, "메모리에서 읽어요")
+	got, p := ValidateTutorReply(r, Stage{Answers: 1}, mustA, answer, "메모리에서 읽어요")
 	if len(p) != 0 || got.TutorText != "맞아요, 메모리에서 읽습니다." || got.Quote != "" {
 		t.Fatalf("cleaned = %+v problems=%v", got, p)
 	}
 	low := reply("correct", MoveNarrow, "")
 	low.Confidence = 0.3
-	got, p = ValidateTutorReply(low, Stage{Answers: 1}, answer, "x")
+	got, p = ValidateTutorReply(low, Stage{Answers: 1}, mustA, answer, "x")
 	if len(p) != 0 || got.TutorMove != MoveNext || FinalVerdict(got.Verdict, got.Confidence) != "held" {
 		t.Fatalf("low confidence must be held and end the item: %+v %v", got, p)
 	}
@@ -183,7 +185,7 @@ func TestLeakRatioNormalizes(t *testing.T) {
 }
 
 func TestRegrade(t *testing.T) {
-	r, p := ValidateRegrade(RegradeReply{Verdict: "Correct", Confidence: 0.8, Quote: "메모리"}, "메모리에서 읽어요")
+	r, p := ValidateRegrade(RegradeReply{Verdict: "Correct", Confidence: 0.8, Quote: "메모리"}, nil, "메모리에서 읽어요")
 	if len(p) != 0 || !DisputeAccepted(r) || r.Quote != "메모리" {
 		t.Fatalf("regrade = %+v %v", r, p)
 	}

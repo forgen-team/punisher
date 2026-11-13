@@ -1,7 +1,7 @@
 
 import { Button } from "@/src/shared/ui/kit";
 import { describeCheckError } from "@/src/entities/punisher";
-import { useLaunchCheck } from "./useLaunchCheck";
+import { isLectureNotReviewed, useLaunchCheck } from "./useLaunchCheck";
 
 /** 강의 끝 '완료' 옆 '확인하기'. 메뉴 항목은 useLaunchCheck 를 같이 쓴다. */
 export function CheckStartButton({ check }: { check: ReturnType<typeof useLaunchCheck> }) {
@@ -12,9 +12,12 @@ export function CheckStartButton({ check }: { check: ReturnType<typeof useLaunch
   );
 }
 
-/** 시작 실패 한 줄(409 는 서버 안내 그대로). */
+/** 시작 실패 한 줄(409 는 서버 안내 그대로, 검수 전 강의는 상태 한 줄). */
 export function CheckStartError({ check }: { check: ReturnType<typeof useLaunchCheck> }) {
   if (!check.error) { return null; }
+  if (isLectureNotReviewed(check.error)) {
+    return <p role="status" className="text-sm text-fg-secondary">검수 후 확인할 수 있어요</p>;
+  }
   return (
     <p role="alert" className="text-sm text-danger">
       {describeCheckError(check.error)}

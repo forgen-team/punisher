@@ -141,6 +141,10 @@ func newCheckFixture(t *testing.T, s *Service, user string) checkFixture {
 		f.lectureID, f.conceptID, `["`+f.objA+`","`+f.objB+`"]`, f.objA+","+f.objB, content, user); err != nil {
 		t.Fatal(err)
 	}
+	// 확인 문항은 검수 통과 기록이 있는 강의에서만 만든다(v2.2 §2.1).
+	if _, err := db.ExecContext(ctx, `INSERT INTO lecture_reviews (id, lecture_id, verdict) VALUES (?, ?, 'pass')`, store.NewID(), f.lectureID); err != nil {
+		t.Fatal(err)
+	}
 	return f
 }
 

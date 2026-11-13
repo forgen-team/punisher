@@ -1,5 +1,6 @@
 // Package scheduler runs Punisher's background jobs for the owner account:
-// stale-job recovery, study-request resolution and library pre-generation.
+// stale-job recovery, study-request resolution, the backfill review of stored
+// lectures and library pre-generation.
 // All work is idempotent (generation_jobs keys), so restarts never duplicate.
 package scheduler
 
@@ -141,6 +142,14 @@ func (s *Scheduler) tick(ctx context.Context) {
 		logLibrary("known verify", services.LibraryReport{}, err)
 	case krep.Generated+krep.Failed > 0:
 		log.Printf("[scheduler] known verify items: generated=%d failed=%d skipped=%d", krep.Generated, krep.Failed, krep.Skipped)
+	}
+	// 검수 통과 기록이 없는 기존 강의 소급 검수(tick 당 최대 2편, PUNISHER_BACKFILL_REVIEW_ENABLED, v2.2 §2.2).
+	brep, err := s.Svc.BackfillReviews(ctx)
+	switch {
+	case err != nil:
+		logLibrary("backfill review", services.LibraryReport{}, err)
+	case len(brep.Passed)+len(brep.Flagged)+len(brep.Failed) > 0:
+		log.Printf("[scheduler] backfill review: passed=%d flagged=%d failed=%d", len(brep.Passed), len(brep.Flagged), len(brep.Failed))
 	}
 	if s.Svc.Cfg.LibraryAhead <= 0 {
 		return

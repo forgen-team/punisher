@@ -89,3 +89,6 @@ export const SYSTEM_TURN_LABELS = {
 export const RESULT_ACTION_LABELS = {
   today: "오늘로",
 } as const;
+
+/** 확인 결과·복습 문항 아래 접힌 요약(v2.2 §6) */
+export const LECTURE_SUMMARY_LABEL = "이 강의 한 장 요약";

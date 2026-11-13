@@ -26,6 +26,14 @@ import (
 //	@@term concept=os.kernel-and-syscall term=시스템 콜
 //	짧은 설명
 //	@@term concept=os.ebpf proposed term=eBPF
+//	@@keypoint kind=definition
+//	정식 정의 한 문장 + 예 + 비예(마크다운)
+//	@@trace
+//	{"caption":"…","columns":["단계","값"],"rows":[["1","…"],["2","…"]]}
+//	@@pause
+//	다음 출력에서 무엇이 보일까요?
+//	@@exercise / @@answer / @@summary  (마크다운)
+//	@@chart, @@diff lang=sql            (본문 JSON 하나 — structured.go)
 //	@@sources
 //	- [fork(2)](https://man7.org/linux/man-pages/man2/fork.2.html)
 //	@@end
@@ -166,8 +174,11 @@ func (p *parser) openBlock(kind string, attrs map[string]string) {
 	if attrs != nil {
 		b.Lang = attrs["lang"]
 		// "@@code bash" (lang= omitted) — accept the first bare token as the language.
-		if b.Lang == "" && (kind == BlockCode || kind == BlockLog) {
+		if b.Lang == "" && (kind == BlockCode || kind == BlockLog || kind == BlockDiff) {
 			b.Lang = attrs["_"]
+		}
+		if kind == BlockKeypoint {
+			b.Kind = attrs["kind"]
 		}
 		b.ConceptID = attrs["concept"]
 		b.Term = attrs["term"]
@@ -184,16 +195,30 @@ func (p *parser) flushBlock() {
 	}
 	b := *p.block
 	body := strings.Trim(strings.Join(p.body, "\n"), "\n")
-	if b.Type == BlockSources {
+	switch {
+	case b.Type == BlockSources:
 		b.Sources = parseSources(body)
-	} else if b.Type == BlockMarkdown || b.Type == BlockMisconception || b.Type == BlockTerm {
+	case StructuredBlock(b.Type):
+		// 본문은 JSON 하나. 해석되지 않으면 원문을 Text 에 남겨 검증이 재작성 지적으로 돌려준다.
+		if data, ok := compactJSONObject(body); ok {
+			b.Data = data
+		} else {
+			b.Text = strings.TrimSpace(body)
+		}
+	case proseBlocks[b.Type]:
 		b.Text = strings.TrimSpace(body)
-	} else {
+	default:
 		b.Text = body
 	}
 	b.Anchor = fmt.Sprintf("%s-%d", p.section.Kind, len(p.section.Blocks)+1)
 	p.section.Blocks = append(p.section.Blocks, b)
 	p.block, p.body = nil, nil
+}
+
+// proseBlocks keep their text trimmed (markdown or a single line).
+var proseBlocks = map[string]bool{
+	BlockMarkdown: true, BlockMisconception: true, BlockTerm: true, BlockKeypoint: true,
+	BlockPause: true, BlockExercise: true, BlockAnswer: true, BlockSummary: true,
 }
 
 func (p *parser) flushSection() {
@@ -207,56 +232,5 @@ func (p *parser) flushSection() {
 // trailingMinutesRe matches a `minutes=N` / `min=N` suffix the model sometimes appends after title=.
 var trailingMinutesRe = regexp.MustCompile(`\s+(?:minutes|mins?)=(\d+)\s*$`)
 
-// defaultSectionMinutes is the fixed 30-minute plan (3/12/10/5) used when the model omits a section's minutes.
-var defaultSectionMinutes = map[string]int{
-	"situation_question": 3,
-	"principles":         12,
-	"walkthrough":        10,
-	"judgment_next":      5,
-}
-
-// parseAttrs parses `kind key=value flag ... title=rest of line`. The first
-// bare token is stored under "_". title= and term= consume the rest of the line.
-func parseAttrs(args string) map[string]string {
-	attrs := map[string]string{}
-	rest := strings.TrimSpace(args)
-	for rest != "" {
-		for _, greedy := range []string{"title=", "term="} {
-			if strings.HasPrefix(rest, greedy) {
-				attrs[strings.TrimSuffix(greedy, "=")] = strings.Trim(strings.TrimSpace(rest[len(greedy):]), `"`)
-				return attrs
-			}
-		}
-		token, tail, _ := strings.Cut(rest, " ")
-		rest = strings.TrimSpace(tail)
-		if key, value, ok := strings.Cut(token, "="); ok {
-			attrs[key] = strings.Trim(value, `"`)
-		} else {
-			if _, seen := attrs["_"]; !seen {
-				attrs["_"] = token
-			}
-			attrs[token] = ""
-		}
-	}
-	return attrs
-}
-
-func parseSources(body string) []Source {
-	out := []Source{}
-	for _, line := range strings.Split(body, "\n") {
-		if m := sourceRe.FindStringSubmatch(line); m != nil {
-			out = append(out, Source{Title: strings.TrimSpace(m[1]), URL: m[2]})
-		}
-	}
-	return out
-}
-
-func splitList(value string) []string {
-	out := []string{}
-	for _, part := range strings.Split(value, ",") {
-		if part = strings.TrimSpace(part); part != "" {
-			out = append(out, part)
-		}
-	}
-	return out
-}
+// defaultSectionMinutes is the fixed 20-minute plan (TargetMinutes 2/9/6/3) used when the model omits a section's minutes.
+var defaultSectionMinutes = TargetMinutes

@@ -75,7 +75,7 @@ export function describePunisherError(error: unknown): string {
       return error.message || "AI 응답 생성에 실패했습니다. 다시 시도해 주세요.";
     case 503:
       // GENERATION_UNAVAILABLE: Claude Code 미설치/미로그인 — 서버가 고치는 방법을 한국어로 보낸다.
-      return error.message || "Claude Code를 사용할 수 없습니다. 설정 화면의 안내를 확인해 주세요.";
+      return error.message || "Claude Code를 사용할 수 없어요. 설정 화면의 안내를 확인해 주세요.";
     default:
       return error.status >= 500 ? "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." : error.message;
   }

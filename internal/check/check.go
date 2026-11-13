@@ -61,7 +61,9 @@ type Item struct {
 	Format      string          `json:"format"`
 	Prompt      string          `json:"prompt"`
 	Material    json.RawMessage `json:"material,omitempty"`
-	Rubric      Rubric          `json:"rubric"`
+	// TargetCheck: the writer's one-line self-check that the question asks what must grades (not stored).
+	TargetCheck string `json:"target_check,omitempty"`
+	Rubric      Rubric `json:"rubric"`
 }
 
 // ItemSet is the LLM output of one item generation.

@@ -74,7 +74,6 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
         onClose={() => setAnchor(null)}
         anchor={anchor}
         title={label}
-        description="용어 설명 · 닫아도 읽던 위치 그대로예요"
         footer={
           <Button size="sm" variant="secondary" loading={isPending} onClick={goDeeper}>
             이 개념 더 깊게

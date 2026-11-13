@@ -100,6 +100,7 @@ func Question(c QAContext, question string) string {
 	writeRefs(&b, c.Linkable)
 	writeMisconceptions(&b, c.Misconceptions)
 	b.WriteString(ExampleLanguageRule(c.ExampleLanguage))
+	writeFactualRules(&b)
 	fmt.Fprintf(&b, "\n## 질문\n%s\n", question)
 	b.WriteString(`
 JSON만 출력:
@@ -117,6 +118,7 @@ func AltExplanation(c QAContext, comment string) string {
 		fmt.Fprintf(&b, "\n## 수강생 코멘트\n%s\n", comment)
 	}
 	b.WriteString(ExampleLanguageRule(c.ExampleLanguage))
+	writeFactualRules(&b)
 	b.WriteString(`
 ## 작업
 수강생이 이 섹션의 설명이 부족하다고 했습니다. 같은 내용을 **다른 방식**으로 다시 설명하세요.

@@ -3,6 +3,7 @@ import { BottomSheet, cn, focusRing } from "@/src/shared/ui/kit";
 import type { LectureSection } from "@/src/shared/api/punisher";
 import { SECTION_KIND_LABELS } from "@/src/entities/punisher";
 import { scrollToAnchor } from "@/src/features/punisher/lecture-progress";
+import { sectionMinutes } from "../lib/sectionMinutes";
 
 interface SectionTocProps {
   sections: LectureSection[];
@@ -38,15 +39,17 @@ export function SectionToc({ sections, totalMinutes, onNavigate, hideHeading = f
                 });
               }}
               className={cn(
-                "flex min-h-touch items-center justify-between gap-2 rounded-md px-2 text-fg-secondary hover:bg-canvas-hover hover:text-fg md:min-h-9",
+                // 두 줄 제목: 번호 칸을 따로 둬 둘째 줄이 제목 첫 글자에 맞춰지고(내어쓰기), 위아래 여백으로 항목 사이를 띄운다.
+                "flex min-h-touch items-start justify-between gap-2 rounded-md px-2 py-2.5 leading-snug text-fg-secondary hover:bg-canvas-hover hover:text-fg md:min-h-9 md:py-2",
                 "aria-[current=location]:bg-canvas-hover aria-[current=location]:font-medium aria-[current=location]:text-fg",
                 focusRing,
               )}
             >
-              <span className="min-w-0 break-keep">
-                {index + 1}. {s.title || SECTION_KIND_LABELS[s.kind] || s.kind}
+              <span className="flex min-w-0 gap-1.5">
+                <span className="w-4 shrink-0 text-right tabular-nums">{index + 1}.</span>
+                <span className="min-w-0 break-keep">{s.title || SECTION_KIND_LABELS[s.kind] || s.kind}</span>
               </span>
-              {s.minutes > 0 && <span className="shrink-0 text-xs text-fg-muted">{s.minutes}분</span>}
+              {sectionMinutes(s) > 0 && <span className="shrink-0 pt-px text-xs text-fg-muted">{sectionMinutes(s)}분</span>}
             </a>
           </li>
         ))}
