@@ -29,8 +29,22 @@ const maxAdjudications = 3
 // Prompt size bounds of the blocks quoted to a recheck or an adjudication.
 const (
 	maxQuotedBlocks    = 4
-	maxQuotedBlockRune = 2000
+	maxQuotedBlockRune = 8000
 )
+
+// quotedCutMarker marks a block shortened for the prompt; unmarked cuts were
+// judged as truncated lecture sentences and blocked publishing.
+const quotedCutMarker = "\n…(검수 입력 길이 제한으로 이하 생략 — 강의 원문은 잘리지 않았습니다)"
+
+// quoteBlock renders one block for a recheck/adjudication prompt, marking any cut.
+func quoteBlock(b lecture.Block) string {
+	text := lecture.RenderBlock(b)
+	cut := truncateRunes(text, maxQuotedBlockRune)
+	if cut == text {
+		return text
+	}
+	return cut + quotedCutMarker
+}
 
 // RecheckInput is what a targeted recheck reads: the previous blocking
 // findings with their blocks before and after the rewrite, and the blocks the
@@ -407,7 +421,7 @@ func renderBlocks(c lecture.Content, ps [][2]int) []string {
 		if len(out) == maxQuotedBlocks {
 			break
 		}
-		out = append(out, truncateRunes(lecture.RenderBlock(c.Sections[p[0]].Blocks[p[1]]), maxQuotedBlockRune))
+		out = append(out, quoteBlock(c.Sections[p[0]].Blocks[p[1]]))
 	}
 	return out
 }

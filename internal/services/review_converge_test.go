@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/wooo-jin/punisher/internal/lecture"
 )
 
 // convergeFake adds a scripted targeted recheck and adjudication to fakeSteps.
@@ -222,5 +224,19 @@ func TestRevisionNotesAdvisoryOnlyWithAttemptsLeft(t *testing.T) {
 	}
 	if strings.Contains(with, "내려간 것") {
 		t.Fatal("a dismissed finding is not sent back to the rewrite")
+	}
+}
+
+// A block longer than the quote bound is cut with an explicit marker, never
+// silently, so the reviewer cannot mistake the cut for a truncated sentence.
+func TestQuoteBlockMarksCut(t *testing.T) {
+	short := lecture.Block{Type: lecture.BlockMarkdown, Text: "짧은 문단입니다."}
+	if got := quoteBlock(short); strings.Contains(got, "이하 생략") {
+		t.Fatalf("short block marked as cut: %q", got)
+	}
+	long := lecture.Block{Type: lecture.BlockMarkdown, Text: strings.Repeat("가", maxQuotedBlockRune+500)}
+	got := quoteBlock(long)
+	if !strings.HasSuffix(got, quotedCutMarker) {
+		t.Fatalf("long block not marked: %q", got[len(got)-80:])
 	}
 }

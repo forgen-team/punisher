@@ -103,6 +103,7 @@ const BlockingRules = `
 - gate 가 blocking 인 지적에는 반드시 "confidence"(0~1, 그 문장이 실제로 틀렸거나 독자를 오도한다고 확신하는 정도)와 "reader_impact"(독자가 그 문장을 그대로 믿고 따라 하면 어떤 틀린 결과·판단에 이르는지 한 문장)를 씁니다. confidence 가 0.7 미만이거나 reader_impact 가 비어 있으면 코드가 advisory 로 내립니다.
 - 버전·빌드·렌더러 호환을 확인할 수 없다는 이유만으로는 blocking 이 아닙니다.
 - 이미 조건(제품·버전·"환경에 따라 다름"·"확인할 것")이 붙은 문장은 blocking 이 아닙니다.
+- 블록 끝의 "…(검수 입력 길이 제한으로 이하 생략…)" 표시는 이 검수 입력만 줄인 것입니다. 강의 원문은 잘리지 않았으므로 문장 잘림·미완결로 지적하지 않습니다.
 `
 
 // RecheckTask is the default instruction of a targeted re-review (block
@@ -213,6 +214,7 @@ func Adjudication(c LectureContext, a AdjudicationCase) string {
 		fmt.Fprintf(&b, "<<<BLOCK\n%s\nBLOCK>>>\n", strings.TrimRight(t, "\n"))
 	}
 	b.WriteString("\n## 질문\n이 주장이 실제로 틀렸거나 독자를 오도합니까? uphold 또는 dismiss 로 답하세요.\n")
+	b.WriteString("블록 끝의 \"…(검수 입력 길이 제한으로 이하 생략…)\" 표시는 입력만 줄인 것이며 강의 원문은 잘리지 않았습니다. 이를 근거로 uphold 하지 않습니다.\n")
 	writeFactualRules(&b)
 	return b.String()
 }
