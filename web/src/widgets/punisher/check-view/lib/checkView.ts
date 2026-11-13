@@ -101,6 +101,11 @@ export function retryableTurnId(detail: CheckDetail): string | null {
   return detail.session.status === "active" || last.move === "dispute" ? last.id : null;
 }
 
+/** 튜터 턴 본문 — '그냥 알려줘'(reveal)는 모범답 섹션에만 답을 두고 턴에는 판정 배지만 남긴다. */
+export function turnBody(turn: CheckTurn): string {
+  return turn.move === "reveal" ? "" : turn.text;
+}
+
 /** 모범답·기준 공개 — 끝난 문항, 또는 자기 채점에서 답을 보낸 현재 문항(서버가 answer 를 준다). */
 export function showItemReview(item: CheckItem): boolean {
   return item.done || Boolean(item.answer);

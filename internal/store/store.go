@@ -147,6 +147,7 @@ type Store interface {
 	ActivateCheckSession(ctx context.Context, userID, id string, itemIDs []string, ask TurnWrite) (models.CheckSession, error)
 	SetCheckSessionStatus(ctx context.Context, userID, id string, from []string, to, errMsg string) error
 	SweepStaleChecks(ctx context.Context, turnAge, prepareAge, abandonAge time.Duration) (int64, error)
+	SweepStaleChecksFor(ctx context.Context, userID string, turnAge, prepareAge, abandonAge time.Duration) (int64, error)
 	CountPendingChecks(ctx context.Context, userID string) (int, error)
 	ListCheckTurns(ctx context.Context, userID, sessionID string) ([]models.CheckTurn, error)
 	StartCheckTurns(ctx context.Context, userID, sessionID string, learner *TurnWrite, tutor *TurnWrite, maxPending int, requireActive bool) (models.CheckTurn, error)

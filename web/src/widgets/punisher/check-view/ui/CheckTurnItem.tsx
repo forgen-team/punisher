@@ -3,6 +3,7 @@ import { Badge, Button, Spinner } from "@/src/shared/ui/kit";
 import { SELF_VERDICT_LABELS, VERDICT_LABELS, type SelfVerdict } from "@/src/entities/punisher";
 import type { CheckTurn } from "@/src/shared/api/punisher";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
+import { turnBody } from "../lib/checkView";
 import { DISPUTE_RESULT_LABELS, PENDING_LABELS, VERDICT_TONE } from "./constants";
 
 interface CheckTurnItemProps {
@@ -53,6 +54,7 @@ export function CheckTurnItem({ turn, onRetry, retrying }: CheckTurnItemProps) {
     );
   }
   const accepted = turn.move === "dispute" && turn.grade?.accepted !== undefined ? turn.grade.accepted : undefined;
+  const body = turnBody(turn);
   return (
     <li className="flex flex-col gap-1.5 rounded-lg bg-canvas-subtle px-3 py-2 text-sm">
       <span className="sr-only">튜터: </span>
@@ -66,7 +68,7 @@ export function CheckTurnItem({ turn, onRetry, retrying }: CheckTurnItemProps) {
           )}
         </span>
       )}
-      {turn.text && <Markdown>{turn.text}</Markdown>}
+      {body && <Markdown>{body}</Markdown>}
     </li>
   );
 }

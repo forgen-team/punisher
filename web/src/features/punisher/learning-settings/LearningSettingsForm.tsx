@@ -1,7 +1,7 @@
 
 import { ErrorState, Field, ListSkeleton, Select, Spinner, Switch } from "@/src/shared/ui/kit";
-import { useLearningSettings, useSaveLearningSettings } from "@/src/entities/punisher";
-import { PunisherApiError, describePunisherError, type ExampleLanguage, type LearningSettingsPatch } from "@/src/shared/api/punisher";
+import { describeSettingsError, useLearningSettings, useSaveLearningSettings } from "@/src/entities/punisher";
+import { describePunisherError, type ExampleLanguage, type LearningSettingsPatch } from "@/src/shared/api/punisher";
 import { ReviewSettingsFields } from "./ReviewSettingsFields";
 import type { SettingsField } from "./reviewSettings";
 
@@ -10,7 +10,7 @@ const DAILY_MINUTE_OPTIONS = [15, 30, 45, 60] as const;
 /**
  * 학습 설정 — 예시 코드 언어 · 하루 학습량 · 숙달 기준 · 복습 간격 · 하루 복습 시간 · 복습 채점 방식 · 예측 질문.
  * 바꾸면 그 필드만 바로 저장된다(PUT /me/settings 부분 업데이트). 예시 언어는 이후 생성되는 강의·질문 답변·
- * "이 부분 설명"에 적용된다(이미 만든 강의는 다시 만들지 않는다). 저장 오류는 그 필드 옆에(400 은 서버 문구).
+ * "이 부분 설명"에 적용된다(이미 만든 강의는 다시 만들지 않는다). 저장 오류는 그 필드 옆에(400 은 code 별 안내).
  */
 export function LearningSettingsForm() {
   const settings = useLearningSettings();
@@ -35,7 +35,7 @@ export function LearningSettingsForm() {
   const saveField = (patch: LearningSettingsPatch) => save.mutate(patch);
   const fieldError = (field: SettingsField): string | undefined => {
     if (!save.error || save.variables?.[field] === undefined) { return undefined; }
-    return save.error instanceof PunisherApiError && save.error.status === 400 ? save.error.message : describePunisherError(save.error);
+    return describeSettingsError(save.error);
   };
 
   return (

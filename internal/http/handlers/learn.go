@@ -85,7 +85,8 @@ func (h *LearnHandler) Today(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, r, "today", err)
 		return
 	}
-	payload := map[string]any{"items": res.Items, "exhausted": res.Exhausted, "review": res.Review}
+	// recheck: witems 0e5303f 의 핸들러는 이 필드를 빠뜨려 '다시 확인' 카드가 응답에 실리지 않는다(docs/SYNC.md).
+	payload := map[string]any{"items": res.Items, "exhausted": res.Exhausted, "review": res.Review, "recheck": res.Recheck}
 	if res.NextChapter != nil {
 		payload["nextChapter"] = res.NextChapter
 	}

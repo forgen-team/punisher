@@ -47,38 +47,55 @@ type settingsBody struct {
 
 var dailyMinuteOptions = map[int]bool{15: true, 30: true, 45: true, 60: true}
 
-// settingsPatch validates the given fields; "" message = valid.
-func settingsPatch(body settingsBody) (store.LearningSettingsPatch, string) {
+// Codes of the settings 400 responses (error.code; the web shows a message per code).
+const (
+	ErrorInvalidLanguage      ErrorCode = "INVALID_LANGUAGE"
+	ErrorInvalidGrader        ErrorCode = "INVALID_GRADER"
+	ErrorInvalidDailyMinutes  ErrorCode = "INVALID_DAILY_MINUTES"
+	ErrorInvalidMasteryTarget ErrorCode = "INVALID_MASTERY_TARGET"
+	ErrorInvalidIntervals     ErrorCode = "INVALID_INTERVALS"
+	ErrorInvalidReviewMinutes ErrorCode = "INVALID_REVIEW_MINUTES"
+	ErrorSettingsRequired     ErrorCode = "SETTINGS_REQUIRED"
+)
+
+// settingsError is a rejected field: the 400 code and the (English) message.
+type settingsError struct {
+	code ErrorCode
+	msg  string
+}
+
+// settingsPatch validates the given fields; nil error = valid.
+func settingsPatch(body settingsBody) (store.LearningSettingsPatch, *settingsError) {
 	p := store.LearningSettingsPatch{DailyMinutes: body.DailyMinutes, MasteryTarget: body.MasteryTarget,
 		ReviewIntervals: body.ReviewIntervals, ReviewMinutes: body.ReviewMinutes, PretestEnabled: body.PretestEnabled}
 	if body.ExampleLanguage != nil {
 		lang := strings.ToLower(strings.TrimSpace(*body.ExampleLanguage))
 		if !learning.IsValidExampleLanguage(lang) {
-			return p, "exampleLanguage must be one of " + strings.Join(learning.ExampleLanguageIDs, "|")
+			return p, &settingsError{ErrorInvalidLanguage, "exampleLanguage must be one of " + strings.Join(learning.ExampleLanguageIDs, "|")}
 		}
 		p.ExampleLanguage = &lang
 	}
 	if body.ReviewGrader != nil {
 		grader := strings.ToLower(strings.TrimSpace(*body.ReviewGrader))
 		if !learning.ValidReviewGrader(grader) {
-			return p, "reviewGrader must be self|llm"
+			return p, &settingsError{ErrorInvalidGrader, "reviewGrader must be self|llm"}
 		}
 		p.ReviewGrader = &grader
 	}
 	switch {
 	case body.DailyMinutes != nil && !dailyMinuteOptions[*body.DailyMinutes]:
-		return p, "dailyMinutes must be 15|30|45|60"
+		return p, &settingsError{ErrorInvalidDailyMinutes, "dailyMinutes must be 15|30|45|60"}
 	case body.MasteryTarget != nil && !learning.ValidMasteryTarget(*body.MasteryTarget):
-		return p, "masteryTarget must be 3~5"
+		return p, &settingsError{ErrorInvalidMasteryTarget, "masteryTarget must be 3~5"}
 	case body.ReviewIntervals != nil && !learning.ValidReviewIntervals(body.ReviewIntervals):
-		return p, "reviewIntervals must be 1~6 increasing positive day counts"
+		return p, &settingsError{ErrorInvalidIntervals, "reviewIntervals must be 1~6 increasing positive day counts"}
 	case body.ReviewMinutes != nil && !learning.ValidReviewMinutes(*body.ReviewMinutes):
-		return p, "reviewMinutes must be 0~30"
+		return p, &settingsError{ErrorInvalidReviewMinutes, "reviewMinutes must be 0~30"}
 	case p.ExampleLanguage == nil && p.DailyMinutes == nil && p.MasteryTarget == nil && p.ReviewIntervals == nil &&
 		p.ReviewMinutes == nil && p.ReviewGrader == nil && p.PretestEnabled == nil:
-		return p, "at least one setting is required"
+		return p, &settingsError{ErrorSettingsRequired, "at least one setting is required"}
 	}
-	return p, ""
+	return p, nil
 }
 
 // PutSettings handles PUT /v1/me/settings (partial: only the given fields change).
@@ -93,9 +110,9 @@ func (h *LearnHandler) PutSettings(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, err.Error())
 		return
 	}
-	patch, msg := settingsPatch(body)
-	if msg != "" {
-		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, msg)
+	patch, invalid := settingsPatch(body)
+	if invalid != nil {
+		writeError(w, r, http.StatusBadRequest, invalid.code, invalid.msg)
 		return
 	}
 	st, err := h.Store.UpdateLearningSettings(r.Context(), userID, patch)

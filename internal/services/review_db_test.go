@@ -47,9 +47,18 @@ func pull(t *testing.T, s *Service, user, objectiveID, set string) {
 	}
 }
 
-// dueNow makes an objective due an hour ago with its last credit / failure two days back.
+// dueToday is a SET clause making an objective due now but still today (KST):
+// an hour ago, or today's KST midnight when that is later — so "overdue"
+// (due before today) stays 0 whatever the hour the test runs (00:00~01:00 KST too).
+// SQLite: GREATEST → MAX over the store's UTC TEXT timestamps (same format, lexicographic).
+func dueToday() string {
+	return "next_review_at = MAX(strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-1 hour'), '" +
+		store.FormatTime(learning.KSTDayStart(time.Now())) + "')"
+}
+
+// dueNow makes an objective due (today) with its last credit / failure two days back.
 func dueNow(t *testing.T, s *Service, user, objectiveID string) {
-	pull(t, s, user, objectiveID, `next_review_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-1 hour'),
+	pull(t, s, user, objectiveID, dueToday()+`,
 		last_credit_at = strftime('%Y-%m-%dT%H:%M:%fZ', last_credit_at, '-2 days'), last_fail_at = strftime('%Y-%m-%dT%H:%M:%fZ', last_fail_at, '-2 days')`)
 }
 
@@ -219,7 +228,7 @@ func TestReviewDayRollover(t *testing.T) {
 	if _, err := testDB(s).ExecContext(ctx, `UPDATE check_sessions SET session_key = 'review:2000-01-02' WHERE id = ?`, d.Session.ID); err != nil {
 		t.Fatal(err)
 	}
-	if n, err := s.Store.AbandonStaleReviews(ctx, "", ReviewSessionKey(time.Now())); err != nil || n < 1 {
+	if n, err := s.Store.AbandonStaleReviews(ctx, user, ReviewSessionKey(time.Now())); err != nil || n < 1 {
 		t.Fatalf("sweep = %d %v", n, err)
 	}
 	if got, _ := s.Store.GetCheckSession(ctx, user, d.Session.ID); got.Status != "abandoned" {
@@ -290,7 +299,7 @@ func TestReviewGraduation(t *testing.T) {
 	s, fake, user, f := checkService(t)
 	ctx := context.Background()
 	checkBoth(t, s, fake, user, f)
-	pull(t, s, user, f.objA, `box = 3, last_credit_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-40 days'), next_review_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-1 hour')`)
+	pull(t, s, user, f.objA, `box = 3, last_credit_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-40 days'), `+dueToday())
 	d, _, err := s.StartReview(ctx, user)
 	if err != nil || len(d.Items) != 1 {
 		t.Fatalf("review = %+v (%v)", d.Items, err)
@@ -300,7 +309,7 @@ func TestReviewGraduation(t *testing.T) {
 	if a.GradStep != learning.GradPending || a.NextReviewAt == nil || a.NextReviewAt.Before(time.Now().AddDate(0, 0, 89)) {
 		t.Fatalf("graduation review scheduled at +90 days: %+v", a)
 	}
-	pull(t, s, user, f.objA, `last_credit_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-100 days'), next_review_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-1 hour')`)
+	pull(t, s, user, f.objA, `last_credit_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-100 days'), `+dueToday())
 	d, _, err = s.StartReview(ctx, user)
 	if err != nil || len(d.Items) != 1 || !askTurn(d, d.Items[0].ID).ReusedItem {
 		t.Fatalf("graduation review (all items seen → reused) = %+v (%v)", d.Turns, err)
@@ -310,7 +319,7 @@ func TestReviewGraduation(t *testing.T) {
 	if a.GradStep != learning.GradDone || a.NextReviewAt != nil || a.Level != learning.LevelRemember {
 		t.Fatalf("graduated = %+v", a)
 	}
-	pull(t, s, user, f.objA, `next_review_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-1 hour')`)
+	pull(t, s, user, f.objA, dueToday())
 	if q, err := s.Store.ReviewQueue(ctx, user, time.Now()); err != nil || len(q) != 0 {
 		t.Fatalf("graduated objectives leave the queue: %+v (%v)", q, err)
 	}
@@ -353,7 +362,7 @@ func TestReviewVariantPregeneration(t *testing.T) {
 	if rep, err = s.PregenerateReviewVariants(ctx); err != nil || rep.Generated != 0 {
 		t.Fatalf("an unseen item exists now: %+v (%v)", rep, err)
 	}
-	pull(t, s, user, f.objA, `next_review_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-1 hour'), last_credit_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-2 days')`)
+	pull(t, s, user, f.objA, `last_credit_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-2 days'), `+dueToday())
 	d, _, err = s.StartReview(ctx, user)
 	if err != nil || len(d.Items) != 1 || !strings.HasPrefix(d.Items[0].Prompt, "캐시가 꽉") || askTurn(d, d.Items[0].ID).ReusedItem {
 		t.Fatalf("the new variant is picked unseen: %+v (%v)", d.Items, err)

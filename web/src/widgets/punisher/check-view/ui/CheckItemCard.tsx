@@ -2,6 +2,7 @@
 import type { CheckItem, CheckTurn } from "@/src/shared/api/punisher";
 import { BlockRenderer } from "../../lecture-viewer";
 import { showItemReview } from "../lib/checkView";
+import { checkItemAnchorId } from "../lib/followScroll";
 import { CheckTurnItem } from "./CheckTurnItem";
 import { ItemReview } from "./ItemReview";
 
@@ -33,7 +34,11 @@ export function CheckItemCard({ index, total, item, turns, missing, anchorHref, 
     <CheckTurnItem key={t.id} turn={t} onRetry={t.id === retryTurnId ? onRetry : undefined} retrying={retrying} />
   );
   return (
-    <section aria-label={`문항 ${index}/${total}`} className="flex flex-col gap-3 border-t border-line pt-4 first:border-t-0">
+    <section
+      id={checkItemAnchorId(item.id)}
+      aria-label={`문항 ${index}/${total}`}
+      className="flex scroll-mt-28 flex-col gap-3 border-t border-line pt-4 first:border-t-0"
+    >
       <p className="text-xs font-medium text-fg-muted">
         문항 {index}/{total}
       </p>

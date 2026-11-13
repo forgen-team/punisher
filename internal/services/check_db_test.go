@@ -386,7 +386,7 @@ func sweepFixture(t *testing.T, s *Service, user string, f checkFixture) {
 	if _, err := s.AnswerCheck(ctx, user, id, "또 답"); err == nil {
 		t.Fatal("no answer while a turn is pending")
 	}
-	if n, err := s.Store.SweepStaleChecks(ctx, 0, 0, AbandonCheckAge); err != nil || n < 1 {
+	if n, err := s.Store.SweepStaleChecksFor(ctx, user, 0, 0, AbandonCheckAge); err != nil || n < 1 {
 		t.Fatalf("boot sweep = %d %v", n, err)
 	}
 	d = waitIdle(t, s, user, id)
@@ -403,7 +403,7 @@ func sweepFixture(t *testing.T, s *Service, user string, f checkFixture) {
 	if _, err := db.ExecContext(ctx, `UPDATE check_sessions SET updated_at = ? WHERE id = ?`, store.FormatTime(time.Now().Add(-8*24*time.Hour)), id); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Store.SweepStaleChecks(ctx, StaleCheckTurnAge, StaleCheckPrepareAge, AbandonCheckAge); err != nil {
+	if _, err := s.Store.SweepStaleChecksFor(ctx, user, StaleCheckTurnAge, StaleCheckPrepareAge, AbandonCheckAge); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := s.Store.GetCheckSession(ctx, user, id); got.Status != "abandoned" || got.FinishedAt == nil {

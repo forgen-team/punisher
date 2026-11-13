@@ -222,3 +222,25 @@ export const CHECK_ERROR_MESSAGES: Record<CheckErrorCode, string> = {
   INVALID_STATUS: "지원하지 않는 오개념 목록이에요.",
   BAD_REQUEST: "요청을 처리하지 못했어요. 다시 시도해 주세요.",
 };
+
+/** 설정 > 학습 PUT 400 code → 안내(describeSettingsError) */
+export type SettingsErrorCode =
+  | "INVALID_LANGUAGE"
+  | "INVALID_GRADER"
+  | "INVALID_DAILY_MINUTES"
+  | "INVALID_MASTERY_TARGET"
+  | "INVALID_INTERVALS"
+  | "INVALID_REVIEW_MINUTES"
+  | "SETTINGS_REQUIRED"
+  | "BAD_REQUEST";
+
+export const SETTINGS_ERROR_MESSAGES: Record<SettingsErrorCode, string> = {
+  INVALID_LANGUAGE: "지원하지 않는 예시 코드 언어예요.",
+  INVALID_GRADER: "자기 채점·튜터 채점 중에서 골라 주세요.",
+  INVALID_DAILY_MINUTES: "하루 학습량은 15·30·45·60분 중에서 골라 주세요.",
+  INVALID_MASTERY_TARGET: "숙달 기준은 레벨 3~5 중에서 골라 주세요.",
+  INVALID_INTERVALS: "복습 간격은 점점 커지는 1 이상의 정수(일) 1~6개로 적어 주세요.",
+  INVALID_REVIEW_MINUTES: "하루 복습 시간은 0~30분 중에서 골라 주세요.",
+  SETTINGS_REQUIRED: "바꿀 설정을 골라 주세요.",
+  BAD_REQUEST: "설정을 저장하지 못했어요. 다시 시도해 주세요.",
+};

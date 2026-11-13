@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, type ReactNode } from "react";
 import { EmptyState, ErrorState, Skeleton, Spinner, type MenuItem } from "@/src/shared/ui/kit";
 import {
   describeCheckError,
@@ -28,6 +28,7 @@ import {
   retryableTurnId,
   showComposer,
 } from "./lib/checkView";
+import { useFollowScroll } from "./lib/useFollowScroll";
 import { CheckComposer, CheckItemCard, CheckResult, LectureCompleteAction, PlacementResult, ReviewMoreAction, chapterMapHref } from "./ui";
 import { DIAGNOSTIC_TITLES, REVIEW_STATUS_LABELS, SESSION_STATUS_LABELS } from "./ui/constants";
 
@@ -71,14 +72,8 @@ export function CheckView({ checkId }: { checkId: string }) {
   const rows = useMemo(() => (d ? resultRows(d) : []), [d]);
   const acknowledged = useMemo(() => new Set(d?.misconceptionTurnIds ?? []), [d?.misconceptionTurnIds]);
 
-  // 새 턴이 오면 마지막으로, 끝나면 결과 요약으로 데려간다.
-  useEffect(() => {
-    if (status === "finished") {
-      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-    if (status === "active" && turnCount > 0) { endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
-  }, [status, turnCount]);
+  const currentId = d ? currentItemId(d) : null;
+  const markAct = useFollowScroll({ status, turnCount, currentId, endRef, resultRef });
 
   const kind = d?.session.kind;
   const diagnosticTitle = kind && kind in DIAGNOSTIC_TITLES ? DIAGNOSTIC_TITLES[kind as keyof typeof DIAGNOSTIC_TITLES] : "";
@@ -156,7 +151,6 @@ export function CheckView({ checkId }: { checkId: string }) {
 
   function renderFlow(detail: CheckDetail): ReactNode {
     const items = orderedItems(detail);
-    const currentId = currentItemId(detail);
     const retryId = retryableTurnId(detail);
     const now = Date.now();
     const actionError = retry.error ?? abandon.error ?? dispute.error;
@@ -204,7 +198,11 @@ export function CheckView({ checkId }: { checkId: string }) {
             )}
           </CheckResult>
         )}
-        {showComposer(detail) && renderComposer(detail)}
+        {showComposer(detail) && (
+          <div className="contents" onPointerDownCapture={markAct} onKeyDownCapture={markAct}>
+            {renderComposer(detail)}
+          </div>
+        )}
       </>
     );
   }

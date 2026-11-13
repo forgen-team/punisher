@@ -1,11 +1,14 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  PunisherApiError,
+  describePunisherError,
   punisherApi,
   punisherKeys,
   punisherQueryDefaults,
   type LearningSettingsPatch,
 } from "@/src/shared/api/punisher";
+import { SETTINGS_ERROR_MESSAGES, type SettingsErrorCode } from "../ui/constants";
 import { invalidateLearningState } from "./concepts";
 
 /** 이어보기에서 제거(소프트) — 오늘·내 강의·지도 상태를 다시 읽는다. */
@@ -48,6 +51,14 @@ export function useSaveLearningSettings() {
       }
     },
   });
+}
+
+/** 설정 저장 오류 문구 — 400 은 서버 code 별 한국어 안내(서버 영문 문구는 보이지 않는다), 그 밖은 공통 문구. */
+export function describeSettingsError(error: unknown): string {
+  if (error instanceof PunisherApiError && error.status === 400) {
+    return SETTINGS_ERROR_MESSAGES[error.code as SettingsErrorCode] ?? SETTINGS_ERROR_MESSAGES.BAD_REQUEST;
+  }
+  return describePunisherError(error);
 }
 
 /** "이 부분 설명" — 선택 구절을 섹션 맥락으로 설명(저장하지 않음). */

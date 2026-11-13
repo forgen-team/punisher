@@ -147,20 +147,28 @@ func (s *SQLiteStore) SetCheckSessionStatus(ctx context.Context, userID, id stri
 // item jobs) older than prepareAge fail; active sessions untouched for
 // abandonAge are abandoned (evidence already applied stays). Returns rows changed.
 func (s *SQLiteStore) SweepStaleChecks(ctx context.Context, turnAge, prepareAge, abandonAge time.Duration) (int64, error) {
+	return s.SweepStaleChecksFor(ctx, "", turnAge, prepareAge, abandonAge)
+}
+
+// SweepStaleChecksFor is SweepStaleChecks limited to one user's rows ("" = every
+// user, the boot/scheduler sweep) — tests sweep only their own user so another
+// run on the same database keeps its pending turns.
+func (s *SQLiteStore) SweepStaleChecksFor(ctx context.Context, userID string, turnAge, prepareAge, abandonAge time.Duration) (int64, error) {
 	now := time.Now()
 	const msg = "generation interrupted"
+	const mine = ` AND ($3 = '' OR user_id = $3)`
 	stmts := []struct {
 		sql  string
 		args []any
 	}{
-		{`UPDATE check_turns SET status = 'failed', error = $2 WHERE status = 'pending' AND created_at <= $1`,
-			[]any{now.Add(-turnAge), msg}},
+		{`UPDATE check_turns SET status = 'failed', error = $2 WHERE status = 'pending' AND created_at <= $1` + mine,
+			[]any{now.Add(-turnAge), msg, userID}},
 		{`UPDATE generation_jobs SET status = 'failed', error = $2, finished_at = NOW(), updated_at = NOW()
-			WHERE kind = 'check_items' AND status IN ('pending', 'running') AND updated_at <= $1`, []any{now.Add(-prepareAge), msg}},
+			WHERE kind = 'check_items' AND status IN ('pending', 'running') AND updated_at <= $1` + mine, []any{now.Add(-prepareAge), msg, userID}},
 		{`UPDATE check_sessions SET status = 'failed', error = $2, updated_at = NOW()
-			WHERE status = 'preparing' AND updated_at <= $1`, []any{now.Add(-prepareAge), msg}},
+			WHERE status = 'preparing' AND updated_at <= $1` + mine, []any{now.Add(-prepareAge), msg, userID}},
 		{`UPDATE check_sessions SET status = 'abandoned', finished_at = NOW(), updated_at = NOW()
-			WHERE status = 'active' AND updated_at <= $1`, []any{now.Add(-abandonAge)}},
+			WHERE status = 'active' AND updated_at <= $1 AND ($2 = '' OR user_id = $2)`, []any{now.Add(-abandonAge), userID}},
 	}
 	var total int64
 	for _, st := range stmts {
