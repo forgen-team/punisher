@@ -55,30 +55,32 @@ function Legend({ data }: { data: ChartData }) {
   );
 }
 
-/** 스크린 리더용 대체 표(시각적으로 숨김) */
+/** 스크린 리더용 대체 표(시각적으로 숨김). 표는 내용 폭 아래로 줄지 않으므로 sr-only 는 감싼 div 에 둔다. */
 function ChartTable({ data }: { data: ChartData }) {
   return (
-    <table className="sr-only">
-      <caption>{data.title || BLOCK_LABELS.chart}</caption>
-      <thead>
-        <tr>
-          <th scope="col">{data.x.label}</th>
-          {data.series.map((s, index) => (
-            <th key={index} scope="col">{s.name || data.y.label}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {data.x.values.map((x, r) => (
-          <tr key={r}>
-            <th scope="row">{x}</th>
+    <div className="sr-only">
+      <table>
+        <caption>{data.title || BLOCK_LABELS.chart}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{data.x.label}</th>
             {data.series.map((s, index) => (
-              <td key={index}>{formatValue(s.values[r])}</td>
+              <th key={index} scope="col">{s.name || data.y.label}</th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {data.x.values.map((x, r) => (
+            <tr key={r}>
+              <th scope="row">{x}</th>
+              {data.series.map((s, index) => (
+                <td key={index}>{formatValue(s.values[r])}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

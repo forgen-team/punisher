@@ -60,7 +60,9 @@ describe("구조 블록 렌더", () => {
   it("gives the chart a hidden data table", () => {
     renderBlocks([SAMPLE[2]]);
     const table = screen.getByRole("table");
-    expect(table).toHaveClass("sr-only");
+    // 표는 내용 폭 아래로 줄지 않으므로 숨김은 감싼 요소가 맡는다(412px 가로 넘침 방지).
+    expect(table).not.toHaveClass("sr-only");
+    expect(table.parentElement).toHaveClass("sr-only");
     expect(screen.getByRole("cell", { name: "10,000" })).toBeInTheDocument();
   });
 
