@@ -25,6 +25,8 @@ Punisher is a personal learning app for computer-science fundamentals. The UI is
 
 - **Today's lecture.** It recommends the next concept to study and writes a ~30-minute lecture on it, streamed live as Claude writes.
 - **Read actively.** Tap a term for a short gloss, select a passage for "explain this part", ask questions, take notes. "Go deeper" lectures stay linked under the lecture you came from.
+- **Check and review.** After a lecture, answer a few short questions; a tutor narrows the question instead of giving the answer. Each learning objective builds a mastery level, and spaced reviews (1, 7, 30 days by default) bring it back.
+- **Reviewed lectures.** Every lecture passes a factual review before it is published; generation shows only the writing → review → fix stages.
 - **Knowledge map.** 168 concepts across 8 areas (data structures, computer architecture, OS, network/web, databases, distributed systems, infra/ops, security/design) with your progress and goals.
 - **Study requests.** Write down a topic; Punisher finds the concept and prepares its lecture in advance.
 - **Your prompts.** Every instruction block (outline → lecture → review → gloss → Q&A → explain) can be viewed and edited, with preview and history.
