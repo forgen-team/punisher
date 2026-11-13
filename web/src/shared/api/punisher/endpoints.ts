@@ -30,7 +30,7 @@ import type { LearningSettingsPatch, LearningSettingsResponse, LectureLinks, Sel
 import type { PromptHistoryEntry, PromptPreview, PromptSaveResponse, PromptsResponse } from "./promptTypes";
 import type { ChapterDraftResponse, ChapterSuggestionsResponse } from "./chapterTypes";
 import type { CompletedArea, CompletedItem, Inquiry, InquiryFollowup } from "./inquiryTypes";
-import type { CheckDetail, ConceptMastery } from "./checkTypes";
+import type { CheckDetail, ConceptMastery, DiagnosticChoice, DiagnosticRequest } from "./checkTypes";
 import type { CheckHistoryPage, ConceptMasterySummary, MasteryMetrics, ReviewSummary } from "./reviewTypes";
 
 const enc = encodeURIComponent;
@@ -59,8 +59,12 @@ export const punisherApi = {
       method: "PUT",
       json: { state },
     }),
-  markKnown: (id: string) =>
-    punisherFetch<{ conceptId: string; state: string }>(`/concepts/${enc(id)}/known`, { method: "POST" }),
+  /** queueVerify: 일괄 '이미 앎' — 목표를 진단 대기열에 넣는다(복습에 하루 1~2개씩 섞임). */
+  markKnown: (id: string, options: { queueVerify?: boolean } = {}) =>
+    punisherFetch<{ conceptId: string; state: string }>(`/concepts/${enc(id)}/known`, {
+      method: "POST",
+      json: options.queueVerify ? { queueVerify: true } : undefined,
+    }),
   getGloss: (conceptId: string) =>
     punisherFetch<{ conceptId: string; gloss: string; cached: boolean }>(`/terms/${enc(conceptId)}/gloss`),
 
@@ -187,7 +191,13 @@ export const punisherApi = {
   // 숙달 확인 ('확인하기') — 모든 동작이 CheckDetail 을 돌려준다(pending 이면 202).
   startCheck: (lectureId: string) =>
     punisherFetch<CheckDetail>("/checks", { method: "POST", json: { kind: "check", lectureId } }),
+  /** 사전 진단 — 예측 질문은 지금 낼 것이 없으면 204(undefined). 배치 진단할 개념이 부족하면 409 NO_PLACEMENT. */
+  startDiagnostic: (body: DiagnosticRequest) =>
+    punisherFetch<CheckDetail | undefined>("/checks", { method: "POST", json: body }),
   getCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}`),
+  /** 예측·배치 문항의 보기 또는 '모르겠어요'(피드백 없이 기록). */
+  answerChoice: (id: string, answer: DiagnosticChoice) =>
+    punisherFetch<CheckDetail>(`/checks/${enc(id)}/answers`, { method: "POST", json: answer }),
   answerCheck: (id: string, text: string) =>
     punisherFetch<CheckDetail>(`/checks/${enc(id)}/answers`, { method: "POST", json: { text } }),
   revealCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/reveal`, { method: "POST" }),

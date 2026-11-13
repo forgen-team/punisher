@@ -23,6 +23,7 @@ const (
 	BlockResolveSystem  = "resolve.system"
 	BlockCheckItems     = "check.items"
 	BlockCheckTutor     = "check.tutor"
+	BlockCheckPretest   = "check.pretest"
 )
 
 // Var is a {{name}} placeholder a block may use.
@@ -59,6 +60,7 @@ const (
 	StageExplain = "explain"
 	StageResolve = "resolve"
 	StageCheck   = "check"
+	StagePretest = "pretest"
 )
 
 var (
@@ -115,6 +117,10 @@ var Blocks = []Block{
 		Purpose:   "'확인하기'에서 답 하나를 채점 기준으로 판정하고, 좁힌 질문·설명·반론·다음 문항 중 정해진 행동을 합니다.",
 		AppliesTo: "내 '확인하기' 채점과 되묻기", Vars: []Var{varConcept}, Default: SystemCheckTutor,
 		Warning: "판정은 JSON(verdict·confidence·tutor_move 등)으로 받습니다. 키 이름과 '출력은 JSON 하나뿐' 문장은 남겨 두세요."},
+	{ID: BlockCheckPretest, Stage: StagePretest, StageTitle: "사전 진단", Title: "사전 진단 문항 만들기(시스템)",
+		Purpose:   "강의 시작 때의 예측 질문, '이미 앎' 확인 문항, 새 챕터 배치 진단 문항을 개념·목표만으로 만듭니다.",
+		AppliesTo: "내 예측 질문·'이미 앎' 확인·배치 진단 문항", Vars: []Var{varConcept, varLanguage}, Default: SystemCheckPretest,
+		Warning: "문항은 JSON(items·material.choices·rubric.correct)으로 받습니다. 키 이름과 '출력은 JSON 하나뿐' 문장은 남겨 두세요."},
 }
 
 var blockIndex = func() map[string]Block {

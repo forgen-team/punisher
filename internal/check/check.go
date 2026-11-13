@@ -12,11 +12,17 @@ import (
 const (
 	PurposeCheck  = "check"
 	PurposeReview = "review"
+	// Diagnostics (P3, design §5): purpose = session kind.
+	PurposePretest     = "pretest"
+	PurposeKnownVerify = "known_verify"
+	PurposePlacement   = "placement"
 
 	FormatRecall      = "recall"
 	FormatPredict     = "predict"
 	FormatApply       = "apply"
 	FormatIntegrative = "integrative"
+	// FormatChoice: 3~4 options with one correct (diagnostics only, M2).
+	FormatChoice = "choice"
 )
 
 // Tutor/learner moves (check_turns.move).
@@ -32,6 +38,8 @@ const (
 	MoveReveal    = "reveal"
 	MoveSelfGrade = "self_grade"
 	MoveDispute   = "dispute"
+	// MoveDontKnow: '모르겠어요' on a diagnostic item (no answer text).
+	MoveDontKnow = "dont_know"
 )
 
 // Rubric is how an item is graded (check_items.rubric).
@@ -42,6 +50,8 @@ type Rubric struct {
 	Answer         string   `json:"answer"`
 	Anchor         string   `json:"anchor"`
 	Covers         []string `json:"covers"`
+	// Correct: index of the right option of a choice item (never sent to the learner).
+	Correct *int `json:"correct,omitempty"`
 }
 
 // Item is one generated question (LLM output, then stored as a check_items row).
@@ -71,8 +81,9 @@ type Stage struct {
 	Integrative bool
 	// Last: no item follows (the closing move is wrap instead of next).
 	Last bool
-	// Kind: the session kind (check | review). A tutored review allows one
-	// narrowing question and no explanation (design §5 P2).
+	// Kind: the session kind (check | review | known_verify; a known_verify item
+	// in a review uses known_verify). A tutored review allows one narrowing
+	// question and no explanation (design §5 P2); a known verification none.
 	Kind string
 }
 
@@ -82,13 +93,21 @@ const MaxAnswers = 3
 // MaxReviewAnswers per tutored review item: first answer and the one after narrowing.
 const MaxReviewAnswers = 2
 
-// MaxAnswersFor is the answer limit of an item in a session of this kind.
+// MaxAnswersFor is the answer limit of an item in a session of this kind. A
+// known verification takes one answer (no narrowing, design §5 P3).
 func MaxAnswersFor(kind string) int {
-	if kind == PurposeReview {
+	switch kind {
+	case PurposeReview:
 		return MaxReviewAnswers
+	case PurposeKnownVerify:
+		return 1
 	}
 	return MaxAnswers
 }
+
+// Recorded reports whether a session kind only records answers (no tutor, no
+// evidence): the pretest and the placement diagnostic.
+func Recorded(kind string) bool { return kind == PurposePretest || kind == PurposePlacement }
 
 func (st Stage) maxAnswers() int { return MaxAnswersFor(st.Kind) }
 

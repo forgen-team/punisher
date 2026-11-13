@@ -295,7 +295,7 @@ func (s *Service) GetCheck(ctx context.Context, userID, id string) (models.Check
 	if err != nil {
 		return models.CheckDetail{}, err
 	}
-	if st.sess.Status == "preparing" && st.sess.LectureID != "" {
+	if st.sess.Status == "preparing" && st.sess.Kind == check.PurposeCheck && st.sess.LectureID != "" {
 		if st, err = s.attachReadyItems(ctx, userID, st); err != nil {
 			return models.CheckDetail{}, err
 		}

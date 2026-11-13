@@ -8,6 +8,7 @@ import {
   type CheckTurn,
   type LectureSection,
   type ObjectiveMastery,
+  type Prediction,
 } from "@/src/shared/api/punisher";
 
 /** 세션의 문항 순서(itemIds)대로 정렬한 문항. */
@@ -124,17 +125,45 @@ export function canSend(detail: CheckDetail, text: string): boolean {
 export interface ResultRow extends CheckResultItem {
   text: string;
   queued: boolean;
+  /** 같은 목표의 처음 예측(예측 질문 답, 없으면 null) */
+  prediction: Prediction | null;
+  /** 이 세션에서 그 문항에 처음 쓴 답(지금 답) */
+  answer: string;
 }
 
-/** 결과 요약의 목표별 줄 — 통합 문항(objectiveId "")은 목표 레벨이 없으므로 뺀다. */
+/** 기록만 하는 세션(예측 질문 · 배치 진단) — 판정·결과 요약이 없다. */
+export function isRecorded(detail: CheckDetail): boolean {
+  return detail.session.kind === "pretest" || detail.session.kind === "placement";
+}
+
+/** 그 문항에 학습자가 처음 쓴 답. */
+export function firstAnswerOf(turns: CheckTurn[], itemId: string): string {
+  const first = [...turns].sort((a, b) => a.seq - b.seq).find((t) => t.itemId === itemId && t.role === "learner" && t.move === "answer");
+  return first?.text ?? "";
+}
+
+/** 결과 요약의 목표별 줄 — 통합 문항(objectiveId "")은 목표 레벨이 없으므로 뺀다. 처음 예측이 있으면 지금 답과 나란히. */
 export function resultRows(detail: CheckDetail): ResultRow[] {
+  if (isRecorded(detail)) { return []; }
   const mastery = new Map<string, ObjectiveMastery>((detail.mastery ?? []).map((m) => [m.objectiveId, m]));
+  const predictions = new Map<string, Prediction>((detail.predictions ?? []).map((p) => [p.objectiveId, p]));
   return (detail.session.result?.items ?? [])
     .filter((r) => r.objectiveId !== "")
     .map((r) => {
       const m = mastery.get(r.objectiveId);
-      return { ...r, text: m?.text || r.objectiveId, queued: r.queued ?? m?.queued ?? false };
+      return {
+        ...r,
+        text: m?.text || r.objectiveId,
+        queued: r.queued ?? m?.queued ?? false,
+        prediction: predictions.get(r.objectiveId) ?? null,
+        answer: firstAnswerOf(detail.turns, r.itemId),
+      };
     });
+}
+
+/** '다시 배우기' 제안 — 반복 실패(lapses ≥ 2, design §2.4) 또는 '이미 앎' 확인을 통과하지 못한 목표. */
+export function suggestRelearn(row: CheckResultItem): boolean {
+  return row.lapses >= 2 || Boolean(row.relearn);
 }
 
 /** '다시 볼 곳' 링크 글자 — 앵커가 가리키는 강의 섹션 제목(섹션·블록 앵커 모두). */

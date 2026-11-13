@@ -32,13 +32,13 @@ func clockNow() time.Time {
 	return now
 }
 
-const masteryColumns = `box, grad_step, best, integrative_ok, lapses, next_review_at, last_credit_at, last_fail_at, stale, queued, updated_at`
+const masteryColumns = `box, grad_step, best, integrative_ok, lapses, next_review_at, last_credit_at, last_fail_at, stale, queued, verify_queued, updated_at`
 
 func scanMastery(row rowScanner) (learning.Mastery, time.Time, error) {
 	var m learning.Mastery
 	var updated time.Time
 	err := row.Scan(&m.Box, &m.GradStep, &m.Best, &m.IntegrativeOK, &m.Lapses, nts(&m.NextReviewAt),
-		nts(&m.LastCreditAt), nts(&m.LastFailAt), &m.Stale, &m.Queued, ts(&updated))
+		nts(&m.LastCreditAt), nts(&m.LastFailAt), &m.Stale, &m.Queued, &m.Verify, ts(&updated))
 	return m, updated, err
 }
 
@@ -60,18 +60,19 @@ func saveMastery(ctx context.Context, c conn, userID, objectiveID, grader string
 	var updated time.Time
 	err := c.row(ctx, `
 		INSERT INTO user_objective_mastery (user_id, objective_id, concept_id, box, grad_step, best, integrative_ok, lapses,
-			next_review_at, last_credit_at, last_fail_at, objective_text, objective_depth, stale, last_grader, queued, updated_at)
-		SELECT $1, o.id, o.concept_id, $3, $4, $5, $6, $7, $8, $9, $10, o.text, o.depth, $11, $12, $14, $13
+			next_review_at, last_credit_at, last_fail_at, objective_text, objective_depth, stale, last_grader, queued, verify_queued, updated_at)
+		SELECT $1, o.id, o.concept_id, $3, $4, $5, $6, $7, $8, $9, $10, o.text, o.depth, $11, $12, $14, $15, $13
 		FROM objectives o WHERE o.id = $2
 		ON CONFLICT (user_id, objective_id) DO UPDATE SET
 			box = excluded.box, grad_step = excluded.grad_step, best = excluded.best,
 			integrative_ok = excluded.integrative_ok, lapses = excluded.lapses, next_review_at = excluded.next_review_at,
 			last_credit_at = excluded.last_credit_at, last_fail_at = excluded.last_fail_at,
 			objective_text = excluded.objective_text, objective_depth = excluded.objective_depth,
-			stale = excluded.stale, last_grader = excluded.last_grader, queued = excluded.queued, updated_at = excluded.updated_at
+			stale = excluded.stale, last_grader = excluded.last_grader, queued = excluded.queued,
+			verify_queued = excluded.verify_queued, updated_at = excluded.updated_at
 		RETURNING updated_at`,
 		userID, objectiveID, m.Box, m.GradStep, m.Best, m.IntegrativeOK, m.Lapses, m.NextReviewAt,
-		m.LastCreditAt, m.LastFailAt, m.Stale, grader, clockNow(), m.Queued).Scan(ts(&updated))
+		m.LastCreditAt, m.LastFailAt, m.Stale, grader, clockNow(), m.Queued, m.Verify).Scan(ts(&updated))
 	if err != nil {
 		return updated, fmt.Errorf("save mastery %s: %w", objectiveID, err)
 	}
@@ -150,7 +151,7 @@ func (s *SQLiteStore) objectiveMastery(ctx context.Context, userID, where string
 // objective's read state is removed (it can be generated/learned again), the
 // concept goes back to in_progress directly (bypassing SetConceptState, so a
 // completed/known concept changes too), and the mastery drops to box 0 with
-// lapses 0 and no review date, not waiting in the inflow queue (best is kept). Returns the objective's concept.
+// lapses 0 and no review date, not waiting in the inflow or verification queue (best is kept). Returns the objective's concept.
 func (s *SQLiteStore) ReopenObjective(ctx context.Context, userID, objectiveID string) (string, error) {
 	var conceptID string
 	err := s.tx(ctx, func(c conn) error {
@@ -171,7 +172,7 @@ func (s *SQLiteStore) ReopenObjective(ctx context.Context, userID, objectiveID s
 			return fmt.Errorf("reopen concept state: %w", err)
 		}
 		if _, err := c.exec(ctx, `UPDATE user_objective_mastery SET box = 0, grad_step = 0, lapses = 0, next_review_at = NULL,
-			queued = 0, updated_at = $3 WHERE user_id = $1 AND objective_id = $2`, userID, objectiveID, clockNow()); err != nil {
+			queued = 0, verify_queued = 0, updated_at = $3 WHERE user_id = $1 AND objective_id = $2`, userID, objectiveID, clockNow()); err != nil {
 			return fmt.Errorf("reopen mastery: %w", err)
 		}
 		return nil

@@ -12,17 +12,26 @@ import (
 	"github.com/wooo-jin/punisher/internal/llmjson"
 )
 
-// writeItemSet runs an item generation with the check.items system prompt:
-// one rewrite with the problems when the output does not parse or validate.
-// A set that never validates is an error, never items.
-func (s *Service) writeItemSet(ctx context.Context, apiKey, system string, priority llm.Priority,
+// itemSetCall is one item generation: model, attempts (2 = one rewrite with
+// the problems fed back), priority and the system prompt.
+type itemSetCall struct {
+	model    string
+	attempts int
+	priority llm.Priority
+	system   string
+}
+
+// writeItemSet runs an item generation (check.items or check.pretest system
+// prompt): up to call.attempts calls, rewriting with the problems when the
+// output does not parse or validate. A set that never validates is an error, never items.
+func (s *Service) writeItemSet(ctx context.Context, apiKey string, call itemSetCall,
 	user func(revisions []string) string, validate func(check.ItemSet) []string) (check.ItemSet, usage, []store.AttemptRecord, error) {
 	var u usage
 	var tries []store.AttemptRecord
 	var problems []string
-	for n := 1; n <= checkAttempts; n++ {
-		text, gerr := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel, System: system,
-			User: user(problems), MaxTokens: 8000, Timeout: 5 * time.Minute, Priority: priority}, &u)
+	for n := 1; n <= call.attempts; n++ {
+		text, gerr := s.complete(ctx, apiKey, llm.MessagesRequest{Model: call.model, System: call.system,
+			User: user(problems), MaxTokens: 8000, Timeout: 5 * time.Minute, Priority: call.priority}, &u)
 		if gerr != nil {
 			tries = append(tries, store.AttemptRecord{Attempt: n, Result: "llm_error", Message: gerr.Error()})
 			return check.ItemSet{}, u, tries, gerr

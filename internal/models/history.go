@@ -71,8 +71,10 @@ type LearningSettings struct {
 	// ReviewMinutes: daily review time (0~30).
 	ReviewMinutes int `json:"reviewMinutes"`
 	// ReviewGrader: default grader of reviews (self | llm).
-	ReviewGrader string     `json:"reviewGrader"`
-	UpdatedAt    *time.Time `json:"updatedAt,omitempty"`
+	ReviewGrader string `json:"reviewGrader"`
+	// PretestEnabled: prediction questions before a lecture (사전 진단).
+	PretestEnabled bool       `json:"pretestEnabled"`
+	UpdatedAt      *time.Time `json:"updatedAt,omitempty"`
 }
 
 // CompletedItem is one entry of the "completed by area" history: a completed

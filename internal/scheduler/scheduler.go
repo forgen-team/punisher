@@ -134,6 +134,14 @@ func (s *Scheduler) tick(ctx context.Context) {
 	case vrep.Generated+vrep.Failed > 0:
 		log.Printf("[scheduler] review variants: generated=%d failed=%d skipped=%d", vrep.Generated, vrep.Failed, vrep.Skipped)
 	}
+	// 일괄 '이미 앎' 진단 대기열의 다음 개념 확인 문항(하루치가 준비돼 있지 않을 때만, §5 P3).
+	krep, err := s.Svc.PregenerateKnownVerify(ctx)
+	switch {
+	case err != nil:
+		logLibrary("known verify", services.LibraryReport{}, err)
+	case krep.Generated+krep.Failed > 0:
+		log.Printf("[scheduler] known verify items: generated=%d failed=%d skipped=%d", krep.Generated, krep.Failed, krep.Skipped)
+	}
 	if s.Svc.Cfg.LibraryAhead <= 0 {
 		return
 	}

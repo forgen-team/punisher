@@ -11,7 +11,7 @@ import (
 )
 
 // ListCheckHistory returns the user's check and review sessions, newest first
-// (kind "" = both). next is "" on the last page.
+// (kind "" = both; diagnostics are not history entries). next is "" on the last page.
 func (s *SQLiteStore) ListCheckHistory(ctx context.Context, userID, kind string, limit int, cursor string) ([]models.CheckHistoryItem, string, error) {
 	cur, err := decodeCursor(cursor)
 	if err != nil {
@@ -27,7 +27,7 @@ func (s *SQLiteStore) ListCheckHistory(ctx context.Context, userID, kind string,
 		FROM check_sessions cs
 		LEFT JOIN concepts c ON c.id = cs.concept_id
 		LEFT JOIN lectures l ON l.id = cs.lecture_id
-		WHERE cs.user_id = $1 AND ($2 = '' OR cs.kind = $2) AND (cs.created_at, cs.id) < ($3, $4)
+		WHERE cs.user_id = $1 AND (($2 = '' AND cs.kind IN ('check', 'review')) OR cs.kind = $2) AND (cs.created_at, cs.id) < ($3, $4)
 		ORDER BY cs.created_at DESC, cs.id DESC LIMIT $5`, userID, kind, cur.At, cur.ID, limit+1),
 		func(row rowScanner) (models.CheckHistoryItem, error) {
 			var h models.CheckHistoryItem

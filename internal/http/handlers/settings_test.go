@@ -5,6 +5,7 @@ import "testing"
 func TestSettingsPatchNeedsOneValidField(t *testing.T) {
 	ptr := func(n int) *int { return &n }
 	str := func(s string) *string { return &s }
+	off := false
 	cases := []struct {
 		name string
 		body settingsBody
@@ -15,6 +16,7 @@ func TestSettingsPatchNeedsOneValidField(t *testing.T) {
 		{"mastery target only", settingsBody{MasteryTarget: ptr(5)}, true},
 		{"review grader only", settingsBody{ReviewGrader: str("LLM")}, true},
 		{"intervals only", settingsBody{ReviewIntervals: []int{1, 3, 9}}, true},
+		{"pretest off only", settingsBody{PretestEnabled: &off}, true},
 		{"bad daily", settingsBody{DailyMinutes: ptr(20)}, false},
 		{"bad target", settingsBody{MasteryTarget: ptr(2)}, false},
 		{"bad intervals", settingsBody{ReviewIntervals: []int{7, 1}}, false},

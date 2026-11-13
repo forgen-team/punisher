@@ -155,6 +155,7 @@ export const OUTCOME_LABELS: Record<CheckOutcome, string> = {
   aided: "도움받아 답함",
   failed: "놓침",
   held: "판정 보류",
+  recorded: "기록함",
 };
 
 /** 마지막 근거의 채점 주체(레벨 점 옆) */
@@ -162,6 +163,7 @@ export const GRADER_LABELS: Record<CheckGrader, string> = {
   llm: "튜터",
   self: "자기",
   "llm_regrade": "재채점",
+  none: "",
 };
 
 /** 자기 채점에서 고르는 판정 */
@@ -196,6 +198,10 @@ export type CheckErrorCode =
   | "NO_OBJECTIVES"
   | "INVALID_KIND"
   | "NO_REVIEWS"
+  | "NO_PLACEMENT"
+  | "MISSING_TARGET"
+  | "CHOICE_REQUIRED"
+  | "INVALID_CHOICE"
   | "BAD_REQUEST";
 
 export const CHECK_ERROR_MESSAGES: Record<CheckErrorCode, string> = {
@@ -206,5 +212,9 @@ export const CHECK_ERROR_MESSAGES: Record<CheckErrorCode, string> = {
   NO_OBJECTIVES: "이 강의에는 확인할 학습 목표가 없어요.",
   INVALID_KIND: "지원하지 않는 확인 종류예요.",
   NO_REVIEWS: "오늘 복습할 항목이 없어요.",
+  NO_PLACEMENT: "이 챕터에는 배치 진단할 개념이 부족해요.",
+  MISSING_TARGET: "진단할 대상을 찾지 못했어요.",
+  CHOICE_REQUIRED: "보기를 골라 주세요.",
+  INVALID_CHOICE: "보기를 다시 골라 주세요.",
   BAD_REQUEST: "요청을 처리하지 못했어요. 다시 시도해 주세요.",
 };

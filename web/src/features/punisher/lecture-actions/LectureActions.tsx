@@ -9,16 +9,23 @@ import { FeedbackBar } from "./FeedbackBar";
  * 완료 / 이미 앎 상태 — 상단 오버플로 메뉴와 본문 끝 마무리 구역이 같은 상태를 공유한다.
  * 완료는 사용자가 누를 때만 기록된다 (design §3.4).
  */
-export function useLectureActions(lectureId: string, conceptId: string, completed: boolean) {
+export function useLectureActions(
+  lectureId: string,
+  conceptId: string,
+  completed: boolean,
+  /** '이미 앎'을 누르면 묻는 흐름("짧게 확인할까요?") — 있으면 그 상태를 쓴다. */
+  knownFlow?: { known: ReturnType<typeof useMarkKnown>; ask: (conceptId: string) => void },
+) {
   const complete = useCompleteLecture(lectureId);
-  const known = useMarkKnown();
+  const ownKnown = useMarkKnown();
+  const known = knownFlow?.known ?? ownKnown;
   return {
     complete,
     known,
     done: completed || complete.isSuccess,
     knownDone: known.isSuccess,
     markComplete: () => complete.mutate(),
-    markKnown: () => known.mutate(conceptId),
+    markKnown: () => (knownFlow ? knownFlow.ask(conceptId) : known.mutate(conceptId)),
   };
 }
 

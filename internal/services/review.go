@@ -20,7 +20,7 @@ var ErrNoReviews = errors.New("오늘 복습할 항목이 없어요")
 const metricsWindow = 28 * 24 * time.Hour
 
 // ReviewSessionKey is the session key of the day's review session (KST date).
-func ReviewSessionKey(now time.Time) string { return "review:" + learning.KSTDay(now) }
+func ReviewSessionKey(now time.Time) string { return learning.ReviewSessionKey(now) }
 
 func (s *Service) learningSettings(ctx context.Context, userID string) models.LearningSettings {
 	st, err := s.Store.GetLearningSettings(ctx, userID)
@@ -82,7 +82,7 @@ func (s *Service) StartReview(ctx context.Context, userID string) (models.CheckD
 	if limit <= 0 {
 		return models.CheckDetail{}, false, fmt.Errorf("%w: 복습 시간이 0분이에요", ErrNoReviews)
 	}
-	picks, err := s.pickReviewItems(ctx, userID, now, st.ReviewIntervals, limit)
+	picks, err := s.sessionPicks(ctx, userID, now, st.ReviewIntervals, limit)
 	if err != nil {
 		return models.CheckDetail{}, false, err
 	}
@@ -110,6 +110,42 @@ func (s *Service) StartReview(ctx context.Context, userID string) (models.CheckD
 	}
 	d, err := s.GetCheck(ctx, userID, sess.ID)
 	return d, created, err
+}
+
+// sessionPicks are a new review session's items: the due reviews and up to
+// learning.KnownVerifyPerDay known verifications a day (bulk '이미 앎', design
+// §5 P3), split within the limit (learning.MixKnownVerify) and interleaved.
+func (s *Service) sessionPicks(ctx context.Context, userID string, now time.Time, intervals []int, limit int) ([]store.ReviewPick, error) {
+	reviews, err := s.pickReviewItems(ctx, userID, now, intervals, limit)
+	if err != nil {
+		return nil, err
+	}
+	used, err := s.Store.KnownVerifyUsed(ctx, userID, ReviewSessionKey(now))
+	if err != nil {
+		return nil, err
+	}
+	verify, err := s.Store.KnownVerifyPicks(ctx, userID, learning.KnownVerifyPerDay-used)
+	if err != nil {
+		return nil, err
+	}
+	nReviews, nVerify := learning.MixKnownVerify(limit, len(reviews), len(verify))
+	byID := map[string]store.ReviewPick{}
+	reviewIDs, verifyIDs := []string{}, []string{}
+	for _, p := range reviews[:nReviews] {
+		byID[p.Item.ID] = p
+		reviewIDs = append(reviewIDs, p.Item.ID)
+	}
+	for _, p := range verify[:nVerify] {
+		if _, dup := byID[p.Item.ID]; !dup {
+			byID[p.Item.ID] = p
+			verifyIDs = append(verifyIDs, p.Item.ID)
+		}
+	}
+	out := make([]store.ReviewPick, 0, len(byID))
+	for _, id := range learning.InterleaveVerify(reviewIDs, verifyIDs) {
+		out = append(out, byID[id])
+	}
+	return out, nil
 }
 
 // pickReviewItems orders the due queue (learning.OrderReviews) and takes one
@@ -161,7 +197,7 @@ func (s *Service) ReviewSummary(ctx context.Context, userID string) (models.Revi
 	sum := learning.SummarizeReviews(counts, st.ReviewMinutes, grader)
 	out := models.ReviewSummary{Due: sum.Due, Overdue: sum.Overdue, Queued: sum.Queued, EstimatedMinutes: sum.EstimatedMinutes,
 		Backlogged: sum.Backlogged, Throughput: learning.ReviewThroughput(st.ReviewMinutes, grader), Grader: grader,
-		ReviewMinutes: st.ReviewMinutes}
+		ReviewMinutes: st.ReviewMinutes, Verify: sum.Verify}
 	sess, err := s.Store.LatestCheckSession(ctx, userID, ReviewSessionKey(now))
 	switch {
 	case errors.Is(err, store.ErrNotFound):

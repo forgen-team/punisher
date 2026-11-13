@@ -9,10 +9,10 @@ import {
   UncheckedObjectives,
   areaLabel,
   useConceptDetail,
-  useMarkKnown,
   useMastery,
   useNotes,
 } from "@/src/entities/punisher";
+import { KnownVerifyChoice, useKnownChoice } from "@/src/features/punisher/check-start";
 import { ResolutionChoices, lectureHref, useLaunchInstant } from "@/src/features/punisher/instant-start";
 import { describePunisherError, type ConceptLink, type InstantResponse, type MapRequest } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
@@ -77,16 +77,19 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
   const titleId = useId();
   const detail = useConceptDetail(conceptId ?? undefined);
   const mastery = useMastery(conceptId ?? undefined);
-  const known = useMarkKnown();
+  const knownChoice = useKnownChoice();
+  const known = knownChoice.known;
   const { launch, isPending, error } = useLaunchInstant();
   const [result, setResult] = useState<InstantResponse | null>(null);
   const resetKnown = known.reset;
+  const closeKnown = knownChoice.close;
 
   // 다른 개념으로 넘어가면 이전 개념의 실행 결과를 지운다.
   useEffect(() => {
     setResult(null);
     resetKnown();
-  }, [conceptId, resetKnown]);
+    closeKnown();
+  }, [conceptId, resetKnown, closeKnown]);
 
   async function start(id: string) {
     try {
@@ -104,9 +107,9 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
     : undefined;
 
   const title = c?.name ?? conceptId ?? "";
-  const actions = c ? (
+  const conceptActions = c ? (
     <>
-      <Button variant="secondary" disabled={learned || known.isSuccess} loading={known.isPending} onClick={() => known.mutate(c.id)}>
+      <Button variant="secondary" disabled={learned || known.isSuccess} loading={known.isPending} onClick={() => knownChoice.ask(c.id)}>
         {known.isSuccess ? "이미 앎으로 표시됨" : "이미 앎"}
       </Button>
       <Button loading={isPending} onClick={() => start(c.id)}>
@@ -114,6 +117,7 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
       </Button>
     </>
   ) : null;
+  const actions = knownChoice.asking ? <KnownVerifyChoice choice={knownChoice} variant="inline" /> : conceptActions;
   const body = (
     <>
       {detail.isLoading ? (

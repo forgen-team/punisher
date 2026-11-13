@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button, EmptyState, Spinner, buttonVariants } from "@/src/shared/ui/kit";
 import { invalidateLearningState, parsePartialMarkup } from "@/src/entities/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
+import { PretestPanel, usePretest } from "@/src/features/punisher/pretest";
 import { LectureAssistPlaceholder, LectureBody, LectureHeader, LectureLayout, LectureTopBar, TocSheet, useActiveSection } from "../lecture-viewer";
 import { useInstantStream, type StreamPhase } from "./useInstantStream";
 import { useRetryInstant } from "./useRetryInstant";
@@ -25,6 +26,7 @@ export function InstantStreamView({ jobId }: { jobId: string }) {
   const queryClient = useQueryClient();
   const { phase, text, lectureId, errorMessage, rewriteReason } = useInstantStream(jobId);
   const retry = useRetryInstant(jobId);
+  const pretest = usePretest({ jobId });
   const content = useMemo(() => parsePartialMarkup(text), [text]);
   const [tocOpen, setTocOpen] = useState(false);
 
@@ -78,6 +80,7 @@ export function InstantStreamView({ jobId }: { jobId: string }) {
             />
           ) : (
             <>
+              <PretestPanel detail={pretest.data} />
               <LectureHeader content={content} fallbackTitle="강의 준비 중…" />
               <div className="mt-6">
                 <LectureBody content={content} />

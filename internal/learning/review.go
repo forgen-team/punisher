@@ -19,6 +19,9 @@ const (
 	ReleaseBacklogDays = 1
 )
 
+// ReviewSessionKey is the session key of the day's review session (KST date).
+func ReviewSessionKey(now time.Time) string { return "review:" + KSTDay(now) }
+
 // MinutesPerItem is the time of one review item for a grader (llm = tutor, anything else = self).
 func MinutesPerItem(grader string) int {
 	if grader == GraderLLM {
@@ -165,6 +168,8 @@ type ReviewCounts struct {
 	Overdue int
 	// Queued: waiting by inflow control (no review date yet).
 	Queued int
+	// Verify: known verifications ready to mix in today (KnownVerifyPerDay at most).
+	Verify int
 }
 
 // ReviewToday is the review part of the today payload (TodayResult.Review).
@@ -176,15 +181,18 @@ type ReviewToday struct {
 	// Backlogged: due reviews exceed HoldBacklogDays of throughput ("밀린 복습 n개" · '오늘 더 하기').
 	Backlogged     bool `json:"backlogged"`
 	LectureMinutes int  `json:"lectureMinutes"`
+	// Verify: known verifications mixed into today's session (within throughput).
+	Verify int `json:"verify"`
 }
 
 // SummarizeReviews turns counts and the settings into today's review numbers:
 // the estimate covers what fits in today's session (min(due, throughput) items).
 func SummarizeReviews(c ReviewCounts, reviewMinutes int, grader string) ReviewToday {
 	throughput := ReviewThroughput(reviewMinutes, grader)
+	reviews, verify := MixKnownVerify(throughput, c.Due, c.Verify)
 	return ReviewToday{Due: c.Due, Overdue: c.Overdue, Queued: c.Queued,
-		EstimatedMinutes: min(c.Due, throughput) * MinutesPerItem(grader),
-		Backlogged:       HoldNewReviews(c.Due, throughput), LectureMinutes: DefaultLectureMinutes}
+		EstimatedMinutes: (reviews + verify) * MinutesPerItem(grader),
+		Backlogged:       HoldNewReviews(c.Due, throughput), LectureMinutes: DefaultLectureMinutes, Verify: verify}
 }
 
 // RetentionSample is one first attempt of a review item on an unseen item.

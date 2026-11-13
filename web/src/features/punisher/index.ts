@@ -10,3 +10,4 @@ export * from "./reading-assist";
 export * from "./learning-settings";
 export * from "./prompt-edit";
 export * from "./check-start";
+export * from "./pretest";

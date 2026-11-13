@@ -5,12 +5,11 @@ import { Button, Section } from "@/src/shared/ui/kit";
 import { MasteryDots, describeCheckError, masteryLabel, useCompleteLecture, useRelearn } from "@/src/entities/punisher";
 import { useLaunchReview } from "@/src/features/punisher/check-start";
 import { InlineError } from "@/src/shared/ui/punisher";
-import type { ResultRow } from "../lib/checkView";
+import { DIAGNOSTIC_LABELS } from "@/src/features/punisher/pretest";
+import { suggestRelearn, type ResultRow } from "../lib/checkView";
+import { PREDICTION_LABELS } from "./constants";
 
 const reviewDate = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short" });
-
-/** 반복 실패(lapses ≥ 2)한 목표에 '다시 배우기'를 제안한다(design §2.4). */
-const RELEARN_LAPSES = 2;
 
 interface CheckResultProps {
   rows: ResultRow[];
@@ -93,6 +92,12 @@ export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function Ch
                 </p>
               )}
               {row.misconception && <p className="break-keep text-fg-secondary">드러난 오개념: {row.misconception}</p>}
+              {row.prediction && (
+                <p className="break-keep text-fg-secondary">
+                  {PREDICTION_LABELS.before}: {row.prediction.dontKnow ? DIAGNOSTIC_LABELS.dontKnow : row.prediction.answer} →{" "}
+                  {PREDICTION_LABELS.now}: {row.answer || "—"}
+                </p>
+              )}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-muted">
                 <span>
                   <NextReview row={row} />
@@ -103,7 +108,7 @@ export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function Ch
                   </Link>
                 )}
               </div>
-              {row.lapses >= RELEARN_LAPSES && (
+              {suggestRelearn(row) && (
                 <div>
                   <Button
                     size="sm"

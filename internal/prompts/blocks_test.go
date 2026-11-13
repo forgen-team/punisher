@@ -8,7 +8,7 @@ import (
 
 func TestRegistryCoversEditableBlocks(t *testing.T) {
 	want := []string{BlockOutlineTask, BlockTeacherSystem, BlockLectureFormat, BlockReviewerSystem, BlockReviewTask,
-		BlockGlossSystem, BlockQASystem, BlockExplainSystem, BlockResolveSystem, BlockCheckItems, BlockCheckTutor}
+		BlockGlossSystem, BlockQASystem, BlockExplainSystem, BlockResolveSystem, BlockCheckItems, BlockCheckTutor, BlockCheckPretest}
 	for _, id := range want {
 		b, ok := LookupBlock(id)
 		if !ok || strings.TrimSpace(b.Default) == "" || b.Purpose == "" || b.StageTitle == "" {
@@ -161,5 +161,25 @@ func TestCheckBlocksAndBuilders(t *testing.T) {
 	}
 	if r := CheckRegrade("문항", []string{"a"}, nil, "모범", "답"); !strings.Contains(r, "## 학습자 답\n답") || strings.Contains(r, "문답") {
 		t.Fatalf("regrade prompt: %s", r)
+	}
+}
+
+func TestPretestBlockAndBuilder(t *testing.T) {
+	b, _ := LookupBlock(BlockCheckPretest)
+	if b.Stage != StagePretest || b.Warning == "" || !strings.Contains(b.Default, "출력은 JSON 하나뿐") {
+		t.Fatalf("pretest block: %+v", b)
+	}
+	objectives := []DiagnosticObjective{{ID: "c#1", ConceptName: "페이지 캐시", Text: "읽기 경로"}}
+	pre := Diagnostic(DiagnosticContext{Purpose: "pretest", Objectives: objectives, Count: 2, Revisions: []string{"보기가 2개"}})
+	for _, want := range []string{"c#1 (개념: 페이지 캐시): 읽기 경로", "정확히 2개", "보기가 2개"} {
+		if !strings.Contains(pre, want) {
+			t.Fatalf("pretest prompt lacks %q:\n%s", want, pre)
+		}
+	}
+	if kv := Diagnostic(DiagnosticContext{Purpose: "known_verify", Objectives: objectives}); !strings.Contains(kv, "known_verify") || strings.Contains(kv, "%!") {
+		t.Fatalf("known verify prompt: %s", kv)
+	}
+	if pl := Diagnostic(DiagnosticContext{Purpose: "placement", Objectives: objectives}); !strings.Contains(pl, "format choice") {
+		t.Fatalf("placement prompt: %s", pl)
 	}
 }

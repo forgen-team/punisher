@@ -13,13 +13,14 @@ import (
 	"github.com/wooo-jin/punisher/internal/models"
 )
 
-const settingsColumns = `example_language, daily_minutes, mastery_target, review_intervals, review_minutes, review_grader, updated_at`
+const settingsColumns = `example_language, daily_minutes, mastery_target, review_intervals, review_minutes, review_grader, pretest_enabled, updated_at`
 
 func defaultLearningSettings() models.LearningSettings {
 	return models.LearningSettings{
 		ExampleLanguage: learning.DefaultExampleLanguage, DailyMinutes: learning.DefaultDailyMinutes,
 		MasteryTarget: learning.DefaultMasteryTarget, ReviewIntervals: append([]int{}, learning.DefaultReviewIntervals...),
 		ReviewMinutes: learning.DefaultReviewMinutes, ReviewGrader: learning.DefaultReviewGrader,
+		PretestEnabled: learning.DefaultPretestEnabled,
 	}
 }
 
@@ -27,7 +28,7 @@ func scanSettings(row rowScanner) (models.LearningSettings, error) {
 	var out models.LearningSettings
 	var intervals string
 	var updated time.Time
-	err := row.Scan(&out.ExampleLanguage, &out.DailyMinutes, &out.MasteryTarget, &intervals, &out.ReviewMinutes, &out.ReviewGrader, ts(&updated))
+	err := row.Scan(&out.ExampleLanguage, &out.DailyMinutes, &out.MasteryTarget, &intervals, &out.ReviewMinutes, &out.ReviewGrader, &out.PretestEnabled, ts(&updated))
 	if err != nil {
 		return out, err
 	}
@@ -60,6 +61,7 @@ type LearningSettingsPatch struct {
 	ReviewIntervals []int // nil = keep
 	ReviewMinutes   *int
 	ReviewGrader    *string
+	PretestEnabled  *bool
 }
 
 // UpdateLearningSettings upserts the given fields and keeps the rest (defaults on first save).
@@ -76,9 +78,10 @@ func (s *SQLiteStore) UpdateLearningSettings(ctx context.Context, userID string,
 	defIntervals, _ := json.Marshal(def.ReviewIntervals)
 	out, err := scanSettings(s.c().row(ctx, `
 		INSERT INTO user_learning_settings (user_id, example_language, daily_minutes, mastery_target, review_intervals,
-			review_minutes, review_grader, updated_at)
+			review_minutes, review_grader, pretest_enabled, updated_at)
 		VALUES ($1, COALESCE($2, $8), COALESCE($3, $9), COALESCE($4, $10),
-			COALESCE($5, $11), COALESCE($6, $12), COALESCE($7, $13), NOW())
+			COALESCE($5, $11), COALESCE($6, $12), COALESCE($7, $13),
+			COALESCE($14, $15), NOW())
 		ON CONFLICT (user_id) DO UPDATE SET
 			example_language = COALESCE($2, user_learning_settings.example_language),
 			daily_minutes = COALESCE($3, user_learning_settings.daily_minutes),
@@ -86,10 +89,12 @@ func (s *SQLiteStore) UpdateLearningSettings(ctx context.Context, userID string,
 			review_intervals = COALESCE($5, user_learning_settings.review_intervals),
 			review_minutes = COALESCE($6, user_learning_settings.review_minutes),
 			review_grader = COALESCE($7, user_learning_settings.review_grader),
+			pretest_enabled = COALESCE($14, user_learning_settings.pretest_enabled),
 			updated_at = NOW()
 		RETURNING `+settingsColumns,
 		userID, p.ExampleLanguage, p.DailyMinutes, p.MasteryTarget, intervals, p.ReviewMinutes, p.ReviewGrader,
-		def.ExampleLanguage, def.DailyMinutes, def.MasteryTarget, string(defIntervals), def.ReviewMinutes, def.ReviewGrader))
+		def.ExampleLanguage, def.DailyMinutes, def.MasteryTarget, string(defIntervals), def.ReviewMinutes, def.ReviewGrader,
+		p.PretestEnabled, def.PretestEnabled))
 	if err != nil {
 		return out, fmt.Errorf("save learning settings: %w", err)
 	}

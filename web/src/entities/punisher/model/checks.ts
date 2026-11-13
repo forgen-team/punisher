@@ -9,6 +9,8 @@ import {
   punisherQueryDefaults,
   type CheckDetail,
   type ConceptMastery,
+  type DiagnosticChoice,
+  type DiagnosticRequest,
 } from "@/src/shared/api/punisher";
 import { CHECK_ERROR_MESSAGES, type CheckErrorCode, type SelfVerdict } from "../ui/constants";
 import { invalidateLearningState } from "./concepts";
@@ -59,6 +61,17 @@ export function useStartCheck() {
   });
 }
 
+/** 사전 진단(예측 질문 · 이미 앎 확인 · 배치 진단) 세션을 연다 — 예측 질문은 낼 것이 없으면 undefined. */
+export function useStartDiagnostic() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: DiagnosticRequest) => punisherApi.startDiagnostic(body),
+    onSuccess: (detail) => {
+      if (detail) { queryClient.setQueryData(punisherKeys.check(detail.session.id), detail); }
+    },
+  });
+}
+
 function useCheckAction<T>(run: (variables: T) => Promise<CheckDetail>) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -70,6 +83,11 @@ function useCheckAction<T>(run: (variables: T) => Promise<CheckDetail>) {
 /** 현재 문항에 답하기(202 — 튜터 응답은 폴링으로 받는다). */
 export function useCheckAnswer(id: string) {
   return useCheckAction((text: string) => punisherApi.answerCheck(id, text));
+}
+
+/** 예측·배치 문항 — 보기 또는 '모르겠어요'(피드백 없이 기록하고 다음 문항으로). */
+export function useCheckChoice(id: string) {
+  return useCheckAction((answer: DiagnosticChoice) => punisherApi.answerChoice(id, answer));
 }
 
 /** '그냥 알려줘' — 현재 문항의 모범답을 공개하고 문항을 끝낸다. */

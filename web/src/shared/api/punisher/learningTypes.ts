@@ -14,6 +14,8 @@ export interface LearningSettings {
   /** 하루 복습 시간(0~30분) */
   reviewMinutes: number;
   reviewGrader: ReviewGrader;
+  /** 강의 전 예측 질문 */
+  pretestEnabled: boolean;
   updatedAt?: string;
 }
 

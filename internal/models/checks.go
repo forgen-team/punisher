@@ -69,6 +69,8 @@ type CheckGrade struct {
 	Quote         string   `json:"quote"`
 	Misconception string   `json:"misconception"`
 	Confidence    float64  `json:"confidence"`
+	// Choice: the option picked on a choice item (0-based; nil = not a choice answer).
+	Choice *int `json:"choice,omitempty"`
 	// Accepted / Conflict: dispute turns only.
 	Accepted *bool `json:"accepted,omitempty"`
 	Conflict bool  `json:"conflict,omitempty"`
@@ -133,6 +135,33 @@ type CheckDetail struct {
 	Pending bool `json:"pending"`
 	// Mastery: the lecture objectives' current mastery.
 	Mastery []ObjectiveMastery `json:"mastery"`
+	// Predictions: the learner's pretest answers on these objectives ('처음 예측', check sessions only).
+	Predictions []Prediction `json:"predictions,omitempty"`
+	// Placement: the chapter and the concepts answered right (placement sessions only).
+	Placement *PlacementResult `json:"placement,omitempty"`
+}
+
+// Prediction is the learner's pretest answer on an objective (latest first-seen per objective).
+type Prediction struct {
+	ObjectiveID string `json:"objectiveId"`
+	Prompt      string `json:"prompt"`
+	Answer      string `json:"answer"`
+	// DontKnow: answered '모르겠어요'.
+	DontKnow bool      `json:"dontKnow"`
+	At       time.Time `json:"at"`
+}
+
+// PlacementResult is the outcome of a placement diagnostic: the concepts
+// answered right are "이미 앎 후보" (known only once the learner confirms).
+type PlacementResult struct {
+	ChapterID  string               `json:"chapterId"`
+	Candidates []PlacementCandidate `json:"candidates"`
+}
+
+// PlacementCandidate is a concept whose placement item was answered right.
+type PlacementCandidate struct {
+	ConceptID   string `json:"conceptId"`
+	ConceptName string `json:"conceptName"`
 }
 
 // CheckHistoryItem is one '확인하기' or review session in the history (GET /v1/checks/history).
@@ -174,6 +203,8 @@ type ReviewSummary struct {
 	Throughput       int    `json:"throughput"`
 	Grader           string `json:"grader"`
 	ReviewMinutes    int    `json:"reviewMinutes"`
+	// Verify: known verifications mixed into today's session (bulk '이미 앎').
+	Verify int `json:"verify"`
 	// Today: today's latest review session (nil = none yet).
 	Today *ReviewSessionRef `json:"today"`
 }

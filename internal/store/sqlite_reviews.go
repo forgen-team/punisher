@@ -46,9 +46,15 @@ var reviewCountsSQL = `
 	FROM user_objective_mastery m` + reviewScope + `
 	WHERE m.user_id = $1 AND m.grad_step < 2`
 
-// ReviewCounts counts due (≤ now), overdue (due before today, KST) and queued objectives.
+// ReviewCounts counts due (≤ now), overdue (due before today, KST) and queued
+// objectives, and the known verifications today's review can mix in.
 func (s *SQLiteStore) ReviewCounts(ctx context.Context, userID string, now time.Time) (learning.ReviewCounts, error) {
-	return reviewCounts(ctx, s.c(), userID, now)
+	n, err := reviewCounts(ctx, s.c(), userID, now)
+	if err != nil {
+		return n, err
+	}
+	n.Verify, err = s.KnownVerifyReady(ctx, userID, now)
+	return n, err
 }
 
 func reviewCounts(ctx context.Context, c conn, userID string, now time.Time) (learning.ReviewCounts, error) {
@@ -114,7 +120,7 @@ type ReviewPick struct {
 }
 
 // ReviewItems picks one item per objective (design §5 P2): an item of the
-// objective (check or review purpose) the user has never been asked, else the
+// objective (check, review or known_verify purpose) the user has never been asked, else the
 // one asked longest ago (Reused). Objectives without a visible item are absent.
 // DISTINCT ON (objective_id) … ORDER BY → ROW_NUMBER() OVER (PARTITION BY …) = 1.
 func (s *SQLiteStore) ReviewItems(ctx context.Context, userID string, objectiveIDs []string) (map[string]ReviewPick, error) {
@@ -132,7 +138,7 @@ func (s *SQLiteStore) ReviewItems(ctx context.Context, userID string, objectiveI
 			LEFT JOIN (SELECT t.item_id, MAX(t.created_at) AS at FROM check_turns t WHERE t.user_id = $1 GROUP BY t.item_id) seen
 				ON seen.item_id = ci.id
 			WHERE ci.objective_id IN (SELECT value FROM json_each($2)) AND ci.status = 'active'
-			  AND ci.purpose IN ('check', 'review') AND `+checkItemVisible+`) r
+			  AND ci.purpose IN ('check', 'review', 'known_verify') AND `+checkItemVisible+`) r
 		JOIN check_items ci ON ci.id = r.id
 		WHERE r.rn = 1`, userID, objectiveIDs), func(row rowScanner) (ReviewPick, error) {
 		var p ReviewPick

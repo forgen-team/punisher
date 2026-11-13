@@ -1,7 +1,9 @@
-/** 숙달 확인(P1) — punisher-server models/checks.go 와 같은 형태. */
+/** 숙달 확인(P1)·사전 진단(P3) — punisher-server models/checks.go 와 같은 형태. */
 
 export type CheckSessionStatus = "preparing" | "active" | "finished" | "abandoned" | "failed";
-export type CheckItemFormat = "recall" | "predict" | "apply" | "integrative";
+export type CheckItemFormat = "recall" | "predict" | "apply" | "integrative" | "choice";
+/** 세션 종류 — 확인 · 복습 · 사전 진단(예측 질문 · 이미 앎 확인 · 배치 진단) */
+export type CheckKind = "check" | "review" | "pretest" | "known_verify" | "placement";
 export type CheckTurnRole = "tutor" | "learner";
 export type CheckMove =
   | "ask"
@@ -14,11 +16,14 @@ export type CheckMove =
   | "answer"
   | "reveal"
   | "self_grade"
-  | "dispute";
+  | "dispute"
+  | "dont_know";
 export type CheckTurnStatus = "pending" | "ready" | "failed";
 export type CheckVerdict = "correct" | "partial" | "incorrect" | "revealed" | "held";
-export type CheckOutcome = "unaided_correct" | "unaided_partial" | "aided" | "failed" | "held";
-export type CheckGrader = "llm" | "self" | "llm_regrade";
+/** recorded: 예측·배치 답(기록만, 숙달 근거 아님) */
+export type CheckOutcome = "unaided_correct" | "unaided_partial" | "aided" | "failed" | "held" | "recorded";
+/** none: 기록만 하는 세션(예측 질문 · 배치 진단) */
+export type CheckGrader = "llm" | "self" | "llm_regrade" | "none";
 export type MasteryBest = "none" | "revealed" | "aided" | "unaided";
 /** 0 미확인 · 1 들어봄 · 2 따라감 · 3 혼자 답함 · 4 기억함 · 5 설명 가능 */
 export type MasteryLevel = 0 | 1 | 2 | 3 | 4 | 5;
@@ -72,11 +77,13 @@ export interface CheckResultItem {
   lapses: number;
   /** 복습이 밀려 대기(서버가 아직 안 주면 숙달의 queued 로 판단) */
   queued?: boolean;
+  /** '이미 앎' 확인에서 통과하지 못함 → '다시 배우기' 제안 */
+  relearn?: boolean;
 }
 
 export interface CheckSession {
   id: string;
-  kind: "check" | "review";
+  kind: CheckKind;
   grader: CheckGrader;
   conceptId: string;
   lectureId: string;
@@ -94,6 +101,8 @@ export interface CheckSession {
 export interface CheckMaterial {
   code?: string;
   lang?: string;
+  /** choice 문항의 보기(3~4개) */
+  choices?: string[];
 }
 
 export interface CheckItem {
@@ -117,6 +126,8 @@ export interface CheckGrade {
   quote: string;
   misconception: string;
   confidence: number;
+  /** choice 문항에서 고른 보기(0부터) */
+  choice?: number;
   /** 이의 제기 턴에서만 */
   accepted?: boolean;
   conflict?: boolean;
@@ -158,7 +169,41 @@ export interface CheckDetail {
   current: CheckCurrent | null;
   pending: boolean;
   mastery: ObjectiveMastery[] | null;
+  /** 확인 세션: 같은 목표의 처음 예측(예측 질문 답) */
+  predictions?: Prediction[];
+  /** 배치 진단 세션: 챕터와 이미 앎 후보 */
+  placement?: PlacementResult;
 }
+
+/** 강의 전 예측 질문에 남긴 답(목표별 처음 예측). */
+export interface Prediction {
+  objectiveId: string;
+  prompt: string;
+  answer: string;
+  dontKnow: boolean;
+  at: string;
+}
+
+export interface PlacementCandidate {
+  conceptId: string;
+  conceptName: string;
+}
+
+/** 배치 진단 결과 — 맞힌 개념 = 이미 앎 후보(확정해야 known). */
+export interface PlacementResult {
+  chapterId: string;
+  candidates: PlacementCandidate[];
+}
+
+/** POST /checks 의 사전 진단 요청(pretest 는 lectureId 또는 jobId). */
+export type DiagnosticRequest =
+  | { kind: "pretest"; lectureId: string }
+  | { kind: "pretest"; jobId: string }
+  | { kind: "known_verify"; conceptId: string }
+  | { kind: "placement"; chapterId: string };
+
+/** 사전 진단 문항의 답 — 보기 번호 또는 '모르겠어요'. */
+export type DiagnosticChoice = { choice: number } | { dontKnow: true };
 
 /** 답·이의 사유 길이 상한(서버 services.MaxCheckAnswerRunes · MaxDisputeRunes). */
 export const CHECK_MAX_ANSWER_CHARS = 2000;

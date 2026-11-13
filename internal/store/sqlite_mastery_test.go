@@ -223,7 +223,10 @@ func TestCheckStoreSQLiteSemantics(t *testing.T) {
 }
 
 // v040Migrations is the migration set shipped in v0.4.0 and v0.5.0 (001–010), the releases before 011.
-func v040Migrations(t *testing.T) fs.FS {
+func v040Migrations(t *testing.T) fs.FS { t.Helper(); return migrationsBefore(t, "011") }
+
+// migrationsBefore is the migration set whose file names sort before prefix (an older release's DB).
+func migrationsBefore(t *testing.T, prefix string) fs.FS {
 	t.Helper()
 	m := fstest.MapFS{}
 	all, err := fs.Glob(migrations.Files, "*.sql")
@@ -231,7 +234,7 @@ func v040Migrations(t *testing.T) fs.FS {
 		t.Fatal(err)
 	}
 	for _, name := range all {
-		if name >= "011" {
+		if name >= prefix {
 			continue
 		}
 		raw, err := fs.ReadFile(migrations.Files, name)
@@ -245,7 +248,7 @@ func v040Migrations(t *testing.T) fs.FS {
 
 // TestUpgradeFromV040 builds a v0.4.0/v0.5.0 database (migrations 001–010 + saved
 // settings), then applies 011: the settings keep their values and get the
-// mastery defaults, the check tables work, and a later seed change marks the
+// mastery defaults (and 012's pretest_enabled on), the check tables work, and a later seed change marks the
 // evidence stale through SyncCurriculum.
 func TestUpgradeFromV040(t *testing.T) {
 	ctx := context.Background()
@@ -281,7 +284,7 @@ func TestUpgradeFromV040(t *testing.T) {
 	}
 	st, err := s.GetLearningSettings(ctx, testUser)
 	if err != nil || st.ExampleLanguage != "go" || st.DailyMinutes != 45 || st.MasteryTarget != 4 ||
-		len(st.ReviewIntervals) != 3 || st.ReviewIntervals[2] != 30 || st.ReviewMinutes != 10 || st.ReviewGrader != "self" {
+		len(st.ReviewIntervals) != 3 || st.ReviewIntervals[2] != 30 || st.ReviewMinutes != 10 || st.ReviewGrader != "self" || !st.PretestEnabled {
 		t.Fatalf("settings after 011 = %+v (%v)", st, err)
 	}
 	minutes := 20

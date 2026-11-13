@@ -87,7 +87,8 @@ func (s *Service) runReviewVariant(ctx context.Context, apiKey, userID string, t
 	ic, sc := checkItemsContext(cl)
 	system := set.Text(prompts.BlockCheckItems, s.interactionVars(ctx, userID, cl.info.ID))
 	seen := map[string][]string{t.ObjectiveID: t.Seen}
-	items, u, tries, err := s.writeItemSet(ctx, apiKey, system, llm.PriorityBackground,
+	items, u, tries, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.Cfg.LectureModel, attempts: checkAttempts,
+		priority: llm.PriorityBackground, system: system},
 		func(revisions []string) string { ic.Revisions = revisions; return prompts.CheckVariants(ic, seen) },
 		func(set check.ItemSet) []string { return check.ValidateVariants(set, sc, []string{t.ObjectiveID}) })
 	status := "succeeded"

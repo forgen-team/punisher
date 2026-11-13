@@ -17,16 +17,17 @@ export type ReviewCardState =
 
 /**
  * 오늘 화면 복습 카드 — 숫자는 today.review, 완료 여부는 오늘 세션(GET /reviews/summary 의 today).
- * 만기가 있으면 카드, 만기 0 이고 오늘 세션을 마쳤으면 접힌 완료, 둘 다 없으면 숨긴다.
+ * 만기(+ 섞을 '이미 앎' 확인)가 있으면 카드, 없고 오늘 세션을 마쳤으면 접힌 완료, 둘 다 없으면 숨긴다.
  */
 export function reviewCardState(review: TodayReview | undefined, today: ReviewSessionRef | null | undefined): ReviewCardState {
   if (!review) { return { kind: "hidden" }; }
   const finished = today?.status === "finished";
-  if (review.due > 0) {
+  const verify = review.verify ?? 0;
+  if (review.due + verify > 0) {
     const backlog = review.overdue > 0 ? review.overdue : review.due;
     return {
       kind: "due",
-      due: review.due,
+      due: review.due + verify,
       minutes: review.estimatedMinutes,
       lectureMinutes: review.lectureMinutes,
       backlog: review.backlogged ? backlog : null,

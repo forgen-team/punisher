@@ -18,6 +18,8 @@ export interface TodayReview {
   backlogged: boolean;
   /** 시간 합계의 강의 몫("복습 m분 + 강의 30분") */
   lectureMinutes: number;
+  /** 오늘 세션에 섞을 '이미 앎' 확인 수(일괄 이미 앎 대기열) */
+  verify: number;
 }
 
 /** 오늘의 최근 복습 세션(GET /reviews/summary 의 today). */
@@ -40,6 +42,8 @@ export interface ReviewSummary {
   throughput: number;
   grader: ReviewGrader;
   reviewMinutes: number;
+  /** 오늘 세션에 섞을 '이미 앎' 확인 수 */
+  verify: number;
   /** null = 오늘 세션 없음 */
   today: ReviewSessionRef | null;
 }

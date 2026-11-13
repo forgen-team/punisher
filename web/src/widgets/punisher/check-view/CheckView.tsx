@@ -12,11 +12,13 @@ import {
   useReviewSummary,
 } from "@/src/entities/punisher";
 import type { CheckDetail, LectureSection } from "@/src/shared/api/punisher";
+import { DiagnosticAnswer, currentDiagnosticItem } from "@/src/features/punisher/pretest";
 import { LectureLayout, LectureTopBar } from "../lecture-viewer";
 import {
   anchorTitle,
   currentItemId,
   disputeTarget,
+  isRecorded,
   isReview,
   itemTurns,
   judgedTurn,
@@ -26,8 +28,8 @@ import {
   retryableTurnId,
   showComposer,
 } from "./lib/checkView";
-import { CheckComposer, CheckItemCard, CheckResult, LectureCompleteAction, ReviewMoreAction } from "./ui";
-import { REVIEW_STATUS_LABELS, SESSION_STATUS_LABELS } from "./ui/constants";
+import { CheckComposer, CheckItemCard, CheckResult, LectureCompleteAction, PlacementResult, ReviewMoreAction, chapterMapHref } from "./ui";
+import { DIAGNOSTIC_TITLES, REVIEW_STATUS_LABELS, SESSION_STATUS_LABELS } from "./ui/constants";
 
 const NO_SECTIONS: LectureSection[] = [];
 
@@ -77,17 +79,28 @@ export function CheckView({ checkId }: { checkId: string }) {
     if (status === "active" && turnCount > 0) { endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
   }, [status, turnCount]);
 
-  const title = review ? "복습" : lecture.data?.content?.title || lecture.data?.title || "확인하기";
+  const kind = d?.session.kind;
+  const diagnosticTitle = kind && kind in DIAGNOSTIC_TITLES ? DIAGNOSTIC_TITLES[kind as keyof typeof DIAGNOSTIC_TITLES] : "";
+  const title = review ? "복습" : diagnosticTitle || lecture.data?.content?.title || lecture.data?.title || "확인하기";
+  const chapterId = d?.placement?.chapterId ?? "";
+  const chapterHref = chapterId ? chapterMapHref(chapterId) : undefined;
+  const backHref = lectureId ? lectureHref(lectureId) : chapterHref;
   const progress = d ? progressLabel(d) : "";
   const barTitle = review ? progress || title : [title, progress].filter(Boolean).join(" · ");
   const open = status === "active" || status === "preparing";
   const menuItems: MenuItem[] = [
-    { key: "abandon", label: "포기", danger: true, disabled: !open || abandon.isPending, onSelect: () => abandon.mutate() },
+    {
+      key: "abandon",
+      label: kind === "placement" ? "건너뛰기" : "포기",
+      danger: kind !== "placement",
+      disabled: !open || abandon.isPending,
+      onSelect: () => abandon.mutate(),
+    },
   ];
 
   return (
     <div className="flex w-full flex-col">
-      <LectureTopBar title={barTitle} backHref={lectureId ? lectureHref(lectureId) : undefined} menuItems={d ? menuItems : undefined} />
+      <LectureTopBar title={barTitle} backHref={backHref} menuItems={d ? menuItems : undefined} />
       <h1 className="sr-only">{barTitle}</h1>
       <LectureLayout sections={NO_SECTIONS} totalMinutes={0} activeAnchor="">
         {renderBody()}
@@ -181,17 +194,28 @@ export function CheckView({ checkId }: { checkId: string }) {
             {describeCheckError(actionError)}
           </p>
         )}
-        {detail.session.status === "finished" && (
+        {detail.session.status === "finished" && detail.placement && <PlacementResult ref={resultRef} placement={detail.placement} />}
+        {detail.session.status === "finished" && !isRecorded(detail) && (
           <CheckResult ref={resultRef} rows={rows} anchorLink={anchorLink}>
-            {review ? (
-              <ReviewMoreAction remaining={summary.data?.due ?? 0} />
-            ) : (
+            {review && <ReviewMoreAction remaining={summary.data?.due ?? 0} />}
+            {!review && lectureId && (
               <LectureCompleteAction lectureId={lectureId} lectureCompleted={Boolean(lecture.data?.progress?.completedAt)} />
             )}
           </CheckResult>
         )}
-        {showComposer(detail) && <CheckComposer detail={detail} />}
+        {showComposer(detail) && renderComposer(detail)}
       </>
+    );
+  }
+
+  function renderComposer(detail: CheckDetail): ReactNode {
+    if (!isRecorded(detail)) { return <CheckComposer detail={detail} />; }
+    const current = currentDiagnosticItem(detail);
+    if (!current) { return null; }
+    return (
+      <div className="sticky bottom-[var(--app-bottom-offset)] z-nav -mx-4 mt-6 border-t border-line bg-canvas px-4 py-3 fold:-mx-6 fold:px-6 lg:mx-0 lg:px-0">
+        <DiagnosticAnswer key={current.id} detail={detail} item={current} />
+      </div>
     );
   }
 }

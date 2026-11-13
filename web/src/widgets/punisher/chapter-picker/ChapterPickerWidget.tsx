@@ -3,9 +3,11 @@ import { useRouter } from "@/src/shared/lib/router";
 import { useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Button, ErrorState, Section, Textarea } from "@/src/shared/ui/kit";
-import { useApplyChapterDraft, useChapterSuggestions, useCreateChapterDraft, useGraph } from "@/src/entities/punisher";
+import { useApplyChapterDraft, useChapterSuggestions, useCreateChapterDraft, useGraph, useStartDiagnostic } from "@/src/entities/punisher";
+import { checkHref } from "@/src/features/punisher/check-start";
 import { PunisherApiError, describePunisherError } from "@/src/shared/api/punisher";
 import { DraftPreview } from "./ui/DraftPreview";
+import { PlacementOffer } from "./ui/PlacementOffer";
 import { SuggestionCards, SuggestionCardsSkeleton } from "./ui/SuggestionCards";
 import { FREE_TEXT_MAX, MAX_PICKS } from "./ui/constants";
 
@@ -26,6 +28,8 @@ export function ChapterPickerWidget() {
   const apply = useApplyChapterDraft();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [freeText, setFreeText] = useState("");
+  const [openedChapterId, setOpenedChapterId] = useState("");
+  const placement = useStartDiagnostic();
 
   const names = useMemo(() => new Map((graph.data?.nodes ?? []).map((n) => [n.id, n.name])), [graph.data]);
 
@@ -44,8 +48,27 @@ export function ChapterPickerWidget() {
   function openChapter() {
     if (!create.data) { return; }
     apply.mutate(create.data.draftId, {
-      onSuccess: (res) => router.push(`/map?chapter=${encodeURIComponent(res.chapterId)}`),
+      onSuccess: (res) => setOpenedChapterId(res.chapterId),
     });
+  }
+
+  function goToMap() {
+    router.push(`/map?chapter=${encodeURIComponent(openedChapterId)}`);
+  }
+
+  function startPlacement() {
+    placement.mutate(
+      { kind: "placement", chapterId: openedChapterId },
+      { onSuccess: (detail) => { if (detail) { router.push(checkHref(detail.session.id)); } } },
+    );
+  }
+
+  if (openedChapterId) {
+    return (
+      <div className="flex flex-col gap-3 pt-4 lg:pt-6">
+        <PlacementOffer starting={placement.isPending} error={placement.error} onStart={startPlacement} onSkip={goToMap} />
+      </div>
+    );
   }
 
   if (create.data) {

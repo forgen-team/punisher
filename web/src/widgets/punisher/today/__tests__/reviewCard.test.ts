@@ -3,7 +3,7 @@ import type { ReviewSessionRef, TodayReview } from "@/src/shared/api/punisher";
 import { reviewCardState } from "../lib/reviewCard";
 
 function review(patch: Partial<TodayReview> = {}): TodayReview {
-  return { due: 0, overdue: 0, queued: 0, estimatedMinutes: 0, backlogged: false, lectureMinutes: 30, ...patch };
+  return { due: 0, overdue: 0, queued: 0, estimatedMinutes: 0, backlogged: false, lectureMinutes: 30, verify: 0, ...patch };
 }
 
 function session(patch: Partial<ReviewSessionRef> = {}): ReviewSessionRef {
@@ -11,6 +11,11 @@ function session(patch: Partial<ReviewSessionRef> = {}): ReviewSessionRef {
 }
 
 describe("reviewCardState", () => {
+  it("counts the mixed-in '이미 앎' verifications, even with no review due", () => {
+    expect(reviewCardState(review({ verify: 2, estimatedMinutes: 2 }), null)).toMatchObject({ kind: "due", due: 2, minutes: 2, action: "start" });
+    expect(reviewCardState(review({ due: 3, verify: 1, estimatedMinutes: 4 }), null)).toMatchObject({ kind: "due", due: 4 });
+  });
+
   it("hides without review data, or with nothing due and no finished session", () => {
     expect(reviewCardState(undefined, null)).toEqual({ kind: "hidden" });
     expect(reviewCardState(review(), null)).toEqual({ kind: "hidden" });

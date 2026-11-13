@@ -40,6 +40,15 @@ func (st checkState) current() *store.CheckItem {
 
 func (st checkState) last() bool { return st.sess.Cursor >= len(st.items)-1 }
 
+// itemKind is the kind the dialogue rules of an item follow: the session kind,
+// except a known_verify item mixed into a review (one answer, no narrowing).
+func (st checkState) itemKind(it store.CheckItem) string {
+	if it.Purpose == check.PurposeKnownVerify {
+		return check.PurposeKnownVerify
+	}
+	return st.sess.Kind
+}
+
 func (st checkState) pending() bool {
 	if st.sess.Status == "preparing" {
 		return true
@@ -123,7 +132,7 @@ func (s *Service) checkDetail(ctx context.Context, userID string, st checkState)
 		p := progressOf(st.turns, it.ID)
 		v := models.CheckItemView{ID: it.ID, ObjectiveID: it.ObjectiveID, Format: it.Format, Prompt: it.Prompt,
 			Material: it.Material, Done: p.done, Outcome: p.outcome}
-		if p.done || (st.sess.Grader == learning.GraderSelf && len(p.answers) > 0) {
+		if !check.Recorded(st.sess.Kind) && (p.done || (st.sess.Grader == learning.GraderSelf && len(p.answers) > 0)) {
 			v.Answer, v.Must, v.Anchor = it.Rubric.Answer, it.Rubric.Must, it.Rubric.Anchor
 		}
 		d.Items = append(d.Items, v)
@@ -138,7 +147,15 @@ func (s *Service) checkDetail(ctx context.Context, userID string, st checkState)
 		d.Current = currentView(st, *cur, d.Pending)
 	}
 	var err error
-	d.Mastery, err = s.Store.ObjectivesMastery(ctx, userID, objectives)
+	if d.Mastery, err = s.Store.ObjectivesMastery(ctx, userID, objectives); err != nil {
+		return d, err
+	}
+	switch st.sess.Kind {
+	case check.PurposeCheck:
+		d.Predictions, err = s.Store.PretestAnswers(ctx, userID, objectives)
+	case check.PurposePlacement:
+		d.Placement = s.placementResult(ctx, userID, st)
+	}
 	return d, err
 }
 
@@ -148,11 +165,12 @@ func currentView(st checkState, it store.CheckItem, pending bool) *models.CheckC
 	if pending || p.done {
 		return c
 	}
-	if st.sess.Grader == learning.GraderSelf {
-		c.CanAnswer, c.CanSelfGrade = len(p.answers) == 0, len(p.answers) > 0
+	if st.sess.Grader == learning.GraderSelf || check.Recorded(st.sess.Kind) {
+		c.CanAnswer, c.CanSelfGrade = len(p.answers) == 0, len(p.answers) > 0 && !check.Recorded(st.sess.Kind)
 		return c
 	}
-	c.CanAnswer, c.CanReveal = p.awaitingAnswer(st.sess.Kind), p.canReveal(st.sess.Kind)
+	kind := st.itemKind(it)
+	c.CanAnswer, c.CanReveal = p.awaitingAnswer(kind), p.canReveal(kind)
 	return c
 }
 

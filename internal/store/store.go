@@ -175,4 +175,15 @@ type Store interface {
 	RetentionSamples(ctx context.Context, userID string, since time.Time) ([]learning.RetentionSample, error)
 	ReviewVariantTargets(ctx context.Context, userID string, until time.Time, limit int) ([]VariantTarget, error)
 	SaveVariantItems(ctx context.Context, key CheckItemKey, conceptID, jobID, model, promptVersion string, items []check.Item) ([]CheckItem, error)
+
+	// pretest / known verification / placement ("사전 진단")
+	SaveDiagnosticItems(ctx context.Context, d DiagnosticItems) ([]CheckItem, error)
+	QueueKnownVerify(ctx context.Context, userID, conceptID string) (int64, error)
+	KnownVerifyPicks(ctx context.Context, userID string, limit int) ([]ReviewPick, error)
+	KnownVerifyUsed(ctx context.Context, userID, sessionKey string) (int, error)
+	KnownVerifyReady(ctx context.Context, userID string, now time.Time) (int, error)
+	KnownVerifyTargets(ctx context.Context, userID string, limit int) ([]KnownVerifyTarget, error)
+	PretestAnswers(ctx context.Context, userID string, objectiveIDs []string) ([]models.Prediction, error)
+	PretestSeen(ctx context.Context, userID string, objectiveIDs []string) (bool, error)
+	PlacementConcepts(ctx context.Context, userID, chapterID string) ([]learning.PlacementConcept, error)
 }

@@ -46,7 +46,12 @@ const (
 	GraderLLM     = "llm"
 	GraderSelf    = "self"
 	GraderRegrade = "llm_regrade"
+	// GraderNone: a session that only records answers (pretest, placement).
+	GraderNone = "none"
 )
+
+// DefaultPretestEnabled: prediction questions before a lecture are on by default (design §5 P3).
+const DefaultPretestEnabled = true
 
 // Mastery setting bounds (design §3.3).
 const (

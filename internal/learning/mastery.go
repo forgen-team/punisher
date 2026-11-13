@@ -17,6 +17,8 @@ const (
 	OutcomeAided          = "aided"
 	OutcomeFailed         = "failed"
 	OutcomeHeld           = "held"
+	// OutcomeRecorded: a pretest / placement answer — recorded, never evidence.
+	OutcomeRecorded = "recorded"
 )
 
 // Verdicts of one answer (LLM tutor, regrade or self-grade).
@@ -69,6 +71,8 @@ type Mastery struct {
 	Stale         bool       `json:"stale"`
 	// Queued: waiting by inflow control (design §2.6) — no review date until released.
 	Queued bool `json:"queued"`
+	// Verify: in the known-verification queue (bulk '이미 앎', design §5 P3).
+	Verify bool `json:"verify,omitempty"`
 }
 
 // NewMastery is the state of an objective without evidence.

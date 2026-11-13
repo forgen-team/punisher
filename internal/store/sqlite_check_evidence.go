@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/wooo-jin/punisher/internal/check"
 	"github.com/wooo-jin/punisher/internal/learning"
 )
 
@@ -30,9 +31,15 @@ type ItemFinish struct {
 	Abandon bool
 	// Hold: the review backlog is over the inflow limit — an objective entering
 	// the review schedule from this item waits (queued, design §2.6).
-	Hold      bool
-	Intervals []int
-	Now       time.Time
+	Hold bool
+	// Record: a pretest / placement answer — outcome recorded, no evidence (design §5 P3).
+	Record bool
+	// KnownVerify: the item verifies '이미 앎' (a known_verify session) —
+	// learning.ApplyKnownVerify instead of ApplyEvidence. A known_verify item of a
+	// review counts as one while its objective is in the verification queue.
+	KnownVerify bool
+	Intervals   []int
+	Now         time.Time
 }
 
 // ResultEntry is one item's line of the session result (check_sessions.result.items).
@@ -49,6 +56,8 @@ type ResultEntry struct {
 	Lapses        int        `json:"lapses"`
 	// Queued: the objective waits for the review queue ("복습이 밀려 대기").
 	Queued bool `json:"queued"`
+	// Relearn: a '이미 앎' verification that did not pass — '다시 배우기' is offered.
+	Relearn bool `json:"relearn,omitempty"`
 }
 
 // FinishCheckItem applies an item's evidence (see ItemFinish) and returns its outcome.
@@ -92,6 +101,10 @@ func applyItemEvidence(ctx context.Context, c conn, f ItemFinish) (ResultEntry, 
 	if entry.Missing == nil {
 		entry.Missing = []string{}
 	}
+	if f.Record {
+		entry.Outcome = learning.OutcomeRecorded
+		return entry, grade, nil
+	}
 	if f.Item.ObjectiveID == "" { // 통합 문항: 상자는 움직이지 않고 covers 에 integrative_ok 만.
 		entry.Outcome = learning.ItemOutcome(f.Result, nil, f.Now)
 		if f.IntegrativeOK {
@@ -107,8 +120,15 @@ func applyItemEvidence(ctx context.Context, c conn, f ItemFinish) (ResultEntry, 
 	entry.Outcome = learning.ItemOutcome(f.Result, m.LastFailAt, f.Now)
 	entry.LevelBefore = learning.DisplayLevel(m)
 	grade.Prev, grade.PrevExists = &prev, exists
+	verify := f.KnownVerify || (f.Item.Purpose == check.PurposeKnownVerify && m.Verify)
+	entry.Relearn = verify && learning.SuggestRelearn(entry.Outcome)
 	if entry.Outcome != learning.OutcomeHeld {
-		m = learning.QueueEntry(prev, learning.ApplyEvidence(m, entry.Outcome, f.Now, f.Intervals), f.Hold)
+		next := learning.ApplyEvidence(m, entry.Outcome, f.Now, f.Intervals)
+		next.Verify = false // 판정된 근거가 생기면 '이미 앎' 확인 대기열에서 빠진다.
+		if verify {
+			next = learning.ApplyKnownVerify(m, entry.Outcome, f.Now, f.Intervals)
+		}
+		m = learning.QueueEntry(prev, next, f.Hold)
 		if updated, err = saveMastery(ctx, c, f.UserID, f.Item.ObjectiveID, f.Turn.Grader, m); err != nil {
 			return entry, grade, err
 		}
@@ -208,6 +228,8 @@ func restoreEvidence(ctx context.Context, c conn, d DisputeResolve) (bool, error
 		return false, err
 	}
 	conflict := exists && (judged.AppliedAt == nil || !updated.Equal(*judged.AppliedAt))
-	_, err = saveMastery(ctx, c, d.UserID, d.ObjectiveID, d.Turn.Grader, learning.Restore(cur, prev, conflict))
+	restored := learning.Restore(cur, prev, conflict)
+	restored.Verify = false // 받아들여진 이의 = 맞은 답: '이미 앎' 확인도 통과로 끝난다.
+	_, err = saveMastery(ctx, c, d.UserID, d.ObjectiveID, d.Turn.Grader, restored)
 	return conflict, err
 }

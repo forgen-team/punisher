@@ -15,6 +15,7 @@ export const OUTCOME_TONE: Record<CheckOutcome, BadgeTone> = {
   aided: "warning",
   failed: "danger",
   held: "neutral",
+  recorded: "neutral",
 };
 
 /** 이의 제기 재채점 결과 */
@@ -46,3 +47,26 @@ export const REVIEW_STATUS_LABELS: Record<CheckSessionStatus, string> = {
   abandoned: "그만둔 복습이에요",
   failed: "복습 문항을 준비하지 못했어요",
 };
+
+/** 결과의 "처음 예측 → 지금 답" */
+export const PREDICTION_LABELS = {
+  before: "처음 예측",
+  now: "지금 답",
+} as const;
+
+/** 상단 제목(확인·복습 외 진단 세션) */
+export const DIAGNOSTIC_TITLES = {
+  pretest: "예측 질문",
+  "known_verify": "이미 앎 확인",
+  placement: "배치 진단",
+} as const;
+
+/** 배치 진단 결과 */
+export const PLACEMENT_LABELS = {
+  candidates: "이미 앎 후보",
+  none: "이미 앎 후보가 없어요",
+  confirm: "이미 앎으로 표시",
+  confirmed: "이미 앎으로 표시함",
+  map: "지도에서 보기",
+  failed: (n: number) => `${n}개를 표시하지 못했어요. 다시 눌러 주세요.`,
+} as const;

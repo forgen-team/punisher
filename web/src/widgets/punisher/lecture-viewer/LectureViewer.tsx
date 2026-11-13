@@ -6,9 +6,10 @@ import { useAtom } from "jotai";
 import { ArrowLeft } from "lucide-react";
 import { Button, EmptyState, ErrorState, ListSkeleton, type MenuItem } from "@/src/shared/ui/kit";
 import { lectureBookmarkAtom, useConceptDetail, useLecture, useLectureLinks, useMastery, usePrompts } from "@/src/entities/punisher";
-import { CheckStartButton, CheckStartError, useLaunchCheck } from "@/src/features/punisher/check-start";
+import { CheckStartButton, CheckStartError, KnownVerifyChoice, useKnownChoice, useLaunchCheck } from "@/src/features/punisher/check-start";
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import { useLectureProgress } from "@/src/features/punisher/lecture-progress";
+import { PretestPanel, usePretest } from "@/src/features/punisher/pretest";
 import { SelectionExplain } from "@/src/features/punisher/reading-assist";
 import { LectureActionStatus, LectureWrapup, useLectureActions } from "@/src/features/punisher/lecture-actions";
 import { describePunisherError, type DocumentLink } from "@/src/shared/api/punisher";
@@ -36,9 +37,11 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
   const concept = useConceptDetail(lecture?.conceptId);
   const mastery = useMastery(lecture?.conceptId);
   const check = useLaunchCheck(lectureId);
+  const pretest = usePretest({ lectureId });
   const [bookmark, setBookmark] = useAtom(lectureBookmarkAtom);
   const { getAnchor, saveNow } = useLectureProgress(lectureId, lecture?.progress, Boolean(content));
-  const actions = useLectureActions(lectureId, lecture?.conceptId ?? "", Boolean(lecture?.progress?.completedAt));
+  const knownChoice = useKnownChoice();
+  const actions = useLectureActions(lectureId, lecture?.conceptId ?? "", Boolean(lecture?.progress?.completedAt), knownChoice);
   const [tocOpen, setTocOpen] = useState(false);
   const [assistOpen, setAssistOpen] = useState(false);
   const wrapupRef = useRef<HTMLElement>(null);
@@ -174,6 +177,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
           </div>
         )}
         <LectureHeader lecture={lecture} content={content} concept={concept.data} mastery={mastery.data} />
+        <PretestPanel detail={pretest.data} />
         <LectureActionStatus actions={actions} />
         <div aria-live="polite" className="empty:hidden">
           <CheckStartError check={check} />
@@ -198,6 +202,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
       </LectureLayout>
       <TocSheet open={tocOpen} onClose={() => setTocOpen(false)} sections={content.sections} totalMinutes={totalMinutes} />
       <RegenerateSheet lectureId={lectureId} open={regenOpen} onClose={() => setRegenOpen(false)} />
+      <KnownVerifyChoice choice={knownChoice} />
       <LectureAssistSheet
         open={assistOpen}
         onClose={() => setAssistOpen(false)}

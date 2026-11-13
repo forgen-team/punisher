@@ -29,6 +29,9 @@ func (s *Service) AnswerCheck(ctx context.Context, userID, id, text string) (mod
 	if item == nil || st.pending() {
 		return models.CheckDetail{}, checkStateErr(st)
 	}
+	if check.Recorded(st.sess.Kind) {
+		return s.recordAnswer(ctx, userID, st, *item, diagnosticAnswer{text: text})
+	}
 	p := progressOf(st.turns, item.ID)
 	learner := &store.TurnWrite{ItemID: item.ID, Role: "learner", Move: check.MoveAnswer, Text: text, Aided: len(p.answers) > 0}
 	if st.sess.Grader == learning.GraderSelf {
@@ -40,7 +43,7 @@ func (s *Service) AnswerCheck(ctx context.Context, userID, id, text string) (mod
 		}
 		return s.GetCheck(ctx, userID, id)
 	}
-	if !p.awaitingAnswer(st.sess.Kind) {
+	if !p.awaitingAnswer(st.itemKind(*item)) {
 		return models.CheckDetail{}, ErrCheckState
 	}
 	apiKey, err := s.checkKey(ctx, userID)
@@ -76,7 +79,7 @@ func (s *Service) RevealCheck(ctx context.Context, userID, id string) (models.Ch
 		return models.CheckDetail{}, checkStateErr(st)
 	}
 	p := progressOf(st.turns, item.ID)
-	if !p.canReveal(st.sess.Kind) {
+	if !p.canReveal(st.itemKind(*item)) {
 		return models.CheckDetail{}, ErrCheckState
 	}
 	turn := store.TurnWrite{ItemID: item.ID, Role: "tutor", Move: check.MoveReveal, Text: item.Rubric.Answer,

@@ -43,8 +43,10 @@ func writeCheck(w http.ResponseWriter, d models.CheckDetail) {
 	writeJSON(w, status, d)
 }
 
-// StartCheck handles POST /v1/checks {kind:"check", lectureId} — '확인하기'.
-// Returns the open session of the lecture when there is one (201 = created).
+// StartCheck handles POST /v1/checks — '확인하기' {kind:"check", lectureId} and
+// the diagnostics (P3): {kind:"pretest", lectureId|jobId} · {kind:"known_verify",
+// conceptId} · {kind:"placement", chapterId}. The open session of the key is
+// returned when there is one (201 = created). 204 = no pretest now.
 func (h *LearnHandler) StartCheck(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -53,9 +55,17 @@ func (h *LearnHandler) StartCheck(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Kind      string `json:"kind"`
 		LectureID string `json:"lectureId"`
+		JobID     string `json:"jobId"`
+		ConceptID string `json:"conceptId"`
+		ChapterID string `json:"chapterId"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, err.Error())
+		return
+	}
+	if body.Kind != "check" {
+		h.startDiagnostic(w, r, userID, services.DiagnosticRequest{Kind: body.Kind, LectureID: body.LectureID,
+			JobID: body.JobID, ConceptID: body.ConceptID, ChapterID: body.ChapterID})
 		return
 	}
 	d, created, err := h.Svc.StartCheck(r.Context(), userID, body.Kind, body.LectureID)
@@ -68,6 +78,25 @@ func (h *LearnHandler) StartCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeCheck(w, d)
+}
+
+// ErrorNoPlacement: the chapter has too few concepts left to diagnose.
+const ErrorNoPlacement ErrorCode = "NO_PLACEMENT"
+
+func (h *LearnHandler) startDiagnostic(w http.ResponseWriter, r *http.Request, userID string, req services.DiagnosticRequest) {
+	d, created, err := h.Svc.StartDiagnostic(r.Context(), userID, req)
+	switch {
+	case errors.Is(err, services.ErrNoPlacement):
+		writeError(w, r, http.StatusConflict, ErrorNoPlacement, err.Error())
+	case err != nil:
+		writeCheckError(w, r, "start diagnostic", err)
+	case d == nil:
+		w.WriteHeader(http.StatusNoContent)
+	case created:
+		writeJSON(w, http.StatusCreated, d)
+	default:
+		writeCheck(w, *d)
+	}
 }
 
 // GetCheck handles GET /v1/checks/{id} — session, items, turns and the objectives' mastery.
@@ -84,7 +113,7 @@ func (h *LearnHandler) GetCheck(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, d)
 }
 
-// AnswerCheck handles POST /v1/checks/{id}/answers {text} → 202 (the tutor replies in the background).
+// AnswerCheck handles POST /v1/checks/{id}/answers {text} | {choice} | {dontKnow:true} → 202 while the tutor replies.
 func (h *LearnHandler) AnswerCheck(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -92,12 +121,25 @@ func (h *LearnHandler) AnswerCheck(w http.ResponseWriter, r *http.Request) {
 	}
 	var body struct {
 		Text string `json:"text"`
+		// Choice / DontKnow: a diagnostic option (0-based) or '모르겠어요' (P3).
+		Choice   *int `json:"choice"`
+		DontKnow bool `json:"dontKnow"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, err.Error())
 		return
 	}
-	d, err := h.Svc.AnswerCheck(r.Context(), userID, chi.URLParam(r, "id"), body.Text)
+	id := chi.URLParam(r, "id")
+	if body.Choice != nil || body.DontKnow {
+		d, err := h.Svc.AnswerChoice(r.Context(), userID, id, body.Choice, body.DontKnow)
+		if err != nil {
+			writeCheckError(w, r, "answer check", err)
+			return
+		}
+		writeCheck(w, d)
+		return
+	}
+	d, err := h.Svc.AnswerCheck(r.Context(), userID, id, body.Text)
 	if err != nil {
 		writeCheckError(w, r, "answer check", err)
 		return

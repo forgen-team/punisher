@@ -42,6 +42,7 @@ type settingsBody struct {
 	ReviewIntervals []int   `json:"reviewIntervals"`
 	ReviewMinutes   *int    `json:"reviewMinutes"`
 	ReviewGrader    *string `json:"reviewGrader"`
+	PretestEnabled  *bool   `json:"pretestEnabled"`
 }
 
 var dailyMinuteOptions = map[int]bool{15: true, 30: true, 45: true, 60: true}
@@ -49,7 +50,7 @@ var dailyMinuteOptions = map[int]bool{15: true, 30: true, 45: true, 60: true}
 // settingsPatch validates the given fields; "" message = valid.
 func settingsPatch(body settingsBody) (store.LearningSettingsPatch, string) {
 	p := store.LearningSettingsPatch{DailyMinutes: body.DailyMinutes, MasteryTarget: body.MasteryTarget,
-		ReviewIntervals: body.ReviewIntervals, ReviewMinutes: body.ReviewMinutes}
+		ReviewIntervals: body.ReviewIntervals, ReviewMinutes: body.ReviewMinutes, PretestEnabled: body.PretestEnabled}
 	if body.ExampleLanguage != nil {
 		lang := strings.ToLower(strings.TrimSpace(*body.ExampleLanguage))
 		if !learning.IsValidExampleLanguage(lang) {
@@ -74,7 +75,7 @@ func settingsPatch(body settingsBody) (store.LearningSettingsPatch, string) {
 	case body.ReviewMinutes != nil && !learning.ValidReviewMinutes(*body.ReviewMinutes):
 		return p, "reviewMinutes must be 0~30"
 	case p.ExampleLanguage == nil && p.DailyMinutes == nil && p.MasteryTarget == nil && p.ReviewIntervals == nil &&
-		p.ReviewMinutes == nil && p.ReviewGrader == nil:
+		p.ReviewMinutes == nil && p.ReviewGrader == nil && p.PretestEnabled == nil:
 		return p, "at least one setting is required"
 	}
 	return p, ""

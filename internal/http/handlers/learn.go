@@ -9,7 +9,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/wooo-jin/punisher/internal/learning"
 	"github.com/wooo-jin/punisher/internal/llm"
 	"github.com/wooo-jin/punisher/internal/services"
 	"github.com/wooo-jin/punisher/internal/store"
@@ -151,14 +150,22 @@ func (h *LearnHandler) Complete(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, res)
 }
 
-// MarkKnown handles POST /v1/concepts/{id}/known.
+// MarkKnown handles POST /v1/concepts/{id}/known [{queueVerify}].
 func (h *LearnHandler) MarkKnown(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
 		return
 	}
+	var body struct {
+		// QueueVerify: bulk '이미 앎' — the objectives wait in the verification queue (P3).
+		QueueVerify bool `json:"queueVerify"`
+	}
+	if err := decodeOptionalJSON(r, &body); err != nil {
+		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, err.Error())
+		return
+	}
 	conceptID := chi.URLParam(r, "id")
-	state, err := h.Store.SetConceptState(r.Context(), userID, conceptID, learning.Known)
+	state, err := h.Svc.MarkKnown(r.Context(), userID, conceptID, body.QueueVerify)
 	if errors.Is(err, store.ErrConceptRetired) {
 		writeError(w, r, http.StatusConflict, ErrorConflict, "concept is retired")
 		return

@@ -1,6 +1,6 @@
 /** 강의 프롬프트 지시문 블록(학습 설정 > 강의 프롬프트) — punisher-server prompts.Blocks / handlers/prompts.go. */
 
-export type PromptStage = "outline" | "lecture" | "review" | "gloss" | "qa" | "explain" | "resolve";
+export type PromptStage = "outline" | "lecture" | "review" | "gloss" | "qa" | "explain" | "resolve" | "check" | "pretest";
 
 export interface PromptVariable {
   name: string;

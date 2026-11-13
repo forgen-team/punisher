@@ -17,6 +17,9 @@ func (s *Service) RetryCheck(ctx context.Context, userID, id string) (models.Che
 	if err != nil {
 		return models.CheckDetail{}, err
 	}
+	if st.sess.Status == "failed" && st.sess.Kind != check.PurposeCheck {
+		return s.retryDiagnostic(ctx, userID, st.sess)
+	}
 	if st.sess.Status == "failed" {
 		return s.retryPrepare(ctx, userID, st)
 	}

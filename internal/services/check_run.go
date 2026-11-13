@@ -33,7 +33,8 @@ func (s *Service) runCheckItems(ctx context.Context, apiKey, userID, sessionID s
 	set := s.UserPrompts(ctx, userID)
 	ic, sc := checkItemsContext(cl)
 	system := set.Text(prompts.BlockCheckItems, s.interactionVars(ctx, userID, cl.info.ID))
-	items, u, tries, err := s.writeItemSet(ctx, apiKey, system, llm.PriorityInteractive,
+	items, u, tries, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.Cfg.LectureModel, attempts: checkAttempts,
+		priority: llm.PriorityInteractive, system: system},
 		func(revisions []string) string { ic.Revisions = revisions; return prompts.CheckItems(ic) },
 		func(set check.ItemSet) []string { return check.ValidateItems(set, sc) })
 	return s.saveCheckItems(done, userID, sessionID, cl, key, jobID, set, items, u, tries, err)
@@ -117,7 +118,7 @@ func (s *Service) runCheckTurn(ctx context.Context, apiKey, userID, sessionID, t
 	}
 	p := progressOf(st.turns, item.ID)
 	stage := check.Stage{Answers: len(p.answers), Challenged: p.challenged, Integrative: item.ObjectiveID == "", Last: st.last(),
-		Kind: st.sess.Kind}
+		Kind: st.itemKind(*item)}
 	// 복습 세션은 여러 개념에 걸치므로 개념은 문항에서 정한다(확인 세션은 같은 값).
 	reply, u, err := s.tutorReply(ctx, apiKey, userID, item.ConceptID, *item, p, stage)
 	s.recordUsage(done, userID, "check_turn", item.ConceptID, u, err)
@@ -192,9 +193,11 @@ func (s *Service) finishItem(ctx context.Context, userID string, st checkState, 
 	integrativeOK bool, turn store.TurnWrite, abandon bool) error {
 	turn.ReusedItem = turn.ReusedItem || st.reusedItem(item.ID)
 	f := store.ItemFinish{UserID: userID, SessionID: st.sess.ID, Item: item, Result: r, IntegrativeOK: integrativeOK,
-		Turn: turn, Abandon: abandon, Intervals: s.reviewIntervals(ctx, userID), Now: s.now()}
-	if st.sess.Kind == check.PurposeCheck && item.ObjectiveID != "" {
-		f.Hold = s.reviewHold(ctx, userID) // 신규 유입 조절(§2.6): 확인에서 처음 복습에 들어오는 목표만
+		Turn: turn, Abandon: abandon, Intervals: s.reviewIntervals(ctx, userID), Now: s.now(),
+		Record: check.Recorded(st.sess.Kind), KnownVerify: st.sess.Kind == check.PurposeKnownVerify}
+	newInflow := st.sess.Kind == check.PurposeCheck || st.itemKind(item) == check.PurposeKnownVerify
+	if newInflow && item.ObjectiveID != "" && !f.Record {
+		f.Hold = s.reviewHold(ctx, userID) // 신규 유입 조절(§2.6): 확인·'이미 앎' 확인에서 처음 복습에 들어오는 목표만
 	}
 	if !abandon && !st.last() {
 		next := st.items[st.sess.Cursor+1]

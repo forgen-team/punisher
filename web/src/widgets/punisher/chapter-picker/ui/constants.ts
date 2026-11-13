@@ -16,3 +16,10 @@ export const CONCEPT_ACTION_LABELS: Record<ChapterConceptAction, string> = {
 
 export const FREE_TEXT_MAX = 500;
 export const MAX_PICKS = 5;
+
+/** '이대로 열기' 뒤 배치 진단 제안 */
+export const PLACEMENT_OFFER_LABELS = {
+  title: "배치 진단",
+  start: "시작",
+  skip: "건너뛰기",
+} as const;

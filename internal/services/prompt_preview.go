@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/wooo-jin/punisher/internal/check"
 	"github.com/wooo-jin/punisher/internal/curriculum"
 	"github.com/wooo-jin/punisher/internal/learning"
 	"github.com/wooo-jin/punisher/internal/prompts"
@@ -89,6 +90,8 @@ func (s *Service) PreviewPrompt(ctx context.Context, userID, blockID string, dra
 		out.System, out.User = set.Text(prompts.BlockResolveSystem, nil), prompts.Resolve(previewQuery, cands, curriculum.Areas)
 	case prompts.StageCheck:
 		out.System, out.User = set.Text(blockID, vars), previewCheck(blockID, pc)
+	case prompts.StagePretest:
+		out.System, out.User = set.Text(blockID, vars), previewPretest(pc)
 	}
 	if out.Version == "" {
 		out.Version = set.Version(blockID)
@@ -135,4 +138,16 @@ func previewCheck(blockID string, pc prompts.LectureContext) string {
 	}
 	return prompts.CheckItems(prompts.CheckItemsContext{ConceptName: pc.ConceptName, LectureTitle: "(예시 강의 제목)",
 		Objectives: objectives, Anchors: []string{"s1", "s2"}, Sections: []string{"[s1] (강의 본문이 여기에 들어갑니다)"}})
+}
+
+// previewPretest is the user prompt of a lecture-start prediction set for the example concept.
+func previewPretest(pc prompts.LectureContext) string {
+	objectives := []prompts.DiagnosticObjective{}
+	for _, o := range pc.Objectives {
+		if len(objectives) < check.MaxPretestItems {
+			objectives = append(objectives, prompts.DiagnosticObjective{ID: o.ID, ConceptName: pc.ConceptName, Text: o.Text})
+		}
+	}
+	return prompts.Diagnostic(prompts.DiagnosticContext{Purpose: check.PurposePretest, Objectives: objectives,
+		Count: check.PretestCount(len(objectives))})
 }
