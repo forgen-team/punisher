@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/wooo-jin/punisher/internal/models"
@@ -16,12 +17,21 @@ import (
 func writeCheckError(w http.ResponseWriter, r *http.Request, op string, err error) {
 	switch {
 	case errors.Is(err, services.ErrInvalidCheck):
-		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, err.Error())
+		writeError(w, r, http.StatusBadRequest, checkErrorCode(err), err.Error())
 	case errors.Is(err, services.ErrCheckBusy), errors.Is(err, services.ErrCheckState):
 		writeError(w, r, http.StatusConflict, ErrorConflict, err.Error())
 	default:
 		writeServiceError(w, r, op, err)
 	}
+}
+
+// checkErrorCode is the cause's code of a bad check request (BAD_REQUEST when unknown).
+func checkErrorCode(err error) ErrorCode {
+	var ie *services.CheckInputError
+	if errors.As(err, &ie) && ie.Code != "" {
+		return ErrorCode(ie.Code)
+	}
+	return ErrorBadRequest
 }
 
 // writeCheck answers 202 while a tutor turn or the item generation runs (poll GET), else 200.
@@ -180,13 +190,29 @@ func (h *LearnHandler) Relearn(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, m)
 }
 
-// Mastery handles GET /v1/mastery?conceptId= — per-objective level, next review, stale and grader.
+// Mastery handles GET /v1/mastery?conceptId= — per-objective level, next review, stale and grader —
+// and GET /v1/mastery?conceptIds=a,b,c (max 300) — the concepts' levels only (the map's rings).
 func (h *LearnHandler) Mastery(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
 		return
 	}
-	conceptID := r.URL.Query().Get("conceptId")
+	q := r.URL.Query()
+	if q.Has("conceptIds") {
+		ids, msg := parseConceptIDs(q.Get("conceptIds"))
+		if msg != "" {
+			writeError(w, r, http.StatusBadRequest, ErrorBadRequest, msg)
+			return
+		}
+		list, err := h.Svc.MasteryBatch(r.Context(), userID, ids)
+		if err != nil {
+			writeCheckError(w, r, "mastery batch", err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"concepts": list})
+		return
+	}
+	conceptID := q.Get("conceptId")
 	if conceptID == "" {
 		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, "conceptId is required")
 		return
@@ -197,6 +223,30 @@ func (h *LearnHandler) Mastery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, m)
+}
+
+// maxMasteryBatch bounds GET /v1/mastery?conceptIds= (a whole map).
+const maxMasteryBatch = 300
+
+// parseConceptIDs splits the comma list (trimmed, empty and repeated ids dropped).
+func parseConceptIDs(raw string) ([]string, string) {
+	seen := map[string]bool{}
+	ids := []string{}
+	for _, part := range strings.Split(raw, ",") {
+		id := strings.TrimSpace(part)
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return nil, "conceptIds is required"
+	}
+	if len(ids) > maxMasteryBatch {
+		return nil, fmt.Sprintf("conceptIds: at most %d", maxMasteryBatch)
+	}
+	return ids, ""
 }
 
 // decodeOptionalJSON is decodeJSON that accepts an empty body.

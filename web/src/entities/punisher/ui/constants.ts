@@ -1,15 +1,18 @@
-import type {
-  CheckGrader,
-  CheckOutcome,
-  CheckVerdict,
-  FeedbackKind,
-  MasteryLevel,
-  GoalStatus,
-  PunisherArea,
-  QuestionStatus,
-  RecommendationKind,
-  StudyRequestStatus,
-  UserConceptState,
+import {
+  CHECK_MAX_ANSWER_CHARS,
+  CHECK_MAX_DISPUTE_CHARS,
+  type CheckGrader,
+  type CheckOutcome,
+  type CheckVerdict,
+  type FeedbackKind,
+  type MasteryLevel,
+  type GoalStatus,
+  type PunisherArea,
+  type QuestionStatus,
+  type RecommendationKind,
+  type StudyRequestStatus,
+  type UserConceptState,
+  type ReviewGrader,
 } from "@/src/shared/api/punisher";
 
 export const AREA_LABELS: Record<PunisherArea, string> = {
@@ -159,4 +162,49 @@ export const GRADER_LABELS: Record<CheckGrader, string> = {
   llm: "튜터",
   self: "자기",
   "llm_regrade": "재채점",
+};
+
+/** 자기 채점에서 고르는 판정 */
+export type SelfVerdict = "correct" | "partial" | "incorrect";
+
+export const SELF_VERDICT_LABELS: Record<SelfVerdict, string> = {
+  correct: "맞음",
+  partial: "부분",
+  incorrect: "틀림",
+};
+
+export const SELF_VERDICT_ORDER: SelfVerdict[] = ["correct", "partial", "incorrect"];
+
+/** 세션 종류 */
+export const CHECK_KIND_LABELS: Record<"check" | "review", string> = {
+  check: "확인",
+  review: "복습",
+};
+
+/** 설정의 복습 채점 방식 */
+export const REVIEW_GRADER_LABELS: Record<ReviewGrader, string> = {
+  self: "자기 채점",
+  llm: "튜터 채점",
+};
+
+/** 확인·복습 API 오류 code → 안내(describeCheckError) */
+export type CheckErrorCode =
+  | "ANSWER_EMPTY"
+  | "ANSWER_TOO_LONG"
+  | "REASON_TOO_LONG"
+  | "INVALID_VERDICT"
+  | "NO_OBJECTIVES"
+  | "INVALID_KIND"
+  | "NO_REVIEWS"
+  | "BAD_REQUEST";
+
+export const CHECK_ERROR_MESSAGES: Record<CheckErrorCode, string> = {
+  ANSWER_EMPTY: "답을 적어 주세요.",
+  ANSWER_TOO_LONG: `답은 ${CHECK_MAX_ANSWER_CHARS}자까지 쓸 수 있어요.`,
+  REASON_TOO_LONG: `사유는 ${CHECK_MAX_DISPUTE_CHARS}자까지 쓸 수 있어요.`,
+  INVALID_VERDICT: "맞음·부분·틀림 중에서 골라 주세요.",
+  NO_OBJECTIVES: "이 강의에는 확인할 학습 목표가 없어요.",
+  INVALID_KIND: "지원하지 않는 확인 종류예요.",
+  NO_REVIEWS: "오늘 복습할 항목이 없어요.",
+  BAD_REQUEST: "요청을 처리하지 못했어요. 다시 시도해 주세요.",
 };

@@ -1,6 +1,7 @@
 import type { GraphChapter, NextChapterPrompt } from "./chapterTypes";
 import type { MapInquiry } from "./inquiryTypes";
 import type { MapRequest } from "./learningTypes";
+import type { TodayReview } from "./reviewTypes";
 
 // DTOs mirrored from apps/punisher-server/internal/{models,learning,services,lecture,store}.
 // Keep in sync with the Go json tags; the server rejects unknown request fields.
@@ -166,6 +167,8 @@ export interface Recommendation {
 export interface TodayResponse {
   items: Recommendation[];
   exhausted: boolean;
+  /** 복습 큐 요약(추천·exhausted 와 별개) */
+  review?: TodayReview;
   message?: string;
   /** 남은 학습 분량이 하루 학습량 × 14일보다 적으면 '다음 챕터 고르기' */
   nextChapter?: NextChapterPrompt;

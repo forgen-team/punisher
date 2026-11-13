@@ -26,11 +26,12 @@ import type {
   TodayResponse,
   UserConceptState,
 } from "./types";
-import type { ExampleLanguage, LearningSettingsResponse, LectureLinks, SelectionExplanation } from "./learningTypes";
+import type { LearningSettingsPatch, LearningSettingsResponse, LectureLinks, SelectionExplanation } from "./learningTypes";
 import type { PromptHistoryEntry, PromptPreview, PromptSaveResponse, PromptsResponse } from "./promptTypes";
 import type { ChapterDraftResponse, ChapterSuggestionsResponse } from "./chapterTypes";
 import type { CompletedArea, CompletedItem, Inquiry, InquiryFollowup } from "./inquiryTypes";
 import type { CheckDetail, ConceptMastery } from "./checkTypes";
+import type { CheckHistoryPage, ConceptMasterySummary, MasteryMetrics, ReviewSummary } from "./reviewTypes";
 
 const enc = encodeURIComponent;
 
@@ -135,7 +136,7 @@ export const punisherApi = {
 
   // Learning settings
   getLearningSettings: () => punisherFetch<LearningSettingsResponse>("/me/settings"),
-  saveLearningSettings: (patch: { exampleLanguage?: ExampleLanguage; dailyMinutes?: number }) =>
+  saveLearningSettings: (patch: LearningSettingsPatch) =>
     punisherFetch<LearningSettingsResponse>("/me/settings", { method: "PUT", json: patch }),
 
   // Inquiries ('이 질문에 답하기')
@@ -197,6 +198,18 @@ export const punisherApi = {
     }),
   retryCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/retry`, { method: "POST" }),
   abandonCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/abandon`, { method: "POST" }),
+  /** 자기 채점 — 답을 보낸 뒤(current.canSelfGrade)에만. */
+  selfGradeCheck: (id: string, verdict: "correct" | "partial" | "incorrect") =>
+    punisherFetch<CheckDetail>(`/checks/${enc(id)}/self-grade`, { method: "POST", json: { verdict } }),
+  listCheckHistory: (params: { kind?: "check" | "review"; limit?: number; cursor?: string } = {}) =>
+    punisherFetch<CheckHistoryPage>(`/checks/history${query(params)}`),
+  // 간격 복습 — 오늘 세션 생성/반환(201·200·202), 할 것이 없으면 409 NO_REVIEWS.
+  startReview: () => punisherFetch<CheckDetail>("/reviews", { method: "POST" }),
+  getReviewSummary: () => punisherFetch<ReviewSummary>("/reviews/summary"),
+  getMasteryMetrics: () => punisherFetch<MasteryMetrics>("/mastery/metrics"),
+  /** 여러 개념의 숙달 요약(지도 링, 한 번에 MASTERY_BATCH_MAX 개까지). */
+  getMasteryBatch: (conceptIds: string[]) =>
+    punisherFetch<{ concepts: ConceptMasterySummary[] }>(`/mastery${query({ conceptIds: conceptIds.join(",") })}`).then((r) => r.concepts),
   getMastery: (conceptId: string) => punisherFetch<ConceptMastery>(`/mastery${query({ conceptId })}`),
   /** 목표 id 에 '#' 가 들어 있어 경로에 넣을 때 인코딩한다. */
   relearnObjective: (objectiveId: string) =>

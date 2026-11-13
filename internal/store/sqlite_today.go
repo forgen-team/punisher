@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/wooo-jin/punisher/internal/curriculum"
 	"github.com/wooo-jin/punisher/internal/learning"
@@ -15,6 +16,8 @@ type TodayData struct {
 	Resume   []learning.ResumeItem
 	Requests []learning.RequestInput
 	Goals    []GoalTargets
+	// Review: the review queue counts now (learning.TodayInput.Review).
+	Review learning.ReviewCounts
 }
 
 // GoalTargets is an active goal's targets.
@@ -25,7 +28,7 @@ type GoalTargets struct {
 }
 
 // LoadToday loads concepts with pending-objective flags, prerequisite edges,
-// in-progress lectures, resolved study requests and active goals.
+// in-progress lectures, resolved study requests, active goals and the review queue counts.
 func (s *SQLiteStore) LoadToday(ctx context.Context, userID string) (*TodayData, error) {
 	d := &TodayData{Concepts: map[string]learning.TodayConcept{}}
 
@@ -91,6 +94,9 @@ func (s *SQLiteStore) LoadToday(ctx context.Context, userID string) (*TodayData,
 		return g, err
 	}); err != nil {
 		return nil, fmt.Errorf("today goals: %w", err)
+	}
+	if d.Review, err = s.ReviewCounts(ctx, userID, time.Now()); err != nil {
+		return nil, err
 	}
 	return d, nil
 }

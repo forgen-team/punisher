@@ -72,6 +72,15 @@ type TodayInput struct {
 	Goals    []GoalInput    // priority order
 	Requests []RequestInput // oldest first
 	Limit    int
+	// Review: the review queue and settings (TodayResult.Review; never affects Exhausted).
+	Review ReviewInput
+}
+
+// ReviewInput is the review summary input of BuildToday.
+type ReviewInput struct {
+	Counts        ReviewCounts
+	ReviewMinutes int
+	Grader        string
 }
 
 // Recommendation is one "today" item.
@@ -100,6 +109,8 @@ type TodayResult struct {
 	Exhausted bool             `json:"exhausted"`
 	// NextChapter is set when the remaining learnable runway is short (see CheckNextChapter).
 	NextChapter *NextChapterPrompt `json:"nextChapter,omitempty"`
+	// Review: due/backlog numbers and the time split "복습 n분 + 강의 30분" (separate from Items).
+	Review ReviewToday `json:"review"`
 }
 
 type todayBuilder struct {
@@ -192,7 +203,8 @@ func BuildToday(in TodayInput) TodayResult {
 	if b.items == nil {
 		b.items = []Recommendation{}
 	}
-	return TodayResult{Items: b.items, Exhausted: b.recommended == 0}
+	return TodayResult{Items: b.items, Exhausted: b.recommended == 0,
+		Review: SummarizeReviews(in.Review.Counts, in.Review.ReviewMinutes, in.Review.Grader)}
 }
 
 func remainingMinutes(r ResumeItem) int {

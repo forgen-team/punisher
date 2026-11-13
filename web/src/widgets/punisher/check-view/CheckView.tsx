@@ -9,23 +9,25 @@ import {
   useCheckRetry,
   useCheckSession,
   useLecture,
+  useReviewSummary,
 } from "@/src/entities/punisher";
-import { describePunisherError, type CheckDetail, type LectureSection } from "@/src/shared/api/punisher";
+import type { CheckDetail, LectureSection } from "@/src/shared/api/punisher";
 import { LectureLayout, LectureTopBar } from "../lecture-viewer";
 import {
   anchorTitle,
   currentItemId,
   disputeTarget,
+  isReview,
   itemTurns,
   judgedTurn,
   orderedItems,
-  progressOf,
+  progressLabel,
   resultRows,
   retryableTurnId,
   showComposer,
 } from "./lib/checkView";
-import { CheckComposer, CheckItemCard, CheckResult } from "./ui";
-import { SESSION_STATUS_LABELS } from "./ui/constants";
+import { CheckComposer, CheckItemCard, CheckResult, LectureCompleteAction, ReviewMoreAction } from "./ui";
+import { REVIEW_STATUS_LABELS, SESSION_STATUS_LABELS } from "./ui/constants";
 
 const NO_SECTIONS: LectureSection[] = [];
 
@@ -38,8 +40,9 @@ function StatusLine({ children }: { children: ReactNode }) {
 }
 
 /**
- * 숙달 확인 화면 — 강의와 같은 상단 바(← 들어온 곳 · 제목 · 문항 n/N · ⋯ 포기)와 가독 폭 본문.
- * 문항마다 물음·자료 → 문답 → 판정, 하단 고정 입력창. 채점·문항 생성 중(pending)에만 폴링한다.
+ * 숙달 확인·복습 화면 — 강의와 같은 상단 바(← 들어온 곳 · 제목 · 문항 n/N 또는 복습 n/N · ⋯ 포기)와 가독 폭 본문.
+ * 문항마다 물음·자료 → 문답 → 판정(자기 채점은 답 → 모범답·기준 → 맞음/부분/틀림), 하단 고정 입력창.
+ * 채점·문항 생성 중(pending)에만 폴링한다. 복습은 여러 강의의 문항이라 강의 링크를 두지 않는다.
  */
 export function CheckView({ checkId }: { checkId: string }) {
   const check = useCheckSession(checkId);
@@ -54,6 +57,9 @@ export function CheckView({ checkId }: { checkId: string }) {
   const sections = lecture.data?.content?.sections ?? NO_SECTIONS;
   const status = d?.session.status;
   const turnCount = d?.turns.length ?? 0;
+  const review = d ? isReview(d) : false;
+  const summary = useReviewSummary(review && status === "finished");
+  const statusLabels = review ? REVIEW_STATUS_LABELS : SESSION_STATUS_LABELS;
 
   const anchorLink = useCallback(
     (anchor: string) =>
@@ -71,9 +77,9 @@ export function CheckView({ checkId }: { checkId: string }) {
     if (status === "active" && turnCount > 0) { endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
   }, [status, turnCount]);
 
-  const title = lecture.data?.content?.title || lecture.data?.title || "확인하기";
-  const progress = d ? progressOf(d) : null;
-  const barTitle = progress && progress.total > 0 ? `${title} · 문항 ${progress.index}/${progress.total}` : title;
+  const title = review ? "복습" : lecture.data?.content?.title || lecture.data?.title || "확인하기";
+  const progress = d ? progressLabel(d) : "";
+  const barTitle = review ? progress || title : [title, progress].filter(Boolean).join(" · ");
   const open = status === "active" || status === "preparing";
   const menuItems: MenuItem[] = [
     { key: "abandon", label: "포기", danger: true, disabled: !open || abandon.isPending, onSelect: () => abandon.mutate() },
@@ -91,7 +97,7 @@ export function CheckView({ checkId }: { checkId: string }) {
 
   function renderBody(): ReactNode {
     if (!d && check.error) {
-      return <ErrorState message={describePunisherError(check.error)} onRetry={() => check.refetch()} retrying={check.isRefetching} />;
+      return <ErrorState message={describeCheckError(check.error)} onRetry={() => check.refetch()} retrying={check.isRefetching} />;
     }
     if (!d) {
       return (
@@ -107,7 +113,7 @@ export function CheckView({ checkId }: { checkId: string }) {
         <div aria-busy="true">
           <StatusLine>
             <Spinner size="sm" label={null} />
-            {SESSION_STATUS_LABELS.preparing}
+            {statusLabels.preparing}
           </StatusLine>
           <div className="mt-6 flex flex-col gap-4" aria-hidden="true">
             <Skeleton lines={3} />
@@ -120,7 +126,7 @@ export function CheckView({ checkId }: { checkId: string }) {
       return (
         <div className="pt-4">
           <ErrorState
-            message={d.session.error || SESSION_STATUS_LABELS.failed}
+            message={d.session.error || statusLabels.failed}
             onRetry={() => retry.mutate()}
             retrying={retry.isPending}
           />
@@ -140,7 +146,7 @@ export function CheckView({ checkId }: { checkId: string }) {
     const retryId = retryableTurnId(detail);
     const now = Date.now();
     const actionError = retry.error ?? abandon.error ?? dispute.error;
-    const statusLabel = SESSION_STATUS_LABELS[detail.session.status];
+    const statusLabel = statusLabels[detail.session.status];
     return (
       <>
         {statusLabel && <StatusLine>{statusLabel}</StatusLine>}
@@ -176,13 +182,13 @@ export function CheckView({ checkId }: { checkId: string }) {
           </p>
         )}
         {detail.session.status === "finished" && (
-          <CheckResult
-            ref={resultRef}
-            lectureId={lectureId}
-            rows={rows}
-            anchorLink={anchorLink}
-            lectureCompleted={Boolean(lecture.data?.progress?.completedAt)}
-          />
+          <CheckResult ref={resultRef} rows={rows} anchorLink={anchorLink}>
+            {review ? (
+              <ReviewMoreAction remaining={summary.data?.due ?? 0} />
+            ) : (
+              <LectureCompleteAction lectureId={lectureId} lectureCompleted={Boolean(lecture.data?.progress?.completedAt)} />
+            )}
+          </CheckResult>
         )}
         {showComposer(detail) && <CheckComposer detail={detail} />}
       </>

@@ -3,15 +3,16 @@ import { Link } from "@/src/shared/lib/router";
 import { useState } from "react";
 import { Target } from "lucide-react";
 import { EmptyState, ErrorState, HeightReserve, List, ListSkeleton, Section, buttonVariants, cn } from "@/src/shared/ui/kit";
-import { useInquiries, useToday } from "@/src/entities/punisher";
+import { useInquiries, useReviewSummary, useToday } from "@/src/entities/punisher";
 import { InstantQueryBox, ResolutionChoices, useLaunchInstant } from "@/src/features/punisher/instant-start";
 import { DismissedNotice, ResumeList, useResumeDismiss } from "@/src/features/punisher/resume-dismiss";
 import { describePunisherError, type InstantResponse, type Recommendation } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { AddStudyRequestForm } from "@/src/features/punisher/study-request-add";
-import { InquiryList, NEW_CHAPTER_PATH, NextChapterCard, RecommendationRow, RecommendationSheet, StudyRequestList } from "./ui";
+import { reviewCardState } from "./lib/reviewCard";
+import { InquiryList, NEW_CHAPTER_PATH, NextChapterCard, RecommendationRow, RecommendationSheet, ReviewCard, StudyRequestList } from "./ui";
 
-/** 강의(오늘): 궁금한 것 입력 한 줄 → 이어보기 → 추천 목록 → 학습 요청(단독판: 직접 입력. witems 는 이 자리가 RSS '학습 요청' — docs/SYNC.md). */
+/** 강의(오늘): 복습 카드 → 궁금한 것 입력 한 줄 → 이어보기 → 추천 목록 → 학습 요청(단독판: 직접 입력. witems 는 이 자리가 RSS '학습 요청' — docs/SYNC.md). */
 export function TodayWidget() {
   const today = useToday();
   const { launch, isPending, error } = useLaunchInstant();
@@ -20,6 +21,8 @@ export function TodayWidget() {
   const resumeDismiss = useResumeDismiss();
   const [resumeExpanded, setResumeExpanded] = useState(false);
   const inquiries = useInquiries({ open: true });
+  const reviewToday = today.data?.review;
+  const reviewSummary = useReviewSummary(Boolean(reviewToday));
 
   async function start(conceptId: string, query?: string) {
     setPickResult(null);
@@ -37,6 +40,10 @@ export function TodayWidget() {
   const resume = items.filter((item) => item.kind === "resume");
   const recommendations = items.filter((item) => item.kind !== "resume");
   const ready = !today.isLoading && !today.error;
+  // 복습 카드는 열들 위 전체 폭 띠(맨 앞) — 3단에서도 열 배치를 바꾸지 않고, '추천 소진' 안내와 다른 칸에 둔다.
+  // 완료 여부(오늘 세션)를 받기 전에는 그리지 않는다(숨김 ↔ 접힌 완료가 깜빡이지 않게).
+  const reviewState = reviewCardState(reviewToday, reviewSummary.data?.today);
+  const reviewReady = ready && (!reviewToday || !reviewSummary.isLoading);
   const showResume = ready && (resume.length > 0 || resumeDismiss.dismissed || resumeDismiss.error);
 
   const resumeSection = showResume ? (
@@ -100,6 +107,9 @@ export function TodayWidget() {
   const middle = Boolean(nextChapter || showInquiries);
   return (
     <div className="flex w-full flex-col gap-6">
+      <HeightReserve id="learn-review" ready={reviewReady} skeleton={null} className="[&:empty:not([style])]:hidden">
+        {reviewState.kind !== "hidden" ? <ReviewCard state={reviewState} /> : null}
+      </HeightReserve>
       <InstantQueryBox />
       <div aria-live="polite" className="empty:hidden">
         <InlineError error={error} />

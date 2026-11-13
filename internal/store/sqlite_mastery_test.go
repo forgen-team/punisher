@@ -316,3 +316,68 @@ func TestUpgradeFromV040(t *testing.T) {
 }
 
 func ptrNow() *time.Time { t := time.Now(); return &t }
+
+// ConceptsMastery reads many concepts in one query; another user's concept is left out.
+// (masteryFixture has a fixed id here, so the other user's concept is inserted directly.)
+func TestConceptsMasteryBatch(t *testing.T) {
+	s, _ := newTestStore(t)
+	ctx := context.Background()
+	user := testUser
+	conceptID, objectiveID := masteryFixture(t, s, user)
+	saveTestMastery(t, s, user, objectiveID, learning.Mastery{Box: 2, Best: learning.BestUnaided})
+	otherConcept := "test.mastery-other"
+	if _, err := s.c().exec(ctx, `INSERT INTO concepts (id, name, area, depth, owner_user_id) VALUES ($1, '남의 캐시', 'os', 1, 'someone-else')`, otherConcept); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.c().exec(ctx, `INSERT INTO objectives (id, concept_id, text, depth, ordinal) VALUES ($1, $2, '읽기 경로', 1, 1)`, otherConcept+"#1", otherConcept); err != nil {
+		t.Fatal(err)
+	}
+	list, err := s.ConceptsMastery(ctx, user, []string{conceptID, otherConcept, "test.missing"})
+	if err != nil || len(list) != 1 || list[0].ConceptID != conceptID || list[0].Level != 4 {
+		t.Fatalf("batch = %+v (%v)", list, err)
+	}
+	if list, err := s.ConceptsMastery(ctx, user, nil); err != nil || len(list) != 0 {
+		t.Fatalf("empty batch = %+v (%v)", list, err)
+	}
+}
+
+// ReviewCounts on SQLite (COUNT FILTER → COUNT(CASE…), TEXT timestamps): the
+// overdue boundary is the KST day start, not the UTC one; queued rows count
+// apart and graduated rows not at all.
+func TestReviewCountsKSTBoundary(t *testing.T) {
+	s, _ := newTestStore(t)
+	ctx := context.Background()
+	user := testUser
+	conceptID, _ := masteryFixture(t, s, user)
+	kst := time.FixedZone("KST", 9*60*60)
+	now := time.Date(2026, 11, 13, 8, 30, 0, 0, kst) // 2026-11-12T23:30Z: UTC 날짜는 아직 전날
+	dayStart := time.Date(2026, 11, 13, 0, 0, 0, 0, kst)
+	rows := []struct {
+		due    time.Time
+		queued bool
+		step   int
+	}{
+		{dayStart.Add(-time.Millisecond), false, 0}, // 어제(KST) 만기 → overdue
+		{dayStart, false, 0},                        // 오늘 0시 만기 → due 만
+		{now.Add(time.Hour), false, 0},              // 아직 → 셈 밖
+		{dayStart.Add(-time.Hour), true, 0},         // 대기 → queued
+		{dayStart.Add(-time.Hour), false, 2},        // 졸업 → 셈 밖
+	}
+	for i, r := range rows {
+		obj := conceptID + "#k" + string(rune('0'+i))
+		if _, err := s.c().exec(ctx, `INSERT INTO objectives (id, concept_id, text, depth, ordinal) VALUES ($1, $2, '경계', 1, $3)`, obj, conceptID, 10+i); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := s.c().exec(ctx, `INSERT INTO user_objective_mastery (user_id, objective_id, concept_id, box, grad_step, next_review_at, queued)
+			VALUES ($1, $2, $3, 1, $4, $5, $6)`, user, obj, conceptID, r.step, r.due, r.queued); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := s.ReviewCounts(ctx, user, now)
+	if err != nil || got != (learning.ReviewCounts{Due: 2, Overdue: 1, Queued: 1}) {
+		t.Fatalf("counts = %+v (%v)", got, err)
+	}
+	if got, err := s.ReviewCounts(ctx, "nobody", now); err != nil || got != (learning.ReviewCounts{}) {
+		t.Fatalf("no rows → zeros, not NULL: %+v (%v)", got, err)
+	}
+}

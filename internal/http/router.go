@@ -117,6 +117,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Get("/goals/{id}/path", learn.GoalPath)
 
 		r.Post("/checks", learn.StartCheck)
+		r.Get("/checks/history", learn.CheckHistory)
 		r.Get("/checks/{id}", learn.GetCheck)
 		r.Post("/checks/{id}/answers", learn.AnswerCheck)
 		r.Post("/checks/{id}/reveal", learn.RevealCheck)
@@ -126,6 +127,9 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Post("/checks/{id}/abandon", learn.AbandonCheck)
 		r.Post("/objectives/{id}/relearn", learn.Relearn)
 		r.Get("/mastery", learn.Mastery)
+		r.Get("/mastery/metrics", learn.MasteryMetrics)
+		r.Post("/reviews", learn.StartReview)
+		r.Get("/reviews/summary", learn.ReviewSummary)
 	})
 
 	if deps.UI != nil {

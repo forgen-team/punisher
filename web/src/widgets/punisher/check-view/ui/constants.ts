@@ -37,3 +37,12 @@ export const SESSION_STATUS_LABELS: Record<CheckSessionStatus, string> = {
   abandoned: "포기한 확인이에요",
   failed: "문항을 만들지 못했어요",
 };
+
+/** 복습 세션 상태 줄(active 는 표시 없음) */
+export const REVIEW_STATUS_LABELS: Record<CheckSessionStatus, string> = {
+  preparing: "복습 문항을 준비하는 중이에요",
+  active: "",
+  finished: "복습을 마쳤어요",
+  abandoned: "그만둔 복습이에요",
+  failed: "복습 문항을 준비하지 못했어요",
+};

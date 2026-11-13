@@ -1,3 +1,3 @@
 export { CheckComposer } from "./CheckComposer";
 export { CheckItemCard } from "./CheckItemCard";
-export { CheckResult } from "./CheckResult";
+export { CheckResult, LectureCompleteAction, ReviewMoreAction } from "./CheckResult";

@@ -27,7 +27,10 @@ type ItemFinish struct {
 	// NextAsk asks the next item (nil = this was the last item).
 	NextAsk *TurnWrite
 	// Abandon closes the session after this item ('포기' with a half-answered item).
-	Abandon   bool
+	Abandon bool
+	// Hold: the review backlog is over the inflow limit — an objective entering
+	// the review schedule from this item waits (queued, design §2.6).
+	Hold      bool
 	Intervals []int
 	Now       time.Time
 }
@@ -44,6 +47,8 @@ type ResultEntry struct {
 	Misconception string     `json:"misconception"`
 	NextReviewAt  *time.Time `json:"nextReviewAt"`
 	Lapses        int        `json:"lapses"`
+	// Queued: the objective waits for the review queue ("복습이 밀려 대기").
+	Queued bool `json:"queued"`
 }
 
 // FinishCheckItem applies an item's evidence (see ItemFinish) and returns its outcome.
@@ -103,7 +108,7 @@ func applyItemEvidence(ctx context.Context, c conn, f ItemFinish) (ResultEntry, 
 	entry.LevelBefore = learning.DisplayLevel(m)
 	grade.Prev, grade.PrevExists = &prev, exists
 	if entry.Outcome != learning.OutcomeHeld {
-		m = learning.ApplyEvidence(m, entry.Outcome, f.Now, f.Intervals)
+		m = learning.QueueEntry(prev, learning.ApplyEvidence(m, entry.Outcome, f.Now, f.Intervals), f.Hold)
 		if updated, err = saveMastery(ctx, c, f.UserID, f.Item.ObjectiveID, f.Turn.Grader, m); err != nil {
 			return entry, grade, err
 		}
@@ -111,7 +116,7 @@ func applyItemEvidence(ctx context.Context, c conn, f ItemFinish) (ResultEntry, 
 	if exists || entry.Outcome != learning.OutcomeHeld {
 		grade.AppliedAt = &updated
 	}
-	entry.LevelAfter, entry.NextReviewAt, entry.Lapses = learning.DisplayLevel(m), m.NextReviewAt, m.Lapses
+	entry.LevelAfter, entry.NextReviewAt, entry.Lapses, entry.Queued = learning.DisplayLevel(m), m.NextReviewAt, m.Lapses, m.Queued
 	return entry, grade, nil
 }
 

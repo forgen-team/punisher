@@ -80,6 +80,31 @@ func CheckItems(c CheckItemsContext) string {
 	return b.String()
 }
 
+// CheckVariants builds the user prompt of a review-variant generation (design
+// §5 P2): the same lecture body as CheckItems (the check.items block is the
+// system prompt), one new review item per objective, unlike the items seen.
+func CheckVariants(c CheckItemsContext, seen map[string][]string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "## 강의\n- 개념: %s\n- 제목: %s\n\n## 목표\n", c.ConceptName, c.LectureTitle)
+	for _, o := range c.Objectives {
+		fmt.Fprintf(&b, "- %s: %s\n", o.ID, o.Text)
+	}
+	b.WriteString("\n## 만들 문항(복습 변형)\n- 위 목표마다 purpose review 1개만 만듭니다. check 문항과 통합 문항은 만들지 않습니다.\n")
+	b.WriteString("- 학습자가 이미 본 아래 문항과 다른 상황·다른 형식으로 묻습니다(같은 질문을 말만 바꿔 쓰지 않습니다).\n")
+	for _, o := range c.Objectives {
+		for _, p := range seen[o.ID] {
+			fmt.Fprintf(&b, "  - (%s 에서 본 문항) %s\n", o.ID, p)
+		}
+	}
+	fmt.Fprintf(&b, "\n## 앵커 목록\n%s\n\n## 강의 본문\n", strings.Join(c.Anchors, ", "))
+	for _, s := range c.Sections {
+		b.WriteString(s)
+		b.WriteString("\n")
+	}
+	writeRevisions(&b, c.Revisions)
+	return b.String()
+}
+
 // CheckTurnRef is a previous turn of the item's dialogue.
 type CheckTurnRef struct {
 	Role string // tutor | learner

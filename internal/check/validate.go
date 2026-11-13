@@ -131,3 +131,32 @@ func isJSONObject(raw json.RawMessage) bool {
 	t := bytes.TrimSpace(raw)
 	return len(t) > 0 && t[0] == '{' && json.Valid(t)
 }
+
+// ValidateVariants lists the problems of a generated review-variant set (empty
+// = usable): exactly one review item for each requested objective, nothing else.
+func ValidateVariants(set ItemSet, sc SetContext, objectiveIDs []string) []string {
+	var problems []string
+	want := map[string]bool{}
+	for _, id := range objectiveIDs {
+		want[id] = true
+	}
+	counts := map[string]int{}
+	for i, it := range set.Items {
+		label := fmt.Sprintf("items[%d]", i)
+		problems = append(problems, validateItem(it, sc, label)...)
+		switch {
+		case it.Purpose != PurposeReview:
+			problems = append(problems, label+": 변형 문항의 purpose 는 review 입니다")
+		case !want[it.ObjectiveID]:
+			problems = append(problems, fmt.Sprintf("%s: objective_id %q 는 요청한 목표가 아닙니다", label, it.ObjectiveID))
+		default:
+			counts[it.ObjectiveID]++
+		}
+	}
+	for _, id := range objectiveIDs {
+		if n := counts[id]; n != 1 {
+			problems = append(problems, fmt.Sprintf("목표 %s 의 review 문항은 정확히 1개여야 합니다(현재 %d개)", id, n))
+		}
+	}
+	return problems
+}

@@ -291,17 +291,18 @@ func todayInput(d *store.TodayData, limit int) learning.TodayInput {
 
 // Today builds the user's recommendations.
 func (s *Service) Today(ctx context.Context, userID string, limit int) (learning.TodayResult, error) {
+	st, serr := s.Store.GetLearningSettings(ctx, userID)
+	if serr != nil {
+		logf("learning settings for %s: %v (using defaults)", userID, serr)
+	}
+	s.releaseQueued(ctx, userID, st, s.now())
 	data, err := s.Store.LoadToday(ctx, userID)
 	if err != nil {
 		return learning.TodayResult{}, err
 	}
-	res := learning.BuildToday(todayInput(data, limit))
-	daily := learning.DefaultDailyMinutes
-	if st, err := s.Store.GetLearningSettings(ctx, userID); err == nil {
-		daily = st.DailyMinutes
-	} else {
-		logf("learning settings for %s: %v (using %d min/day)", userID, err, daily)
-	}
-	res.NextChapter = learning.CheckNextChapter(learning.RemainingMinutes(data.Concepts), daily)
+	in := todayInput(data, limit)
+	in.Review = learning.ReviewInput{Counts: data.Review, ReviewMinutes: st.ReviewMinutes, Grader: s.reviewGrader(userID, st)}
+	res := learning.BuildToday(in)
+	res.NextChapter = learning.CheckNextChapter(learning.RemainingMinutes(data.Concepts), st.DailyMinutes)
 	return res, nil
 }

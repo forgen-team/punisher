@@ -18,3 +18,4 @@ export * from "./model/inquiries";
 export { InquiryStatusIcon, inquiryRowTitle } from "./ui/InquiryStatusIcon";
 export * from "./model/checks";
 export { MasteryDots, UncheckedObjectives } from "./ui/MasteryDots";
+export * from "./model/reviews";

@@ -123,11 +123,44 @@ func (s *Service) Mastery(ctx context.Context, userID, conceptID string) (models
 	if err != nil {
 		return models.ConceptMastery{}, err
 	}
+	out := models.ConceptMastery{Objectives: list}
+	out.ConceptMasterySummary = summarizeMastery(conceptID, list, s.masteryTarget(ctx, userID))
+	return out, nil
+}
+
+// MasteryBatch is the concept-level summary of many concepts (GET /v1/mastery?conceptIds=,
+// the map's rings): two queries, in request order, invisible concepts and those
+// without active objectives left out.
+func (s *Service) MasteryBatch(ctx context.Context, userID string, conceptIDs []string) ([]models.ConceptMasterySummary, error) {
+	list, err := s.Store.ConceptsMastery(ctx, userID, conceptIDs)
+	if err != nil {
+		return nil, err
+	}
+	byConcept := map[string][]models.ObjectiveMastery{}
+	for _, o := range list {
+		byConcept[o.ConceptID] = append(byConcept[o.ConceptID], o)
+	}
+	target := s.masteryTarget(ctx, userID)
+	out := make([]models.ConceptMasterySummary, 0, len(byConcept))
+	for _, id := range conceptIDs {
+		if objs, ok := byConcept[id]; ok {
+			out = append(out, summarizeMastery(id, objs, target))
+			delete(byConcept, id)
+		}
+	}
+	return out, nil
+}
+
+func (s *Service) masteryTarget(ctx context.Context, userID string) int {
 	settings, err := s.Store.GetLearningSettings(ctx, userID)
 	if err != nil {
 		logf("mastery target for %s: %v (using default)", userID, err)
 	}
-	out := models.ConceptMastery{ConceptID: conceptID, MasteryTarget: settings.MasteryTarget, Objectives: list}
+	return settings.MasteryTarget
+}
+
+func summarizeMastery(conceptID string, list []models.ObjectiveMastery, target int) models.ConceptMasterySummary {
+	out := models.ConceptMasterySummary{ConceptID: conceptID, MasteryTarget: target}
 	levels := make([]int, 0, len(list))
 	for _, o := range list {
 		levels = append(levels, o.Level)
@@ -136,6 +169,6 @@ func (s *Service) Mastery(ctx context.Context, userID, conceptID string) (models
 		}
 	}
 	out.Level = learning.ConceptLevel(levels)
-	out.Mastered = learning.ConceptMastered(levels, out.MasteryTarget)
-	return out, nil
+	out.Mastered = learning.ConceptMastered(levels, target)
+	return out
 }

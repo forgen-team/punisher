@@ -4,7 +4,7 @@ import {
   punisherApi,
   punisherKeys,
   punisherQueryDefaults,
-  type ExampleLanguage,
+  type LearningSettingsPatch,
 } from "@/src/shared/api/punisher";
 import { invalidateLearningState } from "./concepts";
 
@@ -37,8 +37,16 @@ export function useLearningSettings() {
 export function useSaveLearningSettings() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (patch: { exampleLanguage?: ExampleLanguage; dailyMinutes?: number }) => punisherApi.saveLearningSettings(patch),
-    onSuccess: (data) => queryClient.setQueryData(punisherKeys.settings(), data),
+    mutationFn: (patch: LearningSettingsPatch) => punisherApi.saveLearningSettings(patch),
+    onSuccess: (data, patch) => {
+      queryClient.setQueryData(punisherKeys.settings(), data);
+      // 숙달 기준·복습 설정은 숙달 링·오늘 복습 카드·복습 요약에 바로 반영한다.
+      if (patch.masteryTarget !== undefined) { void queryClient.invalidateQueries({ queryKey: ["punisher", "mastery"] }); }
+      if (patch.reviewMinutes !== undefined || patch.reviewGrader !== undefined || patch.reviewIntervals !== undefined) {
+        void queryClient.invalidateQueries({ queryKey: punisherKeys.today() });
+        void queryClient.invalidateQueries({ queryKey: punisherKeys.reviewSummary() });
+      }
+    },
   });
 }
 

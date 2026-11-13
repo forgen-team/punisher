@@ -33,37 +33,9 @@ func (s *Service) runCheckItems(ctx context.Context, apiKey, userID, sessionID s
 	set := s.UserPrompts(ctx, userID)
 	ic, sc := checkItemsContext(cl)
 	system := set.Text(prompts.BlockCheckItems, s.interactionVars(ctx, userID, cl.info.ID))
-	var u usage
-	var tries []store.AttemptRecord
-	var items check.ItemSet
-	var problems []string
-	var err error
-	for n := 1; n <= checkAttempts; n++ {
-		ic.Revisions = problems
-		text, gerr := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel, System: system,
-			User: prompts.CheckItems(ic), MaxTokens: 8000, Timeout: 5 * time.Minute, Priority: llm.PriorityInteractive}, &u)
-		if gerr != nil {
-			err = gerr
-			tries = append(tries, store.AttemptRecord{Attempt: n, Result: "llm_error", Message: gerr.Error()})
-			break
-		}
-		parsed, perr := llmjson.TryParseJSON[check.ItemSet](text)
-		if perr != nil {
-			problems = []string{"JSON 을 해석할 수 없습니다: " + perr.Error()}
-			tries = append(tries, store.AttemptRecord{Attempt: n, Result: "parse_error", Message: perr.Error()})
-			continue
-		}
-		if problems = check.ValidateItems(parsed, sc); len(problems) > 0 {
-			tries = append(tries, store.AttemptRecord{Attempt: n, Result: "invalid", Message: strings.Join(problems, "; ")})
-			continue
-		}
-		items = parsed
-		tries = append(tries, store.AttemptRecord{Attempt: n, Result: "ok"})
-		break
-	}
-	if err == nil && len(problems) > 0 {
-		err = errors.New("check items failed validation: " + strings.Join(problems, "; "))
-	}
+	items, u, tries, err := s.writeItemSet(ctx, apiKey, system, llm.PriorityInteractive,
+		func(revisions []string) string { ic.Revisions = revisions; return prompts.CheckItems(ic) },
+		func(set check.ItemSet) []string { return check.ValidateItems(set, sc) })
 	return s.saveCheckItems(done, userID, sessionID, cl, key, jobID, set, items, u, tries, err)
 }
 
@@ -144,9 +116,11 @@ func (s *Service) runCheckTurn(ctx context.Context, apiKey, userID, sessionID, t
 		return s.Store.FailCheckTurn(done, userID, turnID, "", store.ErrCheckClosed.Error())
 	}
 	p := progressOf(st.turns, item.ID)
-	stage := check.Stage{Answers: len(p.answers), Challenged: p.challenged, Integrative: item.ObjectiveID == "", Last: st.last()}
-	reply, u, err := s.tutorReply(ctx, apiKey, userID, st.sess.ConceptID, *item, p, stage)
-	s.recordUsage(done, userID, "check_turn", st.sess.ConceptID, u, err)
+	stage := check.Stage{Answers: len(p.answers), Challenged: p.challenged, Integrative: item.ObjectiveID == "", Last: st.last(),
+		Kind: st.sess.Kind}
+	// 복습 세션은 여러 개념에 걸치므로 개념은 문항에서 정한다(확인 세션은 같은 값).
+	reply, u, err := s.tutorReply(ctx, apiKey, userID, item.ConceptID, *item, p, stage)
+	s.recordUsage(done, userID, "check_turn", item.ConceptID, u, err)
 	if err != nil {
 		return s.Store.FailCheckTurn(done, userID, turnID, u.model, checkErrorText(err))
 	}
@@ -216,11 +190,22 @@ func (p itemProgress) dialogue() []models.CheckTurn {
 // closed meanwhile (abandoned) keeps the turn but applies nothing.
 func (s *Service) finishItem(ctx context.Context, userID string, st checkState, item store.CheckItem, r learning.ItemResult,
 	integrativeOK bool, turn store.TurnWrite, abandon bool) error {
+	turn.ReusedItem = turn.ReusedItem || st.reusedItem(item.ID)
 	f := store.ItemFinish{UserID: userID, SessionID: st.sess.ID, Item: item, Result: r, IntegrativeOK: integrativeOK,
 		Turn: turn, Abandon: abandon, Intervals: s.reviewIntervals(ctx, userID), Now: s.now()}
+	if st.sess.Kind == check.PurposeCheck && item.ObjectiveID != "" {
+		f.Hold = s.reviewHold(ctx, userID) // 신규 유입 조절(§2.6): 확인에서 처음 복습에 들어오는 목표만
+	}
 	if !abandon && !st.last() {
 		next := st.items[st.sess.Cursor+1]
 		f.NextAsk = &store.TurnWrite{ItemID: next.ID, Role: "tutor", Move: check.MoveAsk, Text: next.Prompt}
+		if st.sess.Kind == check.PurposeReview {
+			seen, err := s.Store.ItemSeenBefore(ctx, userID, next.ID, st.sess.ID)
+			if err != nil {
+				return err
+			}
+			f.NextAsk.ReusedItem = seen
+		}
 	}
 	_, err := s.Store.FinishCheckItem(ctx, f)
 	if errors.Is(err, store.ErrCheckClosed) && turn.ID != "" {
@@ -242,7 +227,7 @@ func (s *Service) runDispute(ctx context.Context, apiKey, userID, sessionID, tur
 		return s.Store.FailCheckTurn(done, userID, turnID, "", err.Error())
 	}
 	reply, u, err := s.regrade(ctx, apiKey, item, first)
-	s.recordUsage(done, userID, "check_turn", st.sess.ConceptID, u, err)
+	s.recordUsage(done, userID, "check_turn", item.ConceptID, u, err)
 	if err != nil {
 		return s.Store.FailCheckTurn(done, userID, turnID, u.model, checkErrorText(err))
 	}

@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/wooo-jin/punisher/internal/check"
 	"github.com/wooo-jin/punisher/internal/learning"
@@ -17,7 +16,10 @@ import (
 func (s *Service) AnswerCheck(ctx context.Context, userID, id, text string) (models.CheckDetail, error) {
 	text, ok := validText(text, MaxCheckAnswerRunes)
 	if !ok {
-		return models.CheckDetail{}, fmt.Errorf("%w: answer is required (max %d characters)", ErrInvalidCheck, MaxCheckAnswerRunes)
+		if text == "" {
+			return models.CheckDetail{}, invalidCheck(CodeAnswerEmpty, "answer is required")
+		}
+		return models.CheckDetail{}, invalidCheck(CodeAnswerTooLong, "answer is too long (max %d characters)", MaxCheckAnswerRunes)
 	}
 	st, err := s.loadCheckState(ctx, userID, id)
 	if err != nil {
@@ -38,7 +40,7 @@ func (s *Service) AnswerCheck(ctx context.Context, userID, id, text string) (mod
 		}
 		return s.GetCheck(ctx, userID, id)
 	}
-	if !p.awaitingAnswer() {
+	if !p.awaitingAnswer(st.sess.Kind) {
 		return models.CheckDetail{}, ErrCheckState
 	}
 	apiKey, err := s.checkKey(ctx, userID)
@@ -74,7 +76,7 @@ func (s *Service) RevealCheck(ctx context.Context, userID, id string) (models.Ch
 		return models.CheckDetail{}, checkStateErr(st)
 	}
 	p := progressOf(st.turns, item.ID)
-	if !p.canReveal() {
+	if !p.canReveal(st.sess.Kind) {
 		return models.CheckDetail{}, ErrCheckState
 	}
 	turn := store.TurnWrite{ItemID: item.ID, Role: "tutor", Move: check.MoveReveal, Text: item.Rubric.Answer,
@@ -91,7 +93,7 @@ var selfVerdicts = map[string]bool{learning.VerdictCorrect: true, learning.Verdi
 // only after an answer was written, and it ends the item.
 func (s *Service) SelfGradeCheck(ctx context.Context, userID, id, verdict string) (models.CheckDetail, error) {
 	if !selfVerdicts[verdict] {
-		return models.CheckDetail{}, fmt.Errorf("%w: verdict must be correct|partial|incorrect", ErrInvalidCheck)
+		return models.CheckDetail{}, invalidCheck(CodeInvalidVerdict, "verdict must be correct|partial|incorrect")
 	}
 	st, err := s.loadCheckState(ctx, userID, id)
 	if err != nil {
@@ -121,7 +123,7 @@ var disputable = map[string]bool{learning.OutcomeAided: true, learning.OutcomeFa
 // Once per item, while the session is open or within 24h of its end.
 func (s *Service) DisputeCheck(ctx context.Context, userID, id, turnID, reason string) (models.CheckDetail, error) {
 	if len([]rune(reason)) > MaxDisputeRunes {
-		return models.CheckDetail{}, fmt.Errorf("%w: reason too long", ErrInvalidCheck)
+		return models.CheckDetail{}, invalidCheck(CodeReasonTooLong, "reason too long (max %d characters)", MaxDisputeRunes)
 	}
 	st, err := s.loadCheckState(ctx, userID, id)
 	if err != nil {

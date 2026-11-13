@@ -45,6 +45,29 @@ var (
 	ErrCheckState = errors.New("지금은 할 수 없는 동작이에요")
 )
 
+// Codes of CheckInputError (the 400 response's error.code).
+const (
+	CodeAnswerEmpty    = "ANSWER_EMPTY"
+	CodeAnswerTooLong  = "ANSWER_TOO_LONG"
+	CodeReasonTooLong  = "REASON_TOO_LONG"
+	CodeInvalidVerdict = "INVALID_VERDICT"
+	CodeNoObjectives   = "NO_OBJECTIVES"
+	CodeInvalidKind    = "INVALID_KIND"
+)
+
+// CheckInputError is an ErrInvalidCheck with the cause's code.
+type CheckInputError struct {
+	Code string
+	Msg  string
+}
+
+func (e *CheckInputError) Error() string { return ErrInvalidCheck.Error() + ": " + e.Msg }
+func (e *CheckInputError) Unwrap() error { return ErrInvalidCheck }
+
+func invalidCheck(code, format string, args ...any) error {
+	return &CheckInputError{Code: code, Msg: fmt.Sprintf(format, args...)}
+}
+
 // checkLecture is the lecture being checked with its active objectives (in lecture order).
 type checkLecture struct {
 	lec        models.Lecture
@@ -84,7 +107,7 @@ func (s *Service) loadCheckLecture(ctx context.Context, userID, lectureID string
 		}
 	}
 	if len(cl.objectives) == 0 {
-		return cl, fmt.Errorf("%w: lecture has no active objectives", ErrInvalidCheck)
+		return cl, invalidCheck(CodeNoObjectives, "lecture has no active objectives")
 	}
 	return cl, nil
 }
@@ -184,7 +207,7 @@ func runDetached(label, id string, timeout time.Duration, run func(context.Conte
 // session gets the lecture's cached item set, or generates it in the background.
 func (s *Service) StartCheck(ctx context.Context, userID, kind, lectureID string) (models.CheckDetail, bool, error) {
 	if kind != check.PurposeCheck {
-		return models.CheckDetail{}, false, fmt.Errorf("%w: kind must be check", ErrInvalidCheck)
+		return models.CheckDetail{}, false, invalidCheck(CodeInvalidKind, "kind must be check")
 	}
 	cl, err := s.loadCheckLecture(ctx, userID, lectureID)
 	if err != nil {

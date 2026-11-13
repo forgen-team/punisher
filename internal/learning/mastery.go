@@ -67,6 +67,8 @@ type Mastery struct {
 	LastCreditAt  *time.Time `json:"lastCreditAt"`
 	LastFailAt    *time.Time `json:"lastFailAt"`
 	Stale         bool       `json:"stale"`
+	// Queued: waiting by inflow control (design §2.6) — no review date until released.
+	Queued bool `json:"queued"`
 }
 
 // NewMastery is the state of an objective without evidence.

@@ -2,8 +2,6 @@
 import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import {
-  CHECK_MAX_ANSWER_CHARS,
-  CHECK_MAX_DISPUTE_CHARS,
   PunisherApiError,
   describePunisherError,
   punisherApi,
@@ -12,14 +10,17 @@ import {
   type CheckDetail,
   type ConceptMastery,
 } from "@/src/shared/api/punisher";
+import { CHECK_ERROR_MESSAGES, type CheckErrorCode, type SelfVerdict } from "../ui/constants";
 import { invalidateLearningState } from "./concepts";
 
 /** 채점·문항 생성이 도는 동안 이 간격으로 다시 확인한다. */
 const CHECK_POLL_MS = 2500;
 
-/** 확인 결과가 반영되면 숙달·학습 상태(지도·오늘·개념 상세 등)를 새로 받는다. */
-function invalidateMastery(queryClient: QueryClient): void {
-  void queryClient.invalidateQueries({ queryKey: ["punisher", "mastery"] });
+/** 확인 결과가 반영되면 숙달·학습 상태(지도·오늘·개념 상세 등)와 복습 요약·기록·지표를 새로 받는다. */
+export function invalidateMastery(queryClient: QueryClient): void {
+  for (const queryKey of [["punisher", "mastery"], punisherKeys.masteryMetrics(), punisherKeys.reviewSummary(), punisherKeys.checkHistory()]) {
+    void queryClient.invalidateQueries({ queryKey });
+  }
   void invalidateLearningState(queryClient);
 }
 
@@ -83,6 +84,11 @@ export function useCheckDispute(id: string) {
   );
 }
 
+/** 자기 채점(복습) — 답을 보낸 뒤 맞음·부분·틀림을 고르면 문항이 끝난다. */
+export function useCheckSelfGrade(id: string) {
+  return useCheckAction((verdict: SelfVerdict) => punisherApi.selfGradeCheck(id, verdict));
+}
+
 /** 실패한 문항 생성·턴 다시 시도. */
 export function useCheckRetry(id: string) {
   return useCheckAction<void>(() => punisherApi.retryCheck(id));
@@ -116,16 +122,12 @@ export function useRelearn() {
 }
 
 /**
- * 확인 동작 오류 문구 — 409(처리 중·지금 할 수 없는 동작)는 서버의 한국어 안내를 그대로,
- * 400(입력 오류)은 영문 서버 문구 대신 원인별 안내로 바꾼다. 그 밖은 공통 문구.
+ * 확인·복습 화면의 오류 문구 — 400 은 서버 code 별 안내, 409 는 서버의 한국어 안내 그대로
+ * (공통 describePunisherError 의 강의 생성 409 문구가 섞이지 않게). 그 밖은 공통 문구.
  */
 export function describeCheckError(error: unknown): string {
   if (!(error instanceof PunisherApiError)) { return describePunisherError(error); }
-  if (error.status === 409) { return error.message; }
-  if (error.status === 400) {
-    if (error.message.includes("objectives")) { return "이 강의에는 확인할 학습 목표가 없어요."; }
-    if (error.message.includes("reason")) { return `사유는 ${CHECK_MAX_DISPUTE_CHARS}자까지 쓸 수 있어요.`; }
-    return `답은 1~${CHECK_MAX_ANSWER_CHARS}자로 적어 주세요.`;
-  }
+  if (error.status === 409) { return error.code === "NO_REVIEWS" ? CHECK_ERROR_MESSAGES.NO_REVIEWS : error.message; }
+  if (error.status === 400) { return CHECK_ERROR_MESSAGES[error.code as CheckErrorCode] ?? CHECK_ERROR_MESSAGES.BAD_REQUEST; }
   return describePunisherError(error);
 }

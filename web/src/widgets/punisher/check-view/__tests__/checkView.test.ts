@@ -7,10 +7,13 @@ import {
   itemTurns,
   judgedTurn,
   orderedItems,
+  progressLabel,
   progressOf,
   resultRows,
   retryableTurnId,
+  selfGradeStep,
   showComposer,
+  showItemReview,
   showReveal,
 } from "../lib/checkView";
 
@@ -179,5 +182,41 @@ describe("결과 요약", () => {
     const rows = resultRows(d);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ text: "페이지 캐시를 설명한다", queued: true });
+  });
+});
+
+describe("복습(자기 채점)", () => {
+  const selfSession = (patch: Partial<CheckSession> = {}) => session({ kind: "review", grader: "self", lectureId: "", conceptId: "", ...patch });
+
+  it("상단 진행은 복습 n/N, 확인은 문항 n/N", () => {
+    expect(progressLabel(detail({ session: selfSession({ cursor: 1 }) }))).toBe("복습 2/3");
+    expect(progressLabel(detail())).toBe("문항 1/3");
+    expect(progressLabel(detail({ session: session({ itemIds: [] }) }))).toBe("");
+  });
+
+  it("자기 채점 단계: 답 쓰기 → 채점 고르기, 실행 중·튜터 채점·현재 문항 없음은 null", () => {
+    const answerStep = { itemId: "i1", answers: 0, canAnswer: true, canReveal: false, canSelfGrade: false };
+    const gradeStep = { itemId: "i1", answers: 1, canAnswer: false, canReveal: false, canSelfGrade: true };
+    expect(selfGradeStep(detail({ session: selfSession(), current: answerStep }))).toBe("answer");
+    expect(selfGradeStep(detail({ session: selfSession(), current: gradeStep }))).toBe("grade");
+    expect(selfGradeStep(detail({ session: selfSession(), current: gradeStep, pending: true }))).toBeNull();
+    expect(selfGradeStep(detail({ session: selfSession(), current: null }))).toBeNull();
+    expect(selfGradeStep(detail({ session: session({ kind: "review", grader: "llm" }), current: gradeStep }))).toBeNull();
+    expect(selfGradeStep(detail({ session: selfSession(), current: { ...gradeStep, canSelfGrade: false } }))).toBeNull();
+  });
+
+  it("답을 보낸 자기 채점 문항은 끝나기 전에도 모범답·기준을 연다", () => {
+    expect(showItemReview(item("i1"))).toBe(false);
+    expect(showItemReview(item("i1", { answer: "메모리에 남는다", must: ["메모리"] }))).toBe(true);
+    expect(showItemReview(item("i1", { done: true }))).toBe(true);
+  });
+
+  it("자기 채점 판정에는 '내 답이 맞아요'를 두지 않는다", () => {
+    const d = detail({
+      session: selfSession(),
+      items: [item("i1", { done: true, outcome: "unaided_partial" })],
+      turns: [turn({ itemId: "i1", role: "learner", move: "self_grade", verdict: "partial", outcome: "unaided_partial", grader: "self" })],
+    });
+    expect(disputeTarget(d, d.items[0], NOW)).toBeNull();
   });
 });

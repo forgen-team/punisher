@@ -86,15 +86,16 @@ func progressOf(turns []models.CheckTurn, itemID string) itemProgress {
 	return p
 }
 
-// awaitingAnswer: the tutor asked (ask, narrow, explain, challenge) and nothing is running.
-func (p itemProgress) awaitingAnswer() bool {
+// awaitingAnswer: the tutor asked (ask, narrow, explain, challenge) and nothing
+// is running; kind bounds the answers (a tutored review stops after narrowing).
+func (p itemProgress) awaitingAnswer(kind string) bool {
 	return !p.done && p.lastTutor != nil && p.lastTutor.Status == "ready" && !check.EndsItem(p.lastTutor.Move) &&
-		len(p.answers) < check.MaxAnswers && (len(p.answers) == 0 || p.lastTutor.Seq > p.answers[len(p.answers)-1].Seq)
+		len(p.answers) < check.MaxAnswersFor(kind) && (len(p.answers) == 0 || p.lastTutor.Seq > p.answers[len(p.answers)-1].Seq)
 }
 
 // canReveal: '그냥 알려줘' before the first answer or on the narrowing question (design §4.2).
-func (p itemProgress) canReveal() bool {
-	if !p.awaitingAnswer() || p.challenged {
+func (p itemProgress) canReveal(kind string) bool {
+	if !p.awaitingAnswer(kind) || p.challenged {
 		return false
 	}
 	return len(p.answers) == 0 || (len(p.answers) == 1 && p.lastTutor.Move == check.MoveNarrow)
@@ -151,7 +152,7 @@ func currentView(st checkState, it store.CheckItem, pending bool) *models.CheckC
 		c.CanAnswer, c.CanSelfGrade = len(p.answers) == 0, len(p.answers) > 0
 		return c
 	}
-	c.CanAnswer, c.CanReveal = p.awaitingAnswer(), p.canReveal()
+	c.CanAnswer, c.CanReveal = p.awaitingAnswer(st.sess.Kind), p.canReveal(st.sess.Kind)
 	return c
 }
 

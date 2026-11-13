@@ -29,14 +29,19 @@ type ObjectiveMastery struct {
 
 // ConceptMastery is the payload of GET /v1/mastery?conceptId=.
 type ConceptMastery struct {
+	ConceptMasterySummary
+	Objectives []ObjectiveMastery `json:"objectives"`
+}
+
+// ConceptMasterySummary is a concept's level without the objectives (also the batch item).
+type ConceptMasterySummary struct {
 	ConceptID string `json:"conceptId"`
 	// Level: the minimum level of the active objectives.
 	Level         int  `json:"level"`
 	Mastered      bool `json:"mastered"`
 	MasteryTarget int  `json:"masteryTarget"`
 	// UncheckedCount: active objectives without any evidence ("새 목표 n개 미확인").
-	UncheckedCount int                `json:"uncheckedCount"`
-	Objectives     []ObjectiveMastery `json:"objectives"`
+	UncheckedCount int `json:"uncheckedCount"`
 }
 
 // CheckSession is a '확인하기' (or P2 review) session.
@@ -128,4 +133,47 @@ type CheckDetail struct {
 	Pending bool `json:"pending"`
 	// Mastery: the lecture objectives' current mastery.
 	Mastery []ObjectiveMastery `json:"mastery"`
+}
+
+// CheckHistoryItem is one '확인하기' or review session in the history (GET /v1/checks/history).
+type CheckHistoryItem struct {
+	ID           string `json:"id"`
+	Kind         string `json:"kind"`
+	Grader       string `json:"grader"`
+	Status       string `json:"status"`
+	ConceptID    string `json:"conceptId,omitempty"`
+	ConceptName  string `json:"conceptName,omitempty"`
+	LectureID    string `json:"lectureId,omitempty"`
+	LectureTitle string `json:"lectureTitle,omitempty"`
+	// ReviewDay: the KST date of a review session ("2026-11-13"; "" for checks).
+	ReviewDay string `json:"reviewDay,omitempty"`
+	ItemCount int    `json:"itemCount"`
+	DoneCount int    `json:"doneCount"`
+	// UnaidedCorrect: items that ended unaided_correct.
+	UnaidedCorrect int        `json:"unaidedCorrect"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	FinishedAt     *time.Time `json:"finishedAt,omitempty"`
+}
+
+// ReviewSessionRef is today's review session in the summary.
+type ReviewSessionRef struct {
+	ID     string `json:"id"`
+	Status string `json:"status"`
+	Grader string `json:"grader"`
+	Total  int    `json:"total"`
+	Done   int    `json:"done"`
+}
+
+// ReviewSummary is the payload of GET /v1/reviews/summary.
+type ReviewSummary struct {
+	Due              int    `json:"due"`
+	Overdue          int    `json:"overdue"`
+	Queued           int    `json:"queued"`
+	EstimatedMinutes int    `json:"estimatedMinutes"`
+	Backlogged       bool   `json:"backlogged"`
+	Throughput       int    `json:"throughput"`
+	Grader           string `json:"grader"`
+	ReviewMinutes    int    `json:"reviewMinutes"`
+	// Today: today's latest review session (nil = none yet).
+	Today *ReviewSessionRef `json:"today"`
 }

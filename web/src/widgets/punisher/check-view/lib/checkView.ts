@@ -29,6 +29,31 @@ export function progressOf(detail: CheckDetail): { index: number; total: number 
   return { index: Math.min(detail.session.cursor + 1, total), total };
 }
 
+/** 복습 세션인가(같은 check/[id] 화면을 쓴다). */
+export function isReview(detail: CheckDetail): boolean {
+  return detail.session.kind === "review";
+}
+
+/** 상단 진행 글자 — 확인은 "문항 n/N", 복습은 "복습 n/N". 문항이 없으면 "". */
+export function progressLabel(detail: CheckDetail): string {
+  const { index, total } = progressOf(detail);
+  if (total === 0) { return ""; }
+  return `${isReview(detail) ? "복습" : "문항"} ${index}/${total}`;
+}
+
+export type SelfGradeStep = "answer" | "grade";
+
+/**
+ * 자기 채점 단계 — 답 쓰기(answer) → 모범답·기준을 본 뒤 맞음/부분/틀림 고르기(grade).
+ * 자기 채점 세션의 현재 문항에서 실행 중이 아닐 때만, 서버 current 의 허용(canAnswer/canSelfGrade)을 따른다.
+ */
+export function selfGradeStep(detail: CheckDetail): SelfGradeStep | null {
+  if (detail.session.grader !== "self" || detail.pending || !detail.current) { return null; }
+  if (detail.current.canSelfGrade) { return "grade"; }
+  if (detail.current.canAnswer) { return "answer"; }
+  return null;
+}
+
 /** 그 문항의 턴(seq 순). 첫 물음(ask)은 문항 prompt 와 같아 문항 머리에서 보여 주므로 뺀다. */
 export function itemTurns(turns: CheckTurn[], itemId: string): CheckTurn[] {
   return turns.filter((t) => t.itemId === itemId && t.move !== "ask").sort((a, b) => a.seq - b.seq);
@@ -55,6 +80,8 @@ export function disputeTarget(detail: CheckDetail, item: CheckItem, now: number)
   if (detail.pending || !item.done || item.objectiveId === "") { return null; }
   const judged = judgedTurn(detail.turns, item.id);
   if (!judged?.outcome || !DISPUTABLE.has(judged.outcome) || judged.verdict === "revealed") { return null; }
+  // 자기 채점은 스스로 고른 판정이라 재채점 대상이 아니다.
+  if (judged.grader === "self") { return null; }
   const disputed = detail.turns.some((t) => t.itemId === item.id && t.role === "tutor" && t.move === "dispute" && t.status !== "failed");
   if (disputed) { return null; }
   const { status, finishedAt } = detail.session;
@@ -71,6 +98,11 @@ export function retryableTurnId(detail: CheckDetail): string | null {
   const last = [...detail.turns].sort((a, b) => a.seq - b.seq)[detail.turns.length - 1];
   if (last.role !== "tutor" || last.status !== "failed") { return null; }
   return detail.session.status === "active" || last.move === "dispute" ? last.id : null;
+}
+
+/** 모범답·기준 공개 — 끝난 문항, 또는 자기 채점에서 답을 보낸 현재 문항(서버가 answer 를 준다). */
+export function showItemReview(item: CheckItem): boolean {
+  return item.done || Boolean(item.answer);
 }
 
 /** 하단 입력창 — active 세션에 현재 문항이 있을 때만 둔다. */

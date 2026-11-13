@@ -15,12 +15,12 @@ export interface MapCanvasProps {
   edges: GraphEdge[];
   highlightIds: Set<string> | null;
   selectedId: string | null;
-  /** 숙달 링을 그릴 개념(개념 단위 숙달은 상세를 연 개념만 받는다) */
-  masteredId: string | null;
+  /** 숙달 링을 그릴 개념(숙달한 개념 전체) */
+  masteredIds: ReadonlySet<string>;
   onSelect: (id: string) => void;
 }
 
-export default function MapCanvas({ nodes, edges, highlightIds, selectedId, masteredId, onSelect }: MapCanvasProps) {
+export default function MapCanvas({ nodes, edges, highlightIds, selectedId, masteredIds, onSelect }: MapCanvasProps) {
   const theme = useResolvedTheme();
   const [positions, setPositions] = useState<Map<string, LaidOutNode> | null>(null);
   const [layoutError, setLayoutError] = useState(false);
@@ -57,7 +57,7 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, mast
           requested: n.requests?.length ?? 0,
           proposed: n.status === "proposed",
           inquiries: n.inquiries?.length ?? 0,
-          mastered: n.id === masteredId,
+          mastered: masteredIds.has(n.id),
           dimmed: highlightIds !== null && !highlightIds.has(n.id),
           highlighted: highlightIds?.has(n.id) ?? false,
           selected: n.id === selectedId,
@@ -65,7 +65,7 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, mast
         },
       };
     });
-  }, [nodes, positions, highlightIds, selectedId, masteredId, onSelect]);
+  }, [nodes, positions, highlightIds, selectedId, masteredIds, onSelect]);
 
   // 선택한 개념이 있으면 그 주변으로, 없으면 전체가 보이게 맞춘다.
   const fitIds = useMemo(() => (selectedId && nodes.some((n) => n.id === selectedId) ? [{ id: selectedId }] : undefined), [nodes, selectedId]);

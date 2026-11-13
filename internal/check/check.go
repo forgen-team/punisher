@@ -71,10 +71,26 @@ type Stage struct {
 	Integrative bool
 	// Last: no item follows (the closing move is wrap instead of next).
 	Last bool
+	// Kind: the session kind (check | review). A tutored review allows one
+	// narrowing question and no explanation (design §5 P2).
+	Kind string
 }
 
 // MaxAnswers per item (design §4.2): first answer, after narrowing, after re-asking.
 const MaxAnswers = 3
+
+// MaxReviewAnswers per tutored review item: first answer and the one after narrowing.
+const MaxReviewAnswers = 2
+
+// MaxAnswersFor is the answer limit of an item in a session of this kind.
+func MaxAnswersFor(kind string) int {
+	if kind == PurposeReview {
+		return MaxReviewAnswers
+	}
+	return MaxAnswers
+}
+
+func (st Stage) maxAnswers() int { return MaxAnswersFor(st.Kind) }
 
 func (st Stage) closing() string {
 	if st.Last {
@@ -87,7 +103,7 @@ func (st Stage) closing() string {
 func (st Stage) AllowedMoves() []string {
 	end := st.closing()
 	switch {
-	case st.Challenged || st.Answers >= MaxAnswers:
+	case st.Challenged || st.Answers >= st.maxAnswers():
 		return []string{end}
 	case st.Answers == 1 && st.Integrative:
 		return []string{MoveChallenge, MoveNarrow, end}
@@ -101,7 +117,7 @@ func (st Stage) AllowedMoves() []string {
 // ExpectedMove is the move the state machine requires for a verdict (held ends the item).
 func (st Stage) ExpectedMove(verdict string) string {
 	end := st.closing()
-	if verdict == "held" || st.Challenged || st.Answers >= MaxAnswers {
+	if verdict == "held" || st.Challenged || st.Answers >= st.maxAnswers() {
 		return end
 	}
 	correct := verdict == "correct"

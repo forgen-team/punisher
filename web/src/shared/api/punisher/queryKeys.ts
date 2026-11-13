@@ -30,6 +30,11 @@ export const punisherKeys = {
   completedAreas: (q?: string) => ["punisher", "completed-areas", q ?? ""] as const,
   check: (id: string) => ["punisher", "check", id] as const,
   mastery: (conceptId: string) => ["punisher", "mastery", conceptId] as const,
+  /** 지도 숙달 링 — ["punisher","mastery"] 무효화에 같이 걸린다. */
+  masteryBatch: (idsKey: string) => ["punisher", "mastery", "batch", idsKey] as const,
+  masteryMetrics: () => ["punisher", "mastery-metrics"] as const,
+  reviewSummary: () => ["punisher", "review-summary"] as const,
+  checkHistory: () => ["punisher", "check-history"] as const,
 };
 
 /** Keys whose data depends on the user's learning state. */

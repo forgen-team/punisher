@@ -74,13 +74,20 @@ func (s *Scheduler) sweepInquiries(ctx context.Context) {
 // every pending turn and preparing session belongs to the previous process;
 // afterwards pending turns over services.StaleCheckTurnAge and preparing
 // sessions over services.StaleCheckPrepareAge fail, and sessions idle for
-// services.AbandonCheckAge are abandoned (applied evidence stays). Runs without an owner too.
+// services.AbandonCheckAge are abandoned (applied evidence stays), as are open
+// review sessions of an earlier day. Runs without an owner too.
 func (s *Scheduler) sweepChecks(ctx context.Context) {
 	sweep := func(turnAge, prepareAge time.Duration) {
 		if n, err := s.Svc.Store.SweepStaleChecks(ctx, turnAge, prepareAge, services.AbandonCheckAge); err != nil {
 			log.Printf("[scheduler] sweep checks: %v", err)
 		} else if n > 0 {
 			log.Printf("[scheduler] ended %d interrupted check rows", n)
+		}
+		// 어제 열린 복습 세션은 날짜가 바뀌면 abandoned(반영된 근거 유지, §5 P2).
+		if n, err := s.Svc.Store.AbandonStaleReviews(ctx, "", services.ReviewSessionKey(time.Now())); err != nil {
+			log.Printf("[scheduler] sweep reviews: %v", err)
+		} else if n > 0 {
+			log.Printf("[scheduler] abandoned %d review sessions of earlier days", n)
 		}
 	}
 	sweep(0, 0)
@@ -118,6 +125,14 @@ func (s *Scheduler) tick(ctx context.Context) {
 	if len(starts) > 0 {
 		rep, err := s.Svc.PregenerateStudyStarts(ctx, starts)
 		logLibrary("study pregenerate", rep, err)
+	}
+	// 내일 만기 복습 중 안 본 문항이 없는 목표의 변형(확인 사용량 상한 안에서, §5 P2).
+	vrep, err := s.Svc.PregenerateReviewVariants(ctx)
+	switch {
+	case err != nil:
+		logLibrary("review variants", services.LibraryReport{}, err)
+	case vrep.Generated+vrep.Failed > 0:
+		log.Printf("[scheduler] review variants: generated=%d failed=%d skipped=%d", vrep.Generated, vrep.Failed, vrep.Skipped)
 	}
 	if s.Svc.Cfg.LibraryAhead <= 0 {
 		return

@@ -108,9 +108,10 @@ func updateTurn(ctx context.Context, c conn, t TurnWrite) error {
 	}
 	res, err := c.exec(ctx, `
 		UPDATE check_turns SET status = 'ready', move = $3, text = $4, verdict = NULLIF($5, ''), outcome = NULLIF($6, ''),
-			aided = $7, grader = $8, grade = $9, model = $10, input_tokens = input_tokens + $11, output_tokens = output_tokens + $12, error = ''
+			aided = $7, grader = $8, grade = $9, model = $10, input_tokens = input_tokens + $11, output_tokens = output_tokens + $12, error = '',
+			reused_item = (reused_item OR $13)
 		WHERE user_id = $1 AND id = $2 AND status IN ('pending', 'ready')`,
-		t.UserID, t.ID, t.Move, t.Text, t.Verdict, t.Outcome, t.Aided, t.Grader, grade, t.Model, t.InputTokens, t.OutputTokens)
+		t.UserID, t.ID, t.Move, t.Text, t.Verdict, t.Outcome, t.Aided, t.Grader, grade, t.Model, t.InputTokens, t.OutputTokens, t.ReusedItem)
 	if err != nil {
 		return fmt.Errorf("update check turn: %w", err)
 	}
