@@ -15,6 +15,7 @@ import { LectureActionStatus, LectureWrapup, useLectureActions } from "@/src/fea
 import { describePunisherError, type DocumentLink } from "@/src/shared/api/punisher";
 import { DeeperLecturesSection, ParentLectureLink } from "./ui/DeeperLectures";
 import { FlaggedBanner } from "./ui/FlaggedBanner";
+import { latestPublished } from "./lib/newerVersion";
 import { LectureBody } from "./ui/LectureBody";
 import { RegenerateSheet } from "./ui/RegenerateSheet";
 import { LectureHeader } from "./ui/LectureHeader";
@@ -100,6 +101,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
   const parentLecture = links.data?.parents[0];
   const deeperLectures = (links.data?.children ?? []).filter((l) => l.linkKind !== "regenerated");
   const regenerated = (links.data?.children ?? []).filter((l) => l.linkKind === "regenerated");
+  const newerVersion = latestPublished(regenerated);
   // 서버에 기록된 원 강의가 있으면 그것을, 없으면(이전 데이터) 세션 북마크를 쓴다.
   const showReturn = !parentLecture && bookmark && bookmark.lectureId !== lectureId;
   const returnHref = bookmark ? `${lectureHref(bookmark.lectureId)}#pa-${bookmark.anchor}` : "";
@@ -184,7 +186,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
           </div>
         )}
         <LectureHeader lecture={lecture} content={content} concept={concept.data} mastery={mastery.data} minutes={totalMinutes} />
-        {lecture.reviewState === "flagged" && <FlaggedBanner lectureId={lectureId} reason={lecture.flagReason} />}
+        {lecture.reviewState === "flagged" && <FlaggedBanner lectureId={lectureId} reason={lecture.flagReason} newerId={newerVersion?.id} />}
         <PretestPanel detail={pretest.data} />
         <LectureActionStatus actions={actions} />
         <div aria-live="polite" className="empty:hidden">

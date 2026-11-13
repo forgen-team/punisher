@@ -83,6 +83,11 @@ func (s *SQLiteStore) LoadToday(ctx context.Context, userID string, now time.Tim
 	}); err != nil {
 		return nil, fmt.Errorf("today resume: %w", err)
 	}
+	newer, err := s.regeneratedVersions(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	d.Resume = learning.ReplaceRegenerated(d.Resume, newer)
 
 	if d.Requests, err = collect(s.c().query(ctx, `
 		SELECT id, query, resolved_concept_ids FROM study_requests
@@ -181,4 +186,37 @@ func (s *SQLiteStore) AliasIndex(ctx context.Context, userID string) (learning.A
 		idx[p.alias] = p.id
 	}
 	return idx, nil
+}
+
+// regeneratedVersions maps a lecture remade with '다시 만들기' to its newest
+// published version, for 이어보기 (learning.ReplaceRegenerated).
+func (s *SQLiteStore) regeneratedVersions(ctx context.Context, userID string) (map[string]learning.NewerVersion, error) {
+	type row struct {
+		parent string
+		n      learning.NewerVersion
+	}
+	rows, err := collect(s.c().query(ctx, `
+		SELECT k.parent_lecture_id, c.id, c.concept_id, c.title, c.estimated_minutes,
+		       CASE WHEN c.minutes_estimated THEN NULL ELSE c.content END,
+		       EXISTS (SELECT 1 FROM user_lecture_progress q WHERE q.user_id = $1 AND q.lecture_id = c.id)
+		FROM lecture_links k
+		JOIN lectures c ON c.id = k.child_lecture_id
+		WHERE k.user_id = $1 AND k.kind = $2 AND c.status = 'published'
+		ORDER BY k.created_at`, userID, LinkRegeneratedKind), func(rs rowScanner) (row, error) {
+		var r row
+		var legacy json.RawMessage
+		err := rs.Scan(&r.parent, &r.n.Item.LectureID, &r.n.Item.ConceptID, &r.n.Item.Title, &r.n.Item.EstimatedMinutes, rawJSON(&legacy), &r.n.Started)
+		if err == nil && legacy != nil {
+			r.n.Item.EstimatedMinutes = contentMinutes(legacy, r.n.Item.EstimatedMinutes)
+		}
+		return r, err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("today regenerated versions: %w", err)
+	}
+	out := make(map[string]learning.NewerVersion, len(rows))
+	for _, r := range rows {
+		out[r.parent] = r.n // ordered by link time: the newest version wins
+	}
+	return out, nil
 }
