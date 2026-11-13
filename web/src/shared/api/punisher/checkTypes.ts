@@ -173,6 +173,8 @@ export interface CheckDetail {
   predictions?: Prediction[];
   /** 배치 진단 세션: 챕터와 이미 앎 후보 */
   placement?: PlacementResult;
+  /** 이 세션에서 오개념을 인정한 턴 */
+  misconceptionTurnIds?: string[] | null;
 }
 
 /** 강의 전 예측 질문에 남긴 답(목표별 처음 예측). */

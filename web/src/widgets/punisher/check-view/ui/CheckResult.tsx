@@ -8,11 +8,15 @@ import { InlineError } from "@/src/shared/ui/punisher";
 import { DIAGNOSTIC_LABELS } from "@/src/features/punisher/pretest";
 import { suggestRelearn, type ResultRow } from "../lib/checkView";
 import { PREDICTION_LABELS } from "./constants";
+import { MisconceptionList } from "./MisconceptionList";
 
 const reviewDate = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short" });
 
 interface CheckResultProps {
+  checkId: string;
   rows: ResultRow[];
+  /** 이 세션에서 오개념을 인정한 턴 */
+  acknowledgedTurnIds: ReadonlySet<string>;
   /** 앵커 → '다시 볼 곳' 링크·글자 */
   anchorLink: (anchor: string) => { href: string; label: string } | null;
   /** 아래 동작(확인: 강의 완료로 표시 · 복습: 오늘 더 하기) */
@@ -63,7 +67,7 @@ function NextReview({ row }: { row: ResultRow }) {
 
 /** 결과 요약(design §4.4): 목표별 레벨 변화 · 놓친 기준 한 줄 · 다시 볼 곳 · 드러난 오개념 · 다음 복습일 · 다시 배우기 + 아래 동작. */
 export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function CheckResult(
-  { rows, anchorLink, children },
+  { checkId, rows, acknowledgedTurnIds, anchorLink, children },
   ref,
 ) {
   const relearn = useRelearn();
@@ -91,7 +95,7 @@ export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function Ch
                   놓친 기준: {missing}
                 </p>
               )}
-              {row.misconception && <p className="break-keep text-fg-secondary">드러난 오개념: {row.misconception}</p>}
+              <MisconceptionList checkId={checkId} misconceptions={row.misconceptions} acknowledged={acknowledgedTurnIds} />
               {row.prediction && (
                 <p className="break-keep text-fg-secondary">
                   {PREDICTION_LABELS.before}: {row.prediction.dontKnow ? DIAGNOSTIC_LABELS.dontKnow : row.prediction.answer} →{" "}

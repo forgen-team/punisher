@@ -5,9 +5,10 @@ import { describeCheckError, useCheckHistory } from "@/src/entities/punisher";
 import { checkHref } from "@/src/features/punisher/check-start";
 import { historyMeta, historyTitle } from "../lib/checkHistory";
 import { LoadMore } from "./LoadMore";
+import { ResolvedMisconceptions } from "./ResolvedMisconceptions";
 import { RetentionMetrics } from "./RetentionMetrics";
 
-/** 확인·복습 세션(최신순) + 아래 기억 유지 지표. 누르면 그 세션 화면(check/[id]). */
+/** 확인·복습 세션(최신순) + 아래 기억 유지 지표 · 고친 오개념. 누르면 그 세션 화면(check/[id]). */
 export function CheckHistoryList() {
   const history = useCheckHistory();
   const sessions = history.data?.pages.flatMap((p) => p.sessions) ?? [];
@@ -15,6 +16,7 @@ export function CheckHistoryList() {
     <div className="flex flex-col gap-8">
       {renderSessions()}
       <RetentionMetrics />
+      <ResolvedMisconceptions />
     </div>
   );
 

@@ -203,7 +203,7 @@ func (s *Service) runInstant(apiKey, userID, jobID string, t Target, emit func(E
 		}
 		res, err := s.LLM.Stream(ctx, apiKey, llm.MessagesRequest{
 			Model: s.Cfg.LectureModel, System: t.Prompts.Text(prompts.BlockTeacherSystem, prompts.LectureVars(t.Prompt)),
-			User:      prompts.Lecture(t.Prompt, "", notes, t.Prompts),
+			User:      prompts.Lecture(t.LectureContext(), "", notes, t.Prompts),
 			MaxTokens: maxTokens, Timeout: instantTimeout,
 		}, func(delta string) error {
 			emit(Event{Type: EventDelta, Data: map[string]string{"text": delta}})

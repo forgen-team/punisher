@@ -192,6 +192,9 @@ func (s *Service) qaContext(ctx context.Context, userID string, lec models.Lectu
 			pc.LearnedBefore = append(pc.LearnedBefore, ref)
 		}
 	}
+	if pc.Misconceptions, err = s.promptMisconceptions(ctx, userID, lec.ConceptID); err != nil {
+		return qaCtx{}, err
+	}
 	if withHistory {
 		prev, err := s.Store.ListQuestions(ctx, userID, lec.ID)
 		if err != nil {

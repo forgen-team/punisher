@@ -32,6 +32,7 @@ import type { ChapterDraftResponse, ChapterSuggestionsResponse } from "./chapter
 import type { CompletedArea, CompletedItem, Inquiry, InquiryFollowup } from "./inquiryTypes";
 import type { CheckDetail, ConceptMastery, DiagnosticChoice, DiagnosticRequest } from "./checkTypes";
 import type { CheckHistoryPage, ConceptMasterySummary, MasteryMetrics, ReviewSummary } from "./reviewTypes";
+import type { Misconception, MisconceptionStatus } from "./misconceptionTypes";
 
 const enc = encodeURIComponent;
 
@@ -216,6 +217,11 @@ export const punisherApi = {
   // 간격 복습 — 오늘 세션 생성/반환(201·200·202), 할 것이 없으면 409 NO_REVIEWS.
   startReview: () => punisherFetch<CheckDetail>("/reviews", { method: "POST" }),
   getReviewSummary: () => punisherFetch<ReviewSummary>("/reviews/summary"),
+  // 개인화(P4) — 확인 결과의 오개념 인정 · 목록
+  acknowledgeMisconception: (turnId: string) =>
+    punisherFetch<{ misconception: Misconception }>("/misconceptions", { method: "POST", json: { turnId } }).then((r) => r.misconception),
+  listMisconceptions: (status: MisconceptionStatus) =>
+    punisherFetch<{ misconceptions: Misconception[] }>(`/misconceptions${query({ status })}`).then((r) => r.misconceptions),
   getMasteryMetrics: () => punisherFetch<MasteryMetrics>("/mastery/metrics"),
   /** 여러 개념의 숙달 요약(지도 링, 한 번에 MASTERY_BATCH_MAX 개까지). */
   getMasteryBatch: (conceptIds: string[]) =>

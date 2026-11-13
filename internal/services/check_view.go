@@ -150,6 +150,9 @@ func (s *Service) checkDetail(ctx context.Context, userID string, st checkState)
 	if d.Mastery, err = s.Store.ObjectivesMastery(ctx, userID, objectives); err != nil {
 		return d, err
 	}
+	if d.MisconceptionTurnIDs, err = s.Store.MisconceptionTurnIDs(ctx, userID, st.sess.ID); err != nil {
+		return d, err
+	}
 	switch st.sess.Kind {
 	case check.PurposeCheck:
 		d.Predictions, err = s.Store.PretestAnswers(ctx, userID, objectives)

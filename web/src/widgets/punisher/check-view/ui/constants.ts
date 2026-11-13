@@ -70,3 +70,10 @@ export const PLACEMENT_LABELS = {
   map: "지도에서 보기",
   failed: (n: number) => `${n}개를 표시하지 못했어요. 다시 눌러 주세요.`,
 } as const;
+
+/** 결과의 드러난 오개념 · 인정 버튼 */
+export const MISCONCEPTION_LABELS = {
+  revealed: "드러난 오개념",
+  acknowledge: "맞아요, 그렇게 알았어요",
+  acknowledged: "인정함",
+} as const;

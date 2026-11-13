@@ -24,6 +24,8 @@ type Target struct {
 	PromptBlocks []string
 	// Owner: requested_by of user-owned (instant/regenerated) lectures; "" = library.
 	Owner string
+	// personal: the learner's weak concepts and misconceptions (used only when Owner is set — LectureContext).
+	personal personalContext
 }
 
 // promptVersion is the version recorded on lectures saved from t.
@@ -119,11 +121,19 @@ func (s *Service) targetForPlan(ctx context.Context, userID string, concept mode
 		return Target{}, err
 	}
 	pc.Catalog = CatalogRefs(catalog, conceptID, pc.Linkable)
+	var personal personalContext
+	if personal.weak, err = s.weakConcepts(ctx, userID); err != nil {
+		return Target{}, err
+	}
+	if personal.misconceptions, err = s.promptMisconceptions(ctx, userID, conceptID); err != nil {
+		return Target{}, err
+	}
 
 	return Target{
-		Plan:    plan,
-		Concept: concept,
-		Prompt:  pc,
+		Plan:     plan,
+		Concept:  concept,
+		Prompt:   pc,
+		personal: personal,
 		Validation: lecture.ValidationContext{
 			KnownConceptIDs:     known,
 			PlannedObjectiveIDs: plan.ObjectiveIDs,

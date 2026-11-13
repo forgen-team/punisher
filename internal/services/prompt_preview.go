@@ -35,6 +35,8 @@ const (
 	previewSelection = "(예시 구절) 입력이 커질 때 비용이 어떤 모양으로 늘어나는지"
 	previewDraft     = "(감수할 강의 초안이 여기에 들어갑니다)"
 	previewQuery     = "(예시 학습 요청) 배포 후 API 응답이 갑자기 느려졌다"
+	// previewMisconception fills "이 수강생이 인정한 오개념" when the user has none, so the block shows.
+	previewMisconception = "(예시 오개념) 확인 결과에서 인정한 오개념이 여기에 들어갑니다"
 )
 
 // PreviewPrompt assembles the final system+user prompt of the step that uses
@@ -53,14 +55,17 @@ func (s *Service) PreviewPrompt(ctx context.Context, userID, blockID string, dra
 	if err != nil {
 		return PromptPreview{}, err
 	}
-	pc := t.Prompt
+	pc := t.LectureContext()
+	if len(pc.Misconceptions) == 0 {
+		pc.Misconceptions = []prompts.Misconception{{ConceptName: pc.ConceptName, Text: previewMisconception}}
+	}
 	vars := prompts.LectureVars(pc)
 	out := PromptPreview{BlockID: blockID, Stage: block.Stage, ConceptID: pc.ConceptID, ConceptName: pc.ConceptName,
 		UnknownVars: prompts.UnknownVars(set.Raw(blockID), block.Vars)}
 
 	qa := prompts.QAContext{ConceptID: pc.ConceptID, ConceptName: pc.ConceptName, LectureTitle: "(예시 강의 제목)",
 		SectionTitle: "(예시 섹션)", SectionText: "(강의 섹션 본문이 여기에 들어갑니다)", Linkable: pc.Linkable,
-		LearnedBefore: pc.Learned, ExampleLanguage: pc.ExampleLanguage}
+		LearnedBefore: pc.Learned, Misconceptions: pc.Misconceptions, ExampleLanguage: pc.ExampleLanguage}
 	switch block.Stage {
 	case prompts.StageOutline:
 		out.System, out.User = set.Text(prompts.BlockTeacherSystem, vars), prompts.Outline(pc, set)
@@ -100,7 +105,8 @@ func (s *Service) PreviewPrompt(ctx context.Context, userID, blockID string, dra
 }
 
 // previewTarget builds the example concept's context with all of its
-// depth-1 objectives, ignoring what the user already learned.
+// depth-1 objectives, ignoring what the user already learned. It is the
+// user's own (Owner set) so the personal blocks show as in instant lectures.
 func (s *Service) previewTarget(ctx context.Context, userID string) (Target, error) {
 	concept, err := s.Store.ConceptInfo(ctx, userID, PreviewConceptID)
 	if errors.Is(err, store.ErrNotFound) {
@@ -121,7 +127,9 @@ func (s *Service) previewTarget(ctx context.Context, userID string) (Target, err
 	if err != nil {
 		return Target{}, err
 	}
-	return s.targetForPlan(ctx, userID, concept, plan, "")
+	t, err := s.targetForPlan(ctx, userID, concept, plan, "")
+	t.Owner = userID
+	return t, err
 }
 
 // previewCheck is the user prompt of a check step with example content.

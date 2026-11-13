@@ -139,6 +139,8 @@ type CheckDetail struct {
 	Predictions []Prediction `json:"predictions,omitempty"`
 	// Placement: the chapter and the concepts answered right (placement sessions only).
 	Placement *PlacementResult `json:"placement,omitempty"`
+	// MisconceptionTurnIDs: turns of this session whose misconception the learner acknowledged.
+	MisconceptionTurnIDs []string `json:"misconceptionTurnIds"`
 }
 
 // Prediction is the learner's pretest answer on an objective (latest first-seen per objective).

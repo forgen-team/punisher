@@ -186,4 +186,11 @@ type Store interface {
 	PretestAnswers(ctx context.Context, userID string, objectiveIDs []string) ([]models.Prediction, error)
 	PretestSeen(ctx context.Context, userID string, objectiveIDs []string) (bool, error)
 	PlacementConcepts(ctx context.Context, userID, chapterID string) ([]learning.PlacementConcept, error)
+
+	// personalization ("개인화")
+	AcknowledgeMisconception(ctx context.Context, userID, turnID string) (models.Misconception, bool, error)
+	ListMisconceptions(ctx context.Context, userID, status string, limit int) ([]models.Misconception, error)
+	OpenMisconceptions(ctx context.Context, userID, conceptID string, limit int) ([]models.Misconception, error)
+	MisconceptionTurnIDs(ctx context.Context, userID, sessionID string) ([]string, error)
+	EvidencedMastery(ctx context.Context, userID string) ([]models.ObjectiveMastery, error)
 }

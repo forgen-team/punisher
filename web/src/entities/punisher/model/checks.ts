@@ -20,7 +20,13 @@ const CHECK_POLL_MS = 2500;
 
 /** 확인 결과가 반영되면 숙달·학습 상태(지도·오늘·개념 상세 등)와 복습 요약·기록·지표를 새로 받는다. */
 export function invalidateMastery(queryClient: QueryClient): void {
-  for (const queryKey of [["punisher", "mastery"], punisherKeys.masteryMetrics(), punisherKeys.reviewSummary(), punisherKeys.checkHistory()]) {
+  for (const queryKey of [
+    ["punisher", "mastery"],
+    ["punisher", "misconceptions"],
+    punisherKeys.masteryMetrics(),
+    punisherKeys.reviewSummary(),
+    punisherKeys.checkHistory(),
+  ]) {
     void queryClient.invalidateQueries({ queryKey });
   }
   void invalidateLearningState(queryClient);

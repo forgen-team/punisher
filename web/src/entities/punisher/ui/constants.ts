@@ -202,6 +202,8 @@ export type CheckErrorCode =
   | "MISSING_TARGET"
   | "CHOICE_REQUIRED"
   | "INVALID_CHOICE"
+  | "TURN_REQUIRED"
+  | "INVALID_STATUS"
   | "BAD_REQUEST";
 
 export const CHECK_ERROR_MESSAGES: Record<CheckErrorCode, string> = {
@@ -216,5 +218,7 @@ export const CHECK_ERROR_MESSAGES: Record<CheckErrorCode, string> = {
   MISSING_TARGET: "진단할 대상을 찾지 못했어요.",
   CHOICE_REQUIRED: "보기를 골라 주세요.",
   INVALID_CHOICE: "보기를 다시 골라 주세요.",
+  TURN_REQUIRED: "인정할 오개념을 찾지 못했어요.",
+  INVALID_STATUS: "지원하지 않는 오개념 목록이에요.",
   BAD_REQUEST: "요청을 처리하지 못했어요. 다시 시도해 주세요.",
 };

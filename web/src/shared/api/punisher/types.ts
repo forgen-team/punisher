@@ -1,6 +1,7 @@
 import type { GraphChapter, NextChapterPrompt } from "./chapterTypes";
 import type { MapInquiry } from "./inquiryTypes";
 import type { MapRequest } from "./learningTypes";
+import type { RecheckCard } from "./misconceptionTypes";
 import type { TodayReview } from "./reviewTypes";
 
 // DTOs mirrored from apps/punisher-server/internal/{models,learning,services,lecture,store}.
@@ -172,6 +173,8 @@ export interface TodayResponse {
   message?: string;
   /** 남은 학습 분량이 하루 학습량 × 14일보다 적으면 '다음 챕터 고르기' */
   nextChapter?: NextChapterPrompt;
+  /** 목표 경로 카드 앞의 "○○ 다시 확인"(추천·exhausted 와 별개) */
+  recheck?: RecheckCard[];
 }
 
 export interface PathStep {

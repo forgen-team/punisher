@@ -250,6 +250,14 @@ func (s *Service) inquiryContext(ctx context.Context, userID, question string) (
 			ic.Learned = append(ic.Learned, prompts.ConceptRef{ID: c.ID, Name: c.Name})
 		}
 	}
+	weak, err := s.weakConcepts(ctx, userID)
+	if err != nil {
+		return prompts.InquiryContext{}, nil, err
+	}
+	ic.Learned, ic.Revisit = splitLearned(ic.Learned, weak)
+	if ic.Misconceptions, err = s.promptMisconceptions(ctx, userID, ""); err != nil {
+		return prompts.InquiryContext{}, nil, err
+	}
 	return ic, known, nil
 }
 
@@ -393,7 +401,7 @@ func followupContext(q models.Inquiry, f models.InquiryFollowup, ic prompts.Inqu
 	}
 	fc := prompts.FollowupContext{
 		Question: f.Question, Quote: f.Quote, Original: q.Question,
-		Catalog: ic.Catalog, Learned: ic.Learned, Areas: ic.Areas,
+		Catalog: ic.Catalog, Learned: ic.Learned, Revisit: ic.Revisit, Misconceptions: ic.Misconceptions, Areas: ic.Areas,
 	}
 	for _, s := range content.Sections {
 		fc.Sections = append(fc.Sections, inquiry.SectionText(s))

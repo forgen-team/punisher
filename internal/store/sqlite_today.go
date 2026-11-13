@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -18,6 +19,8 @@ type TodayData struct {
 	Goals    []GoalTargets
 	// Review: the review queue counts now (learning.TodayInput.Review).
 	Review learning.ReviewCounts
+	// Lapsed: concepts with an objective lapsed learning.RecheckLapses+ times (learning.TodayInput.Lapsed).
+	Lapsed map[string]learning.LapsedConcept
 }
 
 // GoalTargets is an active goal's targets.
@@ -95,10 +98,46 @@ func (s *SQLiteStore) LoadToday(ctx context.Context, userID string) (*TodayData,
 	}); err != nil {
 		return nil, fmt.Errorf("today goals: %w", err)
 	}
-	if d.Review, err = s.ReviewCounts(ctx, userID, time.Now()); err != nil {
+	now := time.Now()
+	if d.Review, err = s.ReviewCounts(ctx, userID, now); err != nil {
+		return nil, err
+	}
+	if d.Lapsed, err = s.lapsedConcepts(ctx, userID, now); err != nil {
 		return nil, err
 	}
 	return d, nil
+}
+
+// lapsedConcepts: concepts with an active objective whose lapses (reset on
+// recovery) reached learning.RecheckLapses — due when one of them is in the
+// review queue now, with the lecture of the concept the user last opened.
+// SQLite: bool_or(x) → MAX(x) (0/1).
+func (s *SQLiteStore) lapsedConcepts(ctx context.Context, userID string, now time.Time) (map[string]learning.LapsedConcept, error) {
+	type lapsed struct {
+		id string
+		c  learning.LapsedConcept
+	}
+	list, err := collect(s.c().query(ctx, `
+		SELECT m.concept_id, MAX(m.next_review_at <= $2 AND NOT m.queued AND m.grad_step < 2),
+			COALESCE((SELECT l.id FROM user_lecture_progress p JOIN lectures l ON l.id = p.lecture_id
+				WHERE p.user_id = $1 AND l.concept_id = m.concept_id ORDER BY p.last_seen_at DESC LIMIT 1), '')
+		FROM user_objective_mastery m`+reviewScope+`
+		WHERE m.user_id = $1 AND m.lapses >= $3
+		GROUP BY m.concept_id`, userID, now, learning.RecheckLapses), func(row rowScanner) (lapsed, error) {
+		var r lapsed
+		var due sql.NullBool
+		err := row.Scan(&r.id, &due, &r.c.LectureID)
+		r.c.Due = due.Bool
+		return r, err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("lapsed concepts: %w", err)
+	}
+	out := map[string]learning.LapsedConcept{}
+	for _, r := range list {
+		out[r.id] = r.c
+	}
+	return out, nil
 }
 
 // PrerequisiteEdges returns prerequisite edges between non-retired concepts.

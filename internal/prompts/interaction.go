@@ -69,6 +69,8 @@ type QAContext struct {
 	History       []QATurn
 	Linkable      []ConceptRef
 	LearnedBefore []ConceptRef
+	// Misconceptions: the learner's open acknowledged misconceptions on this concept and its prerequisites.
+	Misconceptions []Misconception
 	// ExampleLanguage: display name of the preferred example-code language.
 	ExampleLanguage string
 }
@@ -96,6 +98,7 @@ func Question(c QAContext, question string) string {
 	}
 	b.WriteString("\n## 연결 가능한 개념 id\n")
 	writeRefs(&b, c.Linkable)
+	writeMisconceptions(&b, c.Misconceptions)
 	b.WriteString(ExampleLanguageRule(c.ExampleLanguage))
 	fmt.Fprintf(&b, "\n## 질문\n%s\n", question)
 	b.WriteString(`

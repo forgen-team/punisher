@@ -74,6 +74,25 @@ type TodayInput struct {
 	Limit    int
 	// Review: the review queue and settings (TodayResult.Review; never affects Exhausted).
 	Review ReviewInput
+	// Lapsed: concepts with an objective lapsed RecheckLapses+ times without recovering (TodayResult.Recheck).
+	Lapsed map[string]LapsedConcept
+}
+
+// LapsedConcept is how a "다시 확인" card opens: today's review when one of the
+// lapsed objectives is due, else a check on the lecture the user last read ("" = none).
+type LapsedConcept struct {
+	Due       bool
+	LectureID string
+}
+
+// RecheckCard is a "○○ 다시 확인" card shown before the goal path (design §5 P4).
+type RecheckCard struct {
+	ConceptID   string `json:"conceptId"`
+	ConceptName string `json:"conceptName"`
+	Area        string `json:"area"`
+	GoalID      string `json:"goalId"`
+	Due         bool   `json:"due"`
+	LectureID   string `json:"lectureId,omitempty"`
 }
 
 // ReviewInput is the review summary input of BuildToday.
@@ -111,6 +130,8 @@ type TodayResult struct {
 	NextChapter *NextChapterPrompt `json:"nextChapter,omitempty"`
 	// Review: due/backlog numbers and the time split "복습 n분 + 강의 30분" (separate from Items).
 	Review ReviewToday `json:"review"`
+	// Recheck: lapsed prerequisites of the goal paths' next concepts (separate from Items, never affects Exhausted).
+	Recheck []RecheckCard `json:"recheck"`
 }
 
 type todayBuilder struct {
@@ -204,7 +225,41 @@ func BuildToday(in TodayInput) TodayResult {
 		b.items = []Recommendation{}
 	}
 	return TodayResult{Items: b.items, Exhausted: b.recommended == 0,
-		Review: SummarizeReviews(in.Review.Counts, in.Review.ReviewMinutes, in.Review.Grader)}
+		Review:  SummarizeReviews(in.Review.Counts, in.Review.ReviewMinutes, in.Review.Grader),
+		Recheck: recheckCards(in, states)}
+}
+
+// recheckCards: for each goal path's next concept, its direct prerequisites
+// that lapsed without recovering (in.Lapsed), once per concept, in goal order.
+func recheckCards(in TodayInput, states map[string]string) []RecheckCard {
+	out := []RecheckCard{}
+	if len(in.Lapsed) == 0 {
+		return out
+	}
+	prereqs := map[string][]string{}
+	for _, e := range in.Edges {
+		prereqs[e.To] = append(prereqs[e.To], e.From)
+	}
+	seen := map[string]bool{}
+	for _, g := range in.Goals {
+		next := StartingPoint(g.Path, in.Edges, states)
+		if next == "" {
+			continue
+		}
+		ps := append([]string(nil), prereqs[next]...)
+		sort.Strings(ps)
+		for _, p := range ps {
+			lapsed, ok := in.Lapsed[p]
+			c, known := in.Concepts[p]
+			if !ok || !known || seen[p] {
+				continue
+			}
+			seen[p] = true
+			out = append(out, RecheckCard{ConceptID: p, ConceptName: c.Name, Area: c.Area, GoalID: g.ID,
+				Due: lapsed.Due, LectureID: lapsed.LectureID})
+		}
+	}
+	return out
 }
 
 func remainingMinutes(r ResumeItem) int {

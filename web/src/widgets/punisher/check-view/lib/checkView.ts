@@ -129,6 +129,35 @@ export interface ResultRow extends CheckResultItem {
   prediction: Prediction | null;
   /** 이 세션에서 그 문항에 처음 쓴 답(지금 답) */
   answer: string;
+  /** 그 문항 판정에서 드러난 오개념(턴별, 같은 글은 한 번) */
+  misconceptions: RevealedMisconception[];
+}
+
+/** 판정 턴에서 드러난 오개념 — '맞아요, 그렇게 알았어요'는 그 턴 id 로 인정한다. */
+export interface RevealedMisconception {
+  turnId: string;
+  text: string;
+}
+
+/** 그 문항의 판정 턴(튜터·완료·이의 제외)에 붙은 오개념, seq 순·같은 글은 처음 턴만. */
+export function itemMisconceptions(turns: CheckTurn[], itemId: string): RevealedMisconception[] {
+  const seen = new Set<string>();
+  const out: RevealedMisconception[] = [];
+  for (const t of [...turns].sort((a, b) => a.seq - b.seq)) {
+    const text = t.grade?.misconception?.trim() ?? "";
+    if (t.itemId !== itemId || t.role !== "tutor" || t.status !== "ready" || t.move === "dispute" || !text || seen.has(text)) { continue; }
+    seen.add(text);
+    out.push({ turnId: t.id, text });
+  }
+  return out;
+}
+
+export type MisconceptionButtonState = "idle" | "pending" | "acknowledged";
+
+/** 오개념 버튼 상태 — 인정한 턴이면 '인정함', 보내는 중이면 pending. */
+export function misconceptionButtonState(turnId: string, acknowledged: ReadonlySet<string>, pendingTurnId: string | null): MisconceptionButtonState {
+  if (acknowledged.has(turnId)) { return "acknowledged"; }
+  return pendingTurnId === turnId ? "pending" : "idle";
 }
 
 /** 기록만 하는 세션(예측 질문 · 배치 진단) — 판정·결과 요약이 없다. */
@@ -157,6 +186,7 @@ export function resultRows(detail: CheckDetail): ResultRow[] {
         queued: r.queued ?? m?.queued ?? false,
         prediction: predictions.get(r.objectiveId) ?? null,
         answer: firstAnswerOf(detail.turns, r.itemId),
+        misconceptions: itemMisconceptions(detail.turns, r.itemId),
       };
     });
 }

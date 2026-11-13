@@ -133,6 +133,11 @@ func applyItemEvidence(ctx context.Context, c conn, f ItemFinish) (ResultEntry, 
 			return entry, grade, err
 		}
 	}
+	if entry.Outcome == learning.OutcomeUnaidedCorrect { // 혼자 맞히면 그 목표의 인정한 오개념은 고친 것(design §5 P4).
+		if err := resolveMisconceptions(ctx, c, f.UserID, f.Item.ObjectiveID); err != nil {
+			return entry, grade, err
+		}
+	}
 	if exists || entry.Outcome != learning.OutcomeHeld {
 		grade.AppliedAt = &updated
 	}

@@ -130,6 +130,8 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Get("/mastery/metrics", learn.MasteryMetrics)
 		r.Post("/reviews", learn.StartReview)
 		r.Get("/reviews/summary", learn.ReviewSummary)
+		r.Post("/misconceptions", learn.AcknowledgeMisconception)
+		r.Get("/misconceptions", learn.ListMisconceptions)
 	})
 
 	if deps.UI != nil {

@@ -6,7 +6,7 @@ import { RECOMMENDATION_KIND_LABELS, areaLabel } from "@/src/entities/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import type { Recommendation } from "@/src/shared/api/punisher";
 
-function mapHref(conceptId: string): string {
+export function mapHref(conceptId: string): string {
   return `/map?concept=${encodeURIComponent(conceptId)}`;
 }
 

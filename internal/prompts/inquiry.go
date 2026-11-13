@@ -6,7 +6,7 @@ import (
 )
 
 // InquiryVersion tags explanations generated with InquiryTask (stored per answer).
-const InquiryVersion = "punisher-inquiry-2026-11-10.3"
+const InquiryVersion = "punisher-inquiry-2026-11-13.1"
 
 // InquiryContext is the input of one "이 질문에 답하기" explanation.
 type InquiryContext struct {
@@ -15,7 +15,11 @@ type InquiryContext struct {
 	Catalog []CatalogRef
 	// Learned: concepts the user already completed/knows — link and remind, don't re-teach.
 	Learned []ConceptRef
-	Areas   []string
+	// Revisit: completed concepts the user was weak on in checks (never also in Learned).
+	Revisit []ConceptRef
+	// Misconceptions: the user's latest open acknowledged misconceptions.
+	Misconceptions []Misconception
+	Areas          []string
 	// Revisions: problems of the previous output to fix (rewrite).
 	Revisions []string
 }
@@ -95,6 +99,8 @@ func Inquiry(c InquiryContext) string {
 	}
 	b.WriteString("\n## 수강생이 이미 배운 개념(다시 가르치지 말고 첫 등장에 링크 + 한 줄 상기)\n")
 	writeRefs(&b, c.Learned)
+	writeRevisit(&b, c.Revisit)
+	writeMisconceptions(&b, c.Misconceptions)
 	b.WriteString("\n## 영역 id\n" + strings.Join(c.Areas, ", ") + "\n")
 	b.WriteString(InquiryTask)
 	if len(c.Revisions) > 0 {
@@ -123,7 +129,10 @@ type FollowupContext struct {
 	Previous []FollowupQA
 	Catalog  []CatalogRef
 	Learned  []ConceptRef
-	Areas    []string
+	Revisit  []ConceptRef
+	// Misconceptions: the user's latest open acknowledged misconceptions.
+	Misconceptions []Misconception
+	Areas          []string
 	// Revisions: problems of the previous output to fix (rewrite).
 	Revisions []string
 }
@@ -201,6 +210,8 @@ func InquiryFollowup(c FollowupContext) string {
 	}
 	b.WriteString("\n## 수강생이 이미 배운 개념\n")
 	writeRefs(&b, c.Learned)
+	writeRevisit(&b, c.Revisit)
+	writeMisconceptions(&b, c.Misconceptions)
 	b.WriteString("\n## 영역 id\n" + strings.Join(c.Areas, ", ") + "\n")
 	b.WriteString(FollowupTask)
 	if len(c.Revisions) > 0 {

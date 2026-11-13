@@ -8,7 +8,7 @@ import (
 )
 
 // Version is recorded in lectures.prompt_version.
-const Version = "punisher-prompts-2026-11-10.1"
+const Version = "punisher-prompts-2026-11-13.1"
 
 // ConceptRef is a concept the prompt may link to.
 type ConceptRef struct {
@@ -30,6 +30,12 @@ type ObjectiveRef struct {
 	Text string
 }
 
+// Misconception is a misconception the learner acknowledged on a check result.
+type Misconception struct {
+	ConceptName string
+	Text        string
+}
+
 // DocLink is an official documentation link from the curriculum.
 type DocLink struct {
 	Title string
@@ -48,6 +54,9 @@ type LectureContext struct {
 	Objectives     []ObjectiveRef
 	// Learned: prerequisites/related concepts the learner already completed — link, don't re-teach.
 	Learned []ConceptRef
+	// Revisit: completed concepts the learner was weak on in checks — remind and bridge
+	// where used (user-owned generations only, design §5 P4 M6; never also in Learned/Catalog ✓).
+	Revisit []ConceptRef
 	// Unlearned: prerequisites the learner has NOT completed — must be bridged/defined where used.
 	Unlearned []ConceptRef
 	// Catalog: every other concept of the knowledge map (link targets for names
@@ -57,6 +66,9 @@ type LectureContext struct {
 	Linkable []ConceptRef
 	// StyleHint: adjustment from feedback (too_easy / too_hard / insufficient ...).
 	StyleHint string
+	// Misconceptions: open misconceptions the learner acknowledged on this concept and its
+	// prerequisites (user-owned generations only, design §5 P4 M6).
+	Misconceptions []Misconception
 	// Query: the learner's original question for instant lectures (may be empty).
 	Query string
 	// ExampleLanguage: display name of the learner's preferred example-code language ("" = no preference).
@@ -251,6 +263,7 @@ func writeContext(b *strings.Builder, c LectureContext) {
 	}
 	b.WriteString("\n## 수강생이 이미 배운 개념(다시 가르치지 말고 첫 등장에 [용어](term:id) 링크 + 한 줄 상기)\n")
 	writeRefs(b, c.Learned)
+	writeRevisit(b, c.Revisit)
 	b.WriteString("\n## 아직 배우지 않은 선행 개념(본문에서 쓰면 그 자리에서 2~3문장으로 다리를 놓고 [용어](term:id) 링크)\n")
 	writeRefs(b, c.Unlearned)
 	b.WriteString("\n## 연결 가능한 기존 개념([용어](term:id) 링크에 쓸 수 있는 id)\n")
@@ -259,6 +272,7 @@ func writeContext(b *strings.Builder, c LectureContext) {
 	if c.StyleHint != "" {
 		b.WriteString("\n## 설명 방식 조정\n" + c.StyleHint + "\n")
 	}
+	writeMisconceptions(b, c.Misconceptions)
 	b.WriteString(ExampleLanguageRule(c.ExampleLanguage))
 }
 
@@ -301,6 +315,26 @@ func writeCatalog(b *strings.Builder, refs []CatalogRef) {
 		fmt.Fprintf(b, " %s %s%s", r.ID, r.Name, mark)
 	}
 	b.WriteString("\n")
+}
+
+// writeRevisit lists the concepts to revisit (omitted when none).
+func writeRevisit(b *strings.Builder, refs []ConceptRef) {
+	if len(refs) == 0 {
+		return
+	}
+	b.WriteString("\n## 다시 짚을 개념(배웠지만 확인에서 약했던 개념 — 본문에서 쓰면 첫 등장에 [용어](term:id) 링크 + 한 줄 상기 + 2~3문장 다리 설명)\n")
+	writeRefs(b, refs)
+}
+
+// writeMisconceptions lists the learner's acknowledged misconceptions (omitted when none).
+func writeMisconceptions(b *strings.Builder, list []Misconception) {
+	if len(list) == 0 {
+		return
+	}
+	b.WriteString("\n## 이 수강생이 인정한 오개념(관련 내용이 나오면 이 생각이 왜 틀렸는지 바로잡을 것)\n")
+	for _, m := range list {
+		fmt.Fprintf(b, "- %s: %s\n", m.ConceptName, m.Text)
+	}
 }
 
 func writeRefs(b *strings.Builder, refs []ConceptRef) {

@@ -35,6 +35,7 @@ export const punisherKeys = {
   masteryMetrics: () => ["punisher", "mastery-metrics"] as const,
   reviewSummary: () => ["punisher", "review-summary"] as const,
   checkHistory: () => ["punisher", "check-history"] as const,
+  misconceptions: (status: string) => ["punisher", "misconceptions", status] as const,
 };
 
 /** Keys whose data depends on the user's learning state. */

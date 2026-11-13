@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CheckHistoryItem, RetentionBucket } from "@/src/shared/api/punisher";
-import { historyMeta, historyTitle, metricRows } from "../lib/checkHistory";
+import { historyMeta, historyTitle, metricRows, resolvedMeta } from "../lib/checkHistory";
 
 function bucket(intervalDays: number, grader: "llm" | "self", attempts = 0, correct = 0): RetentionBucket {
   return { intervalDays, grader, attempts, correct, rate: attempts > 0 ? correct / attempts : null };
@@ -41,5 +41,12 @@ describe("history rows", () => {
       "2026. 11. 12. · 1/3 · 혼자 맞힘 2 · 그만둠",
     );
     expect(historyMeta(session())).toMatch(/ · 3\/3 · 혼자 맞힘 2$/);
+  });
+});
+
+describe("resolvedMeta", () => {
+  it("shows the concept and the KST day it was fixed", () => {
+    expect(resolvedMeta({ conceptName: "페이지 캐시", resolvedAt: "2026-11-12T16:30:00Z" })).toBe("페이지 캐시 · 2026. 11. 13.");
+    expect(resolvedMeta({ conceptName: "페이지 캐시", resolvedAt: null })).toBe("페이지 캐시");
   });
 });

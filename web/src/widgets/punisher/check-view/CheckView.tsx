@@ -69,6 +69,7 @@ export function CheckView({ checkId }: { checkId: string }) {
     [lectureId, sections],
   );
   const rows = useMemo(() => (d ? resultRows(d) : []), [d]);
+  const acknowledged = useMemo(() => new Set(d?.misconceptionTurnIds ?? []), [d?.misconceptionTurnIds]);
 
   // 새 턴이 오면 마지막으로, 끝나면 결과 요약으로 데려간다.
   useEffect(() => {
@@ -196,7 +197,7 @@ export function CheckView({ checkId }: { checkId: string }) {
         )}
         {detail.session.status === "finished" && detail.placement && <PlacementResult ref={resultRef} placement={detail.placement} />}
         {detail.session.status === "finished" && !isRecorded(detail) && (
-          <CheckResult ref={resultRef} rows={rows} anchorLink={anchorLink}>
+          <CheckResult ref={resultRef} checkId={checkId} rows={rows} acknowledgedTurnIds={acknowledged} anchorLink={anchorLink}>
             {review && <ReviewMoreAction remaining={summary.data?.due ?? 0} />}
             {!review && lectureId && (
               <LectureCompleteAction lectureId={lectureId} lectureCompleted={Boolean(lecture.data?.progress?.completedAt)} />

@@ -171,10 +171,11 @@ func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Tar
 		return models.Lecture{}, err
 	}
 
-	vars := prompts.LectureVars(t.Prompt)
+	pc := t.LectureContext()
+	vars := prompts.LectureVars(pc)
 	teacher := t.Prompts.Text(prompts.BlockTeacherSystem, vars)
 	outline, err := s.complete(ctx, apiKey, llm.MessagesRequest{
-		Model: s.Cfg.LectureModel, System: teacher, User: prompts.Outline(t.Prompt, t.Prompts), MaxTokens: 4000,
+		Model: s.Cfg.LectureModel, System: teacher, User: prompts.Outline(pc, t.Prompts), MaxTokens: 4000,
 	}, &u)
 	if err != nil {
 		return fail(fmt.Errorf("outline: %w", err))
@@ -186,12 +187,12 @@ func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Tar
 	result, err = RunReviewLoop(ctx, libraryAttempts, LoopFuncs{
 		Generate: func(ctx context.Context, notes string) (string, error) {
 			return s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel, System: teacher,
-				User: prompts.Lecture(t.Prompt, outline, notes, t.Prompts), MaxTokens: maxTokens, Timeout: 6 * time.Minute}, &u)
+				User: prompts.Lecture(pc, outline, notes, t.Prompts), MaxTokens: maxTokens, Timeout: 6 * time.Minute}, &u)
 		},
 		Review: func(ctx context.Context, markup string) (ReviewOutcome, error) {
 			text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel,
 				System: t.Prompts.Text(prompts.BlockReviewerSystem, vars),
-				User:   prompts.Review(t.Prompt, markup, t.Prompts), MaxTokens: 4000, Timeout: 4 * time.Minute}, &u)
+				User:   prompts.Review(pc, markup, t.Prompts), MaxTokens: 4000, Timeout: 4 * time.Minute}, &u)
 			if err != nil {
 				return ReviewOutcome{}, err
 			}
@@ -280,7 +281,7 @@ func todayInput(d *store.TodayData, limit int) learning.TodayInput {
 	for id, c := range d.Concepts {
 		depthOf[id] = c.Depth
 	}
-	in := learning.TodayInput{Concepts: d.Concepts, Edges: d.Edges, Resume: d.Resume, Requests: d.Requests, Limit: limit}
+	in := learning.TodayInput{Concepts: d.Concepts, Edges: d.Edges, Resume: d.Resume, Requests: d.Requests, Limit: limit, Lapsed: d.Lapsed}
 	for _, g := range d.Goals {
 		for _, target := range g.Targets {
 			in.Goals = append(in.Goals, learning.GoalInput{ID: g.ID, Title: g.Title, Path: learning.PathTo(target, d.Edges, depthOf)})
