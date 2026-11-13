@@ -22,7 +22,7 @@ export function AddStudyRequestForm() {
   }
 
   return (
-    <form onSubmit={submit} className="mb-3 flex flex-col gap-1">
+    <form onSubmit={submit} className="flex flex-col gap-1 pb-1 pt-4">
       <div className="flex items-center gap-2">
         <Input
           aria-label="공부하고 싶은 주제"
