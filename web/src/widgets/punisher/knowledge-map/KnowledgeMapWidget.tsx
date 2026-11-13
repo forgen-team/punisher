@@ -139,7 +139,7 @@ export function KnowledgeMapWidget() {
   }
 
   return (
-    // lg+: 위젯이 화면 남은 높이(단독판: 상단 바·학습 머리 영역·아래 여백 14rem 제외 — witems 11rem)를 차지하고, 컨트롤·안내 줄을 뺀 나머지를 캔버스 줄이 채운다.
+    // lg+: 위젯이 화면 남은 높이(단독판: 상단 바·학습 머리 영역·아래 여백 14rem 제외 — witems 11.25rem)를 차지하고, 컨트롤·안내 줄을 뺀 나머지를 캔버스 줄이 채운다.
     <div className="flex w-full flex-col gap-3 lg:h-[calc(100dvh-14rem)] lg:min-h-[28rem]">
       <MapControls
         area={chapterParam ? `${CHAPTER_OPTION_PREFIX}${chapterParam}` : areaParam}
