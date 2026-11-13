@@ -66,3 +66,37 @@ func TestLectureQualityRules(t *testing.T) {
 		}
 	}
 }
+
+// TestReviewGateAndRevisionRules: the review JSON carries a gate, the
+// unverifiable-claim rule, depth-1 scope and the partial rewrite contract.
+func TestReviewGateAndRevisionRules(t *testing.T) {
+	for _, want := range []string{`"gate": "blocking|advisory"`, "조건 없이 단정한 경우에만 blocking", "advisory 만 있으면 pass", "처방 미해결", "에러·출력 불일치"} {
+		if !strings.Contains(ReviewTask, want) {
+			t.Errorf("review task lacks %q", want)
+		}
+	}
+	for _, want := range []string{"언어 표준만으로 결정되는 코드", "\"확인할 것\""} {
+		if !strings.Contains(FactualRules, want) {
+			t.Errorf("factual rules lack %q", want)
+		}
+	}
+	depth1 := LectureContext{ConceptID: "db.relational", Depth: 1}
+	depth2 := LectureContext{ConceptID: "db.relational", Depth: 2}
+	for name, p := range map[string]string{
+		"outline": Outline(depth1, Defaults()), "lecture": Lecture(depth1, "", "", Defaults()),
+		"review": Review(depth1, "@@lecture", Defaults()), "revision": LectureRevision(depth1, "", "@@lecture", "- 지적", Defaults()),
+	} {
+		if !strings.Contains(p, "## 깊이 1 범위") || !strings.Contains(p, "## 사실 정확성 규칙") {
+			t.Errorf("%s prompt lacks the depth-1 scope or factual rules", name)
+		}
+	}
+	if strings.Contains(Lecture(depth2, "", "", Defaults()), "## 깊이 1 범위") {
+		t.Error("depth 2 lectures have no depth-1 scope")
+	}
+	rev := LectureRevision(depth2, "", "@@lecture\ntitle: 이전", "- [major/factual_error] 틀림", NewSet(map[string]string{BlockLectureFormat: "형식"}))
+	for _, want := range []string{"<<<DRAFT\n@@lecture\ntitle: 이전\nDRAFT>>>", "틀림", "글자 하나 바꾸지 말고", "그 주장을 뺍니다", "형식"} {
+		if !strings.Contains(rev, want) {
+			t.Errorf("revision prompt lacks %q", want)
+		}
+	}
+}

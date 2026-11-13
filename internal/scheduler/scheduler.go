@@ -14,7 +14,9 @@ import (
 	"github.com/wooo-jin/punisher/internal/services"
 )
 
-const staleJobAge = 20 * time.Minute
+// staleJobAge: a pending/running job older than this is from a dead process
+// (it outlives the longest live job limit).
+const staleJobAge = services.LongestJobTimeout + 5*time.Minute
 
 // inquirySweepInterval: how often interrupted question explanations are ended.
 const inquirySweepInterval = 2 * time.Minute

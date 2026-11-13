@@ -30,17 +30,35 @@ var (
 // block composition and the prose volume. Structured block data is checked by
 // Validate. Stored lectures are never checked with this (old lectures have no
 // material blocks and must still render).
+//
+// Self links and meta phrases block publishing; the composition and volume
+// findings are Advisory (teaching quality: a rewrite gets them, publishing
+// does not wait on them).
 func MachineCheck(c Content) []Issue {
 	var issues []Issue
 	add := func(path, format string, args ...any) {
 		issues = append(issues, Issue{Path: path, Message: fmt.Sprintf(format, args...)})
 	}
+	advise := func(path, format string, args ...any) {
+		issues = append(issues, Issue{Path: path, Message: fmt.Sprintf(format, args...), Advisory: true})
+	}
 	checkLeaks(c, add)
-	checkComposition(c, add)
+	checkComposition(c, advise)
 	if n := MeasureContent(c).ProseChars; n < MinProseChars || n > MaxProseChars {
-		add("sections", "prose must be %d..%d characters without spaces (code/log excluded), got %d", MinProseChars, MaxProseChars, n)
+		advise("sections", "prose must be %d..%d characters without spaces (code/log excluded), got %d", MinProseChars, MaxProseChars, n)
 	}
 	return issues
+}
+
+// BlockingIssues returns the issues that block publishing (not Advisory).
+func BlockingIssues(issues []Issue) []Issue {
+	var out []Issue
+	for _, i := range issues {
+		if !i.Advisory {
+			out = append(out, i)
+		}
+	}
+	return out
 }
 
 // checkLeaks reports links to the lecture's own concept and meta phrases in

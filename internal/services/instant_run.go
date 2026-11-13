@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/wooo-jin/punisher/internal/models"
 )
@@ -13,10 +12,15 @@ const (
 	// InstantRewrites: a draft that fails the checks or the review is rewritten
 	// with the findings at most this many times (quality design v2.2 §2.1).
 	InstantRewrites = 2
-	// instantTimeout bounds the whole pipeline (up to 3 drafts and 3 reviews);
-	// it stays under the scheduler's stale-job age so a live job is never swept.
-	instantTimeout = 18 * time.Minute
+	// instantTimeout bounds the whole pipeline: every attempt may use its full
+	// draft + review limit. It stays under the scheduler's stale-job age so a
+	// live job is never swept.
+	instantTimeout = (InstantRewrites + 1) * attemptBudget
 )
+
+// LongestJobTimeout is the longest generation job limit; the scheduler's
+// stale-job sweep must wait longer than this.
+const LongestJobTimeout = max(instantTimeout, libraryJobTimeout)
 
 // Job reasons (generation_jobs.reason) of a failed instant generation.
 const (

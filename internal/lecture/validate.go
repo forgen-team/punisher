@@ -27,6 +27,10 @@ type ValidationContext struct {
 type Issue struct {
 	Path    string `json:"path"`
 	Message string `json:"message"`
+	// Advisory: a teaching-quality finding (material block composition, prose
+	// volume) that is fed to a rewrite but never blocks publishing. Every other
+	// issue (format, structured block data, self links, meta phrases) blocks.
+	Advisory bool `json:"advisory,omitempty"`
 }
 
 func (i Issue) String() string { return i.Path + ": " + i.Message }

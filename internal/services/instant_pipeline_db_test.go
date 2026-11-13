@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/wooo-jin/punisher/internal/lecture"
 	"github.com/wooo-jin/punisher/internal/models"
 	"github.com/wooo-jin/punisher/internal/store"
 	"github.com/wooo-jin/punisher/internal/llm"
@@ -215,12 +216,13 @@ func TestInstantNotPublishedAfterRewrites(t *testing.T) {
 	}
 }
 
-// TestInstantBadDraftSkipsReview: an unparseable draft and one failing the
-// machine checks are rewritten without a review call.
+// TestInstantBadDraftSkipsReview: an unparseable draft and one with a
+// blocking machine finding (a meta phrase) are rewritten without a review call.
 func TestInstantBadDraftSkipsReview(t *testing.T) {
 	r := runInstantWith(t, func(ids []string) []string {
 		good := lectureMarkupFor(ids)
-		return []string{"@@lecture\ntitle: 깨진 출력\n@@frobnicate\n본문\n@@end", strings.Replace(good, "@@pause\n위 쿼리는 무엇을 출력할까요?\n", "", 1), good}
+		leak := strings.Replace(good, "자리올림과 넘침을 혼동했습니다.", "이 부분은 다른 강의에서 다룹니다.", 1)
+		return []string{"@@lecture\ntitle: 깨진 출력\n@@frobnicate\n본문\n@@end", leak, good}
 	}, reviewPass)
 	want := "writing/0 checking/0 rewriting/1 checking/1 rewriting/2 checking/2 reviewing/2 published/2"
 	if got := strings.Join(r.stages(), " "); got != want {
@@ -229,7 +231,52 @@ func TestInstantBadDraftSkipsReview(t *testing.T) {
 	if r.fake.reviewCalls != 1 {
 		t.Fatalf("review calls = %d, want 1 (only the clean draft)", r.fake.reviewCalls)
 	}
-	if !strings.Contains(r.fake.draftUsers[1], "frobnicate") || !strings.Contains(r.fake.draftUsers[2], "@@pause") {
+	if !strings.Contains(r.fake.draftUsers[1], "frobnicate") || !strings.Contains(r.fake.draftUsers[2], "meta phrase") {
 		t.Fatal("each rewrite receives the previous draft's problems")
+	}
+	if !strings.Contains(r.fake.draftUsers[2], "<<<DRAFT") || strings.Contains(r.fake.draftUsers[1], "<<<DRAFT") {
+		t.Fatal("a parsed draft is revised in place; an unparseable one is rewritten from scratch")
+	}
+}
+
+// TestInstantKeepsPassingDraft: a draft with only advisory findings (no
+// @@pause) passes; its advisory rewrite gets a blocking review finding, so the
+// earlier passing draft is published (and stays the newest version).
+func TestInstantKeepsPassingDraft(t *testing.T) {
+	r := runInstantWith(t, func(ids []string) []string {
+		good := lectureMarkupFor(ids)
+		return []string{strings.Replace(good, "@@pause\n위 쿼리는 무엇을 출력할까요?\n", "", 1), good}
+	}, reviewPass, reviewMajor)
+	want := "writing/0 checking/0 reviewing/0 rewriting/1 checking/1 reviewing/1 published/1"
+	if got := strings.Join(r.stages(), " "); got != want {
+		t.Fatalf("stages = %s, want %s", got, want)
+	}
+	if !strings.Contains(r.fake.draftUsers[1], "### 개선 권장") || !strings.Contains(r.fake.draftUsers[1], "@@pause") {
+		t.Fatal("the advisory rewrite receives the advisory findings")
+	}
+	lec, err := r.s.Store.GetLecture(context.Background(), r.user, r.last().LectureID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c lecture.Content
+	if err := json.Unmarshal(lec.Content, &c); err != nil {
+		t.Fatal(err)
+	}
+	if lec.Status != "published" || lecture.MeasureContent(c).Pauses != 0 {
+		t.Fatalf("the first (pause-less, passing) draft must be the published one: status %s", lec.Status)
+	}
+	var newest string
+	_ = testDB(r.s).QueryRowContext(context.Background(),
+		`SELECT status FROM lectures WHERE generation_job_id = ? ORDER BY version DESC LIMIT 1`, r.jobID).Scan(&newest)
+	if newest != "published" {
+		t.Fatalf("the published version must be the newest, got %s", newest)
+	}
+	var log []store.AttemptRecord
+	var raw []byte
+	_ = testDB(r.s).QueryRowContext(context.Background(), `SELECT attempt_log FROM generation_jobs WHERE id = ?`, r.jobID).Scan(&raw)
+	if json.Unmarshal(raw, &log) != nil || len(log) != 2 || log[0].Result != "ok" || !log[0].Published ||
+		!strings.Contains(strings.Join(log[0].Advisory, " "), "@@pause") || log[1].Result != "review_failed" || log[1].Published ||
+		log[1].Drift == "" {
+		t.Fatalf("attempt log = %s", raw)
 	}
 }

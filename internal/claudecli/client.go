@@ -27,12 +27,15 @@ type Config struct {
 	Bin string
 	// TempBase holds per-call empty working directories.
 	TempBase string
-	// Concurrency is the total number of parallel CLI processes (1..4, default 2).
+	// Concurrency is the total number of parallel CLI processes (1..4,
+	// default 3). From 3 one slot is kept for short conversational calls
+	// (pretest, tutor, Q&A, glossary): long generations never take it.
 	Concurrency int
 	// BackgroundConcurrency caps parallel background calls (default 1). With
 	// Concurrency >= 2 background never takes the last free slot.
 	BackgroundConcurrency int
 	InteractiveQueue      int           // interactive waiters before failing (default 4)
+	ShortQueue            int           // short-lane waiters before failing (default 4)
 	BackgroundQueue       int           // background waiters before failing (default 8)
 	InteractiveQueueWait  time.Duration // default 45s
 	BackgroundQueueWait   time.Duration // default 5m
@@ -45,7 +48,7 @@ type Config struct {
 
 func (c Config) normalized() Config {
 	if c.Concurrency < 1 {
-		c.Concurrency = 2
+		c.Concurrency = 3
 	}
 	if c.Concurrency > 4 {
 		c.Concurrency = 4
@@ -58,6 +61,9 @@ func (c Config) normalized() Config {
 	}
 	if c.InteractiveQueue <= 0 {
 		c.InteractiveQueue = 4
+	}
+	if c.ShortQueue <= 0 {
+		c.ShortQueue = 4
 	}
 	if c.BackgroundQueue <= 0 {
 		c.BackgroundQueue = 8
@@ -114,7 +120,7 @@ func New(cfg Config) *Client {
 	cfg = cfg.normalized()
 	return &Client{cfg: cfg, limiter: NewLimiter(LimiterConfig{
 		Total: cfg.Concurrency, BackgroundMax: cfg.BackgroundConcurrency,
-		InteractiveQueue: cfg.InteractiveQueue, BackgroundQueue: cfg.BackgroundQueue,
+		InteractiveQueue: cfg.InteractiveQueue, BackgroundQueue: cfg.BackgroundQueue, ShortQueue: cfg.ShortQueue,
 	})}
 }
 
@@ -213,14 +219,11 @@ func (c *Client) call(ctx context.Context, req llm.MessagesRequest, onDelta func
 	if timeout > c.cfg.MaxTimeout {
 		timeout = c.cfg.MaxTimeout
 	}
-	lane := LaneInteractive
 	priority := req.Priority
 	if priority == "" {
 		priority = llm.PriorityFromContext(ctx)
 	}
-	if priority == llm.PriorityBackground {
-		lane = LaneBackground
-	}
+	lane := ParseLane(string(priority))
 
 	runCtx, cancel, release, aerr := c.admit(ctx, lane, timeout)
 	if aerr != nil {
@@ -269,7 +272,7 @@ func promptFrom(req llm.MessagesRequest) string {
 }
 
 // admit waits for a lane slot and applies the optional daily cap.
-//   - interactive: queue wait counts against the call timeout and is capped by
+//   - short / interactive: queue wait counts against the call timeout and is capped by
 //     InteractiveQueueWait, so a user call fails fast behind other work;
 //   - background: queue wait (BackgroundQueueWait) is separate and the call
 //     timeout starts once a slot is granted.

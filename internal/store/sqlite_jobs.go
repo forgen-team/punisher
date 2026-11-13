@@ -128,9 +128,18 @@ type JobOutcome struct {
 // AttemptRecord is one generation attempt of a job (generation_jobs.attempt_log).
 type AttemptRecord struct {
 	Attempt int `json:"attempt"`
-	// Result: ok | parse_error | invalid (schema issues) | review_failed
+	// Result: ok | parse_error | invalid (blocking schema/machine issues) |
+	// review_failed (blocking review findings) | timeout (attempt time limit) | llm_error
 	Result  string `json:"result"`
 	Message string `json:"message,omitempty"`
+	// DurationMs: wall time of the attempt (draft + checks + review).
+	DurationMs int64 `json:"duration_ms,omitempty"`
+	// Advisory: findings that did not block publishing (teaching quality).
+	Advisory []string `json:"advisory,omitempty"`
+	// Drift: how much a partial rewrite changed outside the findings.
+	Drift string `json:"drift,omitempty"`
+	// Published marks the attempt that was published.
+	Published bool `json:"published,omitempty"`
 }
 
 // FinishJob records the terminal state. Failed jobs never carry a lecture.

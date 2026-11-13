@@ -63,7 +63,7 @@ func Load() Config {
 		ClaudeBin:         strings.TrimSpace(os.Getenv("PUNISHER_CLAUDE_BIN")),
 		LectureModel:      lectureModel,
 		FastModel:         fastModel,
-		Concurrency:       readInt("PUNISHER_CONCURRENCY", 2),
+		Concurrency:       readInt("PUNISHER_CONCURRENCY", 3),
 		DailyLectureLimit: readInt("PUNISHER_DAILY_LECTURE_LIMIT", 0),
 		DailyTokenLimit:   readInt("PUNISHER_DAILY_TOKEN_LIMIT", 0),
 		DailyCallLimit:    readInt("PUNISHER_DAILY_CALL_LIMIT", 0),

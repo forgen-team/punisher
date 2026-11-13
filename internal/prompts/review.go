@@ -17,7 +17,7 @@ const ReviewTask = `
   · 제품·모드 미표기 단정("DB는 거부한다" — 어떤 DB·어떤 모드인지 없음)
   · 진단 지표의 원천 오류(카운터가 원천인데 MAX(id) 같은 파생값을 지표로 제시)
   · 비결정적 수치(실행 시간·처리량)를 조건 없이 단정
-- 코드·출력 대조: 각 코드 블록의 출력(@@log, @@pause 다음 블록, @@answer)이 그 코드의 실제 출력과 맞는지 단계별로 계산해 확인합니다. 틀리면 factual_error(major 이상). 실행해 보지 않고는 확인할 수 없으면 "확인 필요"로 적고 major 로 둡니다. 벤치 코드가 본문의 결론과 반대 결과를 내면 critical 입니다.
+- 코드·출력 대조: 각 코드 블록의 출력(@@log, @@pause 다음 블록, @@answer)이 그 코드의 실제 출력과 맞는지 단계별로 계산해 확인합니다. 틀리면 factual_error(major 이상, blocking). 실행해 보지 않고는 확인할 수 없으면 "확인 필요"로 적고, 아래 gate 규칙의 "확인 필요" 항목대로 정합니다. 벤치 코드가 본문의 결론과 반대 결과를 내면 critical 입니다.
 - structure: 핵심 정의 누락·지연(목표의 핵심 명사가 principles 첫머리에서 정식 정의되지 않음), 통합 논지가 하위 주제와 모순, 첫 장면의 숫자·현상을 judgment_next 에서 회수하지 않음, 공식만 단독 제시(작은 값 계산 없이). 모두 major 입니다.
 - pedagogy: 손계산(@@trace) 없음, 예측 멈춤(@@pause) 없음, 직접 해 보기(@@exercise) 2개 미만, 같은 수치 3회 이상 반복, 한 불릿에 개념 여럿, 이미 배운 개념을 다시 길게 가르침, 실무 상황과 본문이 연결되지 않음. 앞의 다섯은 major 입니다.
 - omission: 제공된 학습 목표 중 설명되지 않았거나 피상적으로만 다룬 것, 이해에 꼭 필요한데 빠진 단계
@@ -27,8 +27,20 @@ const ReviewTask = `
 - terminology: 같은 용어를 다르게 정의하거나 기존 개념과 모순되는 정의
 - typo: 오타, 단어 중복(예: "INSERT INSERT INTO"), 닫히지 않은 코드블록·도식, 그대로 실행되지 않는 코드·명령. 실행이 깨지면 major, 표현만 어색하면 minor
 
-severity 는 critical(틀린 지식을 가르침) / major(목표 미달·근거 부족, 위에서 major 로 정한 항목, 또는 핵심 문장이 정의 없는 전제에 기대 이해되지 않음) / minor(표현 개선, 곁가지 용어의 정의 누락)입니다.
-critical 또는 major 가 하나라도 있으면 verdict 는 "fail" 입니다. 확신이 없는 지적은 minor 로 두고 이유를 적습니다.
+severity 는 critical(틀린 지식을 가르침) / major(목표 미달·근거 부족, 위에서 major 로 정한 항목, 또는 핵심 문장이 정의 없는 전제에 기대 이해되지 않음) / minor(표현 개선, 곁가지 용어의 정의 누락)입니다. severity 는 중요도이고, 발행을 막는지는 gate 가 정합니다.
+
+gate — 지적마다 발행을 막는지 정합니다:
+- blocking: 학습자가 틀린 것을 배우거나, 따라 하면 실패하는 것만입니다. kind 는 factual_error / overclaim / typo 중 하나입니다.
+  · 사실 오류: 동작·명령 옵션·출력 형식·기본값이 틀림, 위의 개념 쌍 혼동
+  · 오도: 제품·모드 미표기 단정, 틀린 결론으로 이어지는 과잉 일반화, 진단 지표의 원천 오류, 비결정적 수치의 단정
+  · 처방 미해결: 처방을 적용해도 같은 장애가 남는데 해결된 것처럼 씀
+  · 에러·출력 불일치: 코드의 실제 출력·에러가 본문에 보인 것과 다름, 그대로 실행되지 않는 코드, 결론과 반대인 벤치 결과
+- advisory: 고치면 좋아지지만 틀린 것을 가르치지는 않는 것입니다. 구성(structure), 학습 활동(pedagogy: 손계산·예측·연습 부족), 같은 수치 반복, 요약 불릿 구성, 용어 정의 누락(assumed_knowledge·terminology), 목표를 얕게 다룸(omission), 분량·깊이에 비해 많은 세부, 출처(source), 표현(minor typo)이 모두 advisory 입니다.
+- "확인 필요": 실행하지 않고는 확인할 수 없는 주장은 본문이 조건 없이 단정한 경우에만 blocking(factual_error)입니다. 제품·버전·"환경에 따라 다름" 같은 조건이 붙어 있거나 "확인할 것"으로 쓴 경우는 advisory 입니다.
+- 깊이 1 강의에 제품·버전 의존 세부(운영 마이그레이션, 드라이버별 반환 타입, 잠금 수준)가 있으면: 틀렸거나 조건 없이 단정했으면 blocking, 맞고 조건이 붙어 있으면 범위 초과로 advisory 입니다.
+- 확신이 없는 지적은 advisory 로 두고 이유를 적습니다.
+
+verdict 는 blocking 이 하나라도 있으면 "fail", 없으면 "pass" 입니다(advisory 만 있으면 pass).
 
 JSON만 출력하세요:
 {
@@ -40,7 +52,7 @@ JSON만 출력하세요:
      "fix": "한 줄 정의 / 2~3문장 다리 / 개념 링크 중 무엇을 어떻게"}
   ],
   "issues": [
-    {"severity": "critical|major|minor", "kind": "factual_error|structure|pedagogy|omission|assumed_knowledge|overclaim|source|terminology|typo",
+    {"severity": "critical|major|minor", "gate": "blocking|advisory", "kind": "factual_error|structure|pedagogy|omission|assumed_knowledge|overclaim|source|terminology|typo",
      "section": "situation_question|principles|walkthrough|judgment_next|header", "quote": "문제 문장 일부",
      "message": "무엇이 왜 문제인지", "suggestion": "어떻게 고칠지"}
   ]
@@ -68,6 +80,7 @@ func review(c LectureContext, markup string, set Set, legacy bool) string {
 	writeContext(&b, c)
 	b.WriteString("\n## 검수할 강의 초안\n<<<LECTURE\n" + markup + "\nLECTURE>>>\n")
 	b.WriteString(set.Text(BlockReviewTask, c.vars()))
+	writeDepthScope(&b, c.Depth)
 	if legacy {
 		b.WriteString(legacyReviewNote)
 	}

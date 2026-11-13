@@ -90,7 +90,7 @@ func (s *Service) ExplainSelection(ctx context.Context, userID string, lec model
 		System: s.UserPrompts(ctx, userID).Text(prompts.BlockExplainSystem,
 			map[string]string{"concept_name": pc.ConceptName, "example_language": pc.ExampleLanguage}),
 		User:      prompts.ExplainSelection(pc, selection),
-		MaxTokens: 2000, Timeout: 90 * time.Second, Priority: llm.PriorityInteractive,
+		MaxTokens: 2000, Timeout: 90 * time.Second, Priority: llm.ShortUnlessBackground(ctx),
 	}, &u)
 	text = strings.TrimSpace(text)
 	if err == nil && text == "" {

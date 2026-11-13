@@ -298,3 +298,58 @@ func waitFor(t *testing.T, cond func() bool) {
 		time.Sleep(5 * time.Millisecond)
 	}
 }
+
+// TestShortCallNotBehindLongCalls: with the default 3 slots, two long
+// generations running leave a slot for a short call (pretest, tutor, Q&A).
+func TestShortCallNotBehindLongCalls(t *testing.T) {
+	f := newFixture(t, func(c *Config) { c.Concurrency = 0 }) // 0 = default 3
+	var wg sync.WaitGroup
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = f.client.Create(context.Background(), "", llm.MessagesRequest{User: "MODE_SLEEP", Timeout: 1500 * time.Millisecond})
+		}()
+	}
+	waitFor(t, func() bool { return f.client.limiter.LaneStats()[LaneInteractive].Active == 2 })
+	start := time.Now()
+	if _, err := f.client.Create(context.Background(), "", llm.MessagesRequest{User: "q", Priority: llm.PriorityShort}); err != nil {
+		t.Fatalf("short call: %v", err)
+	}
+	if d := time.Since(start); d > time.Second {
+		t.Fatalf("short call waited %s behind two long calls", d)
+	}
+	wg.Wait()
+}
+
+func TestLimiterShortLane(t *testing.T) {
+	l := NewLimiter(LimiterConfig{Total: 3, BackgroundMax: 1, InteractiveQueue: 4, BackgroundQueue: 4})
+	ctx := context.Background()
+	long1, _ := l.Acquire(ctx, LaneInteractive)
+	long2, _ := l.Acquire(ctx, LaneInteractive)
+	quick, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
+	defer cancel()
+	if _, err := l.Acquire(quick, LaneInteractive); err == nil {
+		t.Fatal("a third long call took the short slot")
+	}
+	short, err := l.Acquire(ctx, LaneShort)
+	if err != nil {
+		t.Fatal(err)
+	}
+	short()
+	bgDone := make(chan func(), 1)
+	go func() { r, _ := l.Acquire(ctx, LaneBackground); bgDone <- r }()
+	waitFor(t, func() bool { return l.LaneStats()[LaneBackground].Queued == 1 })
+	long1()
+	bg := <-bgDone
+	if s, err := l.Acquire(ctx, LaneShort); err != nil {
+		t.Fatalf("short slot with long + background running: %v", err)
+	} else {
+		s()
+	}
+	if ParseLane("short") != LaneShort || ParseLane("") != LaneInteractive || ParseLane("background") != LaneBackground {
+		t.Fatal("ParseLane")
+	}
+	bg()
+	long2()
+}

@@ -146,7 +146,7 @@ func (s *Service) tutorReply(ctx context.Context, apiKey, userID, conceptID stri
 	for n := 1; n <= checkAttempts; n++ {
 		tc.Revisions = problems
 		text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.checkModel(), System: system, User: prompts.CheckTutor(tc),
-			MaxTokens: 2000, Timeout: 2 * time.Minute, Priority: llm.PriorityInteractive}, &u)
+			MaxTokens: 2000, Timeout: 2 * time.Minute, Priority: llm.ShortUnlessBackground(ctx)}, &u)
 		if err != nil {
 			return check.TutorReply{}, u, err
 		}
@@ -254,7 +254,7 @@ func (s *Service) regrade(ctx context.Context, apiKey string, item store.CheckIt
 			prompt += "\n## 이전 출력의 문제(고쳐서 다시 출력)\n- " + strings.Join(problems, "\n- ") + "\n"
 		}
 		text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.regradeModel(), System: prompts.SystemCheckRegrade,
-			User: prompt, MaxTokens: 1500, Timeout: 2 * time.Minute, Priority: llm.PriorityInteractive}, &u)
+			User: prompt, MaxTokens: 1500, Timeout: 2 * time.Minute, Priority: llm.ShortUnlessBackground(ctx)}, &u)
 		if err != nil {
 			return check.RegradeReply{}, u, err
 		}

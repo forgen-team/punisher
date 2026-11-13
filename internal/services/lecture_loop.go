@@ -11,10 +11,19 @@ import (
 	"github.com/wooo-jin/punisher/internal/llm"
 )
 
+// Per-attempt time limits of a lecture generation (an attempt = one draft and
+// its review). Job limits are at least attempts × (draft + review).
+const (
+	draftTimeout  = 7 * time.Minute
+	reviewTimeout = 3 * time.Minute
+	attemptBudget = draftTimeout + reviewTimeout
+)
+
 // lectureLoop is the LLM-backed LoopFuncs of a lecture generation (library,
 // regenerate and instant share it): draft with the teacher system prompt
-// (outlineJSON may be empty), review with the reviewer prompt, and
-// parse = format validation + machine checks (Target.parseAndValidate).
+// (outlineJSON may be empty; a rewrite edits the previous draft in place),
+// review with the reviewer prompt, and parse = format validation + machine
+// checks (Target.parseAndValidate).
 func (s *Service) lectureLoop(apiKey string, t Target, outlineJSON string, u *usage) LoopFuncs {
 	pc := t.LectureContext()
 	vars := prompts.LectureVars(pc)
@@ -24,20 +33,26 @@ func (s *Service) lectureLoop(apiKey string, t Target, outlineJSON string, u *us
 		maxTokens = defaultMaxTokens
 	}
 	return LoopFuncs{
-		Generate: func(ctx context.Context, notes string) (string, error) {
+		Generate: func(ctx context.Context, rev Revision) (string, error) {
+			user := prompts.Lecture(pc, outlineJSON, rev.Notes, t.Prompts)
+			if rev.Previous != "" {
+				user = prompts.LectureRevision(pc, outlineJSON, rev.Previous, rev.Notes, t.Prompts)
+			}
 			return s.completeDraft(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel, System: teacher,
-				User: prompts.Lecture(pc, outlineJSON, notes, t.Prompts), MaxTokens: maxTokens, Timeout: 6 * time.Minute}, u)
+				User: user, MaxTokens: maxTokens, Timeout: draftTimeout}, u)
 		},
 		Review: func(ctx context.Context, markup string) (ReviewOutcome, error) {
 			text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel,
 				System: t.Prompts.Text(prompts.BlockReviewerSystem, vars),
-				User:   prompts.Review(pc, markup, t.Prompts), MaxTokens: 4000, Timeout: 4 * time.Minute}, u)
+				User:   prompts.Review(pc, markup, t.Prompts), MaxTokens: 4000, Timeout: reviewTimeout}, u)
 			if err != nil {
 				return ReviewOutcome{}, err
 			}
 			return ParseReview(text), nil
 		},
-		Parse: t.parseAndValidate,
+		Parse:         t.parseAndValidate,
+		DraftTimeout:  draftTimeout,
+		ReviewTimeout: reviewTimeout,
 	}
 }
 
@@ -79,13 +94,15 @@ const (
 	reasonBlocks    = "정의·손계산·예측·연습·요약 구성이 기준에 못 미쳤어요"
 	reasonLeak      = "생성 과정의 문구나 잘못된 링크가 남아 있었어요"
 	reasonReview    = "검수 기준을 통과하지 못했어요"
+	reasonTimeout   = "강의를 쓰는 데 시간이 너무 오래 걸렸어요"
 	// ReasonGenerationError replaces raw LLM / storage errors in the stream.
 	ReasonGenerationError = "강의를 만드는 중 오류가 났어요. 잠시 후 다시 만들어 주세요"
 )
 
 // userReasons summarizes why an attempt did not pass, in short Korean lines
 // safe to show (raw errors and quotes are never included), most important
-// first, at most maxUserReasons.
+// first, at most maxUserReasons. Only blocking findings are reasons (advisory
+// ones never stop publishing).
 func userReasons(a Attempt) []string {
 	var out []string
 	add := func(r string) {
@@ -97,14 +114,18 @@ func userReasons(a Attempt) []string {
 		out = append(out, r)
 	}
 	switch {
+	case a.Err != nil && isAttemptTimeout(a.Err):
+		add(reasonTimeout)
+	case a.Err != nil:
+		add(ReasonGenerationError)
 	case errors.Is(a.ParseErr, lecture.ErrIncomplete):
 		add(reasonTruncated)
 	case a.ParseErr != nil:
 		add(reasonFormat)
 	}
-	for _, sev := range []string{"critical", "major"} {
+	for _, sev := range []string{"critical", "major", "minor", ""} {
 		for _, i := range a.Review.Issues {
-			if i.Severity == sev {
+			if i.Severity == sev && i.IsBlocking() {
 				if r, ok := reviewReasons[i.Kind]; ok {
 					add(r)
 				} else {
@@ -113,7 +134,7 @@ func userReasons(a Attempt) []string {
 			}
 		}
 	}
-	for _, i := range a.Issues {
+	for _, i := range a.blockingIssues() {
 		add(issueReason(i))
 	}
 	if len(out) == 0 && a.Reviewed && a.Review.Blocking() {

@@ -33,14 +33,25 @@ type fakeSteps struct {
 	reviews []ReviewOutcome
 	genErr  error
 	notes   []string
+	prev    []string // rev.Previous given to each Generate call
 	gen     int
 	rev     int
+	// hang: Generate calls (0-based) that block until their ctx ends (attempt timeout).
+	hang map[int]bool
+	// reviewHang: Review calls (0-based) that block until their ctx ends.
+	reviewHang map[int]bool
 }
 
 func (f *fakeSteps) funcs() LoopFuncs {
 	return LoopFuncs{
-		Generate: func(_ context.Context, notes string) (string, error) {
-			f.notes = append(f.notes, notes)
+		Generate: func(ctx context.Context, rev Revision) (string, error) {
+			call := len(f.notes)
+			f.notes = append(f.notes, rev.Notes)
+			f.prev = append(f.prev, rev.Previous)
+			if f.hang[call] {
+				<-ctx.Done()
+				return "", ctx.Err()
+			}
 			if f.genErr != nil && f.gen == len(f.drafts)-1 {
 				return "", f.genErr
 			}
@@ -48,7 +59,16 @@ func (f *fakeSteps) funcs() LoopFuncs {
 			f.gen++
 			return d, nil
 		},
-		Review: func(context.Context, string) (ReviewOutcome, error) {
+		Review: func(ctx context.Context, _ string) (ReviewOutcome, error) {
+			call := f.rev
+			if f.reviewHang[call] {
+				f.rev++
+				<-ctx.Done()
+				return ReviewOutcome{}, ctx.Err()
+			}
+			if f.rev >= len(f.reviews) {
+				return ReviewOutcome{}, errors.New("no scripted review")
+			}
 			r := f.reviews[f.rev]
 			f.rev++
 			return r, nil
@@ -232,11 +252,12 @@ func TestReviewReaderGapsParsedAndFedBack(t *testing.T) {
 	r := ParseReview(`{"verdict":"fail","summary":"s","reader_gaps":[{"section":"judgment_next","quote":"감독자라면",
 		"unknown":"감독자(supervisor)","why":"웹 개발자는 systemd 역할을 모름","fix":"한 줄 정의"}],
 		"issues":[{"severity":"major","kind":"assumed_knowledge","section":"judgment_next","quote":"감독자라면","message":"m"}]}`)
-	if len(r.ReaderGaps) != 1 || !r.Blocking() {
-		t.Fatalf("review = %+v", r)
+	if len(r.ReaderGaps) != 1 || r.Blocking() {
+		t.Fatalf("reader gaps and assumed_knowledge are advisory, never blocking: %+v", r)
 	}
 	notes := RevisionNotes(Attempt{Reviewed: true, Review: r})
-	if !strings.Contains(notes, "[전제 지식 · judgment_next]") || !strings.Contains(notes, "major/assumed_knowledge") {
+	if !strings.Contains(notes, "[전제 지식 · judgment_next]") || !strings.Contains(notes, "major/assumed_knowledge") ||
+		!strings.Contains(notes, "### 개선 권장") || strings.Contains(notes, "### 반드시 고칠 것") {
 		t.Fatalf("notes = %s", notes)
 	}
 	if ParseReview(`{"verdict":"pass","summary":"ok"}`).ReaderGaps == nil {

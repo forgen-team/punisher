@@ -30,8 +30,12 @@ func (s *Service) runDiagnosticItems(ctx context.Context, apiKey, userID, sessio
 	}
 	dc := prompts.DiagnosticContext{Purpose: plan.kind, Objectives: plan.objectives, Count: check.PretestCount(len(plan.objectives))}
 	vc := check.DiagnosticContext{Purpose: plan.kind, ObjectiveIDs: plan.objectiveIDs()}
+	priority := llm.PriorityInteractive
+	if plan.kind == check.PurposePretest { // 예측 질문은 강의를 기다리는 동안 나와야 하므로 짧은 호출 자리를 쓴다.
+		priority = llm.ShortUnlessBackground(ctx)
+	}
 	items, u, _, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.diagnosticModel(plan.kind), attempts: plan.attempts,
-		priority: llm.PriorityInteractive, system: set.Text(prompts.BlockCheckPretest, s.interactionVars(ctx, userID, conceptID))},
+		priority: priority, system: set.Text(prompts.BlockCheckPretest, s.interactionVars(ctx, userID, conceptID))},
 		func(revisions []string) string { dc.Revisions = revisions; return prompts.Diagnostic(dc) },
 		func(set check.ItemSet) []string { return check.ValidateDiagnostic(set, vc) })
 	s.recordUsage(done, userID, "check_items", conceptID, u, err)

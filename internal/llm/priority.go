@@ -5,13 +5,18 @@ import (
 	"strings"
 )
 
-// Priority is the scheduling lane for a local claude CLI call.
-// Interactive (user-initiated) calls are always served before background
-// (scheduler/worker/pipeline) calls, and background calls can never take the
-// last free slot.
+// Priority is the scheduling lane for a local claude CLI call:
+//   - short: a brief conversational call a user is waiting on (pretest
+//     question, tutor turn, Q&A, glossary). With 3+ slots one slot is kept
+//     for it, so it never waits behind long generations;
+//   - interactive: a user-initiated long generation (instant lecture draft
+//     and review, check items). It may not take the short slot;
+//   - background: scheduler/worker/pipeline calls, served after the user
+//     lanes and never taking the last free slot.
 type Priority string
 
 const (
+	PriorityShort       Priority = "short"
 	PriorityInteractive Priority = "interactive"
 	PriorityBackground  Priority = "background"
 )
@@ -45,9 +50,21 @@ func IsBackground(ctx context.Context) bool {
 	return PriorityFromContext(ctx) == PriorityBackground
 }
 
-func (p Priority) normalized() Priority {
-	if Priority(strings.ToLower(strings.TrimSpace(string(p)))) == PriorityBackground {
+// ShortUnlessBackground is the lane of a short conversational call: short,
+// except inside background work (ctx marked background) where it stays background.
+func ShortUnlessBackground(ctx context.Context) Priority {
+	if IsBackground(ctx) {
 		return PriorityBackground
+	}
+	return PriorityShort
+}
+
+func (p Priority) normalized() Priority {
+	switch Priority(strings.ToLower(strings.TrimSpace(string(p)))) {
+	case PriorityBackground:
+		return PriorityBackground
+	case PriorityShort:
+		return PriorityShort
 	}
 	return PriorityInteractive
 }

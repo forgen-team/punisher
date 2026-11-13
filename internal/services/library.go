@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	libraryAttempts   = 2 // first draft + one regeneration
-	libraryJobTimeout = 15 * time.Minute
+	libraryAttempts   = 2                                             // first draft + one regeneration
+	libraryJobTimeout = libraryAttempts*attemptBudget + 5*time.Minute // + outline
 	defaultMaxTokens  = 24000
 )
 
@@ -203,10 +203,18 @@ func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Tar
 // ones archived) with its review; the final one is published/needs_revision.
 func (s *Service) storeAttempts(ctx context.Context, t Target, jobID string, res LoopResult, model string) (models.Lecture, error) {
 	var final models.Lecture
+	// The final attempt is saved last so it is the newest version of the target.
+	order := make([]int, 0, len(res.Attempts))
 	for i, a := range res.Attempts {
-		if a.ParseErr != nil {
-			continue
+		if a.drafted() && i != res.Final {
+			order = append(order, i)
 		}
+	}
+	if res.Final >= 0 {
+		order = append(order, res.Final)
+	}
+	for _, i := range order {
+		a := res.Attempts[i]
 		status := "archived"
 		if i == res.Final {
 			status = res.Status

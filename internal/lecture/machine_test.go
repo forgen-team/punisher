@@ -74,3 +74,18 @@ func TestMeasureContent(t *testing.T) {
 		t.Fatalf("measure = %+v", m)
 	}
 }
+
+// TestMachineCheckGates: composition and volume are advisory (fed to a
+// rewrite, never blocking); self links and meta phrases block.
+func TestMachineCheckGates(t *testing.T) {
+	src := strings.Replace(materialLecture(), "@@pause\n위 쿼리는 무엇을 출력할까요?\n", "", 1)
+	src = strings.Replace(src, filler(2500), "짧다", 1)
+	issues := MachineCheck(mustParse(t, src))
+	if len(issues) < 2 || len(BlockingIssues(issues)) != 0 {
+		t.Fatalf("composition/volume must be advisory: %+v", issues)
+	}
+	leak := strings.Replace(materialLecture(), "자리올림과 넘침을 혼동했습니다.", "이 부분은 다른 강의에서 다룹니다.", 1)
+	if b := BlockingIssues(MachineCheck(mustParse(t, leak))); len(b) != 1 || !strings.Contains(b[0].Message, "meta phrase") {
+		t.Fatalf("meta phrase must block: %+v", b)
+	}
+}

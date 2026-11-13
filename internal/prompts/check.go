@@ -6,7 +6,7 @@ import (
 )
 
 // CheckVersion tags check items written with the check.items block (+u:hash when overridden).
-const CheckVersion = "punisher-check-2026-11-13.2"
+const CheckVersion = "punisher-check-2026-11-13.3"
 
 // SystemCheckItems is the default of block check.items: how to write the questions of '확인하기'.
 const SystemCheckItems = `당신은 방금 강의를 읽은 경력 개발자의 이해를 확인하는 문항을 쓰는 출제자입니다.

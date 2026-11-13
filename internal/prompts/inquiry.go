@@ -6,7 +6,7 @@ import (
 )
 
 // InquiryVersion tags explanations generated with InquiryTask (stored per answer).
-const InquiryVersion = "punisher-inquiry-2026-11-13.2"
+const InquiryVersion = "punisher-inquiry-2026-11-13.3"
 
 // InquiryContext is the input of one "이 질문에 답하기" explanation.
 type InquiryContext struct {

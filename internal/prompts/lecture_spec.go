@@ -102,6 +102,8 @@ prerequisites: 링크로만 참조한 기존 개념 id들(쉼표 구분, 없으�
 - principles 에는 @@keypoint kind=definition 이 1개 이상, @@trace 가 1개 이상 있어야 합니다. @@keypoint 의 kind 는 definition | caution | rule 중 하나입니다.
 - @@exercise 는 강의 전체에 2개 이상이고, 각 @@exercise 바로 다음 블록은 그 풀이 @@answer 입니다.
 - @@pause 는 1개 이상이고 질문 한 줄입니다. 바로 다음 블록은 그 질문의 답이 되는 @@log 또는 @@code 입니다(출력을 코드 바로 아래 먼저 보여 주지 않습니다).
+- 실행 출력 예시(@@pause 다음 출력, 코드 아래 @@log)는 언어 표준만으로 결정되는 코드에만 붙입니다. 라이브러리·DB 드라이버를 거친 값의 타입·형식은 출력 예시로 쓰지 않습니다.
+- 깊이 1 강의에는 운영 마이그레이션·드라이버별 반환 타입·잠금 수준 같은 제품·버전 의존 세부를 본문 주장으로 넣지 않습니다. 필요하면 판단 기준에 "확인할 것"으로만 씁니다.
 - @@summary 는 judgment_next 에 정확히 1개, 불릿 3~6개입니다.
 - @@trace / @@chart / @@diff 의 본문은 JSON 객체 하나뿐입니다(앞뒤 설명 문장 금지, 코드펜스 없이). 앱이 데이터를 그리므로 HTML·JS 는 쓰지 않습니다.
   - trace: columns 2~6개, rows 2~16개, 모든 행의 칸 수 = columns 수, 칸은 모두 문자열.

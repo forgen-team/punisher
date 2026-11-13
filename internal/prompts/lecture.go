@@ -8,7 +8,7 @@ import (
 )
 
 // Version is recorded in lectures.prompt_version.
-const Version = "punisher-prompts-2026-11-13.2"
+const Version = "punisher-prompts-2026-11-13.3"
 
 // ConceptRef is a concept the prompt may link to.
 type ConceptRef struct {
@@ -97,6 +97,51 @@ func Outline(c LectureContext, set Set) string {
 	var b strings.Builder
 	writeContext(&b, c)
 	b.WriteString(set.Text(BlockOutlineTask, c.vars()))
+	writeDepthScope(&b, c.Depth)
+	writeFactualRules(&b)
+	return b.String()
+}
+
+// DepthOneScope keeps product/version-dependent details out of depth-1
+// lectures (they were the unverifiable claims that failed review). It is a
+// fixed safety rule like FactualRules, so it is not an editable block.
+const DepthOneScope = `
+## 깊이 1 범위
+- 이 강의는 깊이 1(기본)입니다. 운영 마이그레이션 절차, 드라이버·라이브러리별 반환 타입, 잠금 수준처럼 제품·버전에 따라 달라지는 세부는 본문 주장으로 쓰지 않습니다.
+- 꼭 필요하면 judgment_next 의 판단 기준에 "확인할 것"(무엇을 어느 공식 문서에서 확인할지)으로만 적습니다.
+`
+
+// writeDepthScope appends DepthOneScope for a depth-1 (or unset) lecture.
+func writeDepthScope(b *strings.Builder, depth int) {
+	if depth <= 1 {
+		b.WriteString(DepthOneScope)
+	}
+}
+
+// RevisionRules is the fixed instruction of a partial rewrite: fix only what
+// the findings point at and keep everything else verbatim.
+const RevisionRules = `
+## 수정 방식(엄격)
+- 위 지적이 가리키는 문장·블록만 고칩니다. 지적과 관계없는 문장·블록·섹션은 글자 하나 바꾸지 말고 그대로 옮겨 씁니다(블록 순서·지시 줄 포함).
+- 확인할 수 없다거나 사실과 다르다고 지적된 주장은 다음 순서로 고칩니다: ① 그 주장을 뺍니다 ② 뺄 수 없으면 조건(제품·버전·"환경에 따라 다름")을 붙이거나 판단 기준의 "확인할 것"으로 바꿉니다. 새 세부 사실을 더해 메우지 않습니다.
+- 출력이 실제와 다르다는 지적은, 그 출력이 언어 표준만으로 결정되지 않으면 출력 예시를 빼거나 무엇을 확인할지로 바꿉니다.
+- "개선 권장" 항목은 고쳐도 새 사실 오류가 생기지 않는 범위에서만 반영합니다. 반영하려고 새 주장을 늘리지 않습니다.
+- 출력은 고친 강의 전체입니다(아래 출력 형식 그대로, 마지막 줄 @@end).
+`
+
+// LectureRevision asks for a partial rewrite of previous: the findings in
+// notes are fixed and the rest is kept verbatim (code compares the blocks).
+func LectureRevision(c LectureContext, outlineJSON, previous, notes string, set Set) string {
+	var b strings.Builder
+	writeContext(&b, c)
+	if outlineJSON != "" {
+		b.WriteString("\n## 확정된 개요\n```json\n" + outlineJSON + "\n```\n")
+	}
+	b.WriteString("\n## 이전 초안(부분 수정 대상)\n<<<DRAFT\n" + previous + "\nDRAFT>>>\n")
+	b.WriteString("\n## 이전 초안에 대한 지적\n" + notes + "\n")
+	b.WriteString(RevisionRules)
+	b.WriteString(set.Text(BlockLectureFormat, c.vars()))
+	writeDepthScope(&b, c.Depth)
 	writeFactualRules(&b)
 	return b.String()
 }
@@ -111,9 +156,10 @@ func Lecture(c LectureContext, outlineJSON, revisionNotes string, set Set) strin
 		b.WriteString("\n## 확정된 개요\n```json\n" + outlineJSON + "\n```\n")
 	}
 	if revisionNotes != "" {
-		b.WriteString("\n## 이전 초안에 대한 검수 지적(반드시 모두 고칠 것)\n" + revisionNotes + "\n")
+		b.WriteString("\n## 이전 초안에 대한 검수 지적('반드시 고칠 것'은 모두 고칠 것)\n" + revisionNotes + "\n")
 	}
 	b.WriteString(set.Text(BlockLectureFormat, c.vars()))
+	writeDepthScope(&b, c.Depth)
 	writeFactualRules(&b)
 	return b.String()
 }

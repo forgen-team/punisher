@@ -49,6 +49,7 @@ func (s *Service) Gloss(ctx context.Context, userID, conceptID string) (gloss st
 	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{
 		Model: s.Cfg.FastModel, System: set.Text(prompts.BlockGlossSystem, map[string]string{"concept_name": concept.Name}),
 		User: prompts.Gloss(concept.Name, concept.Area, concept.Summary), MaxTokens: 400, Timeout: 30 * time.Second,
+		Priority: llm.ShortUnlessBackground(ctx),
 	}, &u)
 	s.recordUsage(ctx, userID, "gloss", conceptID, u, err)
 	if err != nil {
@@ -140,7 +141,7 @@ func (s *Service) answerWithKey(ctx context.Context, userID, apiKey string, q mo
 	var u usage
 	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{
 		Model: s.Cfg.LectureModel, System: s.UserPrompts(ctx, userID).Text(prompts.BlockQASystem, s.interactionVars(ctx, userID, q.ConceptID)),
-		User: prompt, MaxTokens: 3000, Timeout: 2 * time.Minute,
+		User: prompt, MaxTokens: 3000, Timeout: 2 * time.Minute, Priority: llm.ShortUnlessBackground(ctx),
 	}, &u)
 	var out qaOutput
 	if err == nil {

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/wooo-jin/punisher/internal/learning"
 	"github.com/wooo-jin/punisher/internal/lecture"
@@ -103,7 +102,7 @@ func (s *Service) backfillOne(ctx context.Context, apiKey, owner string, lec mod
 	var u usage
 	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel,
 		System: set.Text(prompts.BlockReviewerSystem, prompts.LectureVars(pc)),
-		User:   build(pc, lecture.RenderMarkup(c), set), MaxTokens: 4000, Timeout: 4 * time.Minute}, &u)
+		User:   build(pc, lecture.RenderMarkup(c), set), MaxTokens: 4000, Timeout: reviewTimeout}, &u)
 	s.recordUsage(context.WithoutCancel(ctx), owner, "lecture_review", lec.ConceptID, u, err)
 	if err != nil {
 		return false, err
