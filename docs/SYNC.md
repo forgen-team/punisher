@@ -15,6 +15,7 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | v0.3.0 (+3차) | `c37c9a6` | e9959f6: 시도 기록(마이그레이션 008, attempt_log JSON TEXT), 즉석 자동 재작성 1회(StageRewriting, 다시 시도 버튼), mermaid 본문 삼킴 검출. 단독판 전용 `TestUnknownDirectiveIsRejectedAndRegenerated`(ac4f369)는 witems 의 `TestReviewLoopAttemptLogKeepsFailedParse`·`TestInstantRewritesOnceAfterBadMarkup` 와 겹쳐 삭제 |
 | v0.3.0 | `b15c724` | 50f68f6 다음 챕터(마이그레이션 007, visibleTo 사용자 격리, 챕터 고르기·지도 챕터 보기·하루 학습량), 1bc2ab4 중 UI kit(HeightReserve·시트 하단 여백)만. 제외: 534141d(학습 요청 흔적 정리 — 단독판은 요청 UI 유지), 1bc2ab4 의 RSS·오늘 홈 부분, rss-server |
 | v0.2.1 | `dfb61eb` | 81399aa(프롬프트 2026-11-09.2·인라인 용어·펜스 검증·reader_gaps·마이그레이션 006), 7485785(하단 여백), e7b8111·5e5c77a(헤더 정리, 단독판 셸에 맞게 일부만). 제외: f192b0e(학습 요청 대기열 UI 제거), 7f4bc8a(글 해설, RSS 전용) |
+| (다음, `mastery` 브랜치) | `01041fd` | 숙달 확인(P1)을 커밋별로 이식: b697c29(숙달 순수 규칙 `learning/mastery.go`·확인 검증 `internal/check`·확인 프롬프트 블록), 8bf187c(마이그레이션 011 SQLite 포팅·store `sqlite_check*.go`/`sqlite_mastery.go`·확인 서비스·`/v1/checks`·`/v1/objectives/{id}/relearn`·`/v1/mastery`·sweep·`PUNISHER_CHECK_*` 설정), 01041fd(확인 화면 `/check/:id`·레벨 점·지도 숙달 링). 제외: eb57da0(설계 문서 v2.1, witems `docs/plans` 전용)와 witems 작업 트리의 P2(간격 복습) 미커밋 변경. 업그레이드 테스트 `TestUpgradeFromV040`(v0.4.0/v0.5.0 DB 001–010 → 011) 추가 |
 
 다음 이식의 시작점은 **표의 마지막 witems 커밋**입니다. 이식을 마치면 이 표에 한 줄을 추가합니다.
 
@@ -86,6 +87,11 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | `migrations/004_lecture_links.sql` | witems 005 의 `kind IN ('deeper','regenerated')` 를 처음부터 포함 | SQLite 는 CHECK 제약을 바꿀 수 없음. v0.1.0 DB 에는 004·005 가 둘 다 새로 적용되므로 결과가 같음 |
 | `internal/services/prompts.go` `libraryTarget` | `Cfg.LibraryUsesUserPrompts`(단독판 `true`)면 라이브러리 강의도 사용자 프롬프트 사용 | witems 라이브러리는 여러 사용자가 공유 → 기본값 고정. 단독판 라이브러리(추천 미리 만들기)는 그 한 사람만 읽음 |
 | `internal/services/prompts_db_test.go` | 임시 SQLite 로 실행 + 위 규칙 테스트 추가 | |
+| `internal/services/check.go` `checkItemKey` (check.items 문항 캐시) | 코드는 witems 와 같음(기본 블록 = 공유 키, 편집한 블록 = 그 사용자 키 `created_for`). 단독판에선 라이브러리 강의의 문항도 사용자의 check.items 블록으로 만든다 — `LibraryUsesUserPrompts` 와 같은 결론이라 별도 분기를 두지 않고 `TestStandaloneLibraryCheckItemsUseOwnerPrompts` 로 고정 | 단독판 라이브러리는 한 사람만 읽으므로 사용자 프롬프트를 써도 된다 |
+| `internal/services/service.go` `Config`, `check_run.go`·`check_session.go` 실패 기록 | `Config` 끝에 `LibraryUsesUserPrompts` 가 있어 witems 의 `Check*` 필드 hunk 가 `.rej` 로 남는다(손으로 그 아래에 붙임). 확인 세션·턴의 실패 문구는 `checkErrorText`(= `DescribeLLMError`, 아니면 `err.Error()`)로 저장(4곳) | 확인 화면이 `session.error` 를 그대로 보여 준다. 로컬 CLI 안내 |
+| `internal/store/sqlite_check*.go`, `sqlite_mastery.go` | `pg_advisory_xact_lock`(문항 생성 키·사용자 대기 한도)·`FOR UPDATE` 는 빼고 트랜잭션 하나로(연결 1개라 직렬화). `clock_timestamp()` 는 `clockNow()`(밀리초, 호출마다 증가 — 이의 제기 충돌 표시). 유니크 위반은 제약 이름 대신 컬럼 이름(`check_turns.session_id` → `ErrCheckBusy`)으로 구분, `insertTurn` 의 savepoint 재시도 없음. `markObjectiveChanges` 는 witems 와 같은 EXISTS 문(LEAST→MIN) | SQLite 에 advisory lock·DML CTE·제약 이름 오류가 없음 |
+| `internal/services/check_db_test.go`, `internal/store/sqlite_mastery_test.go` | `Pool()` 대신 임시 SQLite(`DB()`, `?` 자리표시자), 정리(Cleanup) 없음. SQLite 대체 동작 테스트(`TestCheckStoreSQLiteSemantics`) 추가 | |
+| `internal/store/sqlite_links_prompts_test.go` `TestUpgradeFromV010` | 옛 DB 시드를 `applySeed` 로만 넣는다 | 지금의 `SyncCurriculum` 은 011 표(`check_items`)가 있어야 하는 `markObjectiveChanges` 를 같이 돈다 |
 | `internal/http/router.go` | 인증·CORS·rate limit 없음, `localOnly`, `/v1/status`, 웹 UI 서빙 | 단일 사용자·127.0.0.1 |
 | `internal/services/instant.go` | 실패 이벤트 문구를 `DescribeLLMError` 한국어로(8줄 차이) | 로컬 CLI 안내 |
 | `internal/http/handlers/learn.go` 등 오류 문구 | Claude Code 미설치/미로그인 한국어 안내(`services.DescribeLLMError`) | 게이트웨이 대신 로컬 CLI |
@@ -101,7 +107,9 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | `web/src/widgets/punisher/nav/LearnNav.tsx` | '학습' 제목을 md 이상에서 보임(witems 는 lg) | 단독판 셸 상단 바는 화면 제목을 보이지 않음 |
 | `web/src/widgets/punisher/today/ui/StudyRequestList.tsx` 외 학습 요청 UI | witems f192b0e(대기열 UI 제거)·534141d(지도·추천의 학습 요청 흔적 정리)를 **가져오지 않음** — 지도의 '요청됨' 표시·`?request=`·대기 목록 유지 | 단독판은 직접 입력 학습 요청을 유지 |
 | `web/src/widgets/punisher/today/TodayWidget.tsx` | witems 판에서 '글 해설' 자리(3단의 셋째 열)를 '학습 요청'(AddStudyRequestForm + StudyRequestList)으로 바꾼 것만 다름 | 이식 때는 witems 판을 가져와 그 한 곳만 바꾸는 편이 3-way 병합보다 쉽다 |
-| `web/src/widgets/punisher/knowledge-map/KnowledgeMapWidget.tsx`, `ui/ConceptDetailSheet.tsx` | 요청 관련(`PendingRequestList`, `requests` prop) 줄만 다름 | 이식 때 `git merge-file`(단독판 HEAD / witems 이전 / witems 새판)로 3-way 병합 |
+| `web/src/widgets/punisher/knowledge-map/KnowledgeMapWidget.tsx`, `ui/ConceptDetailSheet.tsx`, `ui/ConceptNode.tsx`, `ui/MapCanvas.tsx` | 요청 관련(`PendingRequestList`, `requests` prop, `?request=`, 노드의 `requested`·'학습 요청됨') 줄만 다름 | 이식 때 `git merge-file`(단독판 HEAD / witems 이전 / witems 새판)로 3-way 병합 |
+| `cmd/punisher/main.go`, `internal/config` (확인 모델) | `PUNISHER_CHECK_MODEL`(기본 = 강의 모델 `sonnet`), `PUNISHER_CHECK_REGRADE_MODEL`(기본 = 채점에 안 쓰는 쪽, 보통 `haiku`), `PUNISHER_DAILY_CHECK_TOKEN_LIMIT`(0 = 끔). witems 의 Anthropic 공급자 분기는 없음 | 단독판은 로컬 claude CLI 하나 |
+| `web/src/pages/LearnPages.tsx` `CheckPage`, `web/src/app/App.tsx`, `AppShell.tsx` | witems `app/(main)/workspace/punisher/check/[id]/page.tsx` → 라우트 `/check/:id`, 문서 제목 '확인하기'. ← 는 `CheckView` 의 `LectureTopBar`(강의로)가 맡는다 | Next 페이지 → React Router |
 | `cmd/punisher/main.go`, `internal/config` | RSS 신호(`Signals`, `RSSServerURL`) 연결 없음 → `Service.Signals == nil` 이라 다음 챕터 제안의 RSS 관심사·트렌드(c)는 꺼짐 | 단독판에는 RSS 서버가 없음 |
 | `web/src/widgets/punisher/lecture-viewer/LectureViewer.tsx` | 강의를 못 불러올 때 '강의 화면으로 돌아가기' 링크 | 단독판 셸에 뒤로 버튼이 없음 |
 | `web/src/app/AppShell.tsx`, `web/src/shared/ui/BackLink.tsx`, `web/src/pages/*` | 셸 폭·좌우 여백은 witems 학습 레이아웃과 같음(1600px, px-4/fold 6/lg 8). 아래 여백은 셸 한 곳. 하위 화면 맨 위 '← 상위'(witems DesktopBackLink 와 같은 들어온 곳 규칙, 단 모든 폭에서 보임) | 단독판 셸에 상단 바 ← 가 없음 |

@@ -285,7 +285,9 @@ func TestUpgradeFromV010(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := old.SyncCurriculum(ctx, seed); err != nil {
+	// The seed upsert alone: today's SyncCurriculum also runs markObjectiveChanges
+	// on the 011 tables, which a v0.1.0 database does not have yet.
+	if err := old.tx(ctx, func(c conn) error { return applySeed(ctx, c, seed) }); err != nil {
 		t.Fatal(err)
 	}
 	cA, cB := twoConcepts(t, old)

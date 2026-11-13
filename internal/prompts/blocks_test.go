@@ -8,7 +8,7 @@ import (
 
 func TestRegistryCoversEditableBlocks(t *testing.T) {
 	want := []string{BlockOutlineTask, BlockTeacherSystem, BlockLectureFormat, BlockReviewerSystem, BlockReviewTask,
-		BlockGlossSystem, BlockQASystem, BlockExplainSystem, BlockResolveSystem}
+		BlockGlossSystem, BlockQASystem, BlockExplainSystem, BlockResolveSystem, BlockCheckItems, BlockCheckTutor}
 	for _, id := range want {
 		b, ok := LookupBlock(id)
 		if !ok || strings.TrimSpace(b.Default) == "" || b.Purpose == "" || b.StageTitle == "" {
@@ -135,5 +135,31 @@ func TestMarkupSpecKeepsDiagramsInMermaidBlocks(t *testing.T) {
 		if !strings.Contains(MarkupSpec, want) {
 			t.Errorf("markup spec lacks %q", want)
 		}
+	}
+}
+
+func TestCheckBlocksAndBuilders(t *testing.T) {
+	for _, id := range []string{BlockCheckItems, BlockCheckTutor} {
+		b, _ := LookupBlock(id)
+		if b.Stage != StageCheck || b.StageTitle != "확인" || b.Warning == "" {
+			t.Fatalf("%s: %+v", id, b)
+		}
+	}
+	items := CheckItems(CheckItemsContext{ConceptName: "페이지 캐시", Objectives: []CheckObjective{{ID: "c#1", Text: "읽기 경로"}},
+		Anchors: []string{"s1"}, Sections: []string{"[s1] 본문"}, Revisions: []string{"must 가 비었습니다"}})
+	for _, want := range []string{"c#1: 읽기 경로", "purpose review", "s1", "must 가 비었습니다"} {
+		if !strings.Contains(items, want) {
+			t.Fatalf("items prompt lacks %q:\n%s", want, items)
+		}
+	}
+	tutor := CheckTutor(CheckTutorContext{Prompt: "왜 빨라지나요?", Must: []string{"메모리"}, Answer: "모범",
+		LearnerAnswer: "내 답", Allowed: []string{"narrow", "next"}, Dialogue: []CheckTurnRef{{Role: "tutor", Move: "ask", Text: "왜 빨라지나요?"}}})
+	for _, want := range []string{"통합 문항", "narrow | next", "내 답", "tutor(ask)"} {
+		if !strings.Contains(tutor, want) {
+			t.Fatalf("tutor prompt lacks %q:\n%s", want, tutor)
+		}
+	}
+	if r := CheckRegrade("문항", []string{"a"}, nil, "모범", "답"); !strings.Contains(r, "## 학습자 답\n답") || strings.Contains(r, "문답") {
+		t.Fatalf("regrade prompt: %s", r)
 	}
 }

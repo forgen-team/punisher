@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/wooo-jin/punisher/internal/learning"
+	"github.com/wooo-jin/punisher/internal/store"
 )
 
 type languageOption struct {
@@ -37,12 +38,50 @@ func (h *LearnHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 type settingsBody struct {
 	ExampleLanguage *string `json:"exampleLanguage"`
 	DailyMinutes    *int    `json:"dailyMinutes"`
+	MasteryTarget   *int    `json:"masteryTarget"`
+	ReviewIntervals []int   `json:"reviewIntervals"`
+	ReviewMinutes   *int    `json:"reviewMinutes"`
+	ReviewGrader    *string `json:"reviewGrader"`
 }
 
 var dailyMinuteOptions = map[int]bool{15: true, 30: true, 45: true, 60: true}
 
-// PutSettings handles PUT /v1/me/settings. Affects lectures/answers generated
-// afterwards; existing lectures are not regenerated.
+// settingsPatch validates the given fields; "" message = valid.
+func settingsPatch(body settingsBody) (store.LearningSettingsPatch, string) {
+	p := store.LearningSettingsPatch{DailyMinutes: body.DailyMinutes, MasteryTarget: body.MasteryTarget,
+		ReviewIntervals: body.ReviewIntervals, ReviewMinutes: body.ReviewMinutes}
+	if body.ExampleLanguage != nil {
+		lang := strings.ToLower(strings.TrimSpace(*body.ExampleLanguage))
+		if !learning.IsValidExampleLanguage(lang) {
+			return p, "exampleLanguage must be one of " + strings.Join(learning.ExampleLanguageIDs, "|")
+		}
+		p.ExampleLanguage = &lang
+	}
+	if body.ReviewGrader != nil {
+		grader := strings.ToLower(strings.TrimSpace(*body.ReviewGrader))
+		if !learning.ValidReviewGrader(grader) {
+			return p, "reviewGrader must be self|llm"
+		}
+		p.ReviewGrader = &grader
+	}
+	switch {
+	case body.DailyMinutes != nil && !dailyMinuteOptions[*body.DailyMinutes]:
+		return p, "dailyMinutes must be 15|30|45|60"
+	case body.MasteryTarget != nil && !learning.ValidMasteryTarget(*body.MasteryTarget):
+		return p, "masteryTarget must be 3~5"
+	case body.ReviewIntervals != nil && !learning.ValidReviewIntervals(body.ReviewIntervals):
+		return p, "reviewIntervals must be 1~6 increasing positive day counts"
+	case body.ReviewMinutes != nil && !learning.ValidReviewMinutes(*body.ReviewMinutes):
+		return p, "reviewMinutes must be 0~30"
+	case p.ExampleLanguage == nil && p.DailyMinutes == nil && p.MasteryTarget == nil && p.ReviewIntervals == nil &&
+		p.ReviewMinutes == nil && p.ReviewGrader == nil:
+		return p, "at least one setting is required"
+	}
+	return p, ""
+}
+
+// PutSettings handles PUT /v1/me/settings (partial: only the given fields change).
+// Affects lectures/answers generated afterwards; existing lectures are not regenerated.
 func (h *LearnHandler) PutSettings(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -53,26 +92,12 @@ func (h *LearnHandler) PutSettings(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, err.Error())
 		return
 	}
-	lang, daily := "", 0
-	if body.ExampleLanguage != nil {
-		lang = strings.ToLower(strings.TrimSpace(*body.ExampleLanguage))
-		if !learning.IsValidExampleLanguage(lang) {
-			writeError(w, r, http.StatusBadRequest, ErrorBadRequest, "exampleLanguage must be one of "+strings.Join(learning.ExampleLanguageIDs, "|"))
-			return
-		}
-	}
-	if body.DailyMinutes != nil {
-		if !dailyMinuteOptions[*body.DailyMinutes] {
-			writeError(w, r, http.StatusBadRequest, ErrorBadRequest, "dailyMinutes must be 15|30|45|60")
-			return
-		}
-		daily = *body.DailyMinutes
-	}
-	if lang == "" && daily == 0 {
-		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, "exampleLanguage or dailyMinutes is required")
+	patch, msg := settingsPatch(body)
+	if msg != "" {
+		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, msg)
 		return
 	}
-	st, err := h.Store.SaveLearningSettings(r.Context(), userID, lang, daily)
+	st, err := h.Store.UpdateLearningSettings(r.Context(), userID, patch)
 	if err != nil {
 		writeServiceError(w, r, "save settings", err)
 		return

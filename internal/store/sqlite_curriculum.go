@@ -31,6 +31,9 @@ func (s *SQLiteStore) SyncCurriculum(ctx context.Context, seed *curriculum.Seed)
 		if err := applySeed(ctx, c, seed); err != nil {
 			return err
 		}
+		if err := markObjectiveChanges(ctx, c); err != nil {
+			return err
+		}
 		applied = true
 		return nil
 	})

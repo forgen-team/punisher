@@ -1,9 +1,9 @@
 
 import { Link } from "@/src/shared/lib/router";
 import { ChevronRight } from "lucide-react";
-import type { ConceptDetail, Lecture, LectureContent } from "@/src/shared/api/punisher";
+import type { ConceptDetail, ConceptMastery, Lecture, LectureContent } from "@/src/shared/api/punisher";
 import { LECTURE_TITLE_ID } from "./LectureTopBar";
-import { LectureReviewBadges, USER_STATE_LABELS, areaLabel } from "@/src/entities/punisher";
+import { LectureReviewBadges, MasteryDots, USER_STATE_LABELS, UncheckedObjectives, areaLabel } from "@/src/entities/punisher";
 
 function mapHref(conceptId: string): string {
   return `/map?concept=${encodeURIComponent(conceptId)}`;
@@ -14,6 +14,8 @@ interface LectureHeaderProps {
   lecture?: Pick<Lecture, "kind" | "status" | "flagged" | "flagReason" | "depth" | "promptVersion">;
   content: Pick<LectureContent, "title" | "estimatedMinutes" | "objectiveIds" | "newScope" | "prerequisitesReferenced">;
   concept?: ConceptDetail;
+  /** 목표별 숙달(레벨 점) */
+  mastery?: ConceptMastery;
   /** 제목 대체 문구 (스트리밍 시작 전) */
   fallbackTitle?: string;
 }
@@ -22,8 +24,9 @@ interface LectureHeaderProps {
  * 개념 이름(고정) → 제목(h1) + 메타 한 줄(영역 · 깊이 · 약 N분 · 내 상태) + 배지 최대 1개.
  * 학습 목표 · 새로 다루는 범위 · 이전에 배운 개념은 접힌 상태로 둬 본문이 첫 화면에 보이게 한다.
  */
-export function LectureHeader({ lecture, content, concept, fallbackTitle }: LectureHeaderProps) {
+export function LectureHeader({ lecture, content, concept, mastery, fallbackTitle }: LectureHeaderProps) {
   const objectiveText = new Map((concept?.objectives ?? []).map((o) => [o.id, o.text]));
+  const objectiveMastery = new Map((mastery?.objectives ?? []).map((o) => [o.objectiveId, o]));
   const prereqNames = new Map((concept?.prerequisites ?? []).map((p) => [p.id, p.name]));
   const meta = [
     concept ? areaLabel(concept.area) : "",
@@ -70,10 +73,17 @@ export function LectureHeader({ lecture, content, concept, fallbackTitle }: Lect
             {content.objectiveIds.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-fg-secondary">학습 목표</p>
+                <UncheckedObjectives count={mastery?.uncheckedCount} />
                 <ul className="mt-1 list-disc space-y-0.5 pl-5 text-fg">
-                  {content.objectiveIds.map((id) => (
-                    <li key={id}>{objectiveText.get(id) ?? id}</li>
-                  ))}
+                  {content.objectiveIds.map((id) => {
+                    const m = objectiveMastery.get(id);
+                    return (
+                      <li key={id}>
+                        {objectiveText.get(id) ?? id}
+                        {m && <MasteryDots level={m.level} lastGrader={m.lastGrader} className="ml-2 align-middle" />}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}

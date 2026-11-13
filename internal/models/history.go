@@ -63,7 +63,15 @@ type LearningSettings struct {
 	// ExampleLanguage is the language for code examples in generated lectures/answers.
 	ExampleLanguage string `json:"exampleLanguage"`
 	// DailyMinutes is the daily learning pace (15/30/45/60) used for the next-chapter prompt.
-	DailyMinutes int        `json:"dailyMinutes"`
+	DailyMinutes int `json:"dailyMinutes"`
+	// MasteryTarget: the level (3~5) that counts as mastered.
+	MasteryTarget int `json:"masteryTarget"`
+	// ReviewIntervals: the review ladder in days (box 1·2·3 …).
+	ReviewIntervals []int `json:"reviewIntervals"`
+	// ReviewMinutes: daily review time (0~30).
+	ReviewMinutes int `json:"reviewMinutes"`
+	// ReviewGrader: default grader of reviews (self | llm).
+	ReviewGrader string     `json:"reviewGrader"`
 	UpdatedAt    *time.Time `json:"updatedAt,omitempty"`
 }
 

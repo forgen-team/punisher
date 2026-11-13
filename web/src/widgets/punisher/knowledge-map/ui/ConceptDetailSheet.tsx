@@ -4,10 +4,13 @@ import { useEffect, useId, useState } from "react";
 import { Check, Circle, Lock, X } from "lucide-react";
 import { BottomSheet, Button, ErrorState, IconButton, List, ListRow, ListSkeleton, Section } from "@/src/shared/ui/kit";
 import {
+  MasteryDots,
   USER_STATE_LABELS,
+  UncheckedObjectives,
   areaLabel,
   useConceptDetail,
   useMarkKnown,
+  useMastery,
   useNotes,
 } from "@/src/entities/punisher";
 import { ResolutionChoices, lectureHref, useLaunchInstant } from "@/src/features/punisher/instant-start";
@@ -73,6 +76,7 @@ interface ConceptDetailSheetProps {
 export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect, variant = "sheet" }: ConceptDetailSheetProps) {
   const titleId = useId();
   const detail = useConceptDetail(conceptId ?? undefined);
+  const mastery = useMastery(conceptId ?? undefined);
   const known = useMarkKnown();
   const { launch, isPending, error } = useLaunchInstant();
   const [result, setResult] = useState<InstantResponse | null>(null);
@@ -144,9 +148,11 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
           )}
           {c.summary && <p className="text-sm text-fg-secondary">{c.summary}</p>}
           <Section title="학습 목표" headingLevel={3}>
+            <UncheckedObjectives count={mastery.data?.uncheckedCount} />
             <ul role="list" className="flex flex-col gap-1.5 text-sm">
               {c.objectives.map((o) => {
                 const done = o.userState === "completed" || o.userState === "known";
+                const m = mastery.data?.objectives.find((x) => x.objectiveId === o.id);
                 return (
                   <li key={o.id} className="flex items-start gap-2">
                     {done ? (
@@ -154,10 +160,11 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
                     ) : (
                       <Circle className="mt-0.5 size-4 shrink-0 text-fg-muted" aria-hidden="true" />
                     )}
-                    <span className="text-fg">
+                    <span className="min-w-0 flex-1 text-fg">
                       <span className="sr-only">{done ? "완료: " : "미완료: "}</span>
                       {o.text} <span className="text-xs text-fg-muted">(깊이 {o.depth})</span>
                     </span>
+                    {m && <MasteryDots level={m.level} lastGrader={m.lastGrader} className="mt-1" />}
                   </li>
                 );
               })}

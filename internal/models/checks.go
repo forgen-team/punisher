@@ -1,0 +1,131 @@
+package models
+
+import (
+	"encoding/json"
+	"time"
+)
+
+// ObjectiveMastery is one objective's mastery as shown to the user (GET /v1/mastery).
+type ObjectiveMastery struct {
+	ObjectiveID string `json:"objectiveId"`
+	ConceptID   string `json:"conceptId"`
+	Text        string `json:"text"`
+	Depth       int    `json:"depth"`
+	Ordinal     int    `json:"ordinal"`
+	// Level: 0 미확인 · 1 들어봄 · 2 따라감 · 3 혼자 답함 · 4 기억함 · 5 설명 가능.
+	Level         int        `json:"level"`
+	Box           int        `json:"box"`
+	GradStep      int        `json:"gradStep"`
+	Best          string     `json:"best"`
+	IntegrativeOK bool       `json:"integrativeOk"`
+	Lapses        int        `json:"lapses"`
+	NextReviewAt  *time.Time `json:"nextReviewAt"`
+	Stale         bool       `json:"stale"`
+	Queued        bool       `json:"queued"`
+	// LastGrader: who graded the last evidence (llm | self | llm_regrade; "" = none).
+	LastGrader string     `json:"lastGrader"`
+	UpdatedAt  *time.Time `json:"updatedAt"`
+}
+
+// ConceptMastery is the payload of GET /v1/mastery?conceptId=.
+type ConceptMastery struct {
+	ConceptID string `json:"conceptId"`
+	// Level: the minimum level of the active objectives.
+	Level         int  `json:"level"`
+	Mastered      bool `json:"mastered"`
+	MasteryTarget int  `json:"masteryTarget"`
+	// UncheckedCount: active objectives without any evidence ("새 목표 n개 미확인").
+	UncheckedCount int                `json:"uncheckedCount"`
+	Objectives     []ObjectiveMastery `json:"objectives"`
+}
+
+// CheckSession is a '확인하기' (or P2 review) session.
+type CheckSession struct {
+	ID         string          `json:"id"`
+	Kind       string          `json:"kind"`
+	Grader     string          `json:"grader"`
+	ConceptID  string          `json:"conceptId"`
+	LectureID  string          `json:"lectureId"`
+	SessionKey string          `json:"-"`
+	ItemIDs    []string        `json:"itemIds"`
+	Cursor     int             `json:"cursor"`
+	Status     string          `json:"status"`
+	Result     json.RawMessage `json:"result"`
+	Error      string          `json:"error,omitempty"`
+	CreatedAt  time.Time       `json:"createdAt"`
+	UpdatedAt  time.Time       `json:"updatedAt"`
+	FinishedAt *time.Time      `json:"finishedAt,omitempty"`
+}
+
+// CheckGrade is the evidence of one judgement (check_turns.grade, without the restore snapshot).
+type CheckGrade struct {
+	Met           []string `json:"met"`
+	Missing       []string `json:"missing"`
+	Quote         string   `json:"quote"`
+	Misconception string   `json:"misconception"`
+	Confidence    float64  `json:"confidence"`
+	// Accepted / Conflict: dispute turns only.
+	Accepted *bool `json:"accepted,omitempty"`
+	Conflict bool  `json:"conflict,omitempty"`
+}
+
+// CheckTurn is one tutor or learner turn.
+type CheckTurn struct {
+	ID         string      `json:"id"`
+	ItemID     string      `json:"itemId"`
+	Seq        int         `json:"seq"`
+	Role       string      `json:"role"`
+	Move       string      `json:"move"`
+	Text       string      `json:"text"`
+	Status     string      `json:"status"`
+	Verdict    string      `json:"verdict,omitempty"`
+	Outcome    string      `json:"outcome,omitempty"`
+	Aided      bool        `json:"aided"`
+	Grader     string      `json:"grader,omitempty"`
+	ReusedItem bool        `json:"reusedItem"`
+	Grade      *CheckGrade `json:"grade,omitempty"`
+	Model      string      `json:"model,omitempty"`
+	Error      string      `json:"error,omitempty"`
+	CreatedAt  time.Time   `json:"createdAt"`
+	// GradeRaw is the stored grade (with prev/appliedAt) for the service; never sent.
+	GradeRaw json.RawMessage `json:"-"`
+}
+
+// CheckItemView is an item of a session as the learner sees it. Answer and
+// Anchor (the model answer and where to re-read) appear once the item is done,
+// or after the learner answered in a self-graded session.
+type CheckItemView struct {
+	ID          string          `json:"id"`
+	ObjectiveID string          `json:"objectiveId"`
+	Format      string          `json:"format"`
+	Prompt      string          `json:"prompt"`
+	Material    json.RawMessage `json:"material"`
+	Done        bool            `json:"done"`
+	Outcome     string          `json:"outcome,omitempty"`
+	Answer      string          `json:"answer,omitempty"`
+	Must        []string        `json:"must,omitempty"`
+	Anchor      string          `json:"anchor,omitempty"`
+}
+
+// CheckCurrent is what the learner can do now on the current item.
+type CheckCurrent struct {
+	ItemID string `json:"itemId"`
+	// Answers: learner answers on this item so far (max 3).
+	Answers      int  `json:"answers"`
+	CanAnswer    bool `json:"canAnswer"`
+	CanReveal    bool `json:"canReveal"`
+	CanSelfGrade bool `json:"canSelfGrade"`
+}
+
+// CheckDetail is the payload of GET /v1/checks/{id} (and the POST responses).
+type CheckDetail struct {
+	Session CheckSession    `json:"session"`
+	Items   []CheckItemView `json:"items"`
+	Turns   []CheckTurn     `json:"turns"`
+	// Current: nil when the session is not active.
+	Current *CheckCurrent `json:"current"`
+	// Pending: a tutor turn or the item generation is running (poll while true).
+	Pending bool `json:"pending"`
+	// Mastery: the lecture objectives' current mastery.
+	Mastery []ObjectiveMastery `json:"mastery"`
+}

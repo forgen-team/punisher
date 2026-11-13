@@ -21,6 +21,8 @@ const (
 	BlockQASystem       = "qa.system"
 	BlockExplainSystem  = "explain.system"
 	BlockResolveSystem  = "resolve.system"
+	BlockCheckItems     = "check.items"
+	BlockCheckTutor     = "check.tutor"
 )
 
 // Var is a {{name}} placeholder a block may use.
@@ -56,6 +58,7 @@ const (
 	StageQA      = "qa"
 	StageExplain = "explain"
 	StageResolve = "resolve"
+	StageCheck   = "check"
 )
 
 var (
@@ -104,6 +107,14 @@ var Blocks = []Block{
 		Purpose:   "자유 질문·학습 요청을 지식 지도의 개념 id로 연결합니다.",
 		AppliesTo: "내 자유 질문·학습 요청의 개념 연결", Advanced: true, Default: SystemResolve,
 		Warning: "분류 결과를 JSON으로 받습니다. 바꾸면 학습 요청이 엉뚱한 개념에 붙을 수 있어요."},
+	{ID: BlockCheckItems, Stage: StageCheck, StageTitle: "확인", Title: "확인 문항 만들기(시스템)",
+		Purpose:   "강의를 읽은 뒤 '확인하기'에서 풀 문항(목표마다 확인·복습 1개씩과 통합 1개)과 채점 기준을 만듭니다.",
+		AppliesTo: "내 '확인하기' 문항(바꾸면 내 전용 문항으로 새로 만들어요)", Vars: []Var{varConcept, varLanguage}, Default: SystemCheckItems,
+		Warning: "문항은 JSON(items·rubric)으로 받습니다. 키 이름과 '출력은 JSON 하나뿐' 문장은 남겨 두세요."},
+	{ID: BlockCheckTutor, Stage: StageCheck, StageTitle: "확인", Title: "확인 튜터(시스템)",
+		Purpose:   "'확인하기'에서 답 하나를 채점 기준으로 판정하고, 좁힌 질문·설명·반론·다음 문항 중 정해진 행동을 합니다.",
+		AppliesTo: "내 '확인하기' 채점과 되묻기", Vars: []Var{varConcept}, Default: SystemCheckTutor,
+		Warning: "판정은 JSON(verdict·confidence·tutor_move 등)으로 받습니다. 키 이름과 '출력은 JSON 하나뿐' 문장은 남겨 두세요."},
 }
 
 var blockIndex = func() map[string]Block {

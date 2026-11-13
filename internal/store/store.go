@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/wooo-jin/punisher/internal/chapter"
+	"github.com/wooo-jin/punisher/internal/check"
 	"github.com/wooo-jin/punisher/internal/curriculum"
 	"github.com/wooo-jin/punisher/internal/learning"
 	"github.com/wooo-jin/punisher/internal/models"
@@ -49,6 +50,7 @@ type Store interface {
 	DismissedConceptIDs(ctx context.Context, userID string) (map[string]bool, error)
 	GetLearningSettings(ctx context.Context, userID string) (models.LearningSettings, error)
 	SaveLearningSettings(ctx context.Context, userID, lang string, daily int) (models.LearningSettings, error)
+	UpdateLearningSettings(ctx context.Context, userID string, p LearningSettingsPatch) (models.LearningSettings, error)
 	ExampleLanguageFor(ctx context.Context, userID string) string
 
 	// lectures
@@ -71,6 +73,7 @@ type Store interface {
 	FinishJob(ctx context.Context, jobID string, o JobOutcome) error
 	RecordUsage(ctx context.Context, userID, kind, conceptID string, o JobOutcome) error
 	UsageSince(ctx context.Context, userID string, since time.Time) (lectures int, tokens int, err error)
+	UsageSinceChecks(ctx context.Context, userID string, since time.Time) (tokens int, err error)
 	FailStaleJobs(ctx context.Context, olderThan time.Duration) (int64, error)
 
 	// notes, goals, questions
@@ -137,4 +140,25 @@ type Store interface {
 	ChapterDraft(ctx context.Context, userID, draftID string) (d chapter.Draft, input json.RawMessage, applied bool, err error)
 	ApplyChapter(ctx context.Context, userID, draftID string, d chapter.Draft, input json.RawMessage) (string, error)
 	ListChapters(ctx context.Context, userID string) ([]ChapterInfo, error)
+
+	// mastery checks ("확인하기")
+	CreateCheckSession(ctx context.Context, n NewCheckSession) (models.CheckSession, bool, error)
+	GetCheckSession(ctx context.Context, userID, id string) (models.CheckSession, error)
+	ActivateCheckSession(ctx context.Context, userID, id string, itemIDs []string, ask TurnWrite) (models.CheckSession, error)
+	SetCheckSessionStatus(ctx context.Context, userID, id string, from []string, to, errMsg string) error
+	SweepStaleChecks(ctx context.Context, turnAge, prepareAge, abandonAge time.Duration) (int64, error)
+	CountPendingChecks(ctx context.Context, userID string) (int, error)
+	ListCheckTurns(ctx context.Context, userID, sessionID string) ([]models.CheckTurn, error)
+	StartCheckTurns(ctx context.Context, userID, sessionID string, learner *TurnWrite, tutor *TurnWrite, maxPending int, requireActive bool) (models.CheckTurn, error)
+	CompleteCheckTurn(ctx context.Context, t TurnWrite) error
+	FailCheckTurn(ctx context.Context, userID, turnID, model, errMsg string) error
+	ActiveCheckItems(ctx context.Context, userID string, key CheckItemKey) ([]CheckItem, error)
+	CheckItemsByID(ctx context.Context, userID string, ids []string) ([]CheckItem, error)
+	SaveCheckItems(ctx context.Context, key CheckItemKey, conceptID, jobID, model, promptVersion string, items []check.Item) ([]CheckItem, error)
+	StartCheckItemsJob(ctx context.Context, userID, conceptID string, key CheckItemKey, maxPending int) (models.GenerationJob, bool, error)
+	FinishCheckItem(ctx context.Context, f ItemFinish) (string, error)
+	ResolveDispute(ctx context.Context, d DisputeResolve) (bool, error)
+	ConceptMastery(ctx context.Context, userID, conceptID string) ([]models.ObjectiveMastery, error)
+	ObjectivesMastery(ctx context.Context, userID string, objectiveIDs []string) ([]models.ObjectiveMastery, error)
+	ReopenObjective(ctx context.Context, userID, objectiveID string) (string, error)
 }

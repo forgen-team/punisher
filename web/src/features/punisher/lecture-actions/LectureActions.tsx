@@ -1,5 +1,5 @@
 
-import { forwardRef } from "react";
+import { forwardRef, type ReactNode } from "react";
 import { Button, Section } from "@/src/shared/ui/kit";
 import { USER_STATE_LABELS, useCompleteLecture, useMarkKnown } from "@/src/entities/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
@@ -48,11 +48,15 @@ interface LectureWrapupProps {
   lectureId: string;
   actions: LectureActionsState;
   getAnchor: () => string;
+  /** '완료' 옆에 둘 동작(위젯이 '확인하기'를 넣는다) */
+  checkAction?: ReactNode;
+  /** checkAction 의 결과 한 줄 */
+  checkStatus?: ReactNode;
 }
 
-/** 본문 끝 마무리: 완료(주 버튼 1개) · 이미 앎 · 피드백. 상단 메뉴의 "피드백"이 여기로 스크롤한다. */
+/** 본문 끝 마무리: 완료(주 버튼 1개) · 확인하기 · 이미 앎 · 피드백. 상단 메뉴의 "피드백"이 여기로 스크롤한다. */
 export const LectureWrapup = forwardRef<HTMLElement, LectureWrapupProps>(function LectureWrapup(
-  { lectureId, actions, getAnchor },
+  { lectureId, actions, getAnchor, checkAction, checkStatus },
   ref,
 ) {
   const { complete, known, done, knownDone } = actions;
@@ -63,11 +67,13 @@ export const LectureWrapup = forwardRef<HTMLElement, LectureWrapupProps>(functio
           <Button onClick={actions.markComplete} disabled={done} loading={complete.isPending}>
             {done ? "완료함" : "완료"}
           </Button>
+          {checkAction}
           <Button variant="secondary" onClick={actions.markKnown} disabled={knownDone} loading={known.isPending}>
             {knownDone ? "이미 앎으로 표시됨" : "이미 앎"}
           </Button>
         </div>
         <LectureActionStatus actions={actions} live={false} />
+        {checkStatus}
         <FeedbackBar lectureId={lectureId} getAnchor={getAnchor} />
       </div>
     </Section>

@@ -174,14 +174,26 @@ func (s *SQLiteStore) RecordUsage(ctx context.Context, userID, kind, conceptID s
 	return err
 }
 
+// CheckUsageKinds are the mastery-check job kinds: counted by UsageSinceChecks
+// against their own daily limit, never by UsageSince (design §4.5).
+var CheckUsageKinds = []string{"check_items", "check_turn"}
+
 // UsageSince returns lecture-job count (library+instant, excluding skipped)
-// and total tokens across all kinds for a user since t.
+// and total tokens across all kinds except the check kinds for a user since t.
 func (s *SQLiteStore) UsageSince(ctx context.Context, userID string, since time.Time) (lectures int, tokens int, err error) {
 	err = s.c().row(ctx, `
 		SELECT COUNT(*) FILTER (WHERE kind IN ('library', 'instant') AND status <> 'skipped'),
 		       COALESCE(SUM(input_tokens + output_tokens), 0)
-		FROM generation_jobs WHERE user_id = $1 AND created_at >= $2`, userID, since).Scan(&lectures, &tokens)
+		FROM generation_jobs WHERE user_id = $1 AND created_at >= $2 AND kind NOT IN (SELECT value FROM json_each($3))`,
+		userID, since, CheckUsageKinds).Scan(&lectures, &tokens)
 	return lectures, tokens, err
+}
+
+// UsageSinceChecks returns the tokens of mastery checks (item sets and tutor turns) since t.
+func (s *SQLiteStore) UsageSinceChecks(ctx context.Context, userID string, since time.Time) (tokens int, err error) {
+	err = s.c().row(ctx, `SELECT COALESCE(SUM(input_tokens + output_tokens), 0) FROM generation_jobs
+		WHERE user_id = $1 AND created_at >= $2 AND kind IN (SELECT value FROM json_each($3))`, userID, since, CheckUsageKinds).Scan(&tokens)
+	return tokens, err
 }
 
 // FailStaleJobs marks jobs stuck in pending/running (e.g. after a restart) as

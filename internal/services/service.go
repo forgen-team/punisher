@@ -69,6 +69,10 @@ type Config struct {
 	// LibraryUsesUserPrompts applies the owner's prompt overrides to library
 	// lectures too (standalone: the single user is the library's only reader).
 	LibraryUsesUserPrompts bool
+	// Mastery checks (design §4.5).
+	CheckModel           string // grading ("" = LectureModel)
+	CheckRegradeModel    string // dispute regrade ("" = FastModel)
+	DailyCheckTokenLimit int    // check tokens per KST day (0 = unlimited)
 }
 
 // Service bundles dependencies.
@@ -177,6 +181,15 @@ const (
 	MsgClaudeMissing   = "Claude Code(claude 명령)를 찾을 수 없습니다. Claude Code를 설치한 뒤 터미널에서 `claude`를 한 번 실행해 로그인하고 다시 시도해 주세요."
 	MsgClaudeLoggedOut = "Claude Code에 로그인되어 있지 않습니다. 터미널에서 `claude`를 실행해 로그인(/login)한 뒤 다시 시도해 주세요."
 )
+
+// checkErrorText is the stored error of a failed check step (shown on the
+// check screen): the Korean local-CLI guidance for generation failures.
+func checkErrorText(err error) string {
+	if msg := DescribeLLMError(err); msg != "" {
+		return msg
+	}
+	return err.Error()
+}
 
 // DescribeLLMError returns a Korean, user-facing description of a generation
 // failure ("" when err is not a generation error).

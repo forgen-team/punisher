@@ -140,13 +140,7 @@ func (s *Service) checkPendingLimit(ctx context.Context, userID string) error {
 
 // inBackground runs a generation on the interactive lane, detached from the request.
 func (s *Service) inBackground(id string, run func(context.Context) error) {
-	go func() {
-		ctx, cancel := context.WithTimeout(llm.WithPriority(context.Background(), llm.PriorityInteractive), inquiryTimeout)
-		defer cancel()
-		if err := run(ctx); err != nil {
-			logf("inquiry %s: %v", id, err)
-		}
-	}()
+	runDetached("inquiry", id, inquiryTimeout, run)
 }
 
 // runInquiry generates, parses and validates (one rewrite with the problems fed

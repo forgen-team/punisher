@@ -2,7 +2,7 @@
 import { usePathname, useRouter, useSearchParams } from "@/src/shared/lib/router";
 import { Suspense, lazy, useCallback, useMemo, useState } from "react";
 import { BottomSheet, EmptyState, ErrorState, Skeleton } from "@/src/shared/ui/kit";
-import { useFrontier, useGoalPath, useGoals, useGraph } from "@/src/entities/punisher";
+import { useFrontier, useGoalPath, useGoals, useGraph, useMastery } from "@/src/entities/punisher";
 import { GoalsManager } from "@/src/features/punisher/goal-manage";
 import { KnownAreasSheet, KnownOnboardingPrompt, useKnownOnboardingPrompt } from "@/src/features/punisher/known-onboarding";
 import { describePunisherError } from "@/src/shared/api/punisher";
@@ -50,6 +50,9 @@ export function KnowledgeMapWidget() {
     [graph.data, requestId],
   );
   const selectedId = params.get("concept") ?? requestConceptId;
+  // 지도 전체의 숙달을 한 번에 주는 API 가 없어, 숙달 링은 상세를 연 개념에만 그린다.
+  const mastery = useMastery(selectedId ?? undefined);
+  const masteredId = mastery.data?.mastered ? mastery.data.conceptId : null;
   const frontier = useFrontier(10);
   const goals = useGoals();
   const goalPath = useGoalPath(goalId || undefined);
@@ -115,7 +118,7 @@ export function KnowledgeMapWidget() {
     if (nodes.length === 0) {
       return <EmptyState compact title="표시할 개념이 없습니다" description="다른 영역이나 목표를 선택해 보세요." />;
     }
-    return <MapCanvas nodes={nodes} edges={edges} highlightIds={pathIds} selectedId={selectedId} onSelect={onSelect} />;
+    return <MapCanvas nodes={nodes} edges={edges} highlightIds={pathIds} selectedId={selectedId} masteredId={masteredId} onSelect={onSelect} />;
   }
 
   return (

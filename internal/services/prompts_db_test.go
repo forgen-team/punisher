@@ -201,3 +201,23 @@ func TestStandaloneLibraryUsesOwnerPrompts(t *testing.T) {
 			lib.Prompts.Overridden(prompts.BlockTeacherSystem), lib.Owner, lib.promptVersion())
 	}
 }
+
+// TestStandaloneLibraryCheckItemsUseOwnerPrompts: the check.items cache key
+// follows the same rule as LibraryUsesUserPrompts — a library lecture's item
+// set is built with the owner's edited block (keyed to that user like
+// witems), and the default block keeps the shared key.
+func TestStandaloneLibraryCheckItemsUseOwnerPrompts(t *testing.T) {
+	s, user := dbService(t)
+	s.Cfg.LibraryUsesUserPrompts = true
+	ctx := context.Background()
+	if k := s.checkItemKey(ctx, user, "lib-lecture"); k.PromptHash != "" || k.CreatedFor != "" {
+		t.Fatalf("default block must keep the shared key: %+v", k)
+	}
+	if _, err := s.Store.SavePromptOverride(ctx, user, prompts.BlockCheckItems, "단독판 출제 원칙", "save"); err != nil {
+		t.Fatal(err)
+	}
+	k := s.checkItemKey(ctx, user, "lib-lecture")
+	if k.PromptHash == "" || k.CreatedFor != user || k.PromptHash != s.UserPrompts(ctx, user).Hash(prompts.BlockCheckItems) {
+		t.Fatalf("edited block must key the set to the owner: %+v", k)
+	}
+}

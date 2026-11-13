@@ -1,5 +1,9 @@
 import type {
+  CheckGrader,
+  CheckOutcome,
+  CheckVerdict,
   FeedbackKind,
+  MasteryLevel,
   GoalStatus,
   PunisherArea,
   QuestionStatus,
@@ -113,4 +117,46 @@ export const RESOLUTION_METHOD_LABELS: Record<string, string> = {
   llm: "AI 해석",
   proposed: "새 개념 제안",
   none: "해석 실패",
+};
+
+/** 숙달 화면 레벨(design §2.2) */
+export const MASTERY_LABELS: Record<MasteryLevel, string> = {
+  0: "미확인",
+  1: "들어봄",
+  2: "따라감",
+  3: "혼자 답함",
+  4: "기억함",
+  5: "설명 가능",
+};
+
+/** 레벨 점의 전체 개수(0 = 점 없음, 5 = 다섯 개 모두 채움). */
+export const MASTERY_MAX_LEVEL = 5;
+
+export function masteryLabel(level: number): string {
+  return MASTERY_LABELS[level as MasteryLevel] ?? String(level);
+}
+
+/** 답 하나의 판정 */
+export const VERDICT_LABELS: Record<CheckVerdict, string> = {
+  correct: "정답",
+  partial: "부분 정답",
+  incorrect: "오답",
+  revealed: "답 공개",
+  held: "판정 보류",
+};
+
+/** 문항 결과(문항이 끝날 때 하나로 정해짐) */
+export const OUTCOME_LABELS: Record<CheckOutcome, string> = {
+  "unaided_correct": "혼자 맞힘",
+  "unaided_partial": "일부 맞힘",
+  aided: "도움받아 답함",
+  failed: "놓침",
+  held: "판정 보류",
+};
+
+/** 마지막 근거의 채점 주체(레벨 점 옆) */
+export const GRADER_LABELS: Record<CheckGrader, string> = {
+  llm: "튜터",
+  self: "자기",
+  "llm_regrade": "재채점",
 };

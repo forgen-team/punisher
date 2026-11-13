@@ -8,6 +8,7 @@ import { HistoryWidget } from "@/src/widgets/punisher/history";
 import { LectureViewer } from "@/src/widgets/punisher/lecture-viewer";
 import { InstantStreamView } from "@/src/widgets/punisher/instant-stream";
 import { InquiryView } from "@/src/widgets/punisher/inquiry-view";
+import { CheckView } from "@/src/widgets/punisher/check-view";
 
 export function TodayPage() {
   return <TodayWidget />;
@@ -37,6 +38,11 @@ export function LecturePage() {
 export function InquiryPage() {
   const { id = "" } = useParams();
   return <InquiryView key={id} inquiryId={id} />;
+}
+
+export function CheckPage() {
+  const { id = "" } = useParams();
+  return <CheckView key={id} checkId={id} />;
 }
 
 export function InstantPage() {

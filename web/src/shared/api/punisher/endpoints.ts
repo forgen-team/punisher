@@ -30,6 +30,7 @@ import type { ExampleLanguage, LearningSettingsResponse, LectureLinks, Selection
 import type { PromptHistoryEntry, PromptPreview, PromptSaveResponse, PromptsResponse } from "./promptTypes";
 import type { ChapterDraftResponse, ChapterSuggestionsResponse } from "./chapterTypes";
 import type { CompletedArea, CompletedItem, Inquiry, InquiryFollowup } from "./inquiryTypes";
+import type { CheckDetail, ConceptMastery } from "./checkTypes";
 
 const enc = encodeURIComponent;
 
@@ -181,6 +182,25 @@ export const punisherApi = {
     }),
   regenerateLecture: (id: string) =>
     punisherFetch<InstantResponse>(`/lectures/${enc(id)}/regenerate`, { method: "POST" }),
+
+  // 숙달 확인 ('확인하기') — 모든 동작이 CheckDetail 을 돌려준다(pending 이면 202).
+  startCheck: (lectureId: string) =>
+    punisherFetch<CheckDetail>("/checks", { method: "POST", json: { kind: "check", lectureId } }),
+  getCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}`),
+  answerCheck: (id: string, text: string) =>
+    punisherFetch<CheckDetail>(`/checks/${enc(id)}/answers`, { method: "POST", json: { text } }),
+  revealCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/reveal`, { method: "POST" }),
+  disputeCheck: (id: string, turnId: string, reason?: string) =>
+    punisherFetch<CheckDetail>(`/checks/${enc(id)}/turns/${enc(turnId)}/dispute`, {
+      method: "POST",
+      json: reason ? { reason } : {},
+    }),
+  retryCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/retry`, { method: "POST" }),
+  abandonCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/abandon`, { method: "POST" }),
+  getMastery: (conceptId: string) => punisherFetch<ConceptMastery>(`/mastery${query({ conceptId })}`),
+  /** 목표 id 에 '#' 가 들어 있어 경로에 넣을 때 인코딩한다. */
+  relearnObjective: (objectiveId: string) =>
+    punisherFetch<ConceptMastery>(`/objectives/${enc(objectiveId)}/relearn`, { method: "POST" }),
 
   // Notes
   listNotes: (filter: { lectureId?: string; conceptId?: string } = {}) =>

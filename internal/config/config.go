@@ -37,10 +37,19 @@ type Config struct {
 	LectureMaxTokens  int
 	SchedulerEnabled  bool
 	SchedulerInterval time.Duration
+	// Mastery checks: grading model (default LectureModel), the dispute regrade
+	// model (default: the one grading does not use) and their own daily token
+	// limit (0 = unlimited; checks are excluded from DailyTokenLimit).
+	CheckModel           string
+	CheckRegradeModel    string
+	DailyCheckTokenLimit int
 }
 
 // Load reads PUNISHER_* env vars over the defaults.
 func Load() Config {
+	lectureModel := readEnv("PUNISHER_LECTURE_MODEL", "sonnet")
+	fastModel := readEnv("PUNISHER_FAST_MODEL", "haiku")
+	checkModel := readEnv("PUNISHER_CHECK_MODEL", lectureModel)
 	return Config{
 		Port:          readInt("PUNISHER_PORT", 0),
 		DataDir:       readEnv("PUNISHER_DATA_DIR", DefaultDataDir()),
@@ -48,8 +57,8 @@ func Load() Config {
 		OpenBrowser:   readEnv("PUNISHER_OPEN_BROWSER", "true") != "false",
 
 		ClaudeBin:         strings.TrimSpace(os.Getenv("PUNISHER_CLAUDE_BIN")),
-		LectureModel:      readEnv("PUNISHER_LECTURE_MODEL", "sonnet"),
-		FastModel:         readEnv("PUNISHER_FAST_MODEL", "haiku"),
+		LectureModel:      lectureModel,
+		FastModel:         fastModel,
 		Concurrency:       readInt("PUNISHER_CONCURRENCY", 2),
 		DailyLectureLimit: readInt("PUNISHER_DAILY_LECTURE_LIMIT", 0),
 		DailyTokenLimit:   readInt("PUNISHER_DAILY_TOKEN_LIMIT", 0),
@@ -59,7 +68,19 @@ func Load() Config {
 		LectureMaxTokens:  readInt("PUNISHER_LECTURE_MAX_TOKENS", 16000),
 		SchedulerEnabled:  readEnv("PUNISHER_SCHEDULER_ENABLED", "true") != "false",
 		SchedulerInterval: readDuration("PUNISHER_SCHEDULER_INTERVAL", 60*time.Minute),
+
+		CheckModel:           checkModel,
+		CheckRegradeModel:    readEnv("PUNISHER_CHECK_REGRADE_MODEL", otherModel(checkModel, lectureModel, fastModel)),
+		DailyCheckTokenLimit: readInt("PUNISHER_DAILY_CHECK_TOKEN_LIMIT", 0),
 	}
+}
+
+// otherModel is the regrade default: of the lecture and fast models, the one grading does not use.
+func otherModel(grading, lecture, fast string) string {
+	if grading == lecture {
+		return fast
+	}
+	return lecture
 }
 
 // DefaultDataDir is ~/Library/Application Support/Punisher on macOS and

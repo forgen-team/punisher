@@ -5,7 +5,8 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useAtom } from "jotai";
 import { ArrowLeft } from "lucide-react";
 import { Button, EmptyState, ErrorState, ListSkeleton, type MenuItem } from "@/src/shared/ui/kit";
-import { lectureBookmarkAtom, useConceptDetail, useLecture, useLectureLinks, usePrompts } from "@/src/entities/punisher";
+import { lectureBookmarkAtom, useConceptDetail, useLecture, useLectureLinks, useMastery, usePrompts } from "@/src/entities/punisher";
+import { CheckStartButton, CheckStartError, useLaunchCheck } from "@/src/features/punisher/check-start";
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import { useLectureProgress } from "@/src/features/punisher/lecture-progress";
 import { SelectionExplain } from "@/src/features/punisher/reading-assist";
@@ -33,6 +34,8 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
   const lecture = lectureQuery.data;
   const content = lecture?.content;
   const concept = useConceptDetail(lecture?.conceptId);
+  const mastery = useMastery(lecture?.conceptId);
+  const check = useLaunchCheck(lectureId);
   const [bookmark, setBookmark] = useAtom(lectureBookmarkAtom);
   const { getAnchor, saveNow } = useLectureProgress(lectureId, lecture?.progress, Boolean(content));
   const actions = useLectureActions(lectureId, lecture?.conceptId ?? "", Boolean(lecture?.progress?.completedAt));
@@ -93,6 +96,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
 
   const menuItems: MenuItem[] = [
     { key: "complete", label: actions.done ? "완료함" : "완료로 표시", disabled: actions.done || actions.complete.isPending, onSelect: actions.markComplete },
+    { key: "check", label: "확인하기", disabled: check.isPending, onSelect: check.launch },
     { key: "known", label: actions.knownDone ? "이미 앎으로 표시됨" : "이미 앎", disabled: actions.knownDone || actions.known.isPending, onSelect: actions.markKnown },
     {
       key: "feedback",
@@ -169,8 +173,11 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
             </Button>
           </div>
         )}
-        <LectureHeader lecture={lecture} content={content} concept={concept.data} />
+        <LectureHeader lecture={lecture} content={content} concept={concept.data} mastery={mastery.data} />
         <LectureActionStatus actions={actions} />
+        <div aria-live="polite" className="empty:hidden">
+          <CheckStartError check={check} />
+        </div>
         <div ref={bodyRef} className="mt-6">
           <LectureBody content={content} onBeforeDeeper={onBeforeDeeper} />
         </div>
@@ -179,7 +186,14 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
         <DeeperLecturesSection ref={deeperRef} kind="deeper" lectures={deeperLectures} />
         <DeeperLecturesSection kind="regenerated" lectures={regenerated} />
         <div className="mt-10">
-          <LectureWrapup ref={wrapupRef} lectureId={lectureId} actions={actions} getAnchor={getAnchor} />
+          <LectureWrapup
+            ref={wrapupRef}
+            lectureId={lectureId}
+            actions={actions}
+            getAnchor={getAnchor}
+            checkAction={<CheckStartButton check={check} />}
+            checkStatus={<CheckStartError check={check} />}
+          />
         </div>
       </LectureLayout>
       <TocSheet open={tocOpen} onClose={() => setTocOpen(false)} sections={content.sections} totalMinutes={totalMinutes} />

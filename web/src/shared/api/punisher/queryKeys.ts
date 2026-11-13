@@ -28,6 +28,8 @@ export const punisherKeys = {
   inquiry: (id: string) => ["punisher", "inquiry", id] as const,
   completed: (filter: { area?: string; q?: string }) => ["punisher", "completed", filter.area ?? "", filter.q ?? ""] as const,
   completedAreas: (q?: string) => ["punisher", "completed-areas", q ?? ""] as const,
+  check: (id: string) => ["punisher", "check", id] as const,
+  mastery: (conceptId: string) => ["punisher", "mastery", conceptId] as const,
 };
 
 /** Keys whose data depends on the user's learning state. */

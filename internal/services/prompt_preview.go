@@ -87,6 +87,8 @@ func (s *Service) PreviewPrompt(ctx context.Context, userID, blockID string, dra
 			cands = append(cands, prompts.ResolveCandidate{ID: r.ID, Name: r.Name})
 		}
 		out.System, out.User = set.Text(prompts.BlockResolveSystem, nil), prompts.Resolve(previewQuery, cands, curriculum.Areas)
+	case prompts.StageCheck:
+		out.System, out.User = set.Text(blockID, vars), previewCheck(blockID, pc)
 	}
 	if out.Version == "" {
 		out.Version = set.Version(blockID)
@@ -117,4 +119,20 @@ func (s *Service) previewTarget(ctx context.Context, userID string) (Target, err
 		return Target{}, err
 	}
 	return s.targetForPlan(ctx, userID, concept, plan, "")
+}
+
+// previewCheck is the user prompt of a check step with example content.
+func previewCheck(blockID string, pc prompts.LectureContext) string {
+	if blockID == prompts.BlockCheckTutor {
+		return prompts.CheckTutor(prompts.CheckTutorContext{ConceptName: pc.ConceptName, Objective: "(예시 목표)",
+			Prompt: "(예시 문항) 입력이 두 배가 되면 비용은 어떻게 늘어나나요?", Must: []string{"(예시 기준)"},
+			Answer: "(모범답이 여기에 들어갑니다)", LearnerAnswer: "(학습자 답이 여기에 들어갑니다)",
+			Allowed: []string{"narrow", "next"}})
+	}
+	objectives := make([]prompts.CheckObjective, 0, len(pc.Objectives))
+	for _, o := range pc.Objectives {
+		objectives = append(objectives, prompts.CheckObjective{ID: o.ID, Text: o.Text})
+	}
+	return prompts.CheckItems(prompts.CheckItemsContext{ConceptName: pc.ConceptName, LectureTitle: "(예시 강의 제목)",
+		Objectives: objectives, Anchors: []string{"s1", "s2"}, Sections: []string{"[s1] (강의 본문이 여기에 들어갑니다)"}})
 }

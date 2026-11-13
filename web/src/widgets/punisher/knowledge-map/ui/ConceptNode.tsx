@@ -22,6 +22,8 @@ export interface ConceptNodeData extends Record<string, unknown> {
   proposed: boolean;
   /** 이 개념에 대한 내 질문('이 질문에 답하기' 해설) 수 */
   inquiries: number;
+  /** 숙달한 개념 — 상태 색은 그대로 두고 테두리 링만 더한다 */
+  mastered: boolean;
   dimmed: boolean;
   highlighted: boolean;
   selected: boolean;
@@ -40,7 +42,7 @@ function ConceptNodeImpl({ id, data }: NodeProps<ConceptFlowNode>) {
         type="button"
         onClick={() => data.onSelect(id)}
         aria-pressed={data.selected}
-        aria-label={`${data.name}, ${MAP_STATE_LABELS[data.displayState]}${recommended ? `, 열리는 개념 ${data.unlocks}개` : ""}${data.requested > 0 ? ", 학습 요청됨" : ""}${data.proposed ? ", 제안 개념" : ""}${data.inquiries > 0 ? `, 내 질문 ${data.inquiries}개` : ""}`}
+        aria-label={`${data.name}, ${MAP_STATE_LABELS[data.displayState]}${recommended ? `, 열리는 개념 ${data.unlocks}개` : ""}${data.requested > 0 ? ", 학습 요청됨" : ""}${data.proposed ? ", 제안 개념" : ""}${data.inquiries > 0 ? `, 내 질문 ${data.inquiries}개` : ""}${data.mastered ? ", 숙달" : ""}`}
         style={{
           width: nodeWidth(data.depth),
           height: NODE_HEIGHT,
@@ -54,6 +56,7 @@ function ConceptNodeImpl({ id, data }: NodeProps<ConceptFlowNode>) {
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
           recommended || data.highlighted ? "border-[3px] shadow-sm" : "border-2",
           data.selected && "ring-2 ring-focus ring-offset-2 ring-offset-canvas",
+          data.mastered && "outline outline-2 outline-offset-[5px] outline-success",
         )}
       >
         <span className="flex w-full items-center gap-1 font-semibold">
