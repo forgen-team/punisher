@@ -27,6 +27,7 @@ import {
   resultRows,
   retryableTurnId,
   showComposer,
+  topBarTitle,
 } from "./lib/checkView";
 import { useFollowScroll } from "./lib/useFollowScroll";
 import { CheckComposer, CheckItemCard, CheckResult, LectureCompleteAction, PlacementResult, ReviewMoreAction, chapterMapHref } from "./ui";
@@ -43,7 +44,8 @@ function StatusLine({ children }: { children: ReactNode }) {
 }
 
 /**
- * 숙달 확인·복습 화면 — 강의와 같은 상단 바(← 들어온 곳 · 제목 · 문항 n/N 또는 복습 n/N · ⋯ 포기)와 가독 폭 본문.
+ * 숙달 확인·복습 화면 — 강의와 같은 상단 바(← 들어온 곳 · '제목 · 문항 n/N' · ⋯ 포기)와 가독 폭 본문.
+ * 끝난 세션은 결과 요약을 맨 위(상태 줄 아래)에 두고, 문항 기록은 그 아래에 둔다.
  * 문항마다 물음·자료 → 문답 → 판정(자기 채점은 답 → 모범답·기준 → 맞음/부분/틀림), 하단 고정 입력창.
  * 채점·문항 생성 중(pending)에만 폴링한다. 복습은 여러 강의의 문항이라 강의 링크를 두지 않는다.
  */
@@ -81,8 +83,7 @@ export function CheckView({ checkId }: { checkId: string }) {
   const chapterId = d?.placement?.chapterId ?? "";
   const chapterHref = chapterId ? chapterMapHref(chapterId) : undefined;
   const backHref = lectureId ? lectureHref(lectureId) : chapterHref;
-  const progress = d ? progressLabel(d) : "";
-  const barTitle = review ? progress || title : [title, progress].filter(Boolean).join(" · ");
+  const barTitle = topBarTitle(title, d ? progressLabel(d) : "");
   const open = status === "active" || status === "preparing";
   const menuItems: MenuItem[] = [
     {
@@ -158,6 +159,15 @@ export function CheckView({ checkId }: { checkId: string }) {
     return (
       <>
         {statusLabel && <StatusLine>{statusLabel}</StatusLine>}
+        {detail.session.status === "finished" && detail.placement && <PlacementResult ref={resultRef} placement={detail.placement} />}
+        {detail.session.status === "finished" && !isRecorded(detail) && (
+          <CheckResult ref={resultRef} checkId={checkId} rows={rows} acknowledgedTurnIds={acknowledged} anchorLink={anchorLink}>
+            {review && <ReviewMoreAction remaining={summary.data?.due ?? 0} />}
+            {!review && lectureId && (
+              <LectureCompleteAction lectureId={lectureId} lectureCompleted={Boolean(lecture.data?.progress?.completedAt)} />
+            )}
+          </CheckResult>
+        )}
         <div className="flex flex-col gap-6 pt-4" aria-busy={detail.pending}>
           {items.map((item, index) => {
             const turns = itemTurns(detail.turns, item.id);
@@ -188,15 +198,6 @@ export function CheckView({ checkId }: { checkId: string }) {
           <p role="alert" className="mt-4 text-sm text-danger">
             {describeCheckError(actionError)}
           </p>
-        )}
-        {detail.session.status === "finished" && detail.placement && <PlacementResult ref={resultRef} placement={detail.placement} />}
-        {detail.session.status === "finished" && !isRecorded(detail) && (
-          <CheckResult ref={resultRef} checkId={checkId} rows={rows} acknowledgedTurnIds={acknowledged} anchorLink={anchorLink}>
-            {review && <ReviewMoreAction remaining={summary.data?.due ?? 0} />}
-            {!review && lectureId && (
-              <LectureCompleteAction lectureId={lectureId} lectureCompleted={Boolean(lecture.data?.progress?.completedAt)} />
-            )}
-          </CheckResult>
         )}
         {showComposer(detail) && (
           <div className="contents" onPointerDownCapture={markAct} onKeyDownCapture={markAct}>

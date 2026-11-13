@@ -40,6 +40,16 @@ func FinalVerdict(verdict string, confidence float64) string {
 	return verdict
 }
 
+// GradeVerdict is FinalVerdict that also holds a correct grade without a quote
+// from the answer (validated quotes only): "correct" needs its evidence.
+func GradeVerdict(verdict, quote string, confidence float64) string {
+	v := FinalVerdict(verdict, confidence)
+	if v == "correct" && strings.TrimSpace(quote) == "" {
+		return "held"
+	}
+	return v
+}
+
 // ValidateTutorReply checks a reply against the stage and returns it cleaned
 // (praise stripped, a quote not found in the answer dropped) with the problems
 // to feed back on a rewrite. A held grade ends the item whatever move was written.
@@ -60,7 +70,7 @@ func ValidateTutorReply(r TutorReply, st Stage, rubricAnswer, learnerAnswer stri
 	}
 	r.TutorText = StripPraise(r.TutorText)
 	allowed := st.AllowedMoves()
-	held := FinalVerdict(r.Verdict, r.Confidence) == "held"
+	held := GradeVerdict(r.Verdict, r.Quote, r.Confidence) == "held"
 	switch {
 	case !contains(allowed, r.TutorMove) && !held:
 		problems = append(problems, fmt.Sprintf("tutor_move %q 는 허용되지 않습니다(허용: %s)", r.TutorMove, strings.Join(allowed, " | ")))
@@ -109,5 +119,5 @@ func ValidateRegrade(r RegradeReply, learnerAnswer string) (RegradeReply, []stri
 
 // DisputeAccepted: the second model graded the answer correct with confidence.
 func DisputeAccepted(r RegradeReply) bool {
-	return FinalVerdict(r.Verdict, r.Confidence) == "correct"
+	return GradeVerdict(r.Verdict, r.Quote, r.Confidence) == "correct"
 }

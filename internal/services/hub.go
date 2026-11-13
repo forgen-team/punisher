@@ -65,6 +65,7 @@ func (h *Hub) Start(jobID, target string, fn func(emit func(Event))) (string, bo
 
 	go func() {
 		defer h.finish(jobID)
+		defer recoverPanic("hub job", jobID, nil) // the job row is ended by the stale-job sweep
 		fn(func(e Event) { h.publish(jobID, e) })
 	}()
 	return jobID, true

@@ -11,6 +11,9 @@ import {
 } from "@/src/entities/punisher";
 import type { AreaCoverage, FrontierItem, MapRequest } from "@/src/shared/api/punisher";
 
+/** 커버리지 숫자의 뜻(툴팁) */
+const COVERAGE_HINT = "완료 + 이미 앎 / 전체";
+
 /** 범례 시트 — 색 + 테두리 모양 + 아이콘 + 텍스트(색만으로 구분하지 않음). */
 export function MapLegendSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
@@ -51,7 +54,7 @@ export function areaSignals(c: AreaCoverage): string {
 export function CoverageList({ coverage }: { coverage: AreaCoverage[] }) {
   if (coverage.length === 0) { return null; }
   return (
-    <Section title="영역별 커버리지" description="완료 + 이미 앎 / 전체 · 진행 중 · 학습 요청">
+    <Section title="영역별 커버리지">
       <ul role="list" className="flex flex-col gap-2.5">
         {coverage.map((c) => {
           const done = c.completed + c.known;
@@ -60,7 +63,7 @@ export function CoverageList({ coverage }: { coverage: AreaCoverage[] }) {
             <li key={c.area} className="text-xs">
               <div className="flex justify-between text-fg-secondary">
                 <span>{areaLabel(c.area)}</span>
-                <span>
+                <span title={COVERAGE_HINT}>
                   {done}/{c.total} ({percent}%)
                 </span>
               </div>
@@ -86,9 +89,9 @@ export function CoverageList({ coverage }: { coverage: AreaCoverage[] }) {
 
 export function FrontierList({ items, onSelect }: { items: FrontierItem[]; onSelect: (id: string) => void }) {
   return (
-    <Section title="다음에 공부하면 좋은 것" description="선행 개념을 모두 마친, 아직 배우지 않은 개념">
+    <Section title="다음에 공부하면 좋은 것">
       {items.length === 0 ? (
-        <EmptyState compact title="지금 열려 있는 다음 개념이 없습니다" description="아는 개념을 표시하거나 강의를 완료하면 열립니다." />
+        <EmptyState compact title="지금 열려 있는 다음 개념이 없어요" description="아는 개념을 표시하거나 강의를 완료하면 열려요." />
       ) : (
         <List>
           {items.map((f) => (

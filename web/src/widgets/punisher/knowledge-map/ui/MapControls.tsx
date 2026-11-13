@@ -42,7 +42,7 @@ export function MapControls({
           aria-label="영역"
           value={area}
           disabled={Boolean(goalId)}
-          title={goalId ? "목표 경로를 보는 중에는 영역 대신 경로가 표시됩니다" : undefined}
+          title={goalId ? "목표 경로를 보는 중에는 영역 대신 경로가 보여요" : undefined}
           onChange={(event) => onAreaChange(event.target.value)}
         >
           <option value="all">전체 영역</option>
@@ -67,15 +67,18 @@ export function MapControls({
         </Select>
       </div>
       <div className="flex min-w-0 items-center gap-2 fold:flex-1">
+        {/* 목표가 없으면 고를 것이 '없음' 하나뿐이라 숨긴다(목표 관리는 ⋯ 메뉴). */}
         <div className="min-w-0 flex-1">
-          <Select aria-label="목표 경로" value={goalId} onChange={(event) => onGoalChange(event.target.value)}>
-            <option value="">목표 경로 없음</option>
-            {goals.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.title} ({GOAL_STATUS_LABELS[g.status]})
-              </option>
-            ))}
-          </Select>
+          {goals.length > 0 && (
+            <Select aria-label="목표 경로" value={goalId} onChange={(event) => onGoalChange(event.target.value)}>
+              <option value="">목표 경로 없음</option>
+              {goals.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.title} ({GOAL_STATUS_LABELS[g.status]})
+                </option>
+              ))}
+            </Select>
+          )}
         </div>
         <IconButton aria-label="범례" onClick={onOpenLegend}>
           <Info aria-hidden="true" />

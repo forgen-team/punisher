@@ -33,13 +33,16 @@ type TurnWrite struct {
 
 // GradeRecord is check_turns.grade: the evidence of a judgement plus, on the
 // item's last judgement, the mastery before it was applied (Prev) and the
-// mastery's updated_at right after (AppliedAt) — what a dispute restores and
-// how it detects later evidence (design §2.3, §4.2).
+// objective's last-evidence marker right after (Mark: this turn when its
+// evidence was saved, else the marker it found; "" = none) — what a dispute
+// restores and how it detects later evidence (design §2.3, §4.2). AppliedAt
+// (updated_at right after) is the marker of turns written before Mark existed.
 type GradeRecord struct {
 	models.CheckGrade
 	Prev       *learning.Mastery `json:"prev,omitempty"`
 	PrevExists bool              `json:"prevExists,omitempty"`
 	AppliedAt  *time.Time        `json:"appliedAt,omitempty"`
+	Mark       *string           `json:"mark,omitempty"`
 }
 
 const turnColumns = `id, COALESCE(item_id, ''), seq, role, move, text, status, COALESCE(verdict, ''),
@@ -54,7 +57,11 @@ func scanTurn(row rowScanner) (models.CheckTurn, error) {
 
 // ListCheckTurns returns a session's turns in order.
 func (s *SQLiteStore) ListCheckTurns(ctx context.Context, userID, sessionID string) ([]models.CheckTurn, error) {
-	list, err := collect(s.c().query(ctx, `SELECT `+turnColumns+` FROM check_turns
+	return listCheckTurns(ctx, s.c(), userID, sessionID)
+}
+
+func listCheckTurns(ctx context.Context, c conn, userID, sessionID string) ([]models.CheckTurn, error) {
+	list, err := collect(c.query(ctx, `SELECT `+turnColumns+` FROM check_turns
 		WHERE user_id = $1 AND session_id = $2 ORDER BY seq`, userID, sessionID), scanTurn)
 	if err != nil {
 		return nil, fmt.Errorf("list check turns: %w", err)
@@ -73,10 +80,10 @@ func gradeJSON(g GradeRecord) (string, error) {
 	return string(raw), err
 }
 
-// insertTurn appends a turn with the next seq. witems retries a seq taken
-// concurrently in a savepoint; here the transaction runs alone on the single
-// connection, so the seq cannot be taken and the one-pending index is the
-// only conflict (ErrCheckBusy).
+// insertTurn appends a turn with the next seq (t.ID = a pre-issued id, ""
+// = a new one). witems retries a seq taken concurrently in a savepoint; here
+// the transaction runs alone on the single connection, so the seq cannot be
+// taken and the one-pending index is the only conflict (ErrCheckBusy).
 func insertTurn(ctx context.Context, c conn, t TurnWrite) (models.CheckTurn, error) {
 	grade, err := gradeJSON(t.Grade)
 	if err != nil {
@@ -84,6 +91,9 @@ func insertTurn(ctx context.Context, c conn, t TurnWrite) (models.CheckTurn, err
 	}
 	if t.Status == "" {
 		t.Status = "ready"
+	}
+	if t.ID == "" {
+		t.ID = NewID()
 	}
 	saved, err := scanTurn(c.row(ctx, `
 		INSERT INTO check_turns (id, session_id, user_id, item_id, seq, role, move, text, status, verdict, outcome,
@@ -93,7 +103,7 @@ func insertTurn(ctx context.Context, c conn, t TurnWrite) (models.CheckTurn, err
 			$4, $5, $6, $7, NULLIF($8, ''), NULLIF($9, ''), $10, $11, $12, $13, $14, $15, $16
 		RETURNING `+turnColumns,
 		t.SessionID, t.UserID, t.ItemID, t.Role, t.Move, t.Text, t.Status, t.Verdict, t.Outcome,
-		t.Aided, t.Grader, t.ReusedItem, grade, t.Model, t.InputTokens, t.OutputTokens, NewID()))
+		t.Aided, t.Grader, t.ReusedItem, grade, t.Model, t.InputTokens, t.OutputTokens, t.ID))
 	if err != nil {
 		return saved, constraintErr(err)
 	}
@@ -137,8 +147,10 @@ func (s *SQLiteStore) StartCheckTurns(ctx context.Context, userID, sessionID str
 		if err != nil {
 			return err
 		}
-		if requireActive && sess.Status != "active" {
-			return ErrCheckClosed
+		if requireActive {
+			if err := checkCurrentItem(ctx, c, sess, learner, tutor); err != nil {
+				return err
+			}
 		}
 		for _, t := range []*TurnWrite{learner, tutor} {
 			if t == nil {
@@ -153,6 +165,49 @@ func (s *SQLiteStore) StartCheckTurns(ctx context.Context, userID, sessionID str
 		return err
 	})
 	return last, err
+}
+
+// checkCurrentItem: an answer (or its retry) belongs to the item under the
+// cursor of an active session — a reveal or self-grade that closed the item in
+// between makes it ErrCheckClosed. A self-graded item takes one answer only
+// (checked here, in the session's transaction, so a double submit cannot add a second).
+func checkCurrentItem(ctx context.Context, c conn, sess models.CheckSession, learner, tutor *TurnWrite) error {
+	if sess.Status != "active" || sess.Cursor >= len(sess.ItemIDs) {
+		return ErrCheckClosed
+	}
+	for _, t := range []*TurnWrite{learner, tutor} {
+		if t != nil && t.ItemID != sess.ItemIDs[sess.Cursor] {
+			return ErrCheckClosed
+		}
+	}
+	if learner == nil || tutor != nil || sess.Grader != learning.GraderSelf {
+		return nil
+	}
+	var answered bool
+	if err := c.row(ctx, `SELECT EXISTS (SELECT 1 FROM check_turns WHERE session_id = $1 AND item_id = $2
+		AND role = 'learner' AND move = 'answer' AND status <> 'failed')`, sess.ID, learner.ItemID).Scan(&answered); err != nil {
+		return fmt.Errorf("check answered: %w", err)
+	}
+	if answered {
+		return ErrCheckClosed
+	}
+	return nil
+}
+
+// otherPendingTurn: another turn of the session is still running (ErrCheckBusy)
+// — an item is never closed while its answer is being graded. exceptID is the
+// turn being completed ("" = none). IS DISTINCT FROM NULLIF(…) → `id <> $2`
+// (id is never NULL, and "" matches no id).
+func otherPendingTurn(ctx context.Context, c conn, sessionID, exceptID string) error {
+	var busy bool
+	if err := c.row(ctx, `SELECT EXISTS (SELECT 1 FROM check_turns WHERE session_id = $1 AND status = 'pending'
+		AND id <> $2)`, sessionID, exceptID).Scan(&busy); err != nil {
+		return fmt.Errorf("check pending turns: %w", err)
+	}
+	if busy {
+		return ErrCheckBusy
+	}
+	return nil
 }
 
 // CompleteCheckTurn stores a tutor reply that does not end the item (narrow, explain, challenge).

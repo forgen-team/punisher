@@ -107,7 +107,7 @@ func (s *Service) promptMisconceptions(ctx context.Context, userID, conceptID st
 func misconceptionRefs(list []models.Misconception) []prompts.Misconception {
 	out := make([]prompts.Misconception, 0, len(list))
 	for _, m := range list {
-		out = append(out, prompts.Misconception{ConceptName: m.ConceptName, Text: m.Text})
+		out = append(out, prompts.Misconception{ConceptName: m.ConceptName, Text: truncateRunes(m.Text, learning.MaxMisconceptionRunes)})
 	}
 	return out
 }

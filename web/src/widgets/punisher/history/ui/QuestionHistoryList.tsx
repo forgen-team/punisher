@@ -8,11 +8,11 @@ import { describePunisherError, type MyQuestion } from "@/src/shared/api/punishe
 import { useWideLayout } from "@/src/shared/lib/useWideLayout";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 import { LoadMore } from "./LoadMore";
+import { historyDay } from "../lib/historyDate";
 
-const dateFormat = new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" });
 
 function metaOf(q: MyQuestion): string {
-  return [q.conceptName, QUESTION_STATUS_LABELS[q.status], dateFormat.format(new Date(q.createdAt))].filter(Boolean).join(" · ");
+  return [q.conceptName, QUESTION_STATUS_LABELS[q.status], historyDay(q.createdAt)].filter(Boolean).join(" · ");
 }
 
 function QuestionAnswer({ question }: { question: MyQuestion }) {
@@ -20,9 +20,9 @@ function QuestionAnswer({ question }: { question: MyQuestion }) {
     return <Markdown className="text-base leading-[1.7]">{question.answer}</Markdown>;
   }
   if (question.status === "failed") {
-    return <p className="text-sm text-danger">{question.error || "답변 생성에 실패했습니다."}</p>;
+    return <p className="text-sm text-danger">{question.error || "답변을 만들지 못했어요."}</p>;
   }
-  return <p className="text-sm text-fg-muted">아직 답변이 없습니다.</p>;
+  return <p className="text-sm text-fg-muted">아직 답변이 없어요.</p>;
 }
 
 function LectureLink({ question }: { question: MyQuestion }) {
@@ -85,7 +85,7 @@ export function QuestionHistoryList() {
     return <ErrorState message={describePunisherError(questions.error)} onRetry={() => questions.refetch()} />;
   }
   if (items.length === 0) {
-    return <EmptyState title="질문 기록이 없습니다" description="강의 화면의 질문과 메모에서 질문할 수 있습니다." />;
+    return <EmptyState title="질문 기록이 없어요" description="강의 화면의 질문과 메모에서 질문할 수 있어요." />;
   }
   const open = items.find((q) => q.id === openId) ?? null;
   const shown = open ?? items[0];

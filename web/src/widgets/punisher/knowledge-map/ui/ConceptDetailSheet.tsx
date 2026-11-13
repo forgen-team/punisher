@@ -41,7 +41,7 @@ function NotesGroup({ conceptId }: { conceptId: string }) {
   return (
     <Section title="내 메모" headingLevel={3}>
       {items.length === 0 ? (
-        <p className="text-xs text-fg-muted">메모가 없습니다.</p>
+        <p className="text-xs text-fg-muted">메모가 없어요.</p>
       ) : (
         <List>
           {items.map((n) =>
@@ -127,13 +127,14 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
       ) : c ? (
         <div className="flex flex-col gap-4">
           <div aria-live="polite">
-            <InlineError error={error ?? known.error} />
+            {/* '이미 앎' 저장 오류는 선택이 열려 있으면 그 안에서 보인다. */}
+            <InlineError error={error ?? (knownChoice.asking ? null : known.error)} />
             {result && <ResolutionChoices response={result} disabled={isPending} onPick={start} />}
           </div>
           {c.locked && (
             <p className="flex items-center gap-1.5 text-sm text-fg-secondary">
               <Lock className="size-4" aria-hidden="true" />
-              선행 개념을 먼저 마치거나 이미 앎으로 표시하면 열립니다.
+              선행 개념을 먼저 마치거나 이미 앎으로 표시하면 열려요.
             </p>
           )}
           {requests.length > 0 && (

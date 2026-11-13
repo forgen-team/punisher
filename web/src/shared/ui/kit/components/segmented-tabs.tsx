@@ -87,7 +87,7 @@ export function SegmentedTabs<V extends string>({
               "transition-[color,background-color,box-shadow] duration-fast disabled:opacity-50",
               fill && "flex-1",
               selected
-                ? "bg-canvas-elevated font-medium text-fg shadow-sm"
+                ? "bg-canvas-selected font-medium text-fg shadow-sm"
                 : "text-fg-muted hover:text-fg",
               focusRing,
               "focus-visible:ring-offset-0 focus-visible:ring-inset"

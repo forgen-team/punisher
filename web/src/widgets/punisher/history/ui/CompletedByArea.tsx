@@ -8,14 +8,14 @@ import { inquiryHref, lectureHref } from "@/src/features/punisher/instant-start"
 import { describePunisherError, type CompletedArea, type CompletedItem } from "@/src/shared/api/punisher";
 import { DeeperGroup } from "@/src/shared/ui/punisher";
 import { LoadMore } from "./LoadMore";
+import { historyDay } from "../lib/historyDate";
 
-const dateFormat = new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" });
 const DEBOUNCE_MS = 300;
 /** 전체 보기에서 처음부터 펼쳐 두는 분야 수(접힌 분야는 펼칠 때 불러온다). */
 const OPEN_BY_DEFAULT = 2;
 
 function CompletedRow({ item }: { item: CompletedItem }) {
-  const date = dateFormat.format(new Date(item.lastActivityAt));
+  const date = historyDay(item.lastActivityAt);
   if (item.kind === "inquiry") {
     return (
       <ListRow

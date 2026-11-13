@@ -35,11 +35,16 @@ export function isReview(detail: CheckDetail): boolean {
   return detail.session.kind === "review";
 }
 
-/** 상단 진행 글자 — 확인은 "문항 n/N", 복습은 "복습 n/N". 문항이 없으면 "". */
+/** 상단 진행 글자 "문항 n/N"(확인·복습·진단 모두 같다). 문항이 없으면 "". */
 export function progressLabel(detail: CheckDetail): string {
   const { index, total } = progressOf(detail);
   if (total === 0) { return ""; }
-  return `${isReview(detail) ? "복습" : "문항"} ${index}/${total}`;
+  return `문항 ${index}/${total}`;
+}
+
+/** 상단 바 제목 — 모든 세션이 "제목 · 문항 n/N" 한 형식(진행이 없으면 제목만). */
+export function topBarTitle(title: string, progress: string): string {
+  return [title, progress].filter(Boolean).join(" · ");
 }
 
 export type SelfGradeStep = "answer" | "grade";
@@ -99,6 +104,11 @@ export function retryableTurnId(detail: CheckDetail): string | null {
   const last = [...detail.turns].sort((a, b) => a.seq - b.seq)[detail.turns.length - 1];
   if (last.role !== "tutor" || last.status !== "failed") { return null; }
   return detail.session.status === "active" || last.move === "dispute" ? last.id : null;
+}
+
+/** 한 줄 시스템 표기로 보일 턴 — '그냥 알려줘'(reveal)로 답을 공개한 튜터 턴(본문 없이 모범답 섹션에 답이 있다). */
+export function isRevealNotice(turn: CheckTurn): boolean {
+  return turn.role === "tutor" && turn.move === "reveal" && turn.status === "ready";
 }
 
 /** 튜터 턴 본문 — '그냥 알려줘'(reveal)는 모범답 섹션에만 답을 두고 턴에는 판정 배지만 남긴다. */
@@ -194,6 +204,11 @@ export function resultRows(detail: CheckDetail): ResultRow[] {
         misconceptions: itemMisconceptions(detail.turns, r.itemId),
       };
     });
+}
+
+/** 결과의 '처음 예측 → 지금 답' 줄 — 처음 예측과 지금 쓴 답이 모두 있을 때만. */
+export function showPrediction(row: Pick<ResultRow, "prediction" | "answer">): boolean {
+  return row.prediction !== null && row.answer.trim() !== "";
 }
 
 /** '다시 배우기' 제안 — 반복 실패(lapses ≥ 2, design §2.4) 또는 '이미 앎' 확인을 통과하지 못한 목표. */

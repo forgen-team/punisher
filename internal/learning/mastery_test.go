@@ -233,3 +233,23 @@ func fmtMastery(m Mastery) string {
 	return fmt.Sprintf("box=%d grad=%d best=%s lapses=%d next=%s credit=%s fail=%s integ=%v stale=%v",
 		m.Box, m.GradStep, m.Best, m.Lapses, f(m.NextReviewAt), f(m.LastCreditAt), f(m.LastFailAt), m.IntegrativeOK, m.Stale)
 }
+
+// TestKeepSince: an accepted dispute restores the before-state but keeps what
+// changed since without being evidence (release, integrative credit, stale mark).
+func TestKeepSince(t *testing.T) {
+	now := time.Date(2026, 11, 13, 9, 0, 0, 0, time.UTC)
+	due := now.Add(48 * time.Hour)
+	waiting := Mastery{Box: 1, Best: BestAided, Queued: true}
+	released := Mastery{Box: 0, Best: BestRevealed, NextReviewAt: &due, IntegrativeOK: true}
+	got := KeepSince(waiting, released, now, nil)
+	if got.Queued || got.NextReviewAt == nil || !got.IntegrativeOK || got.Box != 1 {
+		t.Fatalf("released since: %+v (must not wait again, gets a date, keeps the credit)", got)
+	}
+	stillWaiting := Mastery{Box: 0, Queued: true}
+	if got := KeepSince(waiting, stillWaiting, now, nil); !got.Queued || got.NextReviewAt != nil {
+		t.Fatalf("still waiting: %+v", got)
+	}
+	if got := KeepSince(Mastery{Box: 3, IntegrativeOK: true}, Mastery{Box: 1, Stale: true}, now, nil); !got.Stale || got.Box != 1 || got.IntegrativeOK {
+		t.Fatalf("stale since: %+v (MarkStale applies)", got)
+	}
+}

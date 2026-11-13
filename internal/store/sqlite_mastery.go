@@ -34,34 +34,42 @@ func clockNow() time.Time {
 
 const masteryColumns = `box, grad_step, best, integrative_ok, lapses, next_review_at, last_credit_at, last_fail_at, stale, queued, verify_queued, updated_at`
 
-func scanMastery(row rowScanner) (learning.Mastery, time.Time, error) {
-	var m learning.Mastery
-	var updated time.Time
-	err := row.Scan(&m.Box, &m.GradStep, &m.Best, &m.IntegrativeOK, &m.Lapses, nts(&m.NextReviewAt),
-		nts(&m.LastCreditAt), nts(&m.LastFailAt), &m.Stale, &m.Queued, &m.Verify, ts(&updated))
-	return m, updated, err
+// lockedMastery is an objective's mastery read for update. Mark is
+// last_evidence_turn_id ("" = none): the turn whose evidence was saved last —
+// the dispute conflict marker (only evidence and its restore move it).
+type lockedMastery struct {
+	M       learning.Mastery
+	Updated time.Time
+	Mark    string
+	Exists  bool
 }
 
 // lockMastery reads an objective's mastery inside the caller's transaction; a
-// missing row is the empty state (exists=false).
-func lockMastery(ctx context.Context, c conn, userID, objectiveID string) (m learning.Mastery, updated time.Time, exists bool, err error) {
-	m, updated, err = scanMastery(c.row(ctx, `SELECT `+masteryColumns+` FROM user_objective_mastery
-		WHERE user_id = $1 AND objective_id = $2`, userID, objectiveID))
+// missing row is the empty state (Exists=false).
+func lockMastery(ctx context.Context, c conn, userID, objectiveID string) (lockedMastery, error) {
+	var l lockedMastery
+	err := c.row(ctx, `SELECT `+masteryColumns+`, COALESCE(last_evidence_turn_id, '') FROM user_objective_mastery
+		WHERE user_id = $1 AND objective_id = $2`, userID, objectiveID).Scan(&l.M.Box, &l.M.GradStep, &l.M.Best,
+		&l.M.IntegrativeOK, &l.M.Lapses, nts(&l.M.NextReviewAt), nts(&l.M.LastCreditAt), nts(&l.M.LastFailAt),
+		&l.M.Stale, &l.M.Queued, &l.M.Verify, ts(&l.Updated), &l.Mark)
 	if errors.Is(err, sql.ErrNoRows) {
-		return learning.NewMastery(), time.Time{}, false, nil
+		return lockedMastery{M: learning.NewMastery()}, nil
 	}
-	return m, updated, err == nil, err
+	l.Exists = err == nil
+	return l, err
 }
 
 // saveMastery upserts an objective's mastery with the objective's current text
 // and depth (the evidence's basis for change detection, design §2.5).
-// Returns the new updated_at (the dispute conflict marker).
-func saveMastery(ctx context.Context, c conn, userID, objectiveID, grader string, m learning.Mastery) (time.Time, error) {
+// mark is the evidence turn written as last_evidence_turn_id ("" keeps the
+// current one). Returns the new updated_at.
+func saveMastery(ctx context.Context, c conn, userID, objectiveID, grader string, m learning.Mastery, mark string) (time.Time, error) {
 	var updated time.Time
 	err := c.row(ctx, `
 		INSERT INTO user_objective_mastery (user_id, objective_id, concept_id, box, grad_step, best, integrative_ok, lapses,
-			next_review_at, last_credit_at, last_fail_at, objective_text, objective_depth, stale, last_grader, queued, verify_queued, updated_at)
-		SELECT $1, o.id, o.concept_id, $3, $4, $5, $6, $7, $8, $9, $10, o.text, o.depth, $11, $12, $14, $15, $13
+			next_review_at, last_credit_at, last_fail_at, objective_text, objective_depth, stale, last_grader, queued, verify_queued,
+			last_evidence_turn_id, updated_at)
+		SELECT $1, o.id, o.concept_id, $3, $4, $5, $6, $7, $8, $9, $10, o.text, o.depth, $11, $12, $14, $15, NULLIF($16, ''), $13
 		FROM objectives o WHERE o.id = $2
 		ON CONFLICT (user_id, objective_id) DO UPDATE SET
 			box = excluded.box, grad_step = excluded.grad_step, best = excluded.best,
@@ -69,10 +77,11 @@ func saveMastery(ctx context.Context, c conn, userID, objectiveID, grader string
 			last_credit_at = excluded.last_credit_at, last_fail_at = excluded.last_fail_at,
 			objective_text = excluded.objective_text, objective_depth = excluded.objective_depth,
 			stale = excluded.stale, last_grader = excluded.last_grader, queued = excluded.queued,
-			verify_queued = excluded.verify_queued, updated_at = excluded.updated_at
+			verify_queued = excluded.verify_queued, updated_at = excluded.updated_at,
+			last_evidence_turn_id = COALESCE(excluded.last_evidence_turn_id, user_objective_mastery.last_evidence_turn_id)
 		RETURNING updated_at`,
 		userID, objectiveID, m.Box, m.GradStep, m.Best, m.IntegrativeOK, m.Lapses, m.NextReviewAt,
-		m.LastCreditAt, m.LastFailAt, m.Stale, grader, clockNow(), m.Queued, m.Verify).Scan(ts(&updated))
+		m.LastCreditAt, m.LastFailAt, m.Stale, grader, clockNow(), m.Queued, m.Verify, mark).Scan(ts(&updated))
 	if err != nil {
 		return updated, fmt.Errorf("save mastery %s: %w", objectiveID, err)
 	}

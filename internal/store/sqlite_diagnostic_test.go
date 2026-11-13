@@ -81,8 +81,8 @@ func TestUpgradeFromV011(t *testing.T) {
 	}
 	var m learning.Mastery
 	if err := s.tx(ctx, func(c conn) error {
-		var err error
-		m, _, _, err = lockMastery(ctx, c, testUser, objectiveID)
+		l, err := lockMastery(ctx, c, testUser, objectiveID)
+		m = l.M
 		return err
 	}); err != nil || m.Box != 2 || m.Verify {
 		t.Fatalf("evidence after 012 = %+v (%v)", m, err)

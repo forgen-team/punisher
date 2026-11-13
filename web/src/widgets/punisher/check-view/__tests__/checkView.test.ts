@@ -188,8 +188,8 @@ describe("결과 요약", () => {
 describe("복습(자기 채점)", () => {
   const selfSession = (patch: Partial<CheckSession> = {}) => session({ kind: "review", grader: "self", lectureId: "", conceptId: "", ...patch });
 
-  it("상단 진행은 복습 n/N, 확인은 문항 n/N", () => {
-    expect(progressLabel(detail({ session: selfSession({ cursor: 1 }) }))).toBe("복습 2/3");
+  it("상단 진행은 복습·확인 모두 문항 n/N", () => {
+    expect(progressLabel(detail({ session: selfSession({ cursor: 1 }) }))).toBe("문항 2/3");
     expect(progressLabel(detail())).toBe("문항 1/3");
     expect(progressLabel(detail({ session: session({ itemIds: [] }) }))).toBe("");
   });

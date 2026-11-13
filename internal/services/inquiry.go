@@ -65,7 +65,8 @@ func (s *Service) StartInquiry(ctx context.Context, userID, question string) (mo
 	if err != nil || !created {
 		return q, busyErr(err)
 	}
-	s.inBackground(q.ID, func(bg context.Context) error { return s.runInquiry(bg, apiKey, userID, q) })
+	s.inBackground(q.ID, func(bg context.Context) error { return s.runInquiry(bg, apiKey, userID, q) },
+		s.failInquiry(userID, q.ID))
 	return q, nil
 }
 
@@ -90,7 +91,8 @@ func (s *Service) RegenerateInquiry(ctx context.Context, userID, id string) (mod
 	if err != nil || !started {
 		return q, err
 	}
-	s.inBackground(q.ID, func(bg context.Context) error { return s.runInquiry(bg, apiKey, userID, q) })
+	s.inBackground(q.ID, func(bg context.Context) error { return s.runInquiry(bg, apiKey, userID, q) },
+		s.failInquiry(userID, q.ID))
 	return q, nil
 }
 
@@ -139,8 +141,25 @@ func (s *Service) checkPendingLimit(ctx context.Context, userID string) error {
 }
 
 // inBackground runs a generation on the interactive lane, detached from the request.
-func (s *Service) inBackground(id string, run func(context.Context) error) {
-	runDetached("inquiry", id, inquiryTimeout, run)
+// failInquiry / failFollowup are the inBackground fail of a thread / a follow-up.
+func (s *Service) failInquiry(userID, id string) func(context.Context, error) {
+	return func(ctx context.Context, err error) {
+		if ferr := s.Store.FailInquiry(ctx, userID, id, "", err.Error(), nil); ferr != nil {
+			logf("inquiry %s: fail after panic: %v", id, ferr)
+		}
+	}
+}
+
+func (s *Service) failFollowup(userID, id string) func(context.Context, error) {
+	return func(ctx context.Context, err error) {
+		if ferr := s.Store.FailFollowup(ctx, userID, id, "", err.Error()); ferr != nil {
+			logf("followup %s: fail after panic: %v", id, ferr)
+		}
+	}
+}
+
+func (s *Service) inBackground(id string, run func(context.Context) error, fail func(context.Context, error)) {
+	runDetached("inquiry", id, inquiryTimeout, run, fail)
 }
 
 // runInquiry generates, parses and validates (one rewrite with the problems fed
@@ -291,7 +310,8 @@ func (s *Service) StartFollowup(ctx context.Context, userID, inquiryID, question
 	if err != nil {
 		return f, busyErr(err)
 	}
-	s.inBackground(f.ID, func(bg context.Context) error { return s.runFollowup(bg, apiKey, userID, inquiryID, f) })
+	s.inBackground(f.ID, func(bg context.Context) error { return s.runFollowup(bg, apiKey, userID, inquiryID, f) },
+		s.failFollowup(userID, f.ID))
 	return f, nil
 }
 
@@ -315,7 +335,8 @@ func (s *Service) RetryFollowup(ctx context.Context, userID, inquiryID, id strin
 	if err != nil {
 		return f, busyErr(err)
 	}
-	s.inBackground(f.ID, func(bg context.Context) error { return s.runFollowup(bg, apiKey, userID, inquiryID, f) })
+	s.inBackground(f.ID, func(bg context.Context) error { return s.runFollowup(bg, apiKey, userID, inquiryID, f) },
+		s.failFollowup(userID, f.ID))
 	return f, nil
 }
 

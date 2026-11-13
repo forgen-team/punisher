@@ -38,7 +38,7 @@ describe("history rows", () => {
 
   it("shows date, n/N, unaided count and an unfinished status", () => {
     expect(historyMeta(session({ kind: "review", reviewDay: "2026-11-12", doneCount: 1, status: "abandoned" }))).toBe(
-      "2026. 11. 12. · 1/3 · 혼자 맞힘 2 · 그만둠",
+      "2026. 11. 12 · 1/3 · 혼자 맞힘 2 · 그만둠",
     );
     expect(historyMeta(session())).toMatch(/ · 3\/3 · 혼자 맞힘 2$/);
   });
@@ -46,7 +46,7 @@ describe("history rows", () => {
 
 describe("resolvedMeta", () => {
   it("shows the concept and the KST day it was fixed", () => {
-    expect(resolvedMeta({ conceptName: "페이지 캐시", resolvedAt: "2026-11-12T16:30:00Z" })).toBe("페이지 캐시 · 2026. 11. 13.");
+    expect(resolvedMeta({ conceptName: "페이지 캐시", resolvedAt: "2026-11-12T16:30:00Z" })).toBe("페이지 캐시 · 2026. 11. 13");
     expect(resolvedMeta({ conceptName: "페이지 캐시", resolvedAt: null })).toBe("페이지 캐시");
   });
 });

@@ -42,20 +42,12 @@ func (s *Service) runCheckItems(ctx context.Context, apiKey, userID, sessionID s
 
 func (s *Service) saveCheckItems(ctx context.Context, userID, sessionID string, cl checkLecture, key store.CheckItemKey, jobID string,
 	set prompts.Set, items check.ItemSet, u usage, tries []store.AttemptRecord, err error) error {
-	status := "succeeded"
-	if err != nil {
-		status = "failed"
-	}
-	o := u.outcome(status, "", err, "")
-	o.Attempts = tries
-	if ferr := s.Store.FinishJob(ctx, jobID, o); ferr != nil {
-		logf("check %s: finish items job: %v", sessionID, ferr)
-	}
 	var saved []store.CheckItem
-	if err == nil {
+	if err == nil { // 문항을 저장한 뒤에 job 을 끝낸다: 저장이 실패하면 job 도 실패로 남는다.
 		saved, err = s.Store.SaveCheckItems(ctx, key, cl.info.ID, jobID, u.model, checkPromptVersion(set),
 			check.NormalizeItems(items, cl.objectiveIDs()))
 	}
+	s.finishItemsJob(ctx, "check "+sessionID, jobID, u, tries, err)
 	if err != nil {
 		if serr := s.Store.SetCheckSessionStatus(ctx, userID, sessionID, []string{"preparing"}, "failed", checkErrorText(err)); serr != nil && !errors.Is(serr, store.ErrCheckClosed) {
 			logf("check %s: fail session: %v", sessionID, serr)
@@ -64,6 +56,20 @@ func (s *Service) saveCheckItems(ctx context.Context, userID, sessionID string, 
 	}
 	_, err = s.activateCheck(ctx, userID, sessionID, saved, cl)
 	return err
+}
+
+// finishItemsJob records an item generation's job after its items were saved
+// (err = the generation's or the save's failure).
+func (s *Service) finishItemsJob(ctx context.Context, label, jobID string, u usage, tries []store.AttemptRecord, err error) {
+	status := "succeeded"
+	if err != nil {
+		status = "failed"
+	}
+	o := u.outcome(status, "", err, "")
+	o.Attempts = tries
+	if ferr := s.Store.FinishJob(context.WithoutCancel(ctx), jobID, o); ferr != nil {
+		logf("%s: finish items job: %v", label, ferr)
+	}
 }
 
 func checkPromptVersion(set prompts.Set) string {
@@ -112,11 +118,15 @@ func (s *Service) runCheckTurn(ctx context.Context, apiKey, userID, sessionID, t
 	if err != nil {
 		return s.Store.FailCheckTurn(done, userID, turnID, "", err.Error())
 	}
+	// 채점할 문항은 이 턴의 문항이다. 그사이 문항이 닫혔으면(커서가 넘어감) 채점하지 않는다.
 	item := st.current()
-	if item == nil {
+	if item == nil || item.ID != turnItemID(st.turns, turnID) {
 		return s.Store.FailCheckTurn(done, userID, turnID, "", store.ErrCheckClosed.Error())
 	}
 	p := progressOf(st.turns, item.ID)
+	if len(p.answers) == 0 {
+		return s.Store.FailCheckTurn(done, userID, turnID, "", "no answer to grade")
+	}
 	stage := check.Stage{Answers: len(p.answers), Challenged: p.challenged, Integrative: item.ObjectiveID == "", Last: st.last(),
 		Kind: st.itemKind(*item)}
 	// 복습 세션은 여러 개념에 걸치므로 개념은 문항에서 정한다(확인 세션은 같은 값).
@@ -125,12 +135,12 @@ func (s *Service) runCheckTurn(ctx context.Context, apiKey, userID, sessionID, t
 	if err != nil {
 		return s.Store.FailCheckTurn(done, userID, turnID, u.model, checkErrorText(err))
 	}
-	verdict := check.FinalVerdict(reply.Verdict, reply.Confidence)
+	verdict := check.GradeVerdict(reply.Verdict, reply.Quote, reply.Confidence)
 	turn := store.TurnWrite{ID: turnID, UserID: userID, ItemID: item.ID, Role: "tutor", Move: reply.TutorMove, Text: reply.TutorText,
 		Verdict: verdict, Aided: len(p.answers) > 1, Grader: learning.GraderLLM, Model: u.model,
 		InputTokens: u.input, OutputTokens: u.output,
 		Grade: store.GradeRecord{CheckGrade: models.CheckGrade{Met: reply.Met, Missing: reply.Missing, Quote: reply.Quote,
-			Misconception: strings.TrimSpace(reply.Misconception), Confidence: reply.Confidence}}}
+			Misconception: truncateRunes(strings.TrimSpace(reply.Misconception), learning.MaxMisconceptionRunes), Confidence: reply.Confidence}}}
 	if verdict == learning.VerdictHeld {
 		turn.Text = heldText(item.Rubric.Answer)
 	}
@@ -140,8 +150,21 @@ func (s *Service) runCheckTurn(ctx context.Context, apiKey, userID, sessionID, t
 	return s.finishItem(done, userID, st, *item, p.result(verdict, false), p.challenged && verdict == learning.VerdictCorrect, turn, false)
 }
 
+// turnItemID is the item of a session turn ("" when the turn is not in the session).
+func turnItemID(turns []models.CheckTurn, turnID string) string {
+	for _, t := range turns {
+		if t.ID == turnID {
+			return t.ItemID
+		}
+	}
+	return ""
+}
+
 func (s *Service) tutorReply(ctx context.Context, apiKey, userID, conceptID string, item store.CheckItem, p itemProgress, stage check.Stage) (check.TutorReply, usage, error) {
 	var u usage
+	if len(p.answers) == 0 {
+		return check.TutorReply{}, u, errors.New("no answer to grade")
+	}
 	learner := p.answers[len(p.answers)-1].Text
 	tc := prompts.CheckTutorContext{ConceptName: s.interactionVars(ctx, userID, conceptID)["concept_name"],
 		Objective: s.objectiveText(ctx, userID, conceptID, item.ObjectiveID), Prompt: item.Prompt, Material: materialText(item),
@@ -212,6 +235,10 @@ func (s *Service) finishItem(ctx context.Context, userID string, st checkState, 
 	}
 	_, err := s.Store.FinishCheckItem(ctx, f)
 	if errors.Is(err, store.ErrCheckClosed) && turn.ID != "" {
+		// 포기로 닫힌 세션은 답을 남기고, 활성 세션에서 문항이 넘어갔으면 그 채점은 실패로 둔다(근거 없음).
+		if sess, serr := s.Store.GetCheckSession(ctx, userID, st.sess.ID); serr == nil && sess.Status == "active" {
+			return s.Store.FailCheckTurn(ctx, userID, turn.ID, turn.Model, store.ErrCheckClosed.Error())
+		}
 		return s.Store.CompleteCheckTurn(ctx, turn)
 	}
 	return err
@@ -240,8 +267,10 @@ func (s *Service) runDispute(ctx context.Context, apiKey, userID, sessionID, tur
 		text = "다시 채점한 결과 맞는 답이었어요. 이 문항의 반영을 되돌렸어요."
 	}
 	_, err = s.Store.ResolveDispute(done, store.DisputeResolve{UserID: userID, SessionID: sessionID, ObjectiveID: item.ObjectiveID,
-		JudgedTurnID: judged.ID, Accepted: accepted, Turn: store.TurnWrite{ID: turnID, ItemID: item.ID, Role: "tutor",
-			Move: check.MoveDispute, Text: text, Verdict: check.FinalVerdict(reply.Verdict, reply.Confidence),
+		JudgedTurnID: judged.ID, Accepted: accepted, Now: s.now(), Intervals: s.reviewIntervals(done, userID),
+		ConflictText: "다시 채점한 결과 맞는 답이었어요. 판정은 바로잡았지만 이후 기록이 있어 상자는 그대로예요.",
+		Turn: store.TurnWrite{ID: turnID, ItemID: item.ID, Role: "tutor",
+			Move: check.MoveDispute, Text: text, Verdict: check.GradeVerdict(reply.Verdict, reply.Quote, reply.Confidence),
 			Grader: learning.GraderRegrade, Model: u.model, InputTokens: u.input, OutputTokens: u.output,
 			Grade: store.GradeRecord{CheckGrade: models.CheckGrade{Met: reply.Met, Missing: reply.Missing, Quote: reply.Quote, Confidence: reply.Confidence}}}})
 	return err

@@ -112,6 +112,8 @@
   --color-bg-translucent: rgba(255, 255, 255, 0.8); /* 블러 상·하단 바 */
   --color-surface-hover: var(--w-gray-100);
   --color-surface-active: var(--w-gray-200);
+  --color-bg-selected: var(--color-bg-elevated); /* 탭·segmented 선택 칸(트랙 bg-subtle 위) */
+  --color-bg-muted: var(--color-bg-subtle);      /* 본문 위 옅은 면(말풍선 등) — 다크에서는 본문보다 밝게 */
   --color-border: #E6E6E9;
   --color-border-subtle: #EFEFF1;
   --color-border-strong: var(--w-gray-400);  /* 입력 경계 3:1 */
@@ -152,6 +154,8 @@
   --color-bg-translucent: rgba(19, 19, 22, 0.8);
   --color-surface-hover: #232328;
   --color-surface-active: #2A2A30;
+  --color-bg-selected: var(--color-surface-active);
+  --color-bg-muted: var(--color-surface-hover);
   --color-border: rgba(255, 255, 255, 0.08);
   --color-border-subtle: rgba(255, 255, 255, 0.05);
   --color-border-strong: #63636D;
@@ -188,6 +192,8 @@
     --color-bg-translucent: rgba(19, 19, 22, 0.8);
     --color-surface-hover: #232328;
     --color-surface-active: #2A2A30;
+    --color-bg-selected: var(--color-surface-active);
+    --color-bg-muted: var(--color-surface-hover);
     --color-border: rgba(255, 255, 255, 0.08);
     --color-border-subtle: rgba(255, 255, 255, 0.05);
     --color-border-strong: #63636D;

@@ -121,7 +121,7 @@ func (s *Service) generateLibrary(ctx context.Context, owner string, candidates 
 }
 
 func (s *Service) libraryCandidates(ctx context.Context, userID string) ([]string, error) {
-	data, err := s.Store.LoadToday(ctx, userID)
+	data, err := s.Store.LoadToday(ctx, userID, s.now())
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +297,7 @@ func (s *Service) Today(ctx context.Context, userID string, limit int) (learning
 		logf("learning settings for %s: %v (using defaults)", userID, serr)
 	}
 	s.releaseQueued(ctx, userID, st, s.now())
-	data, err := s.Store.LoadToday(ctx, userID)
+	data, err := s.Store.LoadToday(ctx, userID, s.now())
 	if err != nil {
 		return learning.TodayResult{}, err
 	}

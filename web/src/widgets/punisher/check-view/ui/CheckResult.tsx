@@ -1,14 +1,16 @@
 
 import { Link } from "@/src/shared/lib/router";
 import { forwardRef, useState, type ReactNode } from "react";
-import { Button, Section } from "@/src/shared/ui/kit";
+import { Button, Section, buttonVariants } from "@/src/shared/ui/kit";
 import { MasteryDots, describeCheckError, masteryLabel, useCompleteLecture, useRelearn } from "@/src/entities/punisher";
 import { useLaunchReview } from "@/src/features/punisher/check-start";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { DIAGNOSTIC_LABELS } from "@/src/features/punisher/pretest";
-import { suggestRelearn, type ResultRow } from "../lib/checkView";
-import { PREDICTION_LABELS } from "./constants";
+import { showPrediction, suggestRelearn, type ResultRow } from "../lib/checkView";
+import { PREDICTION_LABELS, RESULT_ACTION_LABELS } from "./constants";
 import { MisconceptionList } from "./MisconceptionList";
+
+const TODAY_HREF = "/";
 
 const reviewDate = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short" });
 
@@ -39,15 +41,19 @@ export function LectureCompleteAction({ lectureId, lectureCompleted }: { lecture
   );
 }
 
-/** 복습 결과의 '오늘 더 하기' — 만기된 복습이 남아 있을 때만(POST /reviews 를 다시 부른다). */
+/** 복습 결과의 다음 행동 — 만기된 복습이 남아 있으면 '오늘 더 하기'(POST /reviews 를 다시 부른다), 늘 '오늘로'. */
 export function ReviewMoreAction({ remaining }: { remaining: number }) {
   const review = useLaunchReview();
-  if (remaining <= 0) { return null; }
   return (
     <>
-      <Button onClick={review.launch} loading={review.isPending}>
-        오늘 더 하기
-      </Button>
+      {remaining > 0 && (
+        <Button onClick={review.launch} loading={review.isPending}>
+          오늘 더 하기
+        </Button>
+      )}
+      <Link href={TODAY_HREF} className={buttonVariants({ variant: remaining > 0 ? "secondary" : "primary" })}>
+        {RESULT_ACTION_LABELS.today}
+      </Link>
       <div aria-live="polite" className="w-full empty:hidden">
         {review.error && (
           <p role="alert" className="text-sm text-danger">
@@ -65,7 +71,7 @@ function NextReview({ row }: { row: ResultRow }) {
   return <>다음 복습 {reviewDate.format(new Date(row.nextReviewAt))}</>;
 }
 
-/** 결과 요약(design §4.4): 목표별 레벨 변화 · 놓친 기준 한 줄 · 다시 볼 곳 · 드러난 오개념 · 다음 복습일 · 다시 배우기 + 아래 동작. */
+/** 결과 요약(design §4.4, 끝난 세션의 맨 위): 목표별 레벨 변화 · 놓친 기준 한 줄 · 다시 볼 곳 · 드러난 오개념 · 다음 복습일 · 다시 배우기 + 아래 동작. */
 export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function CheckResult(
   { checkId, rows, acknowledgedTurnIds, anchorLink, children },
   ref,
@@ -75,7 +81,7 @@ export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function Ch
   const runRelearn = (objectiveId: string) =>
     relearn.mutate(objectiveId, { onSuccess: () => setRelearnedIds((prev) => new Set(prev).add(objectiveId)) });
   return (
-    <Section ref={ref} tabIndex={-1} title="결과" className="mt-8 border-t border-line pt-4 outline-none">
+    <Section ref={ref} tabIndex={-1} title="결과" className="mt-4 scroll-mt-28 border-b border-line pb-4 outline-none">
       <ul className="flex flex-col divide-y divide-line">
         {rows.map((row) => {
           const link = row.anchor ? anchorLink(row.anchor) : null;
@@ -96,10 +102,10 @@ export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function Ch
                 </p>
               )}
               <MisconceptionList checkId={checkId} misconceptions={row.misconceptions} acknowledged={acknowledgedTurnIds} />
-              {row.prediction && (
+              {row.prediction && showPrediction(row) && (
                 <p className="break-keep text-fg-secondary">
                   {PREDICTION_LABELS.before}: {row.prediction.dontKnow ? DIAGNOSTIC_LABELS.dontKnow : row.prediction.answer} →{" "}
-                  {PREDICTION_LABELS.now}: {row.answer || "—"}
+                  {PREDICTION_LABELS.now}: {row.answer}
                 </p>
               )}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-muted">

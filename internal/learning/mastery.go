@@ -205,6 +205,26 @@ func Restore(current, prev Mastery, conflict bool) Mastery {
 	return out
 }
 
+// KeepSince applies to a restored mastery (an accepted dispute without later
+// evidence) what changed since the item without being evidence: a release from
+// the inflow queue stays released (it does not wait again; a missing review
+// date is the restored state's NextDue), an integrative credit and a stale mark
+// stay. current is the state at the dispute.
+func KeepSince(restored, current Mastery, now time.Time, intervals []int) Mastery {
+	if restored.Queued && !current.Queued {
+		restored.Queued = false
+		if restored.NextReviewAt == nil && restored.GradStep != GradDone {
+			due := NextDue(restored, now, intervals)
+			restored.NextReviewAt = &due
+		}
+	}
+	restored.IntegrativeOK = restored.IntegrativeOK || current.IntegrativeOK
+	if current.Stale && !restored.Stale {
+		restored = MarkStale(restored)
+	}
+	return restored
+}
+
 // MarkStale mirrors the SQL of a changed objective (design §2.5): the old
 // evidence no longer proves the new text.
 func MarkStale(m Mastery) Mastery {

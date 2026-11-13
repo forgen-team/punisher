@@ -31,6 +31,7 @@ func (s *Service) ResolveRequestNow(userID, requestID string) bool {
 	}
 	go func() {
 		defer resolving.Delete(requestID)
+		defer recoverPanic("study-request resolve", requestID, nil)
 		ctx, cancel := context.WithTimeout(llm.WithPriority(context.Background(), llm.PriorityInteractive), resolveNowTimeout)
 		defer cancel()
 		if err := s.resolveOne(ctx, userID, requestID); err != nil {

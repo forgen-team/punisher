@@ -3,11 +3,11 @@ import { EmptyState, ErrorState, List, ListRow, ListSkeleton } from "@/src/share
 import { INQUIRY_STATUS_LABELS, InquiryStatusIcon, inquiryRowTitle, useInquiries } from "@/src/entities/punisher";
 import { inquiryHref } from "@/src/features/punisher/instant-start";
 import { describePunisherError, type Inquiry } from "@/src/shared/api/punisher";
+import { historyDay } from "../lib/historyDate";
 
-const dateFormat = new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" });
 
 function metaOf(q: Inquiry): string {
-  return [INQUIRY_STATUS_LABELS[q.status] ?? q.status, q.readAt ? "다 봄" : "", dateFormat.format(new Date(q.createdAt))]
+  return [INQUIRY_STATUS_LABELS[q.status] ?? q.status, q.readAt ? "다 봄" : "", historyDay(q.createdAt)]
     .filter(Boolean)
     .join(" · ");
 }

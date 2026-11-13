@@ -356,7 +356,7 @@ func TestDismissExcludesFromResumeAndRestores(t *testing.T) {
 func assertResume(t *testing.T, s *SQLiteStore, lectureID string, want bool) {
 	t.Helper()
 	ctx := context.Background()
-	d, err := s.LoadToday(ctx, testUser)
+	d, err := s.LoadToday(ctx, testUser, time.Now())
 	if err != nil {
 		t.Fatalf("today: %v", err)
 	}
@@ -481,7 +481,7 @@ func TestStudyRequestsResolutionAndMap(t *testing.T) {
 		t.Fatalf("map: node=%v edge=%v requests=%d", foundNode, foundEdge, len(graph.Requests))
 	}
 
-	today, err := s.LoadToday(ctx, testUser)
+	today, err := s.LoadToday(ctx, testUser, time.Now())
 	if err != nil || len(today.Requests) != 1 || !today.Concepts[proposed.ID].Proposed || !today.Concepts[proposed.ID].HasPending {
 		t.Fatalf("today = %+v %v", today.Requests, err)
 	}

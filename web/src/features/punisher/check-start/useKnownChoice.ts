@@ -7,6 +7,7 @@ import { checkHref } from "./useLaunchCheck";
 /**
  * 개별 '이미 앎' — 누르면 "짧게 확인할까요?"를 묻는다. 어느 쪽이든 '이미 앎'은 누른 대로 저장하고,
  * '확인하기'는 이어서 목표마다 1문항 확인(known_verify)을 열어 확인 화면으로 간다.
+ * 저장이 실패하면 선택 창을 닫지 않고 그 오류(knownError)를 보인다.
  */
 export function useKnownChoice() {
   const router = useRouter();
@@ -14,16 +15,17 @@ export function useKnownChoice() {
   const start = useStartDiagnostic();
   const [conceptId, setConceptId] = useState<string | null>(null);
   const resetStart = start.reset;
+  const resetKnown = known.reset;
   const close = useCallback(() => setConceptId(null), []);
   const ask = useCallback((id: string) => {
     resetStart();
+    resetKnown();
     setConceptId(id);
-  }, [resetStart]);
+  }, [resetStart, resetKnown]);
 
   function skip() {
     if (!conceptId) { return; }
-    known.mutate(conceptId);
-    setConceptId(null);
+    known.mutate(conceptId, { onSuccess: () => setConceptId(null) });
   }
 
   function verify() {
@@ -47,6 +49,7 @@ export function useKnownChoice() {
     verify,
     verifying: known.isPending || start.isPending,
     error: start.error,
+    knownError: known.error,
   };
 }
 

@@ -111,7 +111,7 @@ export function ConceptCombobox({ label, value, onChange, max = 10 }: ConceptCom
         aria-activedescendant={activeId}
         disabled={full}
         value={text}
-        placeholder={full ? "최대 개수를 선택했습니다" : isLoading ? "개념 불러오는 중…" : "개념 이름 또는 ID 검색"}
+        placeholder={full ? "최대 개수를 골랐어요" : isLoading ? "개념 불러오는 중…" : "개념 이름 또는 ID 검색"}
         onChange={(event) => {
           setText(event.target.value);
           setOpen(true);

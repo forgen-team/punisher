@@ -86,19 +86,10 @@ func (s *Service) runKnownVerifyItems(ctx context.Context, apiKey, userID string
 		priority: llm.PriorityBackground, system: set.Text(prompts.BlockCheckPretest, s.interactionVars(ctx, userID, t.ConceptID))},
 		func(revisions []string) string { dc.Revisions = revisions; return prompts.Diagnostic(dc) },
 		func(set check.ItemSet) []string { return check.ValidateDiagnostic(set, vc) })
-	status := "succeeded"
-	if err != nil {
-		status = "failed"
+	if err == nil {
+		_, err = s.Store.SaveDiagnosticItems(ctx, store.DiagnosticItems{PromptHash: set.Hash(prompts.BlockCheckPretest), CreatedFor: userID,
+			JobID: jobID, Model: u.model, PromptVersion: diagnosticPromptVersion(set), Items: check.NormalizeDiagnostic(items)})
 	}
-	o := u.outcome(status, "", err, "")
-	o.Attempts = tries
-	if ferr := s.Store.FinishJob(context.WithoutCancel(ctx), jobID, o); ferr != nil {
-		logf("known verify %s: finish job: %v", t.ConceptID, ferr)
-	}
-	if err != nil {
-		return err
-	}
-	_, err = s.Store.SaveDiagnosticItems(ctx, store.DiagnosticItems{PromptHash: set.Hash(prompts.BlockCheckPretest), CreatedFor: userID,
-		JobID: jobID, Model: u.model, PromptVersion: diagnosticPromptVersion(set), Items: check.NormalizeDiagnostic(items)})
+	s.finishItemsJob(ctx, "known verify "+t.ConceptID, jobID, u, tries, err)
 	return err
 }

@@ -4,13 +4,13 @@ import { GRADER_LABELS, MASTERY_MAX_LEVEL, masteryLabel } from "./constants";
 
 const DOTS = Array.from({ length: MASTERY_MAX_LEVEL }, (_, index) => index + 1);
 
-/** 목표 레벨 점(●●●○○) + 마지막 채점 주체(튜터/자기)를 작게. */
+/** 목표 레벨 점(●●●○○) + 마지막 채점 주체(튜터/자기 채점)를 작게. */
 export function MasteryDots({ level, lastGrader, className }: { level: number; lastGrader?: CheckGrader | ""; className?: string }) {
   const label = masteryLabel(level);
   const grader = lastGrader ? GRADER_LABELS[lastGrader] : "";
   return (
     <span className={cn("inline-flex shrink-0 items-center gap-1.5", className)} title={label}>
-      <span role="img" aria-label={`숙달 ${label}${grader ? `, ${grader} 채점` : ""}`} className="inline-flex items-center gap-0.5">
+      <span role="img" aria-label={`숙달 ${label}${grader ? `, 채점 ${grader}` : ""}`} className="inline-flex items-center gap-0.5">
         {DOTS.map((n) => (
           <span
             key={n}

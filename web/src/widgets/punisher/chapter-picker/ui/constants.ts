@@ -23,3 +23,11 @@ export const PLACEMENT_OFFER_LABELS = {
   start: "시작",
   skip: "건너뛰기",
 } as const;
+
+/** 하단 고정 실행 바 */
+export const PICK_BAR_LABELS = {
+  picked: (n: number) => `선택 ${n}개`,
+  freeText: "직접 입력",
+  design: "챕터 설계해 보기",
+  designing: "챕터를 설계하는 중… (1~3분)",
+} as const;

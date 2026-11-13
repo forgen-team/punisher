@@ -91,22 +91,13 @@ func (s *Service) runReviewVariant(ctx context.Context, apiKey, userID string, t
 		priority: llm.PriorityBackground, system: system},
 		func(revisions []string) string { ic.Revisions = revisions; return prompts.CheckVariants(ic, seen) },
 		func(set check.ItemSet) []string { return check.ValidateVariants(set, sc, []string{t.ObjectiveID}) })
-	status := "succeeded"
-	if err != nil {
-		status = "failed"
+	if err == nil {
+		key := s.checkItemKey(ctx, userID, cl.lec.ID)
+		key.Purpose = check.PurposeReview
+		_, err = s.Store.SaveVariantItems(ctx, key, cl.info.ID, jobID, u.model, checkPromptVersion(set),
+			check.NormalizeItems(items, cl.objectiveIDs()))
 	}
-	o := u.outcome(status, "", err, "")
-	o.Attempts = tries
-	if ferr := s.Store.FinishJob(context.WithoutCancel(ctx), jobID, o); ferr != nil {
-		logf("review variant %s: finish job: %v", t.ObjectiveID, ferr)
-	}
-	if err != nil {
-		return err
-	}
-	key := s.checkItemKey(ctx, userID, cl.lec.ID)
-	key.Purpose = check.PurposeReview
-	_, err = s.Store.SaveVariantItems(ctx, key, cl.info.ID, jobID, u.model, checkPromptVersion(set),
-		check.NormalizeItems(items, cl.objectiveIDs()))
+	s.finishItemsJob(ctx, "review variant "+t.ObjectiveID, jobID, u, tries, err)
 	return err
 }
 

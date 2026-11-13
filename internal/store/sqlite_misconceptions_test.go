@@ -116,7 +116,7 @@ func TestUpgradeFromV012(t *testing.T) {
 		t.Fatalf("open = %+v (%v)", open, err)
 	}
 
-	d, err := s.LoadToday(ctx, testUser)
+	d, err := s.LoadToday(ctx, testUser, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,13 +168,13 @@ func TestMisconceptionSQLiteSemantics(t *testing.T) {
 		VALUES ($1, $2, $3, 1, 'aided', 1, $4, 0)`, testUser, objectiveID, conceptID, time.Now().Add(-time.Hour)); err != nil {
 		t.Fatal(err)
 	}
-	if d, err := s.LoadToday(ctx, testUser); err != nil || len(d.Lapsed) != 0 {
+	if d, err := s.LoadToday(ctx, testUser, time.Now()); err != nil || len(d.Lapsed) != 0 {
 		t.Fatalf("one lapse → none: %+v (%v)", d.Lapsed, err)
 	}
 	if _, err := s.c().exec(ctx, `UPDATE user_objective_mastery SET lapses = 2, queued = 1 WHERE objective_id = $1`, objectiveID); err != nil {
 		t.Fatal(err)
 	}
-	d, err := s.LoadToday(ctx, testUser)
+	d, err := s.LoadToday(ctx, testUser, time.Now())
 	if lapsed, ok := d.Lapsed[conceptID]; err != nil || !ok || lapsed.Due {
 		t.Fatalf("queued → listed but not due: %+v (%v)", d.Lapsed, err)
 	}

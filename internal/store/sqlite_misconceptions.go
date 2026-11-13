@@ -27,17 +27,18 @@ func scanMisconception(row rowScanner) (models.Misconception, error) {
 // AcknowledgeMisconception stores the misconception of the user's judged turn
 // ('맞아요, 그렇게 알았어요'): text from the turn's grade.misconception, concept
 // and objective from its item. Acknowledging the same turn again returns the
-// stored row (created=false). ErrNotFound when the turn is not the user's or
-// carries no misconception.
+// stored row (created=false). ErrNotFound when the turn is not the user's,
+// carries no misconception or was held (a held grade is no evidence). The text
+// is cut to learning.MaxMisconceptionRunes (left() → substr, both count characters).
 // SQLite: RETURNING on a DO NOTHING conflict → RowsAffected; the id is store.NewID().
 func (s *SQLiteStore) AcknowledgeMisconception(ctx context.Context, userID, turnID string) (models.Misconception, bool, error) {
 	res, err := s.c().exec(ctx, `
 		INSERT INTO user_misconceptions (id, user_id, concept_id, objective_id, text, turn_id)
-		SELECT $3, t.user_id, i.concept_id, i.objective_id, trim(json_extract(t.grade, '$.misconception')), t.id
+		SELECT $3, t.user_id, i.concept_id, i.objective_id, substr(trim(json_extract(t.grade, '$.misconception')), 1, $4), t.id
 		FROM check_turns t JOIN check_items i ON i.id = t.item_id
-		WHERE t.user_id = $1 AND t.id = $2 AND t.status = 'ready'
+		WHERE t.user_id = $1 AND t.id = $2 AND t.status = 'ready' AND COALESCE(t.verdict, '') <> 'held'
 			AND trim(COALESCE(json_extract(t.grade, '$.misconception'), '')) <> ''
-		ON CONFLICT (user_id, turn_id) DO NOTHING`, userID, turnID, NewID())
+		ON CONFLICT (user_id, turn_id) DO NOTHING`, userID, turnID, NewID(), learning.MaxMisconceptionRunes)
 	if err != nil {
 		return models.Misconception{}, false, fmt.Errorf("acknowledge misconception: %w", err)
 	}

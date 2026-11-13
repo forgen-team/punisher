@@ -33,6 +33,8 @@ func constraintErr(err error) error {
 		return errTurnSeq
 	case strings.Contains(msg, "check_turns.session_id"):
 		return ErrCheckBusy
+	case strings.Contains(msg, "check_sessions.session_key"):
+		return ErrCheckBusy // 같은 키의 열린 세션이 이미 있다(다시 시도가 그 세션과 겹침).
 	}
 	return err
 }
@@ -58,28 +60,99 @@ type NewCheckSession struct {
 	ConceptID  string
 	LectureID  string
 	SessionKey string
+	// MaxPending > 0: the session's generation runs without a job row (a
+	// diagnostic) — a new session counts toward the user's pending limit
+	// (ErrCheckBusy); an open one of the key is still returned.
+	MaxPending int
 }
 
 // CreateCheckSession inserts a preparing session; when the user already has an
 // open (preparing/active) session for the key, that one is returned with created=false.
 func (s *SQLiteStore) CreateCheckSession(ctx context.Context, n NewCheckSession) (models.CheckSession, bool, error) {
-	c, err := scanSession(s.c().row(ctx, `
-		INSERT INTO check_sessions (id, user_id, kind, grader, concept_id, lecture_id, session_key)
-		VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), $7)
-		ON CONFLICT (user_id, session_key) WHERE status IN ('preparing', 'active') DO NOTHING
-		RETURNING `+sessionColumns, NewID(), n.UserID, n.Kind, n.Grader, n.ConceptID, n.LectureID, n.SessionKey))
-	if err == nil {
-		return c, true, nil
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return c, false, fmt.Errorf("create check session: %w", err)
-	}
-	c, err = scanSession(s.c().row(ctx, `SELECT `+sessionColumns+` FROM check_sessions
+	var out models.CheckSession
+	created := false
+	err := s.tx(ctx, func(c conn) error {
+		if n.MaxPending > 0 {
+			open, err := openSession(ctx, c, n)
+			if err == nil {
+				out = open
+				return nil
+			}
+			if !errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("load open check session: %w", err)
+			}
+			if err := lockUserChecks(ctx, c, n.UserID, n.MaxPending); err != nil {
+				return err
+			}
+		}
+		sess, err := scanSession(c.row(ctx, `
+			INSERT INTO check_sessions (id, user_id, kind, grader, concept_id, lecture_id, session_key)
+			VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), $7)
+			ON CONFLICT (user_id, session_key) WHERE status IN ('preparing', 'active') DO NOTHING
+			RETURNING `+sessionColumns, NewID(), n.UserID, n.Kind, n.Grader, n.ConceptID, n.LectureID, n.SessionKey))
+		created = err == nil
+		if errors.Is(err, sql.ErrNoRows) {
+			sess, err = openSession(ctx, c, n)
+		}
+		if err != nil {
+			return fmt.Errorf("create check session: %w", err)
+		}
+		out = sess
+		return nil
+	})
+	return out, created, err
+}
+
+func openSession(ctx context.Context, c conn, n NewCheckSession) (models.CheckSession, error) {
+	return scanSession(c.row(ctx, `SELECT `+sessionColumns+` FROM check_sessions
 		WHERE user_id = $1 AND session_key = $2 AND status IN ('preparing', 'active')`, n.UserID, n.SessionKey))
-	if err != nil {
-		return c, false, fmt.Errorf("load open check session: %w", err)
-	}
-	return c, false, nil
+}
+
+// RetryCheckSession moves a failed session back to preparing ('다시 시도' of a
+// diagnostic) under the user's pending limit: ErrCheckBusy when over it or when
+// another open session of the key exists, ErrCheckClosed when it is not failed.
+func (s *SQLiteStore) RetryCheckSession(ctx context.Context, userID, id string, maxPending int) error {
+	return s.tx(ctx, func(c conn) error {
+		if err := lockUserChecks(ctx, c, userID, maxPending); err != nil {
+			return err
+		}
+		res, err := c.exec(ctx, `UPDATE check_sessions SET status = 'preparing', error = '', updated_at = NOW()
+			WHERE user_id = $1 AND id = $2 AND status = 'failed'`, userID, id)
+		if err != nil {
+			return fmt.Errorf("retry check session: %w", constraintErr(err))
+		}
+		if affected(res) == 0 {
+			return ErrCheckClosed
+		}
+		return nil
+	})
+}
+
+// CheckSnapshot is a session with its items and turns read in one snapshot.
+type CheckSnapshot struct {
+	Session models.CheckSession
+	Items   []CheckItem
+	Turns   []models.CheckTurn
+}
+
+// LoadCheckSnapshot reads a session, its items and turns together: a turn and
+// the cursor move committed together are seen together. witems uses a
+// repeatable-read transaction; here one transaction on the single connection
+// already sees no other write in between.
+func (s *SQLiteStore) LoadCheckSnapshot(ctx context.Context, userID, id string) (CheckSnapshot, error) {
+	var snap CheckSnapshot
+	err := s.tx(ctx, func(c conn) error {
+		var err error
+		if snap.Session, err = lockSession(ctx, c, userID, id); err != nil {
+			return err
+		}
+		if snap.Items, err = checkItemsByID(ctx, c, userID, snap.Session.ItemIDs); err != nil {
+			return err
+		}
+		snap.Turns, err = listCheckTurns(ctx, c, userID, id)
+		return err
+	})
+	return snap, err
 }
 
 // GetCheckSession loads one of the user's sessions.
@@ -181,11 +254,15 @@ func (s *SQLiteStore) SweepStaleChecksFor(ctx context.Context, userID string, tu
 	return total, nil
 }
 
+// pendingChecksSQL: running tutor turns, item jobs and diagnostic generations
+// (a preparing pretest / known_verify / placement session has no job row).
 const pendingChecksSQL = `
 	SELECT (SELECT COUNT(*) FROM check_turns WHERE user_id = $1 AND status = 'pending')
-	     + (SELECT COUNT(*) FROM generation_jobs WHERE user_id = $1 AND kind = 'check_items' AND status IN ('pending', 'running'))`
+	     + (SELECT COUNT(*) FROM generation_jobs WHERE user_id = $1 AND kind = 'check_items' AND status IN ('pending', 'running'))
+	     + (SELECT COUNT(*) FROM check_sessions WHERE user_id = $1 AND status = 'preparing'
+	          AND kind IN ('pretest', 'known_verify', 'placement'))`
 
-// CountPendingChecks counts the user's running tutor turns and item generations.
+// CountPendingChecks counts the user's running tutor turns, item generations and diagnostic generations.
 func (s *SQLiteStore) CountPendingChecks(ctx context.Context, userID string) (int, error) {
 	var n int
 	err := s.c().row(ctx, pendingChecksSQL, userID).Scan(&n)

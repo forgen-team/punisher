@@ -80,10 +80,14 @@ func (s *SQLiteStore) ActiveCheckItems(ctx context.Context, userID string, key C
 
 // CheckItemsByID loads items by id (retired ones too: a session keeps its items), in the order of ids.
 func (s *SQLiteStore) CheckItemsByID(ctx context.Context, userID string, ids []string) ([]CheckItem, error) {
+	return checkItemsByID(ctx, s.c(), userID, ids)
+}
+
+func checkItemsByID(ctx context.Context, c conn, userID string, ids []string) ([]CheckItem, error) {
 	if len(ids) == 0 {
 		return []CheckItem{}, nil
 	}
-	list, err := collect(s.c().query(ctx, `SELECT `+checkItemColumns+` FROM check_items ci
+	list, err := collect(c.query(ctx, `SELECT `+checkItemColumns+` FROM check_items ci
 		JOIN json_each($2) w ON w.value = ci.id
 		WHERE `+checkItemVisible+`
 		ORDER BY w.key`, userID, ids), scanCheckItem)

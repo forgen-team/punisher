@@ -5,11 +5,11 @@ import { EmptyState, ErrorState, List, ListRow, ListSkeleton } from "@/src/share
 import { useNotes } from "@/src/entities/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import { describePunisherError, type Note } from "@/src/shared/api/punisher";
+import { historyDay } from "../lib/historyDate";
 
-const dateFormat = new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium" });
 
 function metaOf(n: Note): string {
-  return [dateFormat.format(new Date(n.createdAt)), n.quote ? `인용: ${n.quote}` : ""].filter(Boolean).join(" · ");
+  return [historyDay(n.createdAt), n.quote ? `인용: ${n.quote}` : ""].filter(Boolean).join(" · ");
 }
 
 /** 메모 전체(최신순). 강의 메모는 눌러서 해당 위치로 이동. */
@@ -21,7 +21,7 @@ export function NoteHistoryList() {
     return <ErrorState message={describePunisherError(notes.error)} onRetry={() => notes.refetch()} />;
   }
   if (sorted.length === 0) {
-    return <EmptyState title="메모가 없습니다" description="강의 화면의 질문과 메모에서 남길 수 있습니다." />;
+    return <EmptyState title="메모가 없어요" description="강의 화면의 질문과 메모에서 남길 수 있어요." />;
   }
   // 넓은 화면(xl)은 두 열 — 짧은 행이 화면 끝까지 늘어나지 않게.
   return (

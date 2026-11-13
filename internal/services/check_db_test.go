@@ -11,6 +11,7 @@ import (
 
 	"github.com/wooo-jin/punisher/internal/learning"
 	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/wooo-jin/punisher/internal/prompts"
 	"github.com/wooo-jin/punisher/internal/store"
 	"github.com/wooo-jin/punisher/internal/llm"
 )
@@ -22,9 +23,29 @@ type checkLLM struct {
 	items, tutor, regrade []string
 	calls                 map[string]int
 	users                 map[string][]string
+	// hold (set before the run starts): tutor and diagnostic-item calls wait
+	// until it is closed; lecture check items and regrades never wait.
+	hold chan struct{}
+}
+
+// pretestRole: the opening line of the check.pretest default (no template vars).
+var pretestRole, _, _ = strings.Cut(prompts.SystemCheckPretest, "\n")
+
+// held: the calls hold blocks — everything but the check.items author and the
+// regrader. The diagnostic author (check.pretest) is also an "출제자", so it is
+// told apart by its opening line; it must wait too, or a diagnostic the test
+// expects to stay "preparing" fails as soon as its unscripted reply returns.
+func held(system string) bool {
+	if strings.Contains(system, "독립 채점자") {
+		return false
+	}
+	return !strings.Contains(system, "출제자") || strings.Contains(system, pretestRole)
 }
 
 func (f *checkLLM) Create(_ context.Context, _ string, req llm.MessagesRequest) (llm.MessagesResult, error) {
+	if f.hold != nil && held(req.System) {
+		<-f.hold
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	kind := "tutor"
@@ -42,7 +63,30 @@ func (f *checkLLM) Create(_ context.Context, _ string, req llm.MessagesRequest) 
 	}
 	text := (*queue)[0]
 	*queue = (*queue)[1:]
+	text = strings.ReplaceAll(text, quoteAnswer, jsonText(lastLearnerAnswer(req.User)))
 	return llm.MessagesResult{Text: text, Model: "fake-" + req.Model, Usage: llm.Usage{InputTokens: 10, OutputTokens: 5}}, nil
+}
+
+// quoteAnswer in a scripted reply becomes the learner answer of the prompt
+// (a correct grade needs a quote from the answer).
+const quoteAnswer = "@answer"
+
+func lastLearnerAnswer(prompt string) string {
+	const open, close = "<learner_answer>\n", "\n</learner_answer>"
+	i := strings.LastIndex(prompt, open)
+	if i < 0 {
+		return ""
+	}
+	rest := prompt[i+len(open):]
+	if j := strings.Index(rest, close); j >= 0 {
+		return rest[:j]
+	}
+	return rest
+}
+
+func jsonText(s string) string {
+	raw, _ := json.Marshal(s)
+	return strings.Trim(string(raw), `"`)
 }
 
 func (f *checkLLM) Stream(ctx context.Context, key string, req llm.MessagesRequest, _ func(string) error) (llm.MessagesResult, error) {
@@ -120,9 +164,14 @@ func itemSetJSON(f checkFixture, withIntegrative bool) string {
 	return `{"items":[` + strings.Join(items, ",") + `]}`
 }
 
+// tutorJSON: a correct grade quotes the learner answer, others quote "메모리" (dropped when the answer lacks it).
 func tutorJSON(verdict, move, text string, confidence float64) string {
-	return fmt.Sprintf(`{"verdict":%q,"met":["메모리"],"missing":["디스크 접근 감소"],"quote":"메모리","misconception":"","confidence":%v,"tutor_move":%q,"tutor_text":%q}`,
-		verdict, confidence, move, text)
+	quote := "메모리"
+	if verdict == "correct" {
+		quote = quoteAnswer
+	}
+	return fmt.Sprintf(`{"verdict":%q,"met":["메모리"],"missing":["디스크 접근 감소"],"quote":%q,"misconception":"","confidence":%v,"tutor_move":%q,"tutor_text":%q}`,
+		verdict, quote, confidence, move, text)
 }
 
 // waitIdle polls the session until nothing is running (the client's refetch loop).

@@ -1,20 +1,18 @@
 import { CHECK_KIND_LABELS } from "@/src/entities/punisher";
 import type { CheckHistoryItem, Misconception, RetentionBucket } from "@/src/shared/api/punisher";
 import { HISTORY_STATUS_LABELS } from "../ui/constants";
+import { historyDay } from "./historyDate";
 
-const dateFormat = new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "Asia/Seoul" });
 
 /** 세션 날짜 — 복습은 그 KST 날짜(reviewDay), 확인은 시작 시각. */
 export function sessionDate(item: CheckHistoryItem): string {
   const source = item.reviewDay ? `${item.reviewDay}T00:00:00+09:00` : item.createdAt;
-  const date = new Date(source);
-  return Number.isNaN(date.getTime()) ? "" : dateFormat.format(date);
+  return historyDay(source);
 }
 
 /** 고친 오개념 한 줄 메타 — 개념 · 고친 날짜. */
 export function resolvedMeta(m: Pick<Misconception, "conceptName" | "resolvedAt">): string {
-  const date = m.resolvedAt ? new Date(m.resolvedAt) : null;
-  const day = date && !Number.isNaN(date.getTime()) ? dateFormat.format(date) : "";
+  const day = m.resolvedAt ? historyDay(m.resolvedAt) : "";
   return [m.conceptName, day].filter(Boolean).join(" · ");
 }
 

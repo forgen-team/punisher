@@ -39,7 +39,7 @@ export function HistoryWidget() {
 
   return (
     <div className="flex w-full flex-col gap-3">
-      <div role="group" aria-label="기록 종류" className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1.5 fold:mx-0 fold:px-0">
+      <div role="group" aria-label="기록 종류" className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1.5 [scrollbar-width:none] fold:mx-0 fold:px-0">
         {TABS.map((t) => (
           <Chip
             key={t.id}

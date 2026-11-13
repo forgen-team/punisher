@@ -4,6 +4,7 @@
 // 새 코드에서 쓰는 클래스 (전부 다크모드 자동 대응)
 //   배경  bg-canvas(본문 패널) · bg-canvas-subtle(바깥·사이드바) · bg-canvas-elevated(카드) · hover:bg-canvas-hover
 //         bg-canvas-active · bg-canvas-translucent(블러 바) · bg-overlay(딤)
+//         bg-canvas-selected(탭·segmented 선택 칸) · bg-canvas-muted(본문 위 옅은 면 — 말풍선)
 //   글자  text-fg · text-fg-secondary · text-fg-muted · text-fg-inverse
 //   선    border-line · divide-line · border-line-subtle · border-line-strong
 //   강조  text-accent(=accent-solid) · text-accent-text · bg-accent-subtle · bg-accent-solid · text-accent-on · ring-focus
@@ -43,6 +44,8 @@ const preset = {
           hover: v('--color-surface-hover'),
           active: v('--color-surface-active'),
           translucent: v('--color-bg-translucent'),
+          selected: v('--color-bg-selected'),
+          muted: v('--color-bg-muted'),
         },
         fg: {
           DEFAULT: v('--color-text'),

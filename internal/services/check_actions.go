@@ -57,7 +57,7 @@ func (s *Service) AnswerCheck(ctx context.Context, userID, id, text string) (mod
 	}
 	runDetached("check turn", turn.ID, checkTurnTimeout, func(bg context.Context) error {
 		return s.runCheckTurn(bg, apiKey, userID, id, turn.ID)
-	})
+	}, s.failTurn(userID, turn.ID))
 	return s.GetCheck(ctx, userID, id)
 }
 
@@ -151,7 +151,7 @@ func (s *Service) DisputeCheck(ctx context.Context, userID, id, turnID, reason s
 	}
 	runDetached("check dispute", turn.ID, checkTurnTimeout, func(bg context.Context) error {
 		return s.runDispute(bg, apiKey, userID, id, turn.ID)
-	})
+	}, s.failTurn(userID, turn.ID))
 	return s.GetCheck(ctx, userID, id)
 }
 
@@ -178,7 +178,9 @@ func judgedTurn(st checkState, turnID string) (models.CheckTurn, store.CheckItem
 		return models.CheckTurn{}, store.CheckItem{}, store.ErrNotFound
 	}
 	item, ok := itemByID(st.items, judged.ItemID)
-	if !ok || item.ObjectiveID == "" || !disputable[judged.Outcome] || judged.Verdict == learning.VerdictRevealed {
+	// 자기 채점은 학습자 자신의 판정이라 LLM 재채점으로 뒤집지 않는다.
+	if !ok || item.ObjectiveID == "" || !disputable[judged.Outcome] || judged.Verdict == learning.VerdictRevealed ||
+		judged.Grader == learning.GraderSelf {
 		return *judged, item, ErrCheckState
 	}
 	for _, t := range st.turns {

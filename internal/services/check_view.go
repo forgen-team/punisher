@@ -18,16 +18,11 @@ type checkState struct {
 }
 
 func (s *Service) loadCheckState(ctx context.Context, userID, id string) (checkState, error) {
-	sess, err := s.Store.GetCheckSession(ctx, userID, id)
-	if err != nil {
-		return checkState{}, err
+	if !validID(id) {
+		return checkState{}, store.ErrNotFound
 	}
-	items, err := s.Store.CheckItemsByID(ctx, userID, sess.ItemIDs)
-	if err != nil {
-		return checkState{}, err
-	}
-	turns, err := s.Store.ListCheckTurns(ctx, userID, id)
-	return checkState{sess: sess, items: items, turns: turns}, err
+	snap, err := s.Store.LoadCheckSnapshot(ctx, userID, id) // 세션·문항·턴을 한 스냅숏으로(커서와 판정이 어긋나 보이지 않게)
+	return checkState{sess: snap.Session, items: snap.Items, turns: snap.Turns}, err
 }
 
 // current is the item under the cursor (nil when the session is not active).

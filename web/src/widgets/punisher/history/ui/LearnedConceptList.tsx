@@ -20,7 +20,7 @@ export function LearnedConceptList() {
     return <ErrorState message={describePunisherError(concepts.error)} onRetry={() => concepts.refetch()} />;
   }
   if (learned.length === 0) {
-    return <EmptyState title="아직 완료하거나 알고 있다고 표시한 개념이 없습니다" description="지도에서 이미 아는 개념을 표시할 수 있습니다." />;
+    return <EmptyState title="아직 완료하거나 이미 앎으로 표시한 개념이 없어요" description="지도에서 이미 아는 개념을 표시할 수 있어요." />;
   }
   // 넓은 화면(xl)은 두 열 — 짧은 행이 화면 끝까지 늘어나지 않게.
   return (

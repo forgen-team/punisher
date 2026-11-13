@@ -3,8 +3,8 @@ import { Badge, Button, Spinner } from "@/src/shared/ui/kit";
 import { SELF_VERDICT_LABELS, VERDICT_LABELS, type SelfVerdict } from "@/src/entities/punisher";
 import type { CheckTurn } from "@/src/shared/api/punisher";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
-import { turnBody } from "../lib/checkView";
-import { DISPUTE_RESULT_LABELS, PENDING_LABELS, VERDICT_TONE } from "./constants";
+import { isRevealNotice, turnBody } from "../lib/checkView";
+import { DISPUTE_RESULT_LABELS, PENDING_LABELS, SYSTEM_TURN_LABELS, VERDICT_TONE } from "./constants";
 
 interface CheckTurnItemProps {
   turn: CheckTurn;
@@ -53,10 +53,13 @@ export function CheckTurnItem({ turn, onRetry, retrying }: CheckTurnItemProps) {
       </li>
     );
   }
+  if (isRevealNotice(turn)) {
+    return <li className="text-xs text-fg-muted">{SYSTEM_TURN_LABELS.revealed}</li>;
+  }
   const accepted = turn.move === "dispute" && turn.grade?.accepted !== undefined ? turn.grade.accepted : undefined;
   const body = turnBody(turn);
   return (
-    <li className="flex flex-col gap-1.5 rounded-lg bg-canvas-subtle px-3 py-2 text-sm">
+    <li className="flex flex-col gap-1.5 rounded-lg bg-canvas-muted px-3 py-2 text-sm">
       <span className="sr-only">튜터: </span>
       {(turn.verdict || accepted !== undefined) && (
         <span className="flex flex-wrap items-center gap-1.5">
@@ -66,6 +69,7 @@ export function CheckTurnItem({ turn, onRetry, retrying }: CheckTurnItemProps) {
               {accepted ? DISPUTE_RESULT_LABELS.accepted : DISPUTE_RESULT_LABELS.rejected}
             </Badge>
           )}
+          {accepted && turn.grade?.conflict && <Badge tone="warning">{DISPUTE_RESULT_LABELS.conflict}</Badge>}
         </span>
       )}
       {body && <Markdown>{body}</Markdown>}

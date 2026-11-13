@@ -6,6 +6,7 @@ import (
 
 	"github.com/wooo-jin/punisher/internal/learning"
 	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/wooo-jin/punisher/internal/store"
 )
 
 // Codes of the misconception API's 400 responses.
@@ -24,6 +25,9 @@ func (s *Service) AcknowledgeMisconception(ctx context.Context, userID, turnID s
 	turnID = strings.TrimSpace(turnID)
 	if turnID == "" {
 		return models.Misconception{}, false, invalidCheck(CodeTurnRequired, "turnId is required")
+	}
+	if !validID(turnID) {
+		return models.Misconception{}, false, store.ErrNotFound
 	}
 	return s.Store.AcknowledgeMisconception(ctx, userID, turnID)
 }

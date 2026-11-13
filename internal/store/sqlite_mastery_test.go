@@ -36,7 +36,7 @@ func saveTestMastery(t *testing.T, s *SQLiteStore, user, objectiveID string, m l
 	var updated time.Time
 	if err := s.tx(context.Background(), func(c conn) error {
 		var err error
-		updated, err = saveMastery(context.Background(), c, user, objectiveID, "llm", m)
+		updated, err = saveMastery(context.Background(), c, user, objectiveID, "llm", m, "")
 		return err
 	}); err != nil {
 		t.Fatal(err)

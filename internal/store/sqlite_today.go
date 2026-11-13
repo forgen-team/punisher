@@ -32,7 +32,7 @@ type GoalTargets struct {
 
 // LoadToday loads concepts with pending-objective flags, prerequisite edges,
 // in-progress lectures, resolved study requests, active goals and the review queue counts.
-func (s *SQLiteStore) LoadToday(ctx context.Context, userID string) (*TodayData, error) {
+func (s *SQLiteStore) LoadToday(ctx context.Context, userID string, now time.Time) (*TodayData, error) {
 	d := &TodayData{Concepts: map[string]learning.TodayConcept{}}
 
 	concepts, err := collect(s.c().query(ctx, `
@@ -98,7 +98,6 @@ func (s *SQLiteStore) LoadToday(ctx context.Context, userID string) (*TodayData,
 	}); err != nil {
 		return nil, fmt.Errorf("today goals: %w", err)
 	}
-	now := time.Now()
 	if d.Review, err = s.ReviewCounts(ctx, userID, now); err != nil {
 		return nil, err
 	}

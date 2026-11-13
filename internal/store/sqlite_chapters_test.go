@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/wooo-jin/punisher/internal/chapter"
 	"github.com/wooo-jin/punisher/internal/curriculum"
@@ -95,7 +96,7 @@ func TestChapterApplyAndUserIsolation(t *testing.T) {
 	if err != nil || !hasEdge(edgesA, seedA, alpha) || !hasEdge(edgesA, gamma, proposedID) {
 		t.Fatalf("user A edges missing chapter prerequisites (%v)", err)
 	}
-	todayA, err := s.LoadToday(ctx, userA)
+	todayA, err := s.LoadToday(ctx, userA, time.Now())
 	if err != nil || !todayA.Concepts[alpha].Private || todayA.Concepts[alpha].PendingDepths != 1 {
 		t.Fatalf("today A: %+v %v", todayA.Concepts[alpha], err)
 	}
@@ -120,7 +121,7 @@ func TestChapterApplyAndUserIsolation(t *testing.T) {
 	knownB, _ := s.KnownConceptIDs(ctx, userB)
 	aliasB, _ := s.AliasIndex(ctx, userB)
 	catalogB, _ := s.ConceptCatalog(ctx, userB)
-	todayB, _ := s.LoadToday(ctx, userB)
+	todayB, _ := s.LoadToday(ctx, userB, time.Now())
 	edgesB, _ := s.PrerequisiteEdges(ctx, userB)
 	graphB, _ := s.LoadGraph(ctx, userB)
 	if knownB[alpha] || aliasB[alpha] != "" || todayB.Concepts[alpha].ID != "" || hasEdge(edgesB, seedA, alpha) {

@@ -3,9 +3,10 @@
 import "@xyflow/react/dist/style.css";
 import { useEffect, useMemo, useState } from "react";
 import { Background, Controls, MiniMap, ReactFlow, type Edge } from "@xyflow/react";
-import { mapNodeState, useResolvedTheme } from "@/src/entities/punisher";
+import { MAP_STATE_STYLES, mapNodeState, useResolvedTheme } from "@/src/entities/punisher";
 import type { GraphEdge, GraphNode } from "@/src/shared/api/punisher";
-import { layoutGraph, type LaidOutNode } from "../lib/elkLayout";
+import { NODE_HEIGHT, layoutGraph, nodeWidth, type LaidOutNode } from "../lib/elkLayout";
+import { FIT_MIN_ZOOM, initialFitIds } from "../lib/initialFit";
 import { ConceptNode, type ConceptFlowNode } from "./ConceptNode";
 
 const nodeTypes = { concept: ConceptNode };
@@ -49,6 +50,9 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, mast
         id: n.id,
         type: "concept",
         position: { x: pos?.x ?? 0, y: pos?.y ?? 0 },
+        // 화면 밖이라 아직 그리지 않은 노드도 크기를 알아야 fitView·미니맵이 그 노드를 센다.
+        initialWidth: nodeWidth(n.depth),
+        initialHeight: NODE_HEIGHT,
         data: {
           name: n.name,
           depth: n.depth,
@@ -67,8 +71,8 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, mast
     });
   }, [nodes, positions, highlightIds, selectedId, masteredIds, onSelect]);
 
-  // 선택한 개념이 있으면 그 주변으로, 없으면 전체가 보이게 맞춘다.
-  const fitIds = useMemo(() => (selectedId && nodes.some((n) => n.id === selectedId) ? [{ id: selectedId }] : undefined), [nodes, selectedId]);
+  // 첫 화면: 고른 개념 → 진행 중 → 추천 개념 기준으로 맞춘다(좁힌 보기는 전체). 확대 하한은 FIT_MIN_ZOOM.
+  const fitIds = useMemo(() => initialFitIds(nodes, selectedId), [nodes, selectedId]);
 
   const flowEdges = useMemo<Edge[]>(
     () =>
@@ -90,7 +94,7 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, mast
   );
 
   if (layoutError) {
-    return <p role="alert" className="p-4 text-sm text-danger">지도 배치를 계산하지 못했습니다.</p>;
+    return <p role="alert" className="p-4 text-sm text-danger">지도 배치를 계산하지 못했어요.</p>;
   }
   if (!positions) {
     return <div aria-hidden="true" className="h-full w-full animate-pulse bg-canvas-hover motion-reduce:animate-none" />;
@@ -103,8 +107,8 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, mast
       nodeTypes={nodeTypes}
       colorMode={theme}
       fitView
-      // 전체 영역(~170개)이 한 화면에 들어오도록 더 멀리 축소할 수 있게 하고, 화면 밖 노드는 그리지 않는다.
-      fitViewOptions={{ padding: 0.08, nodes: fitIds, maxZoom: 1.1 }}
+      // 첫 확대는 읽을 수 있는 하한(FIT_MIN_ZOOM) 위로. 직접 축소는 더 멀리까지 되고, 화면 밖 노드는 그리지 않는다.
+      fitViewOptions={{ padding: 0.08, nodes: fitIds, minZoom: FIT_MIN_ZOOM, maxZoom: 1.1 }}
       minZoom={0.05}
       onlyRenderVisibleElements
       nodesDraggable={false}
@@ -117,7 +121,12 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, mast
     >
       <Background />
       <Controls showInteractive={false} />
-      <MiniMap pannable zoomable className="!hidden md:!block" />
+      <MiniMap
+        pannable
+        zoomable
+        nodeColor={(node) => MAP_STATE_STYLES[(node as ConceptFlowNode).data.displayState].border}
+        className="!hidden md:!block"
+      />
     </ReactFlow>
   );
 }

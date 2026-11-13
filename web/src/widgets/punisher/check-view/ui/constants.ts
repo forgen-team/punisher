@@ -19,9 +19,11 @@ export const OUTCOME_TONE: Record<CheckOutcome, BadgeTone> = {
 };
 
 /** 이의 제기 재채점 결과 */
-export const DISPUTE_RESULT_LABELS: Record<"accepted" | "rejected", string> = {
+export const DISPUTE_RESULT_LABELS: Record<"accepted" | "rejected" | "conflict", string> = {
   accepted: "이의 받아들임",
   rejected: "원래 판정 유지",
+  /** 받아들였지만 그 뒤 다른 근거가 있어 상자는 되돌리지 않음 */
+  conflict: "이후 기록이 있어 상자 유지",
 };
 
 /** 실행 중 표시(튜터 턴 · 이의 재채점) */
@@ -76,4 +78,14 @@ export const MISCONCEPTION_LABELS = {
   revealed: "드러난 오개념",
   acknowledge: "맞아요, 그렇게 알았어요",
   acknowledged: "인정함",
+} as const;
+
+/** 한 줄 시스템 표기(답 공개 턴) */
+export const SYSTEM_TURN_LABELS = {
+  revealed: "답을 공개했어요",
+} as const;
+
+/** 결과 아래 다음 행동 */
+export const RESULT_ACTION_LABELS = {
+  today: "오늘로",
 } as const;

@@ -178,6 +178,9 @@ func (s *Service) placementPlan(ctx context.Context, userID, chapterID string) (
 	if chapterID == "" {
 		return diagnosticPlan{}, invalidCheck(CodeMissingTarget, "chapterId is required")
 	}
+	if !validID(chapterID) {
+		return diagnosticPlan{}, store.ErrNotFound
+	}
 	list, err := s.Store.PlacementConcepts(ctx, userID, chapterID)
 	if err != nil {
 		return diagnosticPlan{}, err
@@ -232,9 +235,13 @@ func (s *Service) createDiagnostic(ctx context.Context, userID string, plan diag
 		return nil, false, err
 	}
 	sess, created, err := s.Store.CreateCheckSession(ctx, store.NewCheckSession{UserID: userID, Kind: plan.kind, Grader: plan.grader,
-		ConceptID: plan.conceptID, LectureID: plan.lectureID, SessionKey: plan.key})
+		ConceptID: plan.conceptID, LectureID: plan.lectureID, SessionKey: plan.key, MaxPending: maxPendingChecks})
+	if errors.Is(err, store.ErrCheckBusy) && plan.kind == check.PurposePretest {
+		logf("pretest for %s skipped: %v", userID, err) // 예측 질문은 없어도 강의는 그대로 열린다.
+		return nil, false, nil
+	}
 	if err != nil {
-		return nil, false, err
+		return nil, false, checkBusy(err)
 	}
 	if created {
 		s.runDiagnosticDetached(apiKey, userID, sess.ID, plan)
@@ -246,7 +253,7 @@ func (s *Service) createDiagnostic(ctx context.Context, userID string, plan diag
 func (s *Service) runDiagnosticDetached(apiKey, userID, sessionID string, plan diagnosticPlan) {
 	runDetached("diagnostic items", sessionID, diagnosticTimeout, func(bg context.Context) error {
 		return s.runDiagnosticItems(bg, apiKey, userID, sessionID, plan)
-	})
+	}, s.failPreparing(userID, sessionID, ""))
 }
 
 // runDiagnosticItems writes the plan's items with the check.pretest block
@@ -335,7 +342,12 @@ func (s *Service) retryDiagnostic(ctx context.Context, userID string, sess model
 	if err != nil {
 		return models.CheckDetail{}, err
 	}
-	if err := s.Store.SetCheckSessionStatus(ctx, userID, sess.ID, []string{"failed"}, "preparing", ""); err != nil {
+	if err := s.Store.RetryCheckSession(ctx, userID, sess.ID, maxPendingChecks); err != nil {
+		// 같은 키로 이미 열린 세션(다른 탭에서 새로 시작)이 있으면 그 세션을 이어 간다.
+		if open, oerr := s.Store.LatestCheckSession(ctx, userID, sess.SessionKey); oerr == nil && open.ID != sess.ID &&
+			(open.Status == "preparing" || open.Status == "active") {
+			return s.GetCheck(ctx, userID, open.ID)
+		}
 		return models.CheckDetail{}, checkBusy(err)
 	}
 	s.runDiagnosticDetached(apiKey, userID, sess.ID, plan)

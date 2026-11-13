@@ -24,7 +24,7 @@ function LectureRows({ conceptId }: { conceptId: string }) {
   }
   const items = lectures.data ?? [];
   if (items.length === 0) {
-    return <p className="text-xs text-fg-muted">아직 강의가 없습니다. 강의 시작으로 만들 수 있습니다.</p>;
+    return <p className="text-xs text-fg-muted">아직 강의가 없어요. 강의 시작으로 만들 수 있어요.</p>;
   }
   return (
     <List>

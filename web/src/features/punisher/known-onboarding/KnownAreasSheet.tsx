@@ -97,14 +97,14 @@ export function KnownAreasSheet({ open, onClose, onSaved }: KnownAreasSheetProps
       onClose={running ? () => undefined : onClose}
       dismissible={!running}
       title="이미 아는 영역 표시"
-      description="아는 기본 개념을 체크하면 이어지는 개념의 잠금이 풀립니다."
+      description="아는 기본 개념을 체크하면 이어지는 개념의 잠금이 풀려요."
       footer={footer}
       desktop="dialog"
     >
       <div aria-live="polite" className="text-sm">
         {failedCount > 0 && !running && (
           <p role="alert" className="mb-2 text-danger">
-            {failedCount}개를 저장하지 못했습니다. 남은 항목으로 다시 시도해 주세요.
+            {failedCount}개를 저장하지 못했어요. 남은 항목으로 다시 시도해 주세요.
           </p>
         )}
       </div>

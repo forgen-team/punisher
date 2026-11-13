@@ -72,15 +72,24 @@ func (s *SQLiteStore) FinishCheckItem(ctx context.Context, f ItemFinish) (string
 		if sess.Status != "active" || sess.Cursor >= len(sess.ItemIDs) || sess.ItemIDs[sess.Cursor] != f.Item.ID {
 			return ErrCheckClosed
 		}
+		if err := otherPendingTurn(ctx, c, f.SessionID, f.Turn.ID); err != nil {
+			return err
+		}
+		// 새 판정 턴의 id 를 먼저 정해 숙달의 근거 표지(last_evidence_turn_id)로 쓴다
+		// (witems 는 gen_random_uuid() 로 미리 발급, 여기선 NewID()).
+		insert := f.Turn.ID == ""
+		if insert {
+			f.Turn.ID = NewID()
+		}
 		entry, grade, err := applyItemEvidence(ctx, c, f)
 		if err != nil {
 			return err
 		}
 		f.Turn.UserID, f.Turn.SessionID, f.Turn.Outcome, f.Turn.Grade = f.UserID, f.SessionID, entry.Outcome, grade
-		if f.Turn.ID != "" {
-			err = updateTurn(ctx, c, f.Turn)
-		} else {
+		if insert {
 			_, err = insertTurn(ctx, c, f.Turn)
+		} else {
+			err = updateTurn(ctx, c, f.Turn)
 		}
 		if err != nil {
 			return err
@@ -112,10 +121,11 @@ func applyItemEvidence(ctx context.Context, c conn, f ItemFinish) (ResultEntry, 
 		}
 		return entry, grade, nil
 	}
-	m, updated, exists, err := lockMastery(ctx, c, f.UserID, f.Item.ObjectiveID)
+	l, err := lockMastery(ctx, c, f.UserID, f.Item.ObjectiveID)
 	if err != nil {
 		return entry, grade, fmt.Errorf("load mastery: %w", err)
 	}
+	m, updated, mark, exists := l.M, l.Updated, l.Mark, l.Exists
 	prev := m
 	entry.Outcome = learning.ItemOutcome(f.Result, m.LastFailAt, f.Now)
 	entry.LevelBefore = learning.DisplayLevel(m)
@@ -129,10 +139,12 @@ func applyItemEvidence(ctx context.Context, c conn, f ItemFinish) (ResultEntry, 
 			next = learning.ApplyKnownVerify(m, entry.Outcome, f.Now, f.Intervals)
 		}
 		m = learning.QueueEntry(prev, next, f.Hold)
-		if updated, err = saveMastery(ctx, c, f.UserID, f.Item.ObjectiveID, f.Turn.Grader, m); err != nil {
+		if updated, err = saveMastery(ctx, c, f.UserID, f.Item.ObjectiveID, f.Turn.Grader, m, f.Turn.ID); err != nil {
 			return entry, grade, err
 		}
+		mark = f.Turn.ID
 	}
+	grade.Mark = &mark
 	if entry.Outcome == learning.OutcomeUnaidedCorrect { // 혼자 맞히면 그 목표의 인정한 오개념은 고친 것(design §5 P4).
 		if err := resolveMisconceptions(ctx, c, f.UserID, f.Item.ObjectiveID); err != nil {
 			return entry, grade, err
@@ -179,16 +191,22 @@ type DisputeResolve struct {
 	UserID      string
 	SessionID   string
 	ObjectiveID string
-	// JudgedTurnID: the item's last judgement turn (holds grade.prev / appliedAt).
+	// JudgedTurnID: the item's last judgement turn (holds grade.prev / mark).
 	JudgedTurnID string
 	Accepted     bool
 	Turn         TurnWrite
+	// ConflictText replaces Turn.Text when the dispute is accepted but other
+	// evidence came since (the box is kept).
+	ConflictText string
+	Now          time.Time
+	Intervals    []int
 }
 
 // ResolveDispute stores the regrade. When accepted, the item's evidence is
-// rolled back to grade.prev and best rises to unaided (learning.Restore); if
-// other evidence reached the objective since (updated_at differs), only best
-// rises. Returns whether that conflict happened.
+// rolled back to grade.prev and best rises to unaided (learning.Restore,
+// keeping what changed since without being evidence — learning.KeepSince); if
+// other evidence reached the objective since (the last-evidence marker moved),
+// only best rises. Returns whether that conflict happened.
 func (s *SQLiteStore) ResolveDispute(ctx context.Context, d DisputeResolve) (bool, error) {
 	conflict := false
 	err := s.tx(ctx, func(c conn) error {
@@ -203,6 +221,9 @@ func (s *SQLiteStore) ResolveDispute(ctx context.Context, d DisputeResolve) (boo
 		}
 		accepted := d.Accepted
 		d.Turn.UserID, d.Turn.Grade.Accepted, d.Turn.Grade.Conflict = d.UserID, &accepted, conflict
+		if conflict && d.ConflictText != "" {
+			d.Turn.Text = d.ConflictText
+		}
 		return updateTurn(ctx, c, d.Turn)
 	})
 	if err != nil {
@@ -228,13 +249,20 @@ func restoreEvidence(ctx context.Context, c conn, d DisputeResolve) (bool, error
 	if judged.Prev != nil {
 		prev = *judged.Prev
 	}
-	cur, updated, exists, err := lockMastery(ctx, c, d.UserID, d.ObjectiveID)
+	l, err := lockMastery(ctx, c, d.UserID, d.ObjectiveID)
 	if err != nil {
 		return false, err
 	}
-	conflict := exists && (judged.AppliedAt == nil || !updated.Equal(*judged.AppliedAt))
-	restored := learning.Restore(cur, prev, conflict)
+	// 충돌 = 그 판정 뒤에 다른 근거가 반영됨(표지가 바뀜). 통합 크레딧·대기 해제·stale·다시 배우기는 표지를 건드리지 않는다.
+	conflict := l.Exists && (judged.AppliedAt == nil || !l.Updated.Equal(*judged.AppliedAt))
+	if judged.Mark != nil {
+		conflict = l.Exists && l.Mark != *judged.Mark
+	}
+	restored := learning.Restore(l.M, prev, conflict)
+	if !conflict {
+		restored = learning.KeepSince(restored, l.M, d.Now, d.Intervals)
+	}
 	restored.Verify = false // 받아들여진 이의 = 맞은 답: '이미 앎' 확인도 통과로 끝난다.
-	_, err = saveMastery(ctx, c, d.UserID, d.ObjectiveID, d.Turn.Grader, restored)
+	_, err = saveMastery(ctx, c, d.UserID, d.ObjectiveID, d.Turn.Grader, restored, d.Turn.ID)
 	return conflict, err
 }

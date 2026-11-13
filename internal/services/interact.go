@@ -113,6 +113,11 @@ func (s *Service) RequestAltExplanation(ctx context.Context, userID string, lec 
 	go func() {
 		bg, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 		defer cancel()
+		defer recoverPanic("alt explanation", q.ID, func(err error) {
+			if _, ferr := s.Store.FailQuestion(context.Background(), q.ID, "", err.Error()); ferr != nil {
+				logf("alt explanation %s: fail after panic: %v", q.ID, ferr)
+			}
+		})
 		if _, err := s.answerWithKey(bg, userID, apiKey, q, qc.known, prompts.AltExplanation(qc.prompt, comment)); err != nil {
 			logf("alt explanation %s: %v", q.ID, err)
 		}

@@ -43,7 +43,7 @@ export type MapNodeState = "completed" | "known" | "in_progress" | "recommended"
 
 export const MAP_STATE_LABELS: Record<MapNodeState, string> = {
   completed: "완료",
-  known: "알고 있음",
+  known: "이미 앎",
   "in_progress": "진행 중",
   recommended: "추천(다음 학습)",
   "not_started": "미학습",
@@ -161,7 +161,7 @@ export const OUTCOME_LABELS: Record<CheckOutcome, string> = {
 /** 마지막 근거의 채점 주체(레벨 점 옆) */
 export const GRADER_LABELS: Record<CheckGrader, string> = {
   llm: "튜터",
-  self: "자기",
+  self: "자기 채점",
   "llm_regrade": "재채점",
   none: "",
 };

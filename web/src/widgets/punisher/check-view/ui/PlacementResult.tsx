@@ -31,7 +31,7 @@ export const PlacementResult = forwardRef<HTMLElement, { placement: Placement }>
   }
 
   return (
-    <Section ref={ref} tabIndex={-1} title={PLACEMENT_LABELS.candidates} className="mt-8 border-t border-line pt-4 outline-none">
+    <Section ref={ref} tabIndex={-1} title={PLACEMENT_LABELS.candidates} className="mt-4 scroll-mt-28 border-b border-line pb-4 outline-none">
       {placement.candidates.length === 0 ? (
         <p className="py-3 text-sm text-fg-secondary">{PLACEMENT_LABELS.none}</p>
       ) : (

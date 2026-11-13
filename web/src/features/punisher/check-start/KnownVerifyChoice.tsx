@@ -1,6 +1,7 @@
 
 import { BottomSheet, Button } from "@/src/shared/ui/kit";
 import { describeCheckError } from "@/src/entities/punisher";
+import { InlineError } from "@/src/shared/ui/punisher";
 import type { KnownChoice } from "./useKnownChoice";
 
 const TITLE = "짧게 확인할까요?";
@@ -19,6 +20,7 @@ function ChoiceButtons({ choice }: { choice: KnownChoice }) {
 }
 
 function ChoiceError({ choice }: { choice: KnownChoice }) {
+  if (choice.knownError) { return <InlineError error={choice.knownError} />; }
   if (!choice.error) { return null; }
   return (
     <p role="alert" className="text-sm text-danger">

@@ -1,12 +1,12 @@
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowLeft, History } from "lucide-react";
-import { Badge, Button, SegmentedTabs, Textarea, iconButtonVariants } from "@/src/shared/ui/kit";
+import { AlertTriangle, History } from "lucide-react";
+import { Badge, Button, SegmentedTabs, Textarea } from "@/src/shared/ui/kit";
 import { useChangePrompt } from "@/src/entities/punisher";
 import { describePunisherError, type PromptBlock, type PromptHistoryEntry } from "@/src/shared/api/punisher";
 import { useWideLayout } from "@/src/shared/lib/useWideLayout";
 import { findUnknownVariables, withSuggestion } from "../lib/lineDiff";
-import { EDITOR_TABS, type EditorTab } from "./constants";
+import { EDITOR_LABELS, EDITOR_TABS, type EditorTab } from "./constants";
 import { DiffView } from "./DiffView";
 import { HistorySheet } from "./HistorySheet";
 import { PreviewView } from "./PreviewView";
@@ -15,12 +15,13 @@ interface PromptBlockEditorProps {
   block: PromptBlock;
   /** 강의 피드백에서 온 제안 문구 — 초안에만 붙이고 저장은 사용자가 한다 */
   suggestion?: string;
-  /** 모바일(1단)에서 목록으로 돌아가기 */
-  onBack?: () => void;
 }
 
-/** 블록 상세: 하는 일·적용 범위·경고 → 편집 / 기본값과 비교 / 미리보기 → 저장·되돌리기·이전 버전. */
-export function PromptBlockEditor({ block, suggestion, onBack }: PromptBlockEditorProps) {
+/**
+ * 블록 상세: 하는 일·경고 → 편집 / 기본값과 비교 / 미리보기 → 저장·되돌리기·이전 버전.
+ * 적용 범위는 제목 툴팁에 둔다(헤더는 제목만). 모바일 뒤로가기는 셸 상단 바가 맡는다.
+ */
+export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps) {
   const change = useChangePrompt();
   const [draft, setDraft] = useState(() => (suggestion ? withSuggestion(block.body, suggestion) : block.body));
   const [tabChoice, setTab] = useState<EditorTab>("edit");
@@ -63,20 +64,12 @@ export function PromptBlockEditor({ block, suggestion, onBack }: PromptBlockEdit
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <header className="flex flex-col gap-1">
-        <div className="flex items-center gap-1">
-          {onBack && (
-            <button type="button" onClick={onBack} className={`${iconButtonVariants({ variant: "ghost", size: "sm" })} -ml-1.5`} aria-label="블록 목록으로">
-              <ArrowLeft aria-hidden="true" />
-            </button>
-          )}
-          <p className="text-xs font-semibold text-accent-text">{block.stageTitle}</p>
-        </div>
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-fg">
+        <p className="text-xs font-semibold text-accent-text">{block.stageTitle}</p>
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-fg" title={EDITOR_LABELS.appliesTo(block.appliesTo)}>
           {block.title}
           {block.overridden && <Badge tone="accent">수정됨</Badge>}
         </h2>
         <p className="break-keep text-sm text-fg-secondary">{block.purpose}</p>
-        <p className="break-keep text-xs text-fg-muted">적용: {block.appliesTo}</p>
       </header>
 
       {block.warning && (
@@ -91,8 +84,8 @@ export function PromptBlockEditor({ block, suggestion, onBack }: PromptBlockEdit
       {tab === "edit" && (
         <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
           <div className="flex min-w-0 flex-col gap-2">
-            {/* 옆 '기본값과 비교'의 안내 줄과 높이를 맞춘다 */}
-            {wide && <p className="text-xs text-fg-muted">내 본문 · 고치면 오른쪽 비교가 바로 바뀌어요</p>}
+            {/* 옆 '기본값과 비교'의 안내 줄과 높이를 맞춘다(라벨만) */}
+            {wide && <p className="text-xs text-fg-muted">{EDITOR_LABELS.body}</p>}
             <Textarea
               aria-label={`${block.title} 본문`}
               value={draft}

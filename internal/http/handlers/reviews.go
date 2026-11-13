@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/wooo-jin/punisher/internal/check"
 	"github.com/wooo-jin/punisher/internal/models"
 	"github.com/wooo-jin/punisher/internal/services"
 )
@@ -48,7 +49,7 @@ func (h *LearnHandler) ReviewSummary(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, sum)
 }
 
-// CheckHistory handles GET /v1/checks/history?kind=check|review&limit=&cursor= — sessions, newest first.
+// CheckHistory handles GET /v1/checks/history?kind=check|review|known_verify&limit=&cursor= — sessions, newest first.
 func (h *LearnHandler) CheckHistory(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -60,8 +61,8 @@ func (h *LearnHandler) CheckHistory(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	kind := q.Get("kind")
-	if kind != "" && kind != "check" && kind != "review" {
-		writeError(w, r, http.StatusBadRequest, services.CodeInvalidKind, "kind must be check|review")
+	if kind != "" && kind != check.PurposeCheck && kind != check.PurposeReview && kind != check.PurposeKnownVerify {
+		writeError(w, r, http.StatusBadRequest, services.CodeInvalidKind, "kind must be check|review|known_verify")
 		return
 	}
 	items, next, err := h.Store.ListCheckHistory(r.Context(), userID, kind, limit, q.Get("cursor"))

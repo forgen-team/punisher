@@ -8,7 +8,7 @@ import { LoadMore } from "./LoadMore";
 import { ResolvedMisconceptions } from "./ResolvedMisconceptions";
 import { RetentionMetrics } from "./RetentionMetrics";
 
-/** 확인·복습 세션(최신순) + 아래 기억 유지 지표 · 고친 오개념. 누르면 그 세션 화면(check/[id]). */
+/** 확인·복습 세션(최신순, 한 칸 — 시간순으로 읽힌다) + 아래 기억 유지 지표 · 고친 오개념. 누르면 그 세션 화면(check/[id]). */
 export function CheckHistoryList() {
   const history = useCheckHistory();
   const sessions = history.data?.pages.flatMap((p) => p.sessions) ?? [];
@@ -30,7 +30,7 @@ export function CheckHistoryList() {
     }
     return (
       <div className="flex flex-col gap-2">
-        <List className="xl:grid xl:grid-cols-2 xl:gap-x-8 xl:[&>li:nth-last-child(2):nth-child(odd)]:border-b-0">
+        <List>
           {sessions.map((s) => (
             <ListRow key={s.id} href={checkHref(s.id)} linkAs={Link} title={historyTitle(s)} meta={historyMeta(s)} />
           ))}

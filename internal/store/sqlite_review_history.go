@@ -10,8 +10,9 @@ import (
 	"github.com/wooo-jin/punisher/internal/models"
 )
 
-// ListCheckHistory returns the user's check and review sessions, newest first
-// (kind "" = both; diagnostics are not history entries). next is "" on the last page.
+// ListCheckHistory returns the user's check, review and '이미 앎' verification
+// (known_verify) sessions, newest first (kind "" = all three; the pretest and
+// placement diagnostics are not history entries). next is "" on the last page.
 func (s *SQLiteStore) ListCheckHistory(ctx context.Context, userID, kind string, limit int, cursor string) ([]models.CheckHistoryItem, string, error) {
 	cur, err := decodeCursor(cursor)
 	if err != nil {
@@ -27,7 +28,7 @@ func (s *SQLiteStore) ListCheckHistory(ctx context.Context, userID, kind string,
 		FROM check_sessions cs
 		LEFT JOIN concepts c ON c.id = cs.concept_id
 		LEFT JOIN lectures l ON l.id = cs.lecture_id
-		WHERE cs.user_id = $1 AND (($2 = '' AND cs.kind IN ('check', 'review')) OR cs.kind = $2) AND (cs.created_at, cs.id) < ($3, $4)
+		WHERE cs.user_id = $1 AND cs.kind IN ('check', 'review', 'known_verify') AND ($2 = '' OR cs.kind = $2) AND (cs.created_at, cs.id) < ($3, $4)
 		ORDER BY cs.created_at DESC, cs.id DESC LIMIT $5`, userID, kind, cur.At, cur.ID, limit+1),
 		func(row rowScanner) (models.CheckHistoryItem, error) {
 			var h models.CheckHistoryItem
@@ -54,7 +55,8 @@ func (s *SQLiteStore) ListCheckHistory(ctx context.Context, userID, kind string,
 // RetentionSamples returns, for review items finished since t on items the
 // user had not seen (reused_item = false), the grader, the state before the
 // review (grade.prev) and whether the first graded answer was correct
-// (design §2.7). Items without a graded answer (held, revealed unanswered) are left out.
+// (design §2.7). Items without a graded answer (held, revealed unanswered) and
+// '이미 앎' verification items mixed into reviews (not a retention test) are left out.
 // JOIN LATERAL (… LIMIT 1) → a correlated scalar subquery, kept only when present.
 func (s *SQLiteStore) RetentionSamples(ctx context.Context, userID string, since time.Time) ([]learning.RetentionSample, error) {
 	list, err := collect(s.c().query(ctx, `
@@ -67,6 +69,7 @@ func (s *SQLiteStore) RetentionSamples(ctx context.Context, userID string, since
 				 ORDER BY f.seq LIMIT 1) AS first_verdict
 			FROM check_turns j
 			JOIN check_sessions cs ON cs.id = j.session_id AND cs.kind = 'review'
+			JOIN check_items ci ON ci.id = j.item_id AND ci.purpose <> 'known_verify'
 			WHERE j.user_id = $1 AND j.outcome IS NOT NULL AND j.created_at >= $2 AND NOT j.reused_item
 			  AND j.grader IN ('llm', 'self'))
 		WHERE first_verdict IS NOT NULL`, userID, since), func(row rowScanner) (learning.RetentionSample, error) {

@@ -166,7 +166,7 @@ type PlacementCandidate struct {
 	ConceptName string `json:"conceptName"`
 }
 
-// CheckHistoryItem is one '확인하기' or review session in the history (GET /v1/checks/history).
+// CheckHistoryItem is one '확인하기', review or '이미 앎' verification session in the history (GET /v1/checks/history).
 type CheckHistoryItem struct {
 	ID           string `json:"id"`
 	Kind         string `json:"kind"`

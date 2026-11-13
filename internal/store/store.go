@@ -35,7 +35,7 @@ type Store interface {
 	ProposeConcept(ctx context.Context, userID string, p models.ProposedConcept) (string, error)
 	GetGloss(ctx context.Context, conceptID string) (string, error)
 	SaveGloss(ctx context.Context, conceptID, gloss, model string) error
-	LoadToday(ctx context.Context, userID string) (*TodayData, error)
+	LoadToday(ctx context.Context, userID string, now time.Time) (*TodayData, error)
 	PrerequisiteEdges(ctx context.Context, userID string) ([]learning.PrereqEdge, error)
 	AliasIndex(ctx context.Context, userID string) (learning.AliasIndex, error)
 
@@ -144,6 +144,8 @@ type Store interface {
 	// mastery checks ("확인하기")
 	CreateCheckSession(ctx context.Context, n NewCheckSession) (models.CheckSession, bool, error)
 	GetCheckSession(ctx context.Context, userID, id string) (models.CheckSession, error)
+	RetryCheckSession(ctx context.Context, userID, id string, maxPending int) error
+	LoadCheckSnapshot(ctx context.Context, userID, id string) (CheckSnapshot, error)
 	ActivateCheckSession(ctx context.Context, userID, id string, itemIDs []string, ask TurnWrite) (models.CheckSession, error)
 	SetCheckSessionStatus(ctx context.Context, userID, id string, from []string, to, errMsg string) error
 	SweepStaleChecks(ctx context.Context, turnAge, prepareAge, abandonAge time.Duration) (int64, error)

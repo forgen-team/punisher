@@ -17,7 +17,7 @@ export function GoalsManager({ onShowPath }: GoalsManagerProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Section title="내 목표" description="목표를 누르면 필요한 선행 사슬과 다음 학습이 펼쳐집니다.">
+      <Section title="내 목표" description="목표를 누르면 필요한 선행 사슬과 다음 학습이 펼쳐져요.">
         {goals.isLoading ? (
           <div aria-busy="true">
             <ListSkeleton rows={3} />
@@ -25,7 +25,7 @@ export function GoalsManager({ onShowPath }: GoalsManagerProps) {
         ) : goals.error ? (
           <ErrorState compact message={describePunisherError(goals.error)} onRetry={() => goals.refetch()} />
         ) : list.length === 0 ? (
-          <EmptyState compact icon={<Target />} title="아직 목표가 없습니다" description="아래에서 첫 목표를 추가해 보세요." />
+          <EmptyState compact icon={<Target />} title="아직 목표가 없어요" description="아래에서 첫 목표를 추가해 보세요." />
         ) : (
           <ul role="list">
             {list.map((g) => (

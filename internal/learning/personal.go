@@ -9,6 +9,9 @@ const (
 // MaxPromptMisconceptions: acknowledged misconceptions given to one prompt (related concept and its prerequisites).
 const MaxPromptMisconceptions = 5
 
+// MaxMisconceptionRunes bounds one misconception's text, stored and in prompts.
+const MaxMisconceptionRunes = 300
+
 // RecheckLapses: an objective that lapsed this often without recovering gets a "다시 확인" card (design §5 P4).
 const RecheckLapses = 2
 

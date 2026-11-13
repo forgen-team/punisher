@@ -49,7 +49,7 @@ func (s *Service) RetryCheck(ctx context.Context, userID, id string) (models.Che
 			return s.runDispute(bg, apiKey, userID, id, turn.ID)
 		}
 		return s.runCheckTurn(bg, apiKey, userID, id, turn.ID)
-	})
+	}, s.failTurn(userID, turn.ID))
 	return s.GetCheck(ctx, userID, id)
 }
 

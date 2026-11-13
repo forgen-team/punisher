@@ -101,7 +101,7 @@ func TestDeeperLinksDirectAndViaJob(t *testing.T) {
 	if err != nil || len(list) != 1 || list[0].ParentLectureID != parent {
 		t.Fatalf("my lectures = %+v, %v", list, err)
 	}
-	d, err := s.LoadToday(ctx, user)
+	d, err := s.LoadToday(ctx, user, time.Now())
 	if err != nil || len(d.Resume) != 1 || d.Resume[0].ParentLectureID != parent {
 		t.Fatalf("today resume = %+v, %v", d.Resume, err)
 	}

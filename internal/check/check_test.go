@@ -100,7 +100,27 @@ func TestStageMoves(t *testing.T) {
 }
 
 func reply(verdict, move, text string) TutorReply {
-	return TutorReply{Verdict: verdict, Confidence: 0.9, TutorMove: move, TutorText: text, Met: []string{"a"}}
+	return TutorReply{Verdict: verdict, Confidence: 0.9, TutorMove: move, TutorText: text, Met: []string{"a"}, Quote: "메모리"}
+}
+
+// TestCorrectNeedsQuote: a correct grade without a quote from the answer is held
+// (also a quote the answer does not contain — it is dropped first).
+func TestCorrectNeedsQuote(t *testing.T) {
+	learner := "메모리에 남겨서 빨라져요"
+	for _, quote := range []string{"", "디스크"} {
+		r := reply("correct", MoveNext, "맞아요.")
+		r.Quote = quote
+		got, p := ValidateTutorReply(r, Stage{Answers: 1}, answer, learner)
+		if GradeVerdict(got.Verdict, got.Quote, got.Confidence) != "held" || len(p) != 0 {
+			t.Errorf("quote %q: verdict %s problems %v, want held", quote, GradeVerdict(got.Verdict, got.Quote, got.Confidence), p)
+		}
+	}
+	if GradeVerdict("correct", "메모리", 0.9) != "correct" || GradeVerdict("partial", "", 0.9) != "partial" {
+		t.Fatal("a quoted correct stays correct; only correct needs the quote")
+	}
+	if DisputeAccepted(RegradeReply{Verdict: "correct", Confidence: 0.9}) {
+		t.Fatal("a regrade without a quote must not accept the dispute")
+	}
 }
 
 func TestValidateTutorReply(t *testing.T) {

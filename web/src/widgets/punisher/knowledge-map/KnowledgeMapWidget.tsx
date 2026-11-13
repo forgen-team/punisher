@@ -117,7 +117,7 @@ export function KnowledgeMapWidget() {
       );
     }
     if (nodes.length === 0) {
-      return <EmptyState compact title="표시할 개념이 없습니다" description="다른 영역이나 목표를 선택해 보세요." />;
+      return <EmptyState compact title="표시할 개념이 없어요" description="다른 영역이나 목표를 골라 보세요." />;
     }
     return <MapCanvas nodes={nodes} edges={edges} highlightIds={pathIds} selectedId={selectedId} masteredIds={masteredIds} onSelect={onSelect} />;
   }
@@ -142,14 +142,15 @@ export function KnowledgeMapWidget() {
         onOpenKnown={() => setKnownOpen(true)}
       />
       {onboarding.show && <KnownOnboardingPrompt onStart={() => setKnownOpen(true)} onDismiss={onboarding.dismiss} />}
-      {goalId && <p className="text-xs text-fg-muted">목표에 필요한 선행 사슬만 표시합니다.</p>}
+      {goalId && <p className="text-xs text-fg-muted">목표에 필요한 선행 사슬만 보여요.</p>}
 
-      {/* lg: 캔버스 | 18rem 목록, 상세는 오른쪽 시트. xl: 캔버스 | 22rem(2xl 26rem) 열 — 개념을 고르면 그 열이 상세 패널로 바뀐다(캔버스 폭 그대로). */}
+      {/* lg: 캔버스 | 18rem 목록, 상세는 오른쪽 시트. xl: 캔버스 | 22rem(2xl 26rem) 열 — 개념을 고르면 그 열이 상세 패널로 바뀐다(캔버스 폭 그대로).
+          오른쪽 열 높이는 캔버스와 같은 100dvh-14rem 을 넘지 않고, 넘치면 세로로만 스크롤한다. */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
         <div className="-mx-4 h-[60dvh] min-h-80 overflow-hidden border-y border-line fold:mx-0 fold:rounded-lg fold:border lg:h-[calc(100dvh-14rem)]">
           {renderCanvas()}
         </div>
-        <div className="flex flex-col gap-6 xl:sticky xl:top-[calc(var(--app-header-offset)+1rem)] xl:max-h-[calc(100dvh-var(--app-header-offset)-2rem)] xl:self-start xl:overflow-y-auto">
+        <div className="flex min-w-0 flex-col gap-6 xl:sticky xl:top-[calc(var(--app-header-offset)+1rem)] xl:max-h-[calc(100dvh-14rem)] xl:self-start xl:overflow-y-auto xl:overflow-x-hidden xl:pr-3">
           {wide && selectedId ? (
             <ConceptDetailSheet variant="panel" conceptId={selectedId} requests={selectedRequests} onClose={closeDetail} onSelect={onSelect} />
           ) : (
