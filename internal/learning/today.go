@@ -72,6 +72,8 @@ type TodayInput struct {
 	Review ReviewInput
 	// Lapsed: concepts with an objective lapsed RecheckLapses+ times without recovering (TodayResult.Recheck).
 	Lapsed map[string]LapsedConcept
+	// Unchecked: finished lectures never checked, most recent first (TodayResult.Unchecked).
+	Unchecked []UncheckedLecture
 	// LectureMinutes: EstimateMinutes of the lecture a recommendation would open, by concept
 	// (absent = no lecture yet → DefaultLectureMinutes).
 	LectureMinutes map[string]int
@@ -131,6 +133,8 @@ type TodayResult struct {
 	Review ReviewToday `json:"review"`
 	// Recheck: lapsed prerequisites of the goal paths' next concepts (separate from Items, never affects Exhausted).
 	Recheck []RecheckCard `json:"recheck"`
+	// Unchecked: "○○ 확인하기" for finished lectures with no review schedule yet (separate from Items, never affects Exhausted).
+	Unchecked []UncheckedCard `json:"unchecked"`
 	// Session: today's study session time "강의 n분 + 확인 n분 + 복습 n분" (SessionFor).
 	Session SessionMinutes `json:"session"`
 }
@@ -230,7 +234,7 @@ func BuildToday(in TodayInput) TodayResult {
 	}
 	res := TodayResult{Items: b.items, Exhausted: b.recommended == 0,
 		Review:  SummarizeReviews(in.Review.Counts, in.Review.ReviewMinutes, in.Review.Grader),
-		Recheck: recheckCards(in, states)}
+		Recheck: recheckCards(in, states), Unchecked: uncheckedCards(in)}
 	res.Session = SessionFor(res.Items, res.Review)
 	if res.Session.LectureMinutes > 0 {
 		res.Review.LectureMinutes = res.Session.LectureMinutes

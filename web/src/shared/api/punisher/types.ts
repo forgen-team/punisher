@@ -175,8 +175,19 @@ export interface TodayResponse {
   nextChapter?: NextChapterPrompt;
   /** 목표 경로 카드 앞의 "○○ 다시 확인"(추천·exhausted 와 별개) */
   recheck?: RecheckCard[];
+  /** 끝냈지만 확인하기를 안 한 강의의 "○○ 확인하기"(추천·exhausted 와 별개) — 확인해야 복습 일정이 잡힌다 */
+  unchecked?: UncheckedCard[];
   /** 오늘 학습 세션 시간 합계(v2.2 §5) */
   session?: TodaySession;
+}
+
+/** GET /today 의 unchecked — 확인하기를 마치지 않은 완료 강의(다시 만든 강의는 새 버전). */
+export interface UncheckedCard {
+  lectureId: string;
+  conceptId: string;
+  conceptName: string;
+  area: string;
+  title: string;
 }
 
 export interface TodaySession {

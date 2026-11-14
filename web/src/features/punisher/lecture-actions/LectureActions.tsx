@@ -71,7 +71,7 @@ export const LectureWrapup = forwardRef<HTMLElement, LectureWrapupProps>(functio
     <Section ref={ref} id="lecture-wrapup" tabIndex={-1} title="강의 마무리" className="border-t border-line pt-4 outline-none">
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={actions.markComplete} disabled={done} loading={complete.isPending}>
+          <Button variant={done ? "secondary" : "primary"} onClick={actions.markComplete} disabled={done} loading={complete.isPending}>
             {done ? "완료함" : "완료"}
           </Button>
           {checkAction}

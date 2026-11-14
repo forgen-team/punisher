@@ -22,6 +22,8 @@ type TodayData struct {
 	Review learning.ReviewCounts
 	// Lapsed: concepts with an objective lapsed learning.RecheckLapses+ times (learning.TodayInput.Lapsed).
 	Lapsed map[string]learning.LapsedConcept
+	// Unchecked: finished lectures never checked, newest version (learning.TodayInput.Unchecked).
+	Unchecked []learning.UncheckedLecture
 }
 
 // GoalTargets is an active goal's targets.
@@ -115,6 +117,10 @@ func (s *SQLiteStore) LoadToday(ctx context.Context, userID string, now time.Tim
 	if d.Lapsed, err = s.lapsedConcepts(ctx, userID, now); err != nil {
 		return nil, err
 	}
+	if d.Unchecked, err = s.uncheckedLectures(ctx, userID); err != nil {
+		return nil, err
+	}
+	d.Unchecked = learning.LatestVersions(d.Unchecked, newer)
 	return d, nil
 }
 
@@ -219,4 +225,31 @@ func (s *SQLiteStore) regeneratedVersions(ctx context.Context, userID string) (m
 		out[r.parent] = r.n // ordered by link time: the newest version wins
 	}
 	return out, nil
+}
+
+// uncheckedLectures: lectures the user finished whose concept has no review
+// schedule (no objective mastery) and that were never checked — neither the
+// lecture nor a version remade from it. Most recently finished first.
+func (s *SQLiteStore) uncheckedLectures(ctx context.Context, userID string) ([]learning.UncheckedLecture, error) {
+	rows, err := collect(s.c().query(ctx, `
+		SELECT l.id, l.concept_id, l.title
+		FROM user_lecture_progress p
+		JOIN lectures l ON l.id = p.lecture_id
+		WHERE p.user_id = $1 AND p.completed_at IS NOT NULL
+		  AND NOT EXISTS (SELECT 1 FROM user_objective_mastery m WHERE m.user_id = $1 AND m.concept_id = l.concept_id)
+		  AND NOT EXISTS (
+		    SELECT 1 FROM check_sessions cs
+		    WHERE cs.user_id = $1 AND cs.kind = 'check' AND cs.status = 'finished'
+		      AND (cs.lecture_id = l.id OR cs.lecture_id IN (
+		        SELECT k.child_lecture_id FROM lecture_links k
+		        WHERE k.user_id = $1 AND k.kind = $2 AND k.parent_lecture_id = l.id)))
+		ORDER BY p.completed_at DESC LIMIT 20`, userID, LinkRegeneratedKind), func(rs rowScanner) (learning.UncheckedLecture, error) {
+		var u learning.UncheckedLecture
+		err := rs.Scan(&u.LectureID, &u.ConceptID, &u.Title)
+		return u, err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("today unchecked: %w", err)
+	}
+	return rows, nil
 }

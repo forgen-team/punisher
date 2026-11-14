@@ -28,15 +28,23 @@ interface CheckResultProps {
   children?: ReactNode;
 }
 
-/** 확인 결과의 '강의 완료로 표시'. */
+/**
+ * 확인 결과의 다음 행동 — 강의를 아직 완료하지 않았으면 '강의 완료로 표시', 늘 '오늘로'
+ * (완료한 강의면 '오늘로'가 주 버튼 — 눌리지 않는 버튼으로 끝나지 않게).
+ */
 export function LectureCompleteAction({ lectureId, lectureCompleted }: { lectureId: string; lectureCompleted: boolean }) {
   const complete = useCompleteLecture(lectureId);
   const completed = lectureCompleted || complete.isSuccess;
   return (
     <>
-      <Button onClick={() => complete.mutate()} disabled={completed} loading={complete.isPending}>
-        {completed ? "강의 완료함" : "강의 완료로 표시"}
-      </Button>
+      {!completed && (
+        <Button onClick={() => complete.mutate()} loading={complete.isPending}>
+          강의 완료로 표시
+        </Button>
+      )}
+      <Link href={TODAY_HREF} className={buttonVariants({ variant: completed ? "primary" : "secondary" })}>
+        {RESULT_ACTION_LABELS.today}
+      </Link>
       <div aria-live="polite" className="w-full empty:hidden">
         <InlineError error={complete.error} />
       </div>

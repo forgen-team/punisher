@@ -77,7 +77,9 @@ export function CheckView({ checkId }: { checkId: string }) {
   const acknowledged = useMemo(() => new Set(d?.misconceptionTurnIds ?? []), [d?.misconceptionTurnIds]);
 
   const currentId = d ? currentItemId(d) : null;
-  const markAct = useFollowScroll({ status, turnCount, currentId, endRef, resultRef });
+  const lastTurn = d?.turns[d.turns.length - 1];
+  const lastTurnKey = lastTurn ? `${lastTurn.id}:${lastTurn.status}` : "";
+  const markAct = useFollowScroll({ status, turnCount, lastTurnKey, currentId, endRef, resultRef });
 
   const kind = d?.session.kind;
   const diagnosticTitle = kind && kind in DIAGNOSTIC_TITLES ? DIAGNOSTIC_TITLES[kind as keyof typeof DIAGNOSTIC_TITLES] : "";
@@ -139,7 +141,7 @@ export function CheckView({ checkId }: { checkId: string }) {
       return (
         <div className="pt-4">
           <ErrorState
-            message={d.session.error || statusLabels.failed}
+            message={statusLabels.failed}
             onRetry={() => retry.mutate()}
             retrying={retry.isPending}
           />

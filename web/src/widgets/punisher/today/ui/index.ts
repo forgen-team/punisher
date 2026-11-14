@@ -4,3 +4,4 @@ export { StudyRequestList } from "./StudyRequestList";
 export { InquiryList } from "./InquiryList";
 export { ReviewCard } from "./ReviewCard";
 export { RecheckRow } from "./RecheckRow";
+export { UncheckedRow } from "./UncheckedRow";

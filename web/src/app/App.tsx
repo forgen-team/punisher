@@ -2,6 +2,7 @@ import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Provider as JotaiProvider } from "jotai";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { ScrollToTopOnNavigate } from "@/src/shared/lib/router";
 import { ThemeSync } from "@/src/shared/lib/ThemeSync";
 import { AppShell } from "./AppShell";
 import {
@@ -24,6 +25,7 @@ export function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeSync />
         <BrowserRouter>
+          <ScrollToTopOnNavigate />
           <Routes>
             <Route element={<AppShell />}>
               <Route index element={<TodayPage />} />

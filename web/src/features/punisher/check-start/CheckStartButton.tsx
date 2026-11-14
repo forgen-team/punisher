@@ -3,10 +3,13 @@ import { Button } from "@/src/shared/ui/kit";
 import { describeCheckError } from "@/src/entities/punisher";
 import { isLectureNotReviewed, useLaunchCheck } from "./useLaunchCheck";
 
-/** 강의 끝 '완료' 옆 '확인하기'. 메뉴 항목은 useLaunchCheck 를 같이 쓴다. */
-export function CheckStartButton({ check }: { check: ReturnType<typeof useLaunchCheck> }) {
+/**
+ * 강의 끝 '완료' 옆 '확인하기'. 메뉴 항목은 useLaunchCheck 를 같이 쓴다.
+ * primary: 완료한 뒤에는 이 버튼이 주 버튼 — 확인하기를 풀어야 복습 일정이 잡힌다.
+ */
+export function CheckStartButton({ check, primary = false }: { check: ReturnType<typeof useLaunchCheck>; primary?: boolean }) {
   return (
-    <Button variant="secondary" onClick={check.launch} loading={check.isPending}>
+    <Button variant={primary ? "primary" : "secondary"} onClick={check.launch} loading={check.isPending}>
       확인하기
     </Button>
   );

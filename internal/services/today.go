@@ -17,7 +17,8 @@ func todayInput(d *store.TodayData, limit int) learning.TodayInput {
 	for id, c := range d.Concepts {
 		depthOf[id] = c.Depth
 	}
-	in := learning.TodayInput{Concepts: d.Concepts, Edges: d.Edges, Resume: d.Resume, Requests: d.Requests, Limit: limit, Lapsed: d.Lapsed}
+	in := learning.TodayInput{Concepts: d.Concepts, Edges: d.Edges, Resume: d.Resume, Requests: d.Requests, Limit: limit, Lapsed: d.Lapsed,
+		Unchecked: d.Unchecked}
 	for _, g := range d.Goals {
 		for _, target := range g.Targets {
 			in.Goals = append(in.Goals, learning.GoalInput{ID: g.ID, Title: g.Title, Path: learning.PathTo(target, d.Edges, depthOf)})

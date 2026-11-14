@@ -86,7 +86,7 @@ func (h *LearnHandler) Today(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, r, "today", err)
 		return
 	}
-	payload := map[string]any{"items": res.Items, "exhausted": res.Exhausted, "review": res.Review, "recheck": res.Recheck,
+	payload := map[string]any{"items": res.Items, "exhausted": res.Exhausted, "review": res.Review, "recheck": res.Recheck, "unchecked": res.Unchecked,
 		"session": res.Session}
 	if res.NextChapter != nil {
 		payload["nextChapter"] = res.NextChapter

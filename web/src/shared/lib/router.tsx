@@ -1,8 +1,8 @@
 // Small Next.js-style navigation API on top of React Router, so the Punisher
 // widgets ported from the Witems web app keep their call sites
 // (<Link href>, useRouter().push/replace, usePathname, useSearchParams).
-import { forwardRef, useMemo, type AnchorHTMLAttributes } from "react";
-import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
+import { forwardRef, useEffect, useMemo, type AnchorHTMLAttributes } from "react";
+import { Link as RouterLink, useLocation, useNavigate, useNavigationType } from "react-router-dom";
 
 export interface LinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
   href: string;
@@ -49,4 +49,17 @@ export function usePathname(): string {
 export function useSearchParams(): URLSearchParams {
   const { search } = useLocation();
   return useMemo(() => new URLSearchParams(search), [search]);
+}
+
+/**
+ * Next.js 처럼 다른 화면으로 가면(링크·push/replace) 맨 위에서 시작한다. 뒤로/앞으로(POP)는 브라우저 복원에,
+ * #앵커는 그 화면에 맡긴다(쿼리만 바뀌면 경로가 같아 움직이지 않는다).
+ */
+export function ScrollToTopOnNavigate() {
+  const { pathname, hash } = useLocation();
+  const type = useNavigationType();
+  useEffect(() => {
+    if (type !== "POP" && !hash) { window.scrollTo(0, 0); }
+  }, [pathname, hash, type]);
+  return null;
 }

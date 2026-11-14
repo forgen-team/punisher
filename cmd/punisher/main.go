@@ -172,6 +172,12 @@ func run(cfg config.Config) error {
 	if err := syncCurriculum(ctx, cfg, st); err != nil {
 		return fmt.Errorf("curriculum seed: %w", err)
 	}
+	// 확인 문항 만들기·채점은 이 프로세스 안에서만 돌므로, 지난 실행이 남긴 진행 중 작업은 끝나지 않는다.
+	if r, err := st.RecoverInterruptedChecks(ctx); err != nil {
+		log.Printf("recover interrupted checks: %v", err)
+	} else if r != (store.RecoveredChecks{}) {
+		log.Printf("recovered interrupted checks: %d jobs, %d sessions, %d turns", r.Jobs, r.Sessions, r.Turns)
+	}
 
 	claude := claudecli.New(claudecli.Config{
 		Bin:          cfg.ClaudeBin,

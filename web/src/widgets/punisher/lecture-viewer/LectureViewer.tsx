@@ -205,7 +205,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
             lectureId={lectureId}
             actions={actions}
             getAnchor={getAnchor}
-            checkAction={<CheckStartButton check={check} />}
+            checkAction={<CheckStartButton check={check} primary={actions.done} />}
             checkStatus={<CheckStartError check={check} />}
           />
         </div>
