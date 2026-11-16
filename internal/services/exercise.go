@@ -152,7 +152,8 @@ func (s *Service) gradeExercise(ctx context.Context, apiKey, userID, conceptID, 
 	set := s.UserPrompts(ctx, userID)
 	req := llm.MessagesRequest{Model: s.Cfg.FastModel, System: set.Text(prompts.BlockExerciseGrade, nil),
 		User: prompts.ExerciseGrade(conceptName, blk.problem, blk.solution, answer), MaxTokens: 400, Timeout: 60 * time.Second,
-		Priority: llm.PriorityInteractive}
+		// 짧은 호출 줄: 강의 생성(긴 호출)이 interactive 줄을 채워도 평이 밀리지 않게(용어 팝오버와 같은 줄).
+		Priority: llm.PriorityShort}
 	label := "exercise"
 	if blk.kind == learning.AttemptLab {
 		req.Model, req.System, req.User = s.Cfg.CheckModel, set.Text(prompts.BlockLabRead, nil), prompts.LabRead(conceptName, blk.problem, answer)
