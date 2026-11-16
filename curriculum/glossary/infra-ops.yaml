@@ -1,0 +1,255 @@
+area: infra-ops
+concepts:
+    infra.backup-and-dr: 재해 복구는 허용할 데이터 손실 범위(RPO)와 복구 목표 시간(RTO)을 정하고 그 절차를 준비하는 일이다. 백업이 실제로 쓸 수 있는지는 복원 리허설을 해 봐야 안다. 설정·시크릿·암호화 키도 복구 범위에 넣어야 한다.
+    infra.ci-cd: CI는 코드가 바뀔 때마다 빌드와 테스트를 자동으로 돌리는 것이고, CD는 검증된 산출물을 일관된 절차로 배포하는 것이다. 환경마다 다시 빌드하지 않는다. 한 번 만든 이미지를 스테이징에서 운영으로 승격해야 버전 차이 사고를 막는다.
+    infra.config-and-secrets: 설정과 시크릿 주입은 설정값과 비밀 값을 이미지에 넣지 않고 ConfigMap·Secret으로 실행 시 환경 변수나 파일로 넣는 방식이다. 이미지 하나로 여러 환경을 운영할 수 있다. 다만 환경 변수로 넣은 값은 Pod를 재시작해야 바뀌고, Secret은 기본적으로 인코딩만 된다.
+    infra.container: 컨테이너는 네임스페이스와 cgroups로 격리된 채 호스트 커널 위에서 실행되는 프로세스다. 앱과 실행 환경을 이미지로 묶어 개발 PC와 서버의 환경 차이를 줄인다. 메인 프로세스가 끝나면 컨테이너도 함께 종료된다.
+    infra.container-image: 컨테이너 이미지는 파일 시스템 레이어와 실행 설정을 묶은 읽기 전용 패키지다. 태그는 다른 이미지를 가리키도록 바뀔 수 있다. 그래서 서버마다 같은 버전을 실행하려면 내용 해시인 다이제스트로 고정해야 한다.
+    infra.container-isolation: 컨테이너 격리는 네임스페이스로 프로세스가 볼 수 있는 범위를, cgroups로 쓸 수 있는 자원량을 제한하는 방식이다. containerd·runc 같은 런타임이 이를 설정한다. 커널을 공유하므로 특권 실행 같은 설정 하나로 호스트가 노출될 수 있다.
+    infra.container-resource-limits: 컨테이너 자원 제한은 cgroups로 컨테이너가 쓸 메모리와 CPU의 상한을 정하는 설정이다. 메모리 상한을 넘으면 커널이 프로세스를 강제 종료해 exit 137이 남는다. CPU 상한에 걸리면 종료되지 않고 응답만 느려진다.
+    infra.deployment: Deployment는 실행할 Pod의 템플릿과 개수를 선언하는 리소스로, ReplicaSet을 통해 그 수를 유지한다. 그래서 문제 Pod를 지워도 같은 템플릿으로 새 Pod가 곧바로 생긴다. 템플릿을 바꾸면 새 ReplicaSet으로 점진적으로 교체된다.
+    infra.deployment-strategies: 배포 전략은 새 버전을 사용자에게 노출하는 방식이다. 블루-그린은 두 환경을 한 번에 전환하고, 카나리는 일부 트래픽으로 먼저 검증한다. 피처 플래그는 코드 배포와 기능 공개를 분리해 문제가 된 기능만 끌 수 있게 한다.
+    infra.distributed-tracing: 분산 트레이싱은 요청 하나가 여러 서비스를 거치는 동안의 작업 구간(span)을 하나의 trace로 연결해 기록하는 기법이다. API가 느릴 때 어느 서비스의 어느 호출에서 시간이 쓰였는지 보여 준다. 순차 호출이 병목인지도 확인할 수 있다.
+    infra.dockerfile: Dockerfile은 베이스 이미지 위에 파일 복사와 명령 실행을 쌓아 이미지를 만드는 절차서다. 명령 순서가 레이어 캐시 재사용을 좌우해 빌드 속도를 바꾼다. 멀티 스테이지 빌드로 빌드 도구를 빼면 이미지 크기와 공격 표면이 줄어든다.
+    infra.incident-response: 장애 대응은 영향 범위 확인, 완화, 원인 분석, 재발 방지 순으로 진행하는 조직적 절차다. 사람을 탓하지 않는 회고로 타임라인과 원인을 기록한다. 증상별 확인 명령과 조치를 런북으로 정리하면 다음 장애의 대응 시간이 줄어든다.
+    infra.infrastructure-as-code: 코드형 인프라는 서버·네트워크·DB 같은 인프라 구성을 코드로 선언하고 plan·apply로 적용하는 방식이다. 변경을 리뷰하고 이력을 남기고 재현할 수 있다. 콘솔에서 직접 바꾼 설정은 코드와 실제 상태가 어긋나는 drift를 만든다.
+    infra.k8s-resources: requests는 스케줄러가 Pod를 노드에 배치할 때 쓰는 예약량이고, limits는 컨테이너가 넘을 수 없는 상한이다. 메모리 limit을 넘으면 OOMKilled, CPU limit에 걸리면 throttling이 생긴다. 두 값의 조합(QoS 클래스)은 노드 메모리가 부족할 때 어떤 Pod가 먼저 축출될지에도 영향을 준다.
+    infra.k8s-service-networking: Service는 레이블 셀렉터로 고른 Pod 묶음에 고정된 이름과 가상 IP를 주고, 준비된 Pod로만 트래픽을 나눠 보내는 리소스다. Ingress는 외부 HTTP 요청을 호스트와 경로에 따라 Service로 보낸다. 셀렉터 오타 하나로 대상 Pod가 사라져 503이 날 수 있다.
+    infra.kubernetes: Kubernetes는 원하는 상태를 선언하면 컨트롤러가 실제 상태를 계속 그에 맞추는 컨테이너 오케스트레이터다. 여러 노드에 걸쳐 컨테이너의 배치·재시작·확장·서비스 연결을 자동화한다. 그래서 노드가 죽어도 Deployment 같은 컨트롤러가 관리하는 Pod는 다른 노드에 새로 만들어진다.
+    infra.kubernetes-architecture: Kubernetes는 API 서버·etcd·스케줄러·컨트롤러 매니저로 된 컨트롤 플레인과 각 노드의 kubelet으로 구성된다. kubectl 요청은 API 서버를 거쳐 etcd에 기록된다. 컨트롤 플레인이 멈춰도 이미 실행 중인 Pod는 계속 동작한다.
+    infra.metrics: 지표는 요청 수·오류율·지연 시간 같은 값을 시간 순서로 모은 수치 데이터다. 평균은 일부 느린 요청을 숨긴다. 그래서 p95·p99 백분위수와 요청률·오류·지연(RED)을 대시보드에 두고 추세와 이상을 본다.
+    infra.observability: 관측 가능성은 로그·지표·트레이스 같은 외부 신호로 시스템 내부 상태를 추론할 수 있는 정도다. 장애 때 지표로 시점과 범위를, 트레이스로 느린 구간을, 로그로 구체적 오류를 찾는다. 이렇게 미리 예상하지 못한 질문에도 답할 수 있게 해 준다.
+    infra.pod: Pod는 Kubernetes가 배치하는 최소 단위로, 네트워크와 볼륨을 공유하는 하나 이상의 컨테이너 묶음이다. 언제든 교체되는 일회용이라 다시 만들어지면 IP와 로컬 파일이 바뀐다. 따라서 남겨야 할 상태는 외부 저장소나 볼륨에 둬야 한다.
+    infra.pod-lifecycle: Pod 생명주기는 Pending·Running·Succeeded·Failed 단계와 컨테이너별 Waiting·Running·Terminated 상태로 표현된다. "Pod가 죽었다"는 보고를 받으면 이 상태와 reason부터 본다. 스케줄 대기인지, 이미지 문제인지, 재시작 반복인지를 먼저 가려야 한다.
+    infra.probes: Probe는 kubelet이 컨테이너를 주기적으로 검사하는 장치다. liveness 실패는 재시작, readiness 실패는 트래픽 제외로 이어지고, startup은 시작이 끝날 때까지 다른 검사를 미룬다. liveness가 DB 같은 외부 의존성까지 검사하면 DB 지연 하나로 전체 Pod가 재시작될 수 있다.
+    infra.reading-failure-state: 장애 상태 읽기는 세 정보를 시간순으로 맞춰 원인 후보를 좁히는 절차다. 세 정보는 Pod의 현재 상태, 클러스터가 한 일을 담은 이벤트, 앱이 남긴 로그다. 예컨대 FailedScheduling 이벤트가 있고 로그가 없다면 앱 버그보다 자원 부족을 의심한다.
+    infra.recovery-vs-root-cause: 복구는 재시작·롤백처럼 서비스를 되살리는 완화 조치이고, 원인 제거는 같은 장애가 다시 나지 않게 원인을 고치는 일이다. 재시작은 메모리 상태와 로그 같은 증거를 지울 수 있다. 따라서 복구 전에 증거를 남기고 변경 후 확인할 지표를 정해야 한다.
+    infra.restart-policy-crashloop: 재시작 정책은 컨테이너가 종료됐을 때 kubelet이 다시 실행할지를 정한다. 실패가 반복되면 재시작 간격을 점점 늘리며 CrashLoopBackOff로 표시한다. 재시작이 증상을 가리므로 직전 컨테이너 로그와 마지막 종료 코드로 원인을 찾는다.
+    infra.rolling-update: 롤링 업데이트는 새 버전 Pod가 준비되는 만큼 이전 버전 Pod를 줄여 서비스를 멈추지 않고 교체하는 배포 방식이다. readiness probe와 SIGTERM 처리가 맞지 않으면 배포 중 502가 날 수 있다. 문제가 생기면 이전 ReplicaSet으로 롤백한다.
+    infra.slo-alerting: SLI는 성공률·지연처럼 사용자 경험을 나타내는 지표, SLO는 그 목표치, SLA는 외부와 맺은 계약이다. 알림을 CPU 같은 원인 지표 대신 SLO 위반과 에러 버짓 소진 속도에 걸면 사용자에게 영향이 있을 때 위주로 알린다. 그만큼 알림 피로가 줄어든다.
+    infra.structured-logging: 구조화 로그는 로그를 문장 대신 JSON 같은 키-값 형식으로 남기는 방식이다. 필드 단위로 검색하고 집계할 수 있다. 요청 ID를 함께 남기면 여러 서비스에 흩어진 한 요청의 로그를 이어 볼 수 있다.
+terms:
+    - id: g.container-registry
+      name: 컨테이너 레지스트리
+      aliases:
+        - Container Registry
+        - Image Registry
+        - 이미지 저장소
+      concept: infra.container-image
+      gloss: 컨테이너 레지스트리는 이미지를 저장하고 배포하는 서버다. 빌드한 이미지를 이곳에 푸시하면 각 서버나 노드가 받아서 실행한다. 접근 권한이 없으면 이미지를 받지 못해 실행에 실패한다.
+    - id: g.image-digest
+      name: 이미지 다이제스트
+      aliases:
+        - Image Digest
+        - Digest
+        - sha256 다이제스트
+      concept: infra.container-image
+      gloss: 다이제스트는 이미지 내용으로 계산한 해시값으로, 내용이 같으면 항상 같은 값이 나온다. 태그와 달리 다른 이미지를 가리키도록 바뀔 수 없다. 그래서 운영에 배포할 버전을 정확히 고정할 때 쓴다.
+    - id: g.base-image
+      name: 베이스 이미지
+      aliases:
+        - Base Image
+        - FROM
+        - 기본 이미지
+      concept: infra.dockerfile
+      gloss: 베이스 이미지는 Dockerfile의 FROM으로 지정하는 출발점 이미지다. 무엇을 고르느냐에 따라 이미지 크기와 포함된 도구가 달라진다. 보안 취약점 수도 베이스 이미지에 따라 크게 바뀐다.
+    - id: g.entrypoint-cmd
+      name: ENTRYPOINT·CMD
+      aliases:
+        - ENTRYPOINT
+        - CMD
+        - exec form
+        - 실행 명령
+      concept: infra.dockerfile
+      gloss: ENTRYPOINT와 CMD는 컨테이너가 시작될 때 실행할 명령을 정하는 Dockerfile 지시어다. 셸 형식으로 쓰면 셸이 PID 1이 되어 앱이 SIGTERM을 받지 못할 수 있다. 그래서 JSON 배열로 쓰는 exec 형식을 권장한다.
+    - id: g.dockerignore
+      name: .dockerignore
+      aliases:
+        - dockerignore
+        - 빌드 컨텍스트 제외
+      concept: infra.dockerfile
+      gloss: .dockerignore는 이미지를 빌드할 때 빌드 컨텍스트로 보내지 않을 파일을 지정하는 파일이다. node_modules·.git·.env를 빼면 빌드가 빨라진다. 비밀 값이 이미지에 들어가는 사고도 막을 수 있다.
+    - id: g.docker-compose
+      name: Docker Compose
+      aliases:
+        - docker-compose
+        - 컴포즈
+      concept: infra.container
+      gloss: Docker Compose는 여러 컨테이너의 이미지·포트·볼륨·네트워크를 YAML 파일 하나에 선언하고 함께 실행하는 도구다. 로컬에서 앱·DB·캐시를 한 번에 띄울 때 많이 쓴다. 단일 서버에 배포할 때도 쓰인다.
+    - id: g.pid-1
+      name: PID 1
+      aliases:
+        - init 프로세스
+        - 메인 프로세스
+        - 컨테이너 PID 1
+      concept: infra.container
+      gloss: PID 1은 컨테이너 안에서 처음 실행된 프로세스로, 이 프로세스가 끝나면 컨테이너도 끝난다. 종료 시그널을 받아 처리하고 자식 프로세스를 정리할 책임이 있다. 셸 스크립트로 감싸 실행하면 종료 처리가 꼬이기 쉽다.
+    - id: g.graceful-shutdown
+      name: Graceful Shutdown
+      aliases:
+        - 그레이스풀 셧다운
+        - 우아한 종료
+        - 정상 종료 처리
+      concept: infra.rolling-update
+      gloss: Graceful shutdown은 종료 신호를 받으면 새 요청을 거절하고, 처리 중인 요청을 끝낸 뒤 연결을 정리하고 종료하는 동작이다. 이것이 없으면 배포하거나 Pod 수를 줄일 때 진행 중인 요청이 끊길 수 있다.
+    - id: g.prestop-hook
+      name: preStop 훅
+      aliases:
+        - preStop
+        - preStop Hook
+        - 종료 전 훅
+      concept: infra.rolling-update
+      gloss: preStop 훅은 Kubernetes가 컨테이너에 SIGTERM을 보내기 직전에 실행하는 명령이다. 여기에 짧은 대기를 넣으면 Pod가 Service 대상에서 빠질 시간을 벌 수 있다. 롤링 업데이트 중 나는 502를 줄이는 데 쓴다.
+    - id: g.cpu-throttling
+      name: CPU Throttling
+      aliases:
+        - CPU 스로틀링
+        - 스로틀링
+        - CFS Throttling
+      concept: infra.container-resource-limits
+      gloss: CPU throttling은 컨테이너가 할당된 CPU 시간을 다 써서 다음 주기까지 실행이 멈추는 현상이다. 프로세스는 죽지 않지만 응답 지연이 튄다. 평균 CPU 사용률은 낮아 보여도 꼬리 지연이 커지는 원인이 될 수 있다.
+    - id: g.privileged-container
+      name: 특권 컨테이너
+      aliases:
+        - Privileged Container
+        - privileged 모드
+        - 특권 모드
+      concept: infra.container-isolation
+      gloss: 특권 컨테이너는 호스트 장치 접근과 대부분의 커널 기능이 허용된 채 실행되는 컨테이너다. 이 컨테이너를 탈취당하면 호스트까지 장악될 수 있다. 꼭 필요한 경우가 아니면 쓰지 않는다.
+    - id: g.reconciliation-loop
+      name: 조정 루프
+      aliases:
+        - Reconciliation Loop
+        - Desired State
+        - 원하는 상태
+        - 컨트롤 루프
+      concept: infra.kubernetes
+      gloss: 조정 루프는 컨트롤러가 선언된 원하는 상태와 실제 상태를 계속 비교해 차이를 메우는 동작이다. 상위 컨트롤러가 관리하는 리소스를 손으로 고치면 원래대로 돌아가는 것도 이 루프 때문이다. 그래서 변경은 선언 자체를 고쳐서 해야 한다.
+    - id: g.manifest
+      name: 매니페스트
+      aliases:
+        - Manifest
+        - Kubernetes YAML
+      concept: infra.kubernetes
+      gloss: 매니페스트는 Kubernetes 리소스의 원하는 상태를 적은 YAML 또는 JSON 파일이다. kubectl apply로 클러스터에 적용한다. Git으로 관리하면 배포 변경을 리뷰하고 되돌릴 수 있다.
+    - id: g.label-selector
+      name: 레이블과 셀렉터
+      aliases:
+        - Label
+        - Selector
+        - Label Selector
+        - 레이블 셀렉터
+      concept: infra.k8s-service-networking
+      gloss: 레이블은 리소스에 붙이는 키-값 꼬리표이고, 셀렉터는 레이블 조건으로 대상 리소스를 고르는 규칙이다. Service와 Deployment는 자신이 관리할 Pod를 이것으로 찾는다. 레이블이 어긋나면 Pod로 트래픽이 가지 않는다.
+    - id: g.endpoints
+      name: 엔드포인트
+      aliases:
+        - Endpoints
+        - EndpointSlice
+        - 서비스 엔드포인트
+      concept: infra.k8s-service-networking
+      gloss: 엔드포인트는 Service가 실제로 트래픽을 보낼, 준비된 Pod의 IP와 포트 목록이다. Service가 응답하지 않는데 이 목록이 비어 있다면 셀렉터 불일치나 readiness 실패를 의심한다.
+    - id: g.sidecar
+      name: 사이드카
+      aliases:
+        - Sidecar
+        - 사이드카 컨테이너
+        - Sidecar Container
+      concept: infra.pod
+      gloss: 사이드카는 같은 Pod 안에서 주 앱 컨테이너 옆에 붙어 로그 수집이나 프록시 같은 보조 기능을 맡는 컨테이너다. 네트워크와 볼륨을 공유하므로 앱 코드를 바꾸지 않고 기능을 덧붙일 수 있다.
+    - id: g.init-container
+      name: Init 컨테이너
+      aliases:
+        - Init Container
+        - initContainers
+        - 초기화 컨테이너
+      concept: infra.pod
+      gloss: Init 컨테이너는 앱 컨테이너보다 먼저 순서대로 실행되고, 끝까지 성공해야 하는 컨테이너다. 사전 준비 작업이나 의존 서비스 대기에 쓴다. 실패하면 Pod가 Init 상태에 머물러 앱이 시작되지 않는다.
+    - id: g.volume
+      name: 볼륨
+      aliases:
+        - Volume
+        - PersistentVolume
+        - PVC
+        - 영구 볼륨
+      concept: infra.pod
+      gloss: 볼륨은 컨테이너 파일 시스템 밖에 두는 저장 공간으로, 컨테이너가 재시작돼도 데이터가 남는다. PersistentVolume은 Pod 수명과 관계없이 유지되는 저장소를 클러스터 리소스로 다룬다. Pod가 교체돼도 지켜야 할 데이터를 이곳에 둔다.
+    - id: g.statefulset
+      name: StatefulSet
+      aliases:
+        - 스테이트풀셋
+      concept: infra.deployment
+      gloss: StatefulSet은 Pod마다 고정된 이름과 전용 볼륨을 붙여 관리하는 컨트롤러다. DB나 메시지 브로커처럼 인스턴스마다 정체성과 데이터가 유지돼야 하는 워크로드에 쓴다.
+    - id: g.daemonset
+      name: DaemonSet
+      aliases:
+        - 데몬셋
+      concept: infra.deployment
+      gloss: DaemonSet은 모든 노드, 또는 조건에 맞는 노드마다 Pod를 하나씩 실행하는 컨트롤러다. 로그 수집기나 모니터링 에이전트처럼 노드마다 하나씩 있어야 하는 프로그램을 배포할 때 쓴다.
+    - id: g.job-cronjob
+      name: Job과 CronJob
+      aliases:
+        - Job
+        - CronJob
+        - 크론잡
+        - 배치 작업
+      concept: infra.deployment
+      gloss: Job은 끝나는 작업을 Pod로 실행하고, 실패하면 재시도하며 완료 여부를 추적하는 리소스이고, CronJob은 Job을 정해진 일정마다 만든다. 배치 집계나 정기 정리 작업을 서버 cron 대신 클러스터에서 돌릴 때 쓴다.
+    - id: g.hpa
+      name: HPA
+      aliases:
+        - Horizontal Pod Autoscaler
+        - 오토스케일링
+        - Autoscaling
+        - 수평 확장
+      concept: infra.k8s-resources
+      gloss: HPA는 CPU 사용률 같은 지표를 보고 Pod 수를 자동으로 늘리거나 줄이는 기능이다. CPU 사용률은 requests 대비로 계산된다. 그래서 requests가 실제 사용량과 맞지 않으면 확장이 늦거나 지나치게 일어난다.
+    - id: g.eviction
+      name: 축출
+      aliases:
+        - Evicted
+        - Pod 축출
+        - 노드 압박
+      concept: infra.k8s-resources
+      gloss: 축출은 노드의 메모리나 디스크가 부족할 때 kubelet이 일부 Pod를 강제로 내보내는 동작이다. 앱에 문제가 없어도 Pod가 Evicted 상태로 사라질 수 있다. 이때는 requests 설정과 노드 여유를 함께 확인한다.
+    - id: g.helm
+      name: Helm
+      aliases:
+        - 헬름
+        - Helm Chart
+        - 헬름 차트
+      concept: infra.kubernetes
+      gloss: Helm은 여러 Kubernetes 매니페스트를 차트라는 패키지로 묶고, 값만 바꿔 환경별로 설치·업그레이드하는 도구다. 공개 차트로 DB나 모니터링 도구를 설치할 때 쓴다. 자체 앱 배포를 템플릿으로 만들 때도 쓴다.
+    - id: g.metric-types
+      name: 카운터·게이지·히스토그램
+      aliases:
+        - Counter
+        - Gauge
+        - Histogram
+        - 지표 유형
+      concept: infra.metrics
+      gloss: 카운터는 증가만 하는 누적값, 게이지는 오르내리는 현재값, 히스토그램은 값의 분포를 구간별로 세는 지표 유형이다. 요청 수는 카운터, 메모리 사용량은 게이지로 기록한다. 지연 시간 백분위수는 히스토그램으로 계산한다.
+    - id: g.trace-sampling
+      name: 트레이스 샘플링
+      aliases:
+        - Sampling
+        - 샘플링
+        - Tail Sampling
+        - Head Sampling
+      concept: infra.distributed-tracing
+      gloss: 샘플링은 모든 요청이 아니라 일부만 골라 트레이스를 저장하는 방식이다. 저장 비용은 줄지만 드물게 발생하는 오류 요청이 빠질 수 있다. 그래서 오류나 느린 요청을 우선 남기는 규칙을 함께 쓴다.
+    - id: g.config-drift
+      name: 구성 드리프트
+      aliases:
+        - Configuration Drift
+        - Drift
+        - 드리프트
+      concept: infra.infrastructure-as-code
+      gloss: 구성 드리프트는 코드에 선언된 인프라 상태와 실제 상태가 어긋난 상태다. 콘솔이나 서버에서 직접 고친 설정이 주된 원인이다. 이런 설정은 다음 적용 때 덮어써지거나 같은 환경을 다시 만들 수 없게 한다.
+    - id: g.mttr
+      name: MTTR
+      aliases:
+        - Mean Time To Recovery
+        - 평균 복구 시간
+      concept: infra.incident-response
+      gloss: MTTR은 장애가 발생해 복구될 때까지 걸린 평균 시간이다. 이 시간을 탐지·진단·조치 단계로 나눠 보면 어디서 시간이 걸렸는지 알 수 있다. 알림과 런북을 개선한 효과를 확인할 때도 쓴다.

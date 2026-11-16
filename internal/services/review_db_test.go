@@ -65,7 +65,7 @@ func dueNow(t *testing.T, s *Service, user, objectiveID string) {
 func selfGrade(t *testing.T, s *Service, user, id, text, verdict string) models.CheckDetail {
 	t.Helper()
 	ctx := context.Background()
-	if _, err := s.AnswerCheck(ctx, user, id, text); err != nil {
+	if _, err := s.AnswerCheck(ctx, user, id, text, ""); err != nil {
 		t.Fatal(err)
 	}
 	d, err := s.SelfGradeCheck(ctx, user, id, verdict)

@@ -73,8 +73,12 @@ type LearningSettings struct {
 	// ReviewGrader: default grader of reviews (self | llm).
 	ReviewGrader string `json:"reviewGrader"`
 	// PretestEnabled: prediction questions before a lecture (사전 진단).
-	PretestEnabled bool       `json:"pretestEnabled"`
-	UpdatedAt      *time.Time `json:"updatedAt,omitempty"`
+	PretestEnabled bool `json:"pretestEnabled"`
+	// LabOS: the reader's lab environment (macos | linux | none).
+	LabOS string `json:"labOs"`
+	// AdaptiveIntervals: per-objective interval scale (ease) on.
+	AdaptiveIntervals bool       `json:"adaptiveIntervals"`
+	UpdatedAt         *time.Time `json:"updatedAt,omitempty"`
 }
 
 // CompletedItem is one entry of the "completed by area" history: a completed

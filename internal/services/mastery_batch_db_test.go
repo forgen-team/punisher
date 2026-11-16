@@ -42,14 +42,14 @@ func TestCheckInputCodes(t *testing.T) {
 	if _, _, err := s.StartCheck(ctx, user, "review", f.lectureID); code(err) != CodeInvalidKind {
 		t.Fatalf("kind: %v", err)
 	}
-	if _, err := s.AnswerCheck(ctx, user, "x", "  "); code(err) != CodeAnswerEmpty {
+	if _, err := s.AnswerCheck(ctx, user, "x", "  ", ""); code(err) != CodeAnswerEmpty {
 		t.Fatalf("empty: %v", err)
 	}
 	long := make([]rune, MaxCheckAnswerRunes+1)
 	for i := range long {
 		long[i] = '가'
 	}
-	if _, err := s.AnswerCheck(ctx, user, "x", string(long)); code(err) != CodeAnswerTooLong {
+	if _, err := s.AnswerCheck(ctx, user, "x", string(long), ""); code(err) != CodeAnswerTooLong {
 		t.Fatalf("too long: %v", err)
 	}
 	if _, err := s.SelfGradeCheck(ctx, user, "x", "maybe"); code(err) != CodeInvalidVerdict {

@@ -1,4 +1,3 @@
-
 import { AlertOctagon, ExternalLink } from "lucide-react";
 import type { DocumentLink, LectureBlock } from "@/src/shared/api/punisher";
 import { Markdown, type RenderTerm } from "@/src/shared/ui/punisher/Markdown";
@@ -10,7 +9,8 @@ import { splitMermaid } from "../../lib/mermaidInMarkdown";
 import { CodeBlock } from "./CodeBlock";
 import { MermaidBlock } from "./MermaidBlock";
 import { StructuredBlock } from "./StructuredBlock";
-import { AnswerBlock, ExerciseBlock, KeypointBlock, PauseBlock, SummaryBlock, WARNING_BOX } from "./StudyBlocks";
+import { AnswerBlock, ExerciseBlock, KeypointBlock, LabBlock, PauseBlock, SummaryBlock, WARNING_BOX } from "./StudyBlocks";
+import { labForOS, useExerciseContext } from "@/src/features/punisher/lecture-exercise";
 import { keepLineBreaks } from "../../lib/lineBreaks";
 
 /** 링크 글자의 마지막 낱말과 아이콘을 한 덩어리로 묶어 아이콘만 다음 줄로 떨어지지 않게 한다. */
@@ -84,13 +84,19 @@ export function BlockGroupRenderer({ group, onBeforeDeeper }: { group: BlockGrou
   }
   if (group.type === "exercise") {
     return (
-      <ExerciseBlock text={group.exercise.text} answer={group.answer ? (group.answer.text ?? "") : undefined} renderTerm={termRenderer(onBeforeDeeper)} />
+      <ExerciseBlock
+        anchor={group.exercise.anchor}
+        text={group.exercise.text}
+        answer={group.answer ? (group.answer.text ?? "") : undefined}
+        renderTerm={termRenderer(onBeforeDeeper)}
+      />
     );
   }
   return <BlockRenderer block={group.block} onBeforeDeeper={onBeforeDeeper} />;
 }
 
 export function BlockRenderer({ block, onBeforeDeeper }: BlockRendererProps) {
+  const exercise = useExerciseContext();
   const text = block.text ?? "";
   const renderTerm = termRenderer(onBeforeDeeper);
   switch (block.type) {
@@ -154,7 +160,11 @@ export function BlockRenderer({ block, onBeforeDeeper }: BlockRendererProps) {
       // 다음 출력 블록과 묶는 일은 LectureBody(groupBlocks)가 한다. 여기서는 짝 없는 질문만.
       return <PauseBlock question={text} renderTerm={renderTerm} />;
     case "exercise":
-      return <ExerciseBlock text={text} renderTerm={renderTerm} />;
+      return <ExerciseBlock anchor={block.anchor} text={text} renderTerm={renderTerm} />;
+    case "lab":
+      // 강의 화면에서는 내 실습 환경(설정)에 맞는 블록만, 미리보기에선 모두.
+      if (exercise && !labForOS(block.kind, exercise.labOs)) { return null; }
+      return <LabBlock anchor={block.anchor} text={text} />;
     case "answer":
       return <AnswerBlock text={text} renderTerm={renderTerm} />;
     case "summary":

@@ -8,7 +8,7 @@ import (
 )
 
 // Version is recorded in lectures.prompt_version.
-const Version = "punisher-prompts-2026-11-13.6"
+const Version = "punisher-prompts-2026-11-16.1"
 
 // ConceptRef is a concept the prompt may link to.
 type ConceptRef struct {
@@ -73,6 +73,20 @@ type LectureContext struct {
 	Query string
 	// ExampleLanguage: display name of the learner's preferred example-code language ("" = no preference).
 	ExampleLanguage string
+	// LabOS: the reader's lab environment for user-owned generations (macos | linux | none);
+	// "" = library lecture (labs for both systems, design v3 §4.1).
+	LabOS string
+	// LearnerSignals: where the learner got stuck in the version being remade
+	// ("섹션 제목 — 이유"), user-owned regenerations only (v3 §6).
+	LearnerSignals []string
+	// Glossary: basic terms of the shipped dictionary (term:g.…), linked instead of re-defined.
+	Glossary []GlossaryRef
+}
+
+// GlossaryRef is a dictionary term the lecture may link.
+type GlossaryRef struct {
+	ID   string
+	Name string
 }
 
 // SystemTeacher is the shared system prompt for outline/lecture generation.
@@ -194,11 +208,26 @@ func writeContext(b *strings.Builder, c LectureContext) {
 	b.WriteString("\n## 연결 가능한 기존 개념([용어](term:id) 링크에 쓸 수 있는 id)\n")
 	writeRefs(b, c.Linkable)
 	writeCatalog(b, c.Catalog)
+	writeGlossary(b, c.Glossary)
 	if c.StyleHint != "" {
 		b.WriteString("\n## 설명 방식 조정\n" + c.StyleHint + "\n")
 	}
 	writeMisconceptions(b, c.Misconceptions)
+	writeLearnerSignals(b, c.LearnerSignals)
 	b.WriteString(ExampleLanguageRule(c.ExampleLanguage))
+	b.WriteString(LabRule(c.LabOS))
+}
+
+// LabRule tells the model which system @@lab blocks target (v3 §4.1).
+func LabRule(os string) string {
+	switch os {
+	case "none":
+		return "\n## 실습\n수강생은 실습 환경을 쓰지 않습니다. @@lab 블록을 쓰지 마세요.\n"
+	case "macos", "linux":
+		name := map[string]string{"macos": "macOS", "linux": "Linux"}[os]
+		return fmt.Sprintf("\n## 실습\n수강생의 터미널은 %s 입니다. @@lab 은 os=%s(또는 두 시스템에서 같으면 os=any)로 씁니다.\n", name, os)
+	}
+	return "\n## 실습\n수강생마다 macOS·Linux 가 다릅니다. 명령이 두 시스템에서 같으면 @@lab os=any 하나, 다르면 os=macos 와 os=linux 두 블록을 연달아 씁니다.\n"
 }
 
 // ExampleLanguageRule tells the model which language to use for application
@@ -214,6 +243,17 @@ func ExampleLanguageRule(language string) string {
 - 셸 명령어(bash), SQL, 설정 파일(yaml 등), 도구 출력 로그는 원래 형식을 그대로 씁니다. DB 주제처럼 SQL 자체가 핵심이면 SQL 예시만으로 충분합니다.
 - 다른 언어의 동작 차이가 핵심일 때만 그 언어를 짧게 보여 주고, 왜 다른 언어를 썼는지 한 줄로 밝힙니다.
 `, language)
+}
+
+// writeGlossary lists the dictionary terms compactly ("id 이름" per line).
+func writeGlossary(b *strings.Builder, refs []GlossaryRef) {
+	if len(refs) == 0 {
+		return
+	}
+	b.WriteString("\n## 용어 사전(지도에 없는 기본 용어. 본문에 나오면 첫 등장에 [표기](term:id) 링크를 겁니다. 링크를 누르면 사전 설명이 뜨므로 본문에서 따로 길게 정의하지 않고, 문장 흐름에 필요하면 괄호로 몇 단어만 덧붙입니다)\n")
+	for _, r := range refs {
+		fmt.Fprintf(b, "- %s %s\n", r.ID, r.Name)
+	}
 }
 
 // writeCatalog lists the rest of the knowledge map compactly, one line per area.
@@ -259,6 +299,17 @@ func writeMisconceptions(b *strings.Builder, list []Misconception) {
 	b.WriteString("\n## 이 수강생이 인정한 오개념(관련 내용이 나오면 이 생각이 왜 틀렸는지 바로잡을 것)\n")
 	for _, m := range list {
 		fmt.Fprintf(b, "- %s: %s\n", m.ConceptName, m.Text)
+	}
+}
+
+// writeLearnerSignals lists where the learner got stuck in the previous version (v3 §6).
+func writeLearnerSignals(b *strings.Builder, list []string) {
+	if len(list) == 0 {
+		return
+	}
+	b.WriteString("\n## 이전 버전에서 이 수강생이 막힌 곳(이 부분은 설명 순서·예·연습을 바꿔 더 쉽게 따라오게 할 것)\n")
+	for _, s := range list {
+		fmt.Fprintf(b, "- %s\n", s)
 	}
 }
 

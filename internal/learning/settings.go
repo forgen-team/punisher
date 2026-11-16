@@ -82,3 +82,18 @@ func ValidReviewIntervals(days []int) bool {
 	}
 	return true
 }
+
+// Lab environments (user_learning_settings.lab_os, v3 §4): which @@lab blocks
+// to show and generate. none hides labs (folded, read-only).
+const (
+	LabOSMacOS = "macos"
+	LabOSLinux = "linux"
+	LabOSNone  = "none"
+	// DefaultLabOS: witems users read on a Mac (the standalone app defaults to its own OS).
+	DefaultLabOS = LabOSMacOS
+	// DefaultAdaptiveIntervals: per-objective interval scale on (ease 2.0 = the ladder as set).
+	DefaultAdaptiveIntervals = true
+)
+
+// ValidLabOS reports a known lab environment.
+func ValidLabOS(os string) bool { return os == LabOSMacOS || os == LabOSLinux || os == LabOSNone }

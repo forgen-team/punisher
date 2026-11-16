@@ -184,8 +184,10 @@ func (s *Service) finishItem(ctx context.Context, userID string, st checkState, 
 	integrativeOK bool, turn store.TurnWrite, abandon bool) error {
 	turn.ReusedItem = turn.ReusedItem || st.reusedItem(item.ID)
 	f := store.ItemFinish{UserID: userID, SessionID: st.sess.ID, Item: item, Result: r, IntegrativeOK: integrativeOK,
-		Turn: turn, Abandon: abandon, Intervals: s.reviewIntervals(ctx, userID), Now: s.now(),
+		Turn: turn, Abandon: abandon, Now: s.now(), Confidence: firstConfidence(st.turns, item.ID),
 		Record: check.Recorded(st.sess.Kind), KnownVerify: st.sess.Kind == check.PurposeKnownVerify}
+	f.Intervals, f.Adaptive = s.reviewSchedule(ctx, userID)
+	f.Synthesis = st.sess.Kind == check.PurposeSynthesis
 	newInflow := st.sess.Kind == check.PurposeCheck || st.itemKind(item) == check.PurposeKnownVerify
 	if newInflow && item.ObjectiveID != "" && !f.Record {
 		f.Hold = s.reviewHold(ctx, userID) // 신규 유입 조절(§2.6): 확인·'이미 앎' 확인에서 처음 복습에 들어오는 목표만
@@ -235,13 +237,21 @@ func (s *Service) runDispute(ctx context.Context, apiKey, userID, sessionID, tur
 		text = "다시 채점한 결과 맞는 답이었어요. 이 문항의 반영을 되돌렸어요."
 	}
 	_, err = s.Store.ResolveDispute(done, store.DisputeResolve{UserID: userID, SessionID: sessionID, ObjectiveID: item.ObjectiveID,
-		JudgedTurnID: judged.ID, Accepted: accepted, Now: s.now(), Intervals: s.reviewIntervals(done, userID),
+		JudgedTurnID: judged.ID, Accepted: accepted, Now: s.now(), Intervals: s.reviewIntervals(done, userID), Covers: synthesisCovers(st, item),
 		ConflictText: "다시 채점한 결과 맞는 답이었어요. 판정은 바로잡았지만 이후 기록이 있어 상자는 그대로예요.",
 		Turn: store.TurnWrite{ID: turnID, ItemID: item.ID, Role: "tutor",
 			Move: check.MoveDispute, Text: text, Verdict: check.GradeVerdict(reply.Verdict, reply.Quote, reply.Confidence),
 			Grader: learning.GraderRegrade, Model: u.model, InputTokens: u.input, OutputTokens: u.output,
 			Grade: store.GradeRecord{CheckGrade: models.CheckGrade{Met: reply.Met, Missing: reply.Missing, Quote: reply.Quote, Confidence: reply.Confidence}}}})
 	return err
+}
+
+// synthesisCovers: the objectives an accepted dispute credits (synthesis items only).
+func synthesisCovers(st checkState, item store.CheckItem) []string {
+	if st.sess.Kind != check.PurposeSynthesis || item.ObjectiveID != "" {
+		return nil
+	}
+	return item.Rubric.Covers
 }
 
 func (s *Service) regrade(ctx context.Context, apiKey string, item store.CheckItem, answer string) (check.RegradeReply, usage, error) {

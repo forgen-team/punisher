@@ -1,4 +1,3 @@
-
 import { useRef, useState, type KeyboardEvent } from "react";
 import { Button, Textarea } from "@/src/shared/ui/kit";
 import {
@@ -9,8 +8,9 @@ import {
   useCheckReveal,
   useCheckSelfGrade,
 } from "@/src/entities/punisher";
-import { CHECK_MAX_ANSWER_CHARS, type CheckDetail } from "@/src/shared/api/punisher";
-import { canSend, selfGradeStep, showReveal } from "../lib/checkView";
+import { CHECK_MAX_ANSWER_CHARS, type CheckDetail, type Confidence } from "@/src/shared/api/punisher";
+import { ConfidencePicker } from "./ConfidencePicker";
+import { asksConfidence, canSend, selfGradeStep, showReveal } from "../lib/checkView";
 
 const COMPOSER_CLASS =
   "sticky bottom-[var(--app-bottom-offset)] z-nav -mx-4 mt-6 flex flex-col gap-2 border-t border-line bg-canvas px-4 py-3 fold:-mx-6 fold:px-6 lg:mx-0 lg:px-0";
@@ -55,6 +55,7 @@ export function CheckComposer({ detail }: { detail: CheckDetail }) {
 function AnswerComposer({ detail }: { detail: CheckDetail }) {
   const id = detail.session.id;
   const [text, setText] = useState("");
+  const [confidence, setConfidence] = useState<Confidence>();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const answer = useCheckAnswer(id);
   const reveal = useCheckReveal(id);
@@ -63,9 +64,10 @@ function AnswerComposer({ detail }: { detail: CheckDetail }) {
 
   function send() {
     if (!sendable) { return; }
-    answer.mutate(text.trim(), {
+    answer.mutate({ text: text.trim(), confidence: asksConfidence(detail) ? confidence : undefined }, {
       onSuccess: () => {
         setText("");
+        setConfidence(undefined);
         inputRef.current?.focus();
       },
     });
@@ -86,6 +88,7 @@ function AnswerComposer({ detail }: { detail: CheckDetail }) {
           {describeCheckError(error)}
         </p>
       )}
+      {asksConfidence(detail) && <ConfidencePicker value={confidence} onChange={setConfidence} />}
       <Textarea
         ref={inputRef}
         aria-label="답"

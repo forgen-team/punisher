@@ -19,4 +19,8 @@ export const BLOCK_LABELS = {
   diffBefore: "고치기 전",
   diffAfter: "고친 후",
   broken: "이 자료를 표시할 수 없어요",
+  lab: "내 터미널에서 해 보기",
+  labCommand: "명령",
+  labLook: "보는 곳",
+  labExpect: "예상",
 } as const;

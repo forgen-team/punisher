@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/wooo-jin/punisher/internal/learning"
 	"github.com/wooo-jin/punisher/internal/models"
 	"github.com/wooo-jin/punisher/internal/store"
 	"github.com/wooo-jin/punisher/internal/llm"
@@ -108,6 +109,26 @@ func (s *Service) reviewIntervals(ctx context.Context, userID string) []int {
 		logf("review intervals for %s: %v (using defaults)", userID, err)
 	}
 	return st.ReviewIntervals
+}
+
+// labOS is the user's lab environment (macos | linux | none).
+func (s *Service) labOS(ctx context.Context, userID string) string {
+	st, err := s.Store.GetLearningSettings(ctx, userID)
+	if err != nil {
+		logf("lab os for %s: %v (using default)", userID, err)
+		return learning.DefaultLabOS
+	}
+	return st.LabOS
+}
+
+// reviewSchedule is the user's ladder and whether adaptive intervals are on.
+func (s *Service) reviewSchedule(ctx context.Context, userID string) ([]int, bool) {
+	st, err := s.Store.GetLearningSettings(ctx, userID)
+	if err != nil {
+		logf("review schedule for %s: %v (using defaults)", userID, err)
+		return learning.DefaultReviewIntervals, learning.DefaultAdaptiveIntervals
+	}
+	return st.ReviewIntervals, st.AdaptiveIntervals
 }
 
 func (s *Service) objectiveText(ctx context.Context, userID, conceptID, objectiveID string) string {

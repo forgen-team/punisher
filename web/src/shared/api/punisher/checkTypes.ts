@@ -3,7 +3,9 @@
 export type CheckSessionStatus = "preparing" | "active" | "finished" | "abandoned" | "failed";
 export type CheckItemFormat = "recall" | "predict" | "apply" | "integrative" | "choice";
 /** 세션 종류 — 확인 · 복습 · 사전 진단(예측 질문 · 이미 앎 확인 · 배치 진단) */
-export type CheckKind = "check" | "review" | "pretest" | "known_verify" | "placement";
+export type CheckKind = "check" | "review" | "pretest" | "known_verify" | "placement" | "synthesis";
+/** 답 전에 고르는 확신도(v3 §3) — 판정은 바꾸지 않는다. */
+export type Confidence = "sure" | "unsure" | "unknown";
 export type CheckTurnRole = "tutor" | "learner";
 export type CheckMove =
   | "ask"
@@ -79,6 +81,8 @@ export interface CheckResultItem {
   queued?: boolean;
   /** '이미 앎' 확인에서 통과하지 못함 → '다시 배우기' 제안 */
   relearn?: boolean;
+  /** 확실했는데 틀림('착각', v3 §3) */
+  confidentError?: boolean;
 }
 
 export interface CheckSession {
@@ -103,6 +107,8 @@ export interface CheckMaterial {
   lang?: string;
   /** choice 문항의 보기(3~4개) */
   choices?: string[];
+  /** 장면의 로그·숫자(종합 문제 등) */
+  log?: string;
 }
 
 export interface CheckItem {
@@ -152,6 +158,10 @@ export interface CheckTurn {
   model?: string;
   error?: string;
   createdAt: string;
+  /** 학습자 답(첫 답)의 확신도 */
+  confidence?: Confidence;
+  /** 확실했는데 틀림('착각') — 문항의 마지막 판정 턴 */
+  confidentError?: boolean;
 }
 
 export interface CheckCurrent {
@@ -204,7 +214,8 @@ export type DiagnosticRequest =
   | { kind: "pretest"; lectureId: string }
   | { kind: "pretest"; jobId: string }
   | { kind: "known_verify"; conceptId: string }
-  | { kind: "placement"; chapterId: string };
+  | { kind: "placement"; chapterId: string }
+  | { kind: "synthesis" };
 
 /** 사전 진단 문항의 답 — 보기 번호 또는 '모르겠어요'. */
 export type DiagnosticChoice = { choice: number } | { dontKnow: true };

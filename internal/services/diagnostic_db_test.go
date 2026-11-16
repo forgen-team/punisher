@@ -83,7 +83,7 @@ func TestPretestRecordsWithoutEvidence(t *testing.T) {
 	if !d.Current.CanAnswer || d.Current.CanReveal || d.Current.CanSelfGrade || d.Items[0].Answer != "" {
 		t.Fatalf("current = %+v item=%+v", d.Current, d.Items[0])
 	}
-	if _, err := s.AnswerCheck(ctx, user, d.Session.ID, "메모리"); !errors.Is(err, ErrInvalidCheck) {
+	if _, err := s.AnswerCheck(ctx, user, d.Session.ID, "메모리", ""); !errors.Is(err, ErrInvalidCheck) {
 		t.Fatalf("a choice item needs a choice: %v", err)
 	}
 	d2 := choose(t, s, user, d.Session.ID, 1)

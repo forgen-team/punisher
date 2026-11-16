@@ -53,6 +53,9 @@ const (
 	BlockExercise = "exercise"
 	BlockAnswer   = "answer"
 	BlockSummary  = "summary"
+	// BlockLab: one read-only command for the reader's own terminal (v3 §4). Kind = os
+	// (macos | linux | any); Text = "$ command" line, then 보는 곳:/예상: lines.
+	BlockLab = "lab"
 )
 
 // Keypoint kinds (@@keypoint kind=…).
@@ -66,7 +69,7 @@ const (
 func IsBlockType(t string) bool {
 	switch t {
 	case BlockMarkdown, BlockMermaid, BlockCode, BlockLog, BlockMisconception, BlockTerm, BlockSources,
-		BlockKeypoint, BlockTrace, BlockChart, BlockDiff, BlockPause, BlockExercise, BlockAnswer, BlockSummary:
+		BlockKeypoint, BlockTrace, BlockChart, BlockDiff, BlockPause, BlockExercise, BlockAnswer, BlockSummary, BlockLab:
 		return true
 	}
 	return false
@@ -88,6 +91,7 @@ type Source struct {
 //   - code / log: Text + Lang
 //   - term: Term (display), ConceptID, Gloss (Text), Proposed (concept not yet in graph)
 //   - sources: Sources
+//   - lab: Kind (os) + Text ("$ command" line, 보는 곳:, 예상:)
 //   - keypoint: Kind + Text (markdown); exercise / answer / summary: Text (markdown); pause: Text (one question line)
 //   - trace / chart: Data (JSON object, §6); diff: Data + Lang
 type Block struct {

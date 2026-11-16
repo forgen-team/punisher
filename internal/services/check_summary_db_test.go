@@ -38,7 +38,7 @@ func TestCheckLectureSummary(t *testing.T) {
 	if _, err := s.Store.ActivateCheckSession(ctx, user, sess.ID, ids, store.TurnWrite{ItemID: ids[0], Role: "tutor", Move: "ask", Text: d.Items[0].Prompt}); err != nil {
 		t.Fatal(err)
 	}
-	got, err := s.AnswerCheck(ctx, user, sess.ID, "메모리에 남아요")
+	got, err := s.AnswerCheck(ctx, user, sess.ID, "메모리에 남아요", "")
 	if err != nil || got.Items[0].LectureSummary != "" {
 		t.Fatalf("summary before the item is done = %q (%v)", got.Items[0].LectureSummary, err)
 	}

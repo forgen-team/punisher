@@ -16,8 +16,14 @@ export interface LearningSettings {
   reviewGrader: ReviewGrader;
   /** 강의 전 예측 질문 */
   pretestEnabled: boolean;
+  /** 실습 환경(v3 §4) */
+  labOs: LabOS;
+  /** 목표마다 복습 간격을 조절(v3 §7) */
+  adaptiveIntervals: boolean;
   updatedAt?: string;
 }
+
+export type LabOS = "macos" | "linux" | "none";
 
 /** PUT /me/settings — 준 필드만 바뀐다. */
 export type LearningSettingsPatch = Partial<Omit<LearningSettings, "updatedAt">>;

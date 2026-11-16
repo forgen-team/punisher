@@ -21,3 +21,4 @@ export * from "./model/checks";
 export { MasteryDots, UncheckedObjectives } from "./ui/MasteryDots";
 export * from "./model/reviews";
 export * from "./model/misconceptions";
+export * from "./model/exercises";

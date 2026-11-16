@@ -45,12 +45,13 @@ var (
 
 // Codes of CheckInputError (the 400 response's error.code).
 const (
-	CodeAnswerEmpty    = "ANSWER_EMPTY"
-	CodeAnswerTooLong  = "ANSWER_TOO_LONG"
-	CodeReasonTooLong  = "REASON_TOO_LONG"
-	CodeInvalidVerdict = "INVALID_VERDICT"
-	CodeNoObjectives   = "NO_OBJECTIVES"
-	CodeInvalidKind    = "INVALID_KIND"
+	CodeAnswerEmpty       = "ANSWER_EMPTY"
+	CodeAnswerTooLong     = "ANSWER_TOO_LONG"
+	CodeReasonTooLong     = "REASON_TOO_LONG"
+	CodeInvalidVerdict    = "INVALID_VERDICT"
+	CodeNoObjectives      = "NO_OBJECTIVES"
+	CodeInvalidKind       = "INVALID_KIND"
+	CodeInvalidConfidence = "INVALID_CONFIDENCE"
 )
 
 // CheckInputError is an ErrInvalidCheck with the cause's code.

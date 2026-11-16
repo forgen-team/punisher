@@ -1,11 +1,12 @@
 # Punisher standalone — build helpers.
 #   make build   → dist/punisher (universal macOS binary, frontend embedded)
+#   make linux   → dist/punisher-linux-amd64, dist/punisher-linux-arm64
 #   make test    → go vet + go test + frontend typecheck/lint
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 WEBUI_DIST := internal/webui/dist
 
-.PHONY: build web go-darwin test lint clean run release
+.PHONY: build web go-darwin go-linux linux test lint clean run release
 
 build: web go-darwin
 
@@ -23,17 +24,32 @@ go-darwin:
 	@lipo -info dist/punisher
 	@ls -lh dist/punisher
 
+go-linux:
+	mkdir -p dist
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags '$(LDFLAGS)' -o dist/punisher-linux-amd64 ./cmd/punisher
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags '$(LDFLAGS)' -o dist/punisher-linux-arm64 ./cmd/punisher
+	@ls -lh dist/punisher-linux-*
+
+linux: web go-linux
+
 test:
 	go vet ./...
 	go test ./...
 	cd web && npm run typecheck && npm run lint && npm test
 
-# Release zip for hand-off: punisher + install.sh + README + CHANGELOG (no publishing).
-release: build
-	mkdir -p dist/release/punisher-$(VERSION)
-	cp dist/punisher install.sh README.md README.ko.md CHANGELOG.md LICENSE dist/release/punisher-$(VERSION)/
+# Release archives for hand-off: punisher + install.sh + README + CHANGELOG (no publishing).
+#   macOS: punisher-<v>-macos-universal.zip · Linux: punisher-<v>-linux-{amd64,arm64}.tar.gz
+DOCS := install.sh README.md README.ko.md CHANGELOG.md LICENSE NOTICE
+release: build go-linux
+	rm -rf dist/release && mkdir -p dist/release/punisher-$(VERSION)
+	cp dist/punisher $(DOCS) dist/release/punisher-$(VERSION)/
 	cd dist/release && ditto -c -k --keepParent punisher-$(VERSION) punisher-$(VERSION)-macos-universal.zip
-	@ls -lh dist/release/*.zip
+	for arch in amd64 arm64; do \
+		d=dist/release/linux-$$arch/punisher-$(VERSION); mkdir -p $$d; \
+		cp dist/punisher-linux-$$arch $$d/punisher; cp $(DOCS) $$d/; \
+		tar -C dist/release/linux-$$arch -czf dist/release/punisher-$(VERSION)-linux-$$arch.tar.gz punisher-$(VERSION); \
+	done
+	@ls -lh dist/release/*.zip dist/release/*.tar.gz
 
 run:
 	go run ./cmd/punisher

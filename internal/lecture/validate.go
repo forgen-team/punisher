@@ -195,6 +195,8 @@ func validateBlock(path string, b Block, vc ValidationContext, add func(string, 
 		}
 	case BlockMarkdown, BlockMisconception, BlockExercise, BlockAnswer:
 		validateProse(path, b, add)
+	case BlockLab:
+		validateLab(path, b, add)
 	case BlockKeypoint:
 		if b.Kind != KeypointDefinition && b.Kind != KeypointCaution && b.Kind != KeypointRule {
 			add(path, "keypoint kind must be definition|caution|rule, got %q", b.Kind)
@@ -259,4 +261,37 @@ func ProposedTerms(c Content) []Block {
 		}
 	}
 	return out
+}
+
+// validateLab: os is macos|linux|any, exactly one "$ command" line that passes
+// the read-only policy (CheckLabCommand), and an 예상: line.
+func validateLab(path string, b Block, add func(string, string, ...any)) {
+	cmd, n := LabCommand(b.Text)
+	switch {
+	case !ValidLabOS(b.Kind):
+		add(path, "@@lab os must be macos|linux|any, got %q", b.Kind)
+	case n != 1:
+		add(path, "@@lab needs exactly one line starting with \"$ \" (the command), got %d", n)
+	default:
+		if err := CheckLabCommand(cmd, b.Kind); err != nil {
+			add(path, "@@lab command rejected: %v — use one read-only command from the allowed tools, no pipes/redirects/;", err)
+		}
+	}
+	if !strings.Contains(b.Text, "예상:") {
+		add(path, "@@lab needs an \"예상:\" line (what the output looks like)")
+	}
+}
+
+// LabCommand is the "$ command" line of a lab body and how many such lines there are.
+func LabCommand(text string) (string, int) {
+	cmd, n := "", 0
+	for _, line := range strings.Split(text, "\n") {
+		if t := strings.TrimSpace(line); strings.HasPrefix(t, "$ ") {
+			if n == 0 {
+				cmd = strings.TrimSpace(t[2:])
+			}
+			n++
+		}
+	}
+	return cmd, n
 }

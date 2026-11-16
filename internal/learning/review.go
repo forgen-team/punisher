@@ -75,9 +75,9 @@ func QueueEntry(prev, next Mastery, hold bool) Mastery {
 // review for a pending graduation, else Due(box).
 func NextDue(m Mastery, now time.Time, intervals []int) time.Time {
 	if m.GradStep == GradPending {
-		return dueIn(GraduationDays, now)
+		return dueIn(ScaledDays(GraduationDays, m.Ease), now)
 	}
-	return Due(m.Box, now, intervals)
+	return m.due(m.Box, now, intervals)
 }
 
 // ReviewInterval is the interval (days) a review at this state tests: the

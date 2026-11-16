@@ -183,6 +183,7 @@ export const CHECK_KIND_LABELS: Record<CheckHistoryKind, string> = {
   check: "확인",
   review: "복습",
   "known_verify": "이미 앎 확인",
+  synthesis: "종합 문제",
 };
 
 /** 설정의 복습 채점 방식 */
@@ -206,6 +207,8 @@ export type CheckErrorCode =
   | "INVALID_CHOICE"
   | "TURN_REQUIRED"
   | "INVALID_STATUS"
+  | "INVALID_CONFIDENCE"
+  | "NO_SYNTHESIS"
   | "BAD_REQUEST";
 
 export const CHECK_ERROR_MESSAGES: Record<CheckErrorCode, string> = {
@@ -222,6 +225,8 @@ export const CHECK_ERROR_MESSAGES: Record<CheckErrorCode, string> = {
   INVALID_CHOICE: "보기를 다시 골라 주세요.",
   TURN_REQUIRED: "인정할 오개념을 찾지 못했어요.",
   INVALID_STATUS: "지원하지 않는 오개념 목록이에요.",
+  INVALID_CONFIDENCE: "확실·대충·모름 중에서 골라 주세요.",
+  NO_SYNTHESIS: "종합 문제는 개념 3개 이상을 확인하면 일주일에 한 번 풀 수 있어요.",
   BAD_REQUEST: "요청을 처리하지 못했어요. 다시 시도해 주세요.",
 };
 
@@ -233,6 +238,7 @@ export type SettingsErrorCode =
   | "INVALID_MASTERY_TARGET"
   | "INVALID_INTERVALS"
   | "INVALID_REVIEW_MINUTES"
+  | "INVALID_LAB_OS"
   | "SETTINGS_REQUIRED"
   | "BAD_REQUEST";
 
@@ -243,6 +249,7 @@ export const SETTINGS_ERROR_MESSAGES: Record<SettingsErrorCode, string> = {
   INVALID_MASTERY_TARGET: "숙달 기준은 레벨 3~5 중에서 골라 주세요.",
   INVALID_INTERVALS: "복습 간격은 점점 커지는 1 이상의 정수(일) 1~6개로 적어 주세요.",
   INVALID_REVIEW_MINUTES: "하루 복습 시간은 0~30분 중에서 골라 주세요.",
+  INVALID_LAB_OS: "macOS·Linux·쓰지 않음 중에서 골라 주세요.",
   SETTINGS_REQUIRED: "바꿀 설정을 골라 주세요.",
   BAD_REQUEST: "설정을 저장하지 못했어요. 다시 시도해 주세요.",
 };

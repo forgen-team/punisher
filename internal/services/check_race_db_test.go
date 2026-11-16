@@ -54,7 +54,7 @@ func TestRevealWhileGradingIsBusy(t *testing.T) {
 	id := startedCheck(t, s, fake, user, f)
 	fake.hold = make(chan struct{})
 	fake.push("tutor", tutorJSON("correct", "next", "맞아요, 메모리에서 읽습니다.", 0.9))
-	d, err := s.AnswerCheck(ctx, user, id, "메모리에서 읽어서요")
+	d, err := s.AnswerCheck(ctx, user, id, "메모리에서 읽어서요", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestPendingTurnOnClosedItemFails(t *testing.T) {
 	id := startedCheck(t, s, fake, user, f)
 	fake.hold = make(chan struct{})
 	fake.push("tutor", tutorJSON("correct", "next", "맞아요.", 0.9))
-	d, err := s.AnswerCheck(ctx, user, id, "메모리에서 읽어서요")
+	d, err := s.AnswerCheck(ctx, user, id, "메모리에서 읽어서요", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,7 +265,7 @@ func TestSelfGradeOneAnswerAndNoDispute(t *testing.T) {
 		t.Fatalf("self review = %+v (%v)", d.Session, err)
 	}
 	id := d.Session.ID
-	if _, err := s.AnswerCheck(ctx, user, id, "메모리요"); err != nil {
+	if _, err := s.AnswerCheck(ctx, user, id, "메모리요", ""); err != nil {
 		t.Fatal(err)
 	}
 	second := &store.TurnWrite{ItemID: d.Items[0].ID, Role: "learner", Move: check.MoveAnswer, Text: "두 번째"}

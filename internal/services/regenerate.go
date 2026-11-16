@@ -26,6 +26,7 @@ func (s *Service) RegenerateLecture(ctx context.Context, userID, lectureID strin
 		return InstantResponse{}, err
 	}
 	t.Prompts, t.PromptBlocks, t.Owner = s.UserPrompts(ctx, userID), prompts.FullBlocks, userID
+	t.personal.signals = s.signalLines(ctx, userID, lec)
 	resp := InstantResponse{ConceptID: lec.ConceptID}
 
 	target := learning.TargetKey(t.Plan)

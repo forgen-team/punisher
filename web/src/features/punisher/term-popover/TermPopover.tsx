@@ -7,6 +7,11 @@ import { InlineError, ReadingOverlay, toOverlayAnchor, type OverlayAnchor } from
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 import { useLaunchInstant } from "../instant-start";
 
+/** 사전 용어 id(term:g.…) — 지도 개념이 아니다. */
+export function isGlossaryTerm(id: string): boolean {
+  return id.startsWith("g.");
+}
+
 /** "더 깊게"를 누른 원 강의와 위치. */
 export interface DeeperOrigin {
   lectureId: string;
@@ -39,10 +44,13 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
   const { launch, isPending, error } = useLaunchInstant();
   const label = term || conceptId;
 
+  // 사전 용어(g.…)는 그 자체로 강의가 없다 — 가장 가까운 지도 개념으로 '더 깊게'(없으면 버튼 없음).
+  const deeperId = isGlossaryTerm(conceptId) ? (gloss.data?.relatedConceptId ?? "") : conceptId;
+
   async function goDeeper() {
     const origin = onBeforeDeeper();
     try {
-      await launch(origin ? { conceptId, parentLectureId: origin.lectureId, parentAnchor: origin.anchor } : { conceptId });
+      await launch(origin ? { conceptId: deeperId, parentLectureId: origin.lectureId, parentAnchor: origin.anchor } : { conceptId: deeperId });
     } catch {
       // 시트를 유지하고 오류를 아래에 표시한다.
       return;
@@ -75,9 +83,11 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
         anchor={anchor}
         title={label}
         footer={
-          <Button size="sm" variant="secondary" loading={isPending} onClick={goDeeper}>
-            이 개념 더 깊게
-          </Button>
+          deeperId ? (
+            <Button size="sm" variant="secondary" loading={isPending} onClick={goDeeper}>
+              이 개념 더 깊게
+            </Button>
+          ) : undefined
         }
       >
         {gloss.isLoading && !fallbackText ? (

@@ -4,12 +4,14 @@
 
 <p align="center">
   <strong>매일 30분, Claude Code로 만드는 나만의 CS 기본기 강의.</strong><br/>
-  내 Mac에서만 돌아가고, 내 Claude Code 계정으로 강의를 만듭니다.
+  내 컴퓨터(macOS·Linux)에서만 돌아가고, 내 Claude Code 계정으로 강의를 만듭니다.
 </p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"/></a>
   <img src="https://img.shields.io/badge/macOS-universal-lightgrey.svg" alt="macOS universal"/>
+  <img src="https://img.shields.io/badge/Linux-amd64%20%7C%20arm64-lightgrey.svg" alt="Linux amd64 | arm64"/>
+  <a href="https://github.com/wooo-jin/punisher/actions/workflows/ci.yml"><img src="https://github.com/wooo-jin/punisher/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
   <a href="https://github.com/wooo-jin/forgen"><img src="https://img.shields.io/badge/forgen-family-f97316.svg" alt="Part of the forgen family"/></a>
 </p>
 
@@ -23,12 +25,22 @@ Claude Code로 나만의 CS 기본기 강의를 만들어 읽는 학습 앱입�
 오늘 공부할 개념을 추천받고, 강의를 실시간으로 생성해 읽고, 모르는 용어나 문장을 바로 물어볼 수 있어요.
 지식 지도에서 8개 영역(자료구조 · 컴퓨터구조 · OS · 네트워크/웹 · DB · 분산 · 인프라 · 보안/설계), 168개 개념의 진도를 한눈에 봅니다.
 
-- 내 Mac에서만 돌아갑니다. 서버·Docker·DB 설치나 API 키, 회원가입은 필요 없어요.
-- 강의 생성과 질문 답변에는 **내 Mac에 로그인된 Claude Code**(`claude` 명령)를 씁니다. 사용량은 내 Claude 구독에서 차감돼요.
+- 내 컴퓨터에서만 돌아갑니다. 서버·Docker·DB 설치나 API 키, 회원가입은 필요 없어요.
+- 강의 생성과 질문 답변에는 **내 컴퓨터에 로그인된 Claude Code**(`claude` 명령)를 씁니다. 사용량은 내 Claude 구독에서 차감돼요.
+- 처음 설치하면 맛보기 강의 몇 편이 들어 있어서, 구독을 쓰지 않고 먼저 읽어 볼 수 있어요(확인하기 문항을 새로 만들 때는 구독을 써요).
+
+> **AI가 만든 강의라 틀릴 수 있어요.** 모든 강의는 사실 오류 검수를 통과해야 발행되지만, 출처와 검수 표시를 확인하고 수치·버전에 따라 다른 내용은 한 번 더 확인하세요.
+
+<p align="center">
+  <img src="assets/screenshots/today.png" alt="오늘" width="49%"/>
+  <img src="assets/screenshots/lecture.png" alt="강의 속 직접 해 보기" width="49%"/>
+  <img src="assets/screenshots/check.png" alt="확인하기" width="49%"/>
+  <img src="assets/screenshots/map.png" alt="지식 지도" width="49%"/>
+</p>
 
 ## 1. 준비물
 
-1. macOS (Apple Silicon / Intel 모두 됨)
+1. macOS (Apple Silicon / Intel) 또는 Linux (amd64 / arm64)
 2. **Claude Code** 설치 + 로그인
    ```sh
    curl -fsSL https://claude.ai/install.sh | bash
@@ -38,7 +50,7 @@ Claude Code로 나만의 CS 기본기 강의를 만들어 읽는 학습 앱입�
 
 ## 2. 설치
 
-1. 받은 `punisher-<버전>-macos-universal.zip` 을 더블클릭해 압축을 풉니다(안에 `punisher`, `install.sh`, 이 설명서가 있어요).
+1. 받은 `punisher-<버전>-macos-universal.zip` 을 더블클릭해 압축을 풉니다(안에 `punisher`, `install.sh`, 이 설명서가 있어요). Linux는 `tar xzf punisher-<버전>-linux-amd64.tar.gz`(ARM이면 `-arm64`).
 2. 터미널에서 그 폴더로 이동해 설치 스크립트를 실행합니다.
    ```sh
    sh install.sh            # punisher 를 ~/bin 에 복사하고 PATH 를 설정
@@ -76,10 +88,14 @@ punisher
 - 다 읽으면 맨 아래 `완료` (이미 아는 내용이면 `이미 앎`). 용어 설명의 `이 개념 더 깊게`로 연 강의는 원 강의 아래에 이어져 보여요.
 - **학습 요청**(강의 탭 오른쪽/아래 카드): 공부하고 싶은 주제를 적고 `추가` → 개념을 찾아 그 강의를 미리 만들어 둬요. `시작`(주제부터) 또는 `기초부터`(모르는 선행 개념부터). 주제 강의를 끝내면 `완료 N`으로 접히고, ⋯ 메뉴로 목록에서 뺄 수 있어요.
 - **지도** 탭: 전체 개념 지도와 영역별 진도, 다음에 공부하면 좋은 개념. 목표를 정하면 거기까지의 경로를 보여 줘요.
-- **확인하기**(강의 끝): 짧게 답하며 이해했는지 확인해요. 튜터가 정답 대신 질문을 좁혀 가요. 학습 목표마다 숙달 레벨이 쌓여요.
-- **복습**(강의 탭 맨 앞 카드): 확인한 목표를 간격을 두고 다시 물어요. 기본은 답을 쓴 뒤 모범답을 보고 직접 채점해요.
+- **직접 해 보기**(강의 안): 내 답을 한 줄이라도 써야 풀이가 열리고, 튜터가 짧게 평을 달아 줘요. 바쁘면 `건너뛰고 풀이 보기`.
+- **내 터미널에서 해 보기**(강의 안, 있는 강의만): 읽기 전용 명령 하나(`lsof`, `dig`, `curl -I` 등)를 복사해 내 터미널에서 실행하고, 결과를 붙여 넣으면 튜터가 어디를 보면 되는지 읽어 줘요. 앱은 명령을 실행하지 않아요. 붙여 넣기 전에 비밀번호·토큰은 지우세요.
+- **확인하기**(강의 끝): 짧게 답하며 이해했는지 확인해요. 튜터가 정답 대신 질문을 좁혀 가요. 답하기 전에 `확실 · 대충 · 모름`을 고르면, 확실했는데 틀린 답은 결과에 '착각'으로 따로 보여요. 학습 목표마다 숙달 레벨이 쌓여요.
+- **복습**(강의 탭 맨 앞 카드): 확인한 목표를 간격을 두고 다시 물어요. 기본은 답을 쓴 뒤 모범답을 보고 직접 채점해요. 잘 기억하는 목표는 간격이 조금씩 길어지고, 자주 틀리는 목표는 짧아져요.
+- **이번 주 종합 문제**(오늘의 추천 맨 앞, 주 1회): 확인한 개념 3~4개를 실무 장면 하나에 섞어서 물어요. 숙달 상자는 움직이지 않고, 통과하면 '설명 가능' 조건이 채워지고 틀리면 관련 복습이 앞당겨져요.
+- **고칠 곳**(강의 메뉴): 내가 막힌 섹션(틀리거나 건너뛴 연습, 예상과 다른 실습, 질문이 몰린 곳)이 보여요. `이 내용으로 다시 만들기`를 누르면 그 내용을 반영해 새 버전을 만들어요.
 - **기록** 탭: 완료한 강의 · 개념 · 질문 · 메모, 확인·복습 기록과 기억 유지 지표.
-- **설정**(오른쪽 위 톱니바퀴): 예시 코드 언어(TypeScript · JavaScript · Go · Java · Kotlin · Python), 하루 학습량, 숙달 기준·복습 간격·하루 복습 시간·복습 채점 방식, 강의 전 예측 질문, 화면 테마, Claude Code 연결 상태, 데이터 위치.
+- **설정**(오른쪽 위 톱니바퀴): 예시 코드 언어(TypeScript · JavaScript · Go · Java · Kotlin · Python), 하루 학습량, 숙달 기준·복습 간격·복습 간격 자동 조절·하루 복습 시간·복습 채점 방식, 실습 환경(macOS·Linux·쓰지 않음), 강의 전 예측 질문, 화면 테마, Claude Code 연결 상태, 데이터 위치.
 - **설정 > 고급 > 강의 프롬프트**: 강의를 만드는 지시문을 단계별로 보고 고쳐요(기본값 비교 · 미리보기 · 이력 20개). 고친 뒤 강의 메뉴의 `새 프롬프트로 다시 만들기`로 지금 강의의 새 버전을 만들 수 있어요.
 
 강의는 사실 오류 검수를 통과해야 발행돼요. 생성 중에는 '작성 → 검수 → 고침' 단계만 보이고, 보통 4~7분 걸려요.
@@ -89,12 +105,15 @@ punisher
 ## 5. 데이터는 어디에?
 
 ```
-~/Library/Application Support/Punisher/punisher.db
+macOS: ~/Library/Application Support/Punisher/punisher.db
+Linux: ~/.local/share/punisher/punisher.db   ($XDG_DATA_HOME 이 있으면 그 아래, 예전 ~/.punisher 가 있으면 그대로)
 ```
 
-강의 · 진도 · 질문 · 메모가 이 파일 하나(SQLite)에 들어 있습니다.
+강의 · 진도 · 질문 · 메모 · 연습 답이 이 파일 하나(SQLite)에 들어 있습니다.
 
-- 백업: 앱을 끄고 `Punisher` 폴더를 통째로 복사
+- 내보내기: `punisher export` (또는 설정 > 고급 > `데이터 내보내기`) → `punisher-backup-날짜.zip`. 앱이 켜져 있어도 돼요.
+- 가져오기: 앱을 끄고(폰 연결을 켰다면 `punisher phone off`) `punisher import 파일.zip`. 지금 데이터는 옆 폴더(`…bak-날짜`)에 남겨 둬요. 더 새 버전에서 내보낸 파일은 Punisher를 먼저 업데이트해야 가져올 수 있어요.
+- 내보낸 파일에는 내가 쓴 답과 붙여 넣은 실습 출력도 들어 있어요. 남에게 줄 때는 확인하세요.
 - 처음부터 다시: 앱을 끄고 `punisher.db*` 파일들을 휴지통으로
 
 ## 6. 업데이트
@@ -118,7 +137,9 @@ punisher
 
 ## 8. 폰에서 보기
 
-Mac을 켜 둔 채 밖에서 폰으로 강의를 읽을 수 있어요. 무료 앱 **Tailscale**이 내 계정의 기기끼리만 암호화해서 이어 줍니다.
+Mac을 켜 둔 채 밖에서 폰으로 강의를 읽을 수 있어요.
+
+> Linux에서는 `punisher phone on`이 `systemd --user` 서비스로 켜져요. 로그아웃해도 켜 두려면 한 번만 `loginctl enable-linger $USER`, Tailscale이 권한을 거부하면 한 번만 `sudo tailscale set --operator=$USER`를 실행하세요. 아래 설명은 Mac 기준이에요. 무료 앱 **Tailscale**이 내 계정의 기기끼리만 암호화해서 이어 줍니다.
 기록은 그대로 Mac에만 있고, 폰은 Mac 화면을 열어 보는 방식이에요.
 
 > **맥북이 잠들면 폰에서 열리지 않아요.** 뚜껑을 닫으면 Mac이 잠듭니다. 폰에 저장된 사본이 없어서 이미 만든 강의도 볼 수 없어요.

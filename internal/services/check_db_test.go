@@ -214,7 +214,7 @@ func masteryOf(t *testing.T, s *Service, user, conceptID, objectiveID string) mo
 
 func answer(t *testing.T, s *Service, user, id, text string) models.CheckDetail {
 	t.Helper()
-	if _, err := s.AnswerCheck(context.Background(), user, id, text); err != nil {
+	if _, err := s.AnswerCheck(context.Background(), user, id, text, ""); err != nil {
 		t.Fatalf("answer %q: %v", text, err)
 	}
 	return waitIdle(t, s, user, id)
@@ -436,7 +436,7 @@ func sweepFixture(t *testing.T, s *Service, user string, f checkFixture) {
 	if _, err := s.Store.StartCheckTurns(ctx, user, id, learner, tutor, 3, true); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.AnswerCheck(ctx, user, id, "또 답"); err == nil {
+	if _, err := s.AnswerCheck(ctx, user, id, "또 답", ""); err == nil {
 		t.Fatal("no answer while a turn is pending")
 	}
 	if n, err := s.Store.SweepStaleChecksFor(ctx, user, 0, 0, AbandonCheckAge); err != nil || n < 1 {
@@ -487,7 +487,7 @@ func TestCheckSelfGrade(t *testing.T) {
 	if _, err := s.SelfGradeCheck(ctx, user, sess.ID, "correct"); err == nil {
 		t.Fatal("self-grade needs an answer first")
 	}
-	got, err := s.AnswerCheck(ctx, user, sess.ID, "메모리에 남아요")
+	got, err := s.AnswerCheck(ctx, user, sess.ID, "메모리에 남아요", "")
 	if err != nil || got.Pending || got.Items[0].Answer == "" || !got.Current.CanSelfGrade || got.Current.CanAnswer {
 		t.Fatalf("self answer = %+v current=%+v (%v)", got.Items, got.Current, err)
 	}

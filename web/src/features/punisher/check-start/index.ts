@@ -3,3 +3,4 @@ export { checkHref, isLectureNotReviewed, useLaunchCheck } from "./useLaunchChec
 export { useLaunchReview } from "./useLaunchReview";
 export { useKnownChoice, type KnownChoice } from "./useKnownChoice";
 export { KnownVerifyChoice } from "./KnownVerifyChoice";
+export { useLaunchSynthesis } from "./useLaunchSynthesis";

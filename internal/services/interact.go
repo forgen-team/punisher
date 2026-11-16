@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/wooo-jin/punisher/internal/glossary"
+	"github.com/wooo-jin/punisher/internal/store"
 	"strings"
 	"time"
 
@@ -20,8 +22,18 @@ import (
 // The shared cache holds default-prompt glosses only; a user who edited the
 // gloss block gets a private cache keyed by the block hash.
 func (s *Service) Gloss(ctx context.Context, userID, conceptID string) (gloss string, cached bool, err error) {
+	if glossary.IsTermID(conceptID) { // 기본 용어: 사전에만 있다(생성하지 않음).
+		t, ok := s.Glossary.Term(conceptID)
+		if !ok {
+			return "", false, store.ErrNotFound
+		}
+		return t.Gloss, true, nil
+	}
 	set := s.UserPrompts(ctx, userID)
 	custom := set.Overridden(prompts.BlockGlossSystem)
+	if shipped := s.Glossary.ConceptGloss(conceptID); shipped != "" && !custom {
+		return shipped, true, nil // 사전 설명이 있으면 늘 같은 설명(프롬프트를 고친 사용자만 따로 만든다).
+	}
 	hash := set.Hash(prompts.BlockGlossSystem)
 	if custom {
 		gloss, err = s.Store.UserGloss(ctx, userID, conceptID, hash)

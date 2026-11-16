@@ -6,8 +6,9 @@ import { MasteryDots, describeCheckError, masteryLabel, useCompleteLecture, useR
 import { useLaunchReview } from "@/src/features/punisher/check-start";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { DIAGNOSTIC_LABELS } from "@/src/features/punisher/pretest";
-import { showPrediction, suggestRelearn, type ResultRow } from "../lib/checkView";
-import { PREDICTION_LABELS, RESULT_ACTION_LABELS } from "./constants";
+import { confidentErrors, showPrediction, suggestRelearn, type ResultRow } from "../lib/checkView";
+import type { SynthesisRow } from "../lib/synthesis";
+import { CONFIDENT_ERROR_TITLE, PREDICTION_LABELS, RESULT_ACTION_LABELS, SYNTHESIS_RESULT_LABELS } from "./constants";
 import { LectureSummary } from "./LectureSummary";
 import { MisconceptionList } from "./MisconceptionList";
 
@@ -24,8 +25,49 @@ interface CheckResultProps {
   anchorLink: (anchor: string) => { href: string; label: string } | null;
   /** 확인: 그 강의의 한 장 요약(없으면 생략) */
   lectureSummary?: string;
+  /** 종합 문제 결과 줄(v3 §5) */
+  synthesis?: SynthesisRow[];
   /** 아래 동작(확인: 강의 완료로 표시 · 복습: 오늘 더 하기) */
   children?: ReactNode;
+}
+
+/** 종합 문제 결과 — 문항마다 한 줄. */
+function SynthesisList({ rows }: { rows: SynthesisRow[] }) {
+  return (
+    <ul className="flex flex-col divide-y divide-line">
+      {rows.map((row) => (
+        <li key={row.itemId} className="flex flex-col gap-1 py-3 text-sm">
+          <p className="line-clamp-2 break-keep text-fg">{row.prompt}</p>
+          <p className="text-fg-secondary">{SYNTHESIS_RESULT_LABELS[row.result]}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** '착각' — 확실하다고 했는데 틀린 목표(있을 때만, 목표 목록 위). */
+function ConfidentErrors({ rows }: { rows: ResultRow[] }) {
+  const list = confidentErrors(rows);
+  if (list.length === 0) { return null; }
+  return (
+    <aside className="mb-2 rounded-md border-l-2 border-warning bg-warning-subtle px-3 py-2 text-sm">
+      <p className="font-semibold text-warning">{CONFIDENT_ERROR_TITLE} {list.length}</p>
+      <ul className="mt-1 list-disc pl-5 text-fg-secondary">
+        {list.map((r) => (
+          <li key={r.itemId} className="break-keep">{r.text}</li>
+        ))}
+      </ul>
+    </aside>
+  );
+}
+
+/** 종합 문제는 '오늘로'만. */
+export function SynthesisDoneAction() {
+  return (
+    <Link href={TODAY_HREF} className={buttonVariants({ variant: "primary" })}>
+      {RESULT_ACTION_LABELS.today}
+    </Link>
+  );
 }
 
 /**
@@ -84,7 +126,7 @@ function NextReview({ row }: { row: ResultRow }) {
 
 /** 결과 요약(design §4.4, 끝난 세션의 맨 위): 목표별 레벨 변화 · 놓친 기준 한 줄 · 다시 볼 곳 · 드러난 오개념 · 다음 복습일 · 다시 배우기 + 아래 동작. */
 export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function CheckResult(
-  { checkId, rows, acknowledgedTurnIds, anchorLink, lectureSummary, children },
+  { checkId, rows, acknowledgedTurnIds, anchorLink, lectureSummary, synthesis, children },
   ref,
 ) {
   const relearn = useRelearn();
@@ -93,7 +135,9 @@ export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function Ch
     relearn.mutate(objectiveId, { onSuccess: () => setRelearnedIds((prev) => new Set(prev).add(objectiveId)) });
   return (
     <Section ref={ref} tabIndex={-1} title="결과" className="mt-4 scroll-mt-28 border-b border-line pb-4 outline-none">
-      <ul className="flex flex-col divide-y divide-line">
+      {synthesis && synthesis.length > 0 && <SynthesisList rows={synthesis} />}
+      <ConfidentErrors rows={rows} />
+      <ul className="flex flex-col divide-y divide-line empty:hidden">
         {rows.map((row) => {
           const link = row.anchor ? anchorLink(row.anchor) : null;
           const missing = (row.missing ?? []).join(" · ");

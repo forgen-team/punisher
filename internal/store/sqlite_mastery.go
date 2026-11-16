@@ -32,7 +32,7 @@ func clockNow() time.Time {
 	return now
 }
 
-const masteryColumns = `box, grad_step, best, integrative_ok, lapses, next_review_at, last_credit_at, last_fail_at, stale, queued, verify_queued, updated_at`
+const masteryColumns = `box, grad_step, best, integrative_ok, lapses, next_review_at, last_credit_at, last_fail_at, stale, queued, verify_queued, ease, updated_at`
 
 // lockedMastery is an objective's mastery read for update. Mark is
 // last_evidence_turn_id ("" = none): the turn whose evidence was saved last —
@@ -51,7 +51,7 @@ func lockMastery(ctx context.Context, c conn, userID, objectiveID string) (locke
 	err := c.row(ctx, `SELECT `+masteryColumns+`, COALESCE(last_evidence_turn_id, '') FROM user_objective_mastery
 		WHERE user_id = $1 AND objective_id = $2`, userID, objectiveID).Scan(&l.M.Box, &l.M.GradStep, &l.M.Best,
 		&l.M.IntegrativeOK, &l.M.Lapses, nts(&l.M.NextReviewAt), nts(&l.M.LastCreditAt), nts(&l.M.LastFailAt),
-		&l.M.Stale, &l.M.Queued, &l.M.Verify, ts(&l.Updated), &l.Mark)
+		&l.M.Stale, &l.M.Queued, &l.M.Verify, &l.M.Ease, ts(&l.Updated), &l.Mark)
 	if errors.Is(err, sql.ErrNoRows) {
 		return lockedMastery{M: learning.NewMastery()}, nil
 	}
@@ -68,8 +68,8 @@ func saveMastery(ctx context.Context, c conn, userID, objectiveID, grader string
 	err := c.row(ctx, `
 		INSERT INTO user_objective_mastery (user_id, objective_id, concept_id, box, grad_step, best, integrative_ok, lapses,
 			next_review_at, last_credit_at, last_fail_at, objective_text, objective_depth, stale, last_grader, queued, verify_queued,
-			last_evidence_turn_id, updated_at)
-		SELECT $1, o.id, o.concept_id, $3, $4, $5, $6, $7, $8, $9, $10, o.text, o.depth, $11, $12, $14, $15, NULLIF($16, ''), $13
+			last_evidence_turn_id, ease, updated_at)
+		SELECT $1, o.id, o.concept_id, $3, $4, $5, $6, $7, $8, $9, $10, o.text, o.depth, $11, $12, $14, $15, NULLIF($16, ''), $17, $13
 		FROM objectives o WHERE o.id = $2
 		ON CONFLICT (user_id, objective_id) DO UPDATE SET
 			box = excluded.box, grad_step = excluded.grad_step, best = excluded.best,
@@ -77,15 +77,23 @@ func saveMastery(ctx context.Context, c conn, userID, objectiveID, grader string
 			last_credit_at = excluded.last_credit_at, last_fail_at = excluded.last_fail_at,
 			objective_text = excluded.objective_text, objective_depth = excluded.objective_depth,
 			stale = excluded.stale, last_grader = excluded.last_grader, queued = excluded.queued,
-			verify_queued = excluded.verify_queued, updated_at = excluded.updated_at,
+			verify_queued = excluded.verify_queued, ease = excluded.ease, updated_at = excluded.updated_at,
 			last_evidence_turn_id = COALESCE(excluded.last_evidence_turn_id, user_objective_mastery.last_evidence_turn_id)
 		RETURNING updated_at`,
 		userID, objectiveID, m.Box, m.GradStep, m.Best, m.IntegrativeOK, m.Lapses, m.NextReviewAt,
-		m.LastCreditAt, m.LastFailAt, m.Stale, grader, clockNow(), m.Queued, m.Verify, mark).Scan(ts(&updated))
+		m.LastCreditAt, m.LastFailAt, m.Stale, grader, clockNow(), m.Queued, m.Verify, mark, storedEase(m.Ease)).Scan(ts(&updated))
 	if err != nil {
 		return updated, fmt.Errorf("save mastery %s: %w", objectiveID, err)
 	}
 	return updated, nil
+}
+
+// storedEase is the ease column value: an unset (pre-v3 / neutral) ease is the default.
+func storedEase(e float64) float64 {
+	if e < learning.EaseMin || e > learning.EaseMax {
+		return learning.EaseDefault
+	}
+	return e
 }
 
 // creditIntegrative sets integrative_ok on the covered objectives that already

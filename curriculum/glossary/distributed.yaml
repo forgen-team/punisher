@@ -1,0 +1,243 @@
+area: distributed
+concepts:
+    dist.cache-invalidation: 캐시 무효화는 원본 데이터가 바뀌었을 때 캐시에 남은 옛 값을 지우거나 갱신하는 작업이다. 순서를 잘못 잡거나 동시 요청이 겹치면 가격을 바꿨는데도 옛 가격이 계속 보이는 문제가 생긴다.
+    dist.cache-stampede: 캐시 스탬피드는 많이 조회되는 캐시 키가 만료되는 순간 대량의 요청이 동시에 원본 DB로 몰리는 현상이다. 메인 페이지 캐시가 만료될 때마다 DB CPU가 치솟는 장애의 흔한 원인이다.
+    dist.caching: 캐싱 전략은 비싼 조회 결과를 메모리 같은 빠른 저장소에 두고, 언제 읽고 쓰고 채울지 정하는 방식이다. DB 부하와 응답 지연을 크게 줄이지만 원본과 값이 달라질 수 있으므로, 얼마나 오래된 값까지 허용할지 함께 정해야 한다.
+    dist.cap-theorem: CAP은 네트워크가 끊겨 노드들이 서로 통신하지 못할 때 일관성과 가용성을 동시에 지킬 수 없다는 정리다. PACELC는 장애가 없는 평상시에도 지연과 일관성 사이에 선택이 있다는 점을 더한다. DB와 복제 구성을 고를 때 판단 기준으로 쓰인다.
+    dist.cascading-failure: 장애 전파는 한 서비스의 지연이나 실패가 호출하는 쪽의 스레드와 연결을 고갈시키며 다른 서비스로 번지는 현상이다. 추천 서비스 하나가 느려져 메인 페이지 전체가 멈추는 식으로 나타난다.
+    dist.circuit-breaker: 서킷 브레이커는 실패가 계속되는 의존 서비스 호출을 일정 시간 막고 즉시 실패를 돌려주는 장치다. 느린 호출을 기다리느라 호출하는 쪽 자원이 고갈되는 것을 막고, 그동안 대체 응답(폴백)을 보여 준다.
+    dist.clocks-and-ordering: 서버마다 시계가 조금씩 어긋나므로 타임스탬프만으로 여러 서버에서 일어난 이벤트의 선후를 정하면 틀릴 수 있다. 나중에 한 수정이 먼저 한 수정에 덮어써지는 문제를 막으려면 시퀀스 번호나 논리 시계로 순서를 정해야 한다.
+    dist.consensus: 합의 알고리즘은 여러 노드가 일부 장애 속에서도 하나의 값이나 순서에 동의하게 만드는 절차다. 보통 과반수 동의를 얻는 방식으로 동작한다. etcd처럼 Kubernetes의 상태를 저장하는 시스템이 이 원리로 리더를 뽑고 데이터를 복제한다.
+    dist.consistency-models: 일관성 모델은 여러 복제본이 있을 때 읽기가 어떤 시점의 값을 보게 되는지 정한 규칙이다. 댓글을 쓴 직후 새로고침하면 내 댓글이 안 보이는 현상처럼, 사용자가 보는 불일치를 어디까지 허용할지 정하는 기준이 된다.
+    dist.delivery-semantics: 메시지 전달 보장은 메시지가 최대 한 번, 최소 한 번, 정확히 한 번 중 어떤 방식으로 전달되는지 정한 약속이다. 대부분의 시스템은 최소 한 번을 보장하므로 소비자가 같은 메시지를 두 번 받아도 문제없게 만들어야 한다.
+    dist.distributed-lock: 분산 락은 여러 서버 인스턴스 가운데 하나만 특정 작업을 하도록 보장하는 잠금이다. 서버를 여러 대로 늘렸을 때 스케줄 작업이 중복 실행되는 것을 막는 데 쓰인다. 다만 락이 만료된 줄 모르고 작업을 계속하는 프로세스가 생길 수 있다.
+    dist.idempotency: 멱등성은 같은 요청을 여러 번 처리해도 결과가 한 번 처리한 것과 같은 성질이다. 사용자가 결제 버튼을 두 번 누르거나 네트워크 재시도가 일어날 때 중복 결제와 중복 생성을 막는 핵심 장치다.
+    dist.message-queue: 메시지 큐는 보내는 쪽(생산자)이 넣은 메시지를 받는 쪽(소비자)이 나중에 꺼내 처리하게 하는 중간 저장소다. 이메일 발송처럼 느린 작업을 API 응답에서 떼어 내고, 트래픽이 몰릴 때 부하를 흡수하는 데 쓴다.
+    dist.outbox-pattern: 트랜잭셔널 아웃박스는 비즈니스 데이터와 발행할 이벤트를 같은 DB 트랜잭션으로 아웃박스 테이블에 함께 쓰고, 별도 프로세스가 그 테이블을 읽어 메시지를 발행하는 패턴이다. 주문은 저장됐는데 이벤트가 사라지는 이중 쓰기 문제를 막는다.
+    dist.partial-failure: 분산 시스템은 여러 프로세스가 네트워크로 메시지를 주고받으며 협력하는 시스템이다. 이런 시스템에서는 일부만 실패하거나, 실패했는지조차 알 수 없는 부분 실패가 생긴다. 외부 API가 타임아웃을 내도 상대는 이미 처리했을 수 있으므로, 재시도와 상태 확인을 설계에 넣어야 한다.
+    dist.rate-limiting: 레이트 리밋은 클라이언트나 키별로 단위 시간당 처리할 수 있는 요청 수를 제한하는 장치다. 한 사용자가 자원을 독점하거나 서버가 과부하에 빠지는 것을 막는다. 외부 API의 호출 한도에 맞춰 호출 속도를 조절할 때도 쓴다.
+    dist.saga: 사가 패턴은 여러 서비스에 걸친 작업을 서비스별 로컬 트랜잭션으로 나눠 차례로 실행하는 방식이다. 중간에 실패하면 앞 단계를 되돌리는 보상 작업을 실행한다. 결제 후 재고 확보에 실패하면 결제를 취소하는 흐름이 대표적이다.
+    dist.sharding: 샤딩과 파티셔닝은 데이터를 특정 키 기준으로 여러 노드나 구역에 나눠 저장하는 기법이다. 한 DB로 감당할 수 없는 용량과 처리량을 늘릴 때 쓴다. 샤드 키를 잘못 고르면 특정 노드에 부하가 몰리고, 여러 샤드를 걸치는 조회가 비싸진다.
+terms:
+    - id: g.ack
+      name: ACK(확인 응답)
+      aliases:
+        - ack
+        - Acknowledgement
+        - 메시지 확인
+      concept: dist.delivery-semantics
+      gloss: ACK는 소비자가 메시지를 처리했다고 브로커에 알리는 신호다. 브로커는 ACK를 받은 메시지를 다시 보내지 않는다. 처리는 끝났는데 ACK를 보내기 전에 소비자가 죽으면 같은 메시지가 다시 전달된다.
+    - id: g.dlq
+      name: DLQ
+      aliases:
+        - Dead Letter Queue
+        - 데드 레터 큐
+      concept: dist.message-queue
+      gloss: DLQ는 여러 번 재시도해도 처리에 실패한 메시지를 따로 옮겨 두는 큐다. 실패 메시지 하나가 큐 전체를 막지 않게 격리하고, 나중에 원인을 확인한 뒤 재처리할 수 있게 한다.
+    - id: g.consumer-lag
+      name: 컨슈머 랙
+      aliases:
+        - Consumer Lag
+        - 소비 지연
+        - lag
+      concept: dist.message-queue
+      gloss: 컨슈머 랙은 큐에 쌓였지만 아직 소비되지 않은 메시지의 양이나 그 지연 시간이다. 랙이 계속 늘면 소비자가 처리 속도를 따라가지 못한다는 뜻이므로, 알림 지연 같은 문제를 조기에 발견하는 핵심 지표로 쓴다.
+    - id: g.offset
+      name: 오프셋
+      aliases:
+        - Offset
+        - 커밋 오프셋
+        - Consumer Offset
+      concept: dist.delivery-semantics
+      gloss: 오프셋은 Kafka 같은 로그형 브로커에서 소비자가 어디까지 읽었는지 나타내는 위치 번호다. 처리 전에 오프셋을 커밋하면 장애 시 메시지가 유실될 수 있고, 처리 후에 커밋하면 같은 메시지가 중복 처리될 수 있다.
+    - id: g.consumer-group
+      name: 컨슈머 그룹
+      aliases:
+        - Consumer Group
+        - 소비자 그룹
+      concept: dist.message-queue
+      gloss: 컨슈머 그룹은 같은 토픽을 나눠 처리하는 소비자 묶음이다. 그룹 안에서는 각 메시지를 한 소비자만 처리하므로, 소비자 인스턴스를 늘려 처리량을 높일 때 이 단위로 생각한다.
+    - id: g.topic
+      name: 토픽
+      aliases:
+        - Topic
+        - 메시지 토픽
+      concept: dist.message-queue
+      gloss: 토픽은 메시지를 종류별로 나눠 담는 이름 붙은 채널이다. 생산자는 토픽에 메시지를 발행하고 소비자는 토픽을 구독한다. 주문 생성, 결제 완료처럼 이벤트 종류별로 토픽을 나누는 것이 흔하다.
+    - id: g.producer-consumer
+      name: 생산자와 소비자
+      aliases:
+        - Producer
+        - Consumer
+        - 프로듀서
+        - 컨슈머
+      concept: dist.message-queue
+      gloss: 생산자는 메시지를 큐에 넣는 쪽이고 소비자는 메시지를 꺼내 처리하는 쪽이다. 두 쪽이 서로의 속도나 생존 여부를 몰라도 되므로, 소비자가 잠시 죽어도 메시지는 큐에 남아 기다린다.
+    - id: g.pub-sub
+      name: Pub/Sub
+      aliases:
+        - Publish-Subscribe
+        - 발행-구독
+        - 펍섭
+      concept: dist.message-queue
+      gloss: Pub/Sub은 발행자가 보낸 메시지를 구독자 여럿이 각자 받는 메시징 방식이다. 주문 이벤트 하나를 배송, 알림, 통계 서비스가 각자 받아 처리하는 구조를 만들 때 쓴다.
+    - id: g.write-back
+      name: Write-Back
+      aliases:
+        - Write-Behind
+        - 쓰기 지연 캐시
+        - 라이트백
+      concept: dist.caching
+      gloss: Write-Back은 쓰기를 먼저 캐시에만 반영하고 원본 저장소에는 나중에 모아서 기록하는 캐시 방식이다. 쓰기는 빨라지지만 원본에 기록되기 전에 캐시가 죽으면 데이터를 잃을 수 있다.
+    - id: g.cache-eviction
+      name: 캐시 축출
+      aliases:
+        - Eviction
+        - 캐시 교체 정책
+      concept: dist.caching
+      gloss: 캐시 축출은 캐시 용량이 꽉 찼을 때 어떤 항목을 버릴지 정하는 정책이다. LRU는 가장 오래 쓰이지 않은 항목을 버린다. 정책과 용량이 맞지 않으면 필요한 키가 자주 밀려나 적중률이 떨어진다.
+    - id: g.cache-hit-ratio
+      name: 캐시 적중률
+      aliases:
+        - Cache Hit Ratio
+        - Hit Rate
+      concept: dist.caching
+      gloss: 캐시 적중률은 전체 조회 가운데 캐시에서 바로 답한 비율이다. 적중률이 낮으면 캐시를 두어도 대부분의 요청이 원본으로 가므로, 캐시의 효과를 판단할 때 가장 먼저 보는 지표다.
+    - id: g.single-flight
+      name: Single Flight
+      aliases:
+        - 요청 병합
+        - Request Coalescing
+      concept: dist.cache-stampede
+      gloss: Single Flight는 같은 키에 대한 동시 요청 중 하나만 원본을 조회하고, 나머지는 그 결과를 함께 받게 하는 기법이다. 캐시가 만료되는 순간 원본에 요청이 폭주하는 것을 막는 대표 수단이다.
+    - id: g.hot-key
+      name: 핫 키
+      aliases:
+        - Hot Key
+        - 핫스팟
+        - Hotspot
+      concept: dist.sharding
+      gloss: 핫 키는 다른 키보다 훨씬 많이 접근되는 특정 키다. 그 키가 있는 노드나 샤드에만 부하가 몰려 전체 용량이 남아도 병목이 생긴다. 샤드 키와 캐시를 설계할 때 반드시 따져야 한다.
+    - id: g.bulkhead
+      name: 격벽
+      aliases:
+        - Bulkhead
+        - 벌크헤드
+        - 격벽 패턴
+      concept: dist.cascading-failure
+      gloss: 격벽은 의존 서비스별로 스레드 풀이나 연결 풀 같은 자원을 따로 나눠 한쪽의 고갈이 다른 쪽에 번지지 않게 하는 설계다. 느린 의존성 하나 때문에 서비스 전체가 멈추는 것을 막는다.
+    - id: g.load-shedding
+      name: 부하 차단
+      aliases:
+        - Load Shedding
+        - 로드 셰딩
+        - 요청 버리기
+      concept: dist.cascading-failure
+      gloss: 부하 차단은 처리 한계를 넘는 요청을 일찍 거절해 이미 받은 요청은 정상 처리되게 하는 기법이다. 모든 요청을 받아 전부 느려지는 것보다 일부를 빠르게 실패시키는 편이 전체 장애를 막는다.
+    - id: g.lww
+      name: LWW
+      aliases:
+        - Last Write Wins
+        - 마지막 쓰기 우선
+        - 최종 쓰기 승리
+      concept: dist.clocks-and-ordering
+      gloss: LWW는 같은 데이터에 대한 쓰기가 충돌하면 타임스탬프가 가장 늦은 쓰기를 남기는 충돌 해결 방식이다. 단순하지만 서버 시계가 어긋나 있으면 실제로 나중에 한 수정이 사라질 수 있다.
+    - id: g.vector-clock
+      name: 벡터 시계
+      aliases:
+        - Vector Clock
+      concept: dist.clocks-and-ordering
+      gloss: 벡터 시계는 노드별 카운터 묶음으로 이벤트 사이의 선후 관계를 추적하는 논리 시계다. 두 쓰기 중 무엇이 먼저인지, 혹은 서로 모른 채 동시에 일어났는지 구분할 수 있어 충돌 감지에 쓰인다.
+    - id: g.two-phase-commit
+      name: 2PC
+      aliases:
+        - Two-Phase Commit
+        - 2단계 커밋
+      concept: dist.saga
+      gloss: 2PC는 조정자가 모든 참여자에게 커밋 준비를 확인한 뒤 일제히 커밋시키는 분산 트랜잭션 프로토콜이다. 원자성은 얻지만 조정자 장애 시 참여자가 잠금을 잡은 채 대기할 수 있다. 그래서 서비스 간 작업에는 사가를 대신 쓰는 경우가 많다.
+    - id: g.sliding-window
+      name: 슬라이딩 윈도
+      aliases:
+        - Sliding Window
+        - 윈도 카운터
+      concept: dist.rate-limiting
+      gloss: 슬라이딩 윈도는 현재 시점에서 직전 일정 시간 동안의 요청 수를 세어 제한하는 레이트 리밋 방식이다. 고정 윈도는 구간 경계 직전과 직후에 요청이 몰리면 허용량의 거의 두 배가 통과할 수 있는데, 슬라이딩 윈도는 이 문제를 줄인다.
+    - id: g.retry-after
+      name: Retry-After
+      aliases:
+        - Retry-After 헤더
+        - 재시도 대기 헤더
+      concept: dist.rate-limiting
+      gloss: Retry-After는 서버가 클라이언트에게 얼마 뒤에 다시 요청하라고 알려 주는 HTTP 응답 헤더다. 429나 503 응답과 함께 보내며, 클라이언트가 이 값을 지키면 제한에 걸린 직후의 무의미한 재시도 폭주를 막을 수 있다.
+    - id: g.cdc
+      name: CDC
+      aliases:
+        - Change Data Capture
+        - 변경 데이터 캡처
+        - 변경 스트림
+      concept: dist.outbox-pattern
+      gloss: CDC는 DB의 변경 로그를 읽어 행의 삽입·수정·삭제를 이벤트로 흘려보내는 기법이다. 아웃박스 테이블의 변경을 메시지로 발행하거나 캐시와 검색 인덱스를 원본과 맞출 때 쓴다.
+    - id: g.split-brain
+      name: 스플릿 브레인
+      aliases:
+        - Split Brain
+        - 분할 뇌
+        - 이중 리더
+      concept: dist.consensus
+      gloss: 스플릿 브레인은 네트워크가 끊겨 클러스터가 둘로 나뉘고, 양쪽이 각자 자신을 리더로 여겨 쓰기를 받는 상태다. 데이터가 양쪽으로 갈라지므로, 과반수 동의를 얻은 쪽만 쓰기를 받게 하는 쿼럼으로 막는다.
+    - id: g.heartbeat
+      name: 하트비트
+      aliases:
+        - Heartbeat
+        - 생존 신호
+        - 헬스 비트
+      concept: dist.consensus
+      gloss: 하트비트는 노드가 살아 있음을 알리려고 주기적으로 보내는 신호다. 일정 시간 신호가 끊기면 장애로 판단해 리더를 다시 뽑거나 작업을 다른 노드로 넘긴다. 단, 느린 노드와 죽은 노드를 완벽히 구분하지는 못한다.
+    - id: g.linearizability
+      name: 선형화 가능성
+      aliases:
+        - Linearizability
+        - 선형성
+        - Linearizable
+      concept: dist.consistency-models
+      gloss: 선형화 가능성은 복제본이 여러 개여도 시스템이 마치 데이터 사본이 하나뿐인 것처럼 동작하게 하는 강한 일관성 보장이다. 쓰기가 완료된 뒤 시작된 읽기는 그 값이나 더 최신 값을 본다. 재고 차감이나 락처럼 정확성이 필수인 곳에서 요구된다.
+    - id: g.read-your-writes
+      name: Read-Your-Writes
+      aliases:
+        - 자기 쓰기 읽기
+        - Read-After-Write
+      concept: dist.consistency-models
+      gloss: Read-Your-Writes는 사용자가 방금 쓴 데이터를 그 사용자의 이후 읽기에서는 반드시 보게 하는 보장이다. 프로필 수정이나 댓글 작성 직후 읽기 복제본에서 옛 값이 보이는 문제를 막으려면 이 보장이 필요하다.
+    - id: g.network-partition
+      name: 네트워크 분할
+      aliases:
+        - Network Partition
+        - 네트워크 파티션
+        - 분할 장애
+      concept: dist.cap-theorem
+      gloss: 네트워크 분할은 노드들은 살아 있지만 그 사이의 통신이 끊겨 서로 연락하지 못하는 상태다. 이때 시스템은 쓰기를 막아 일관성을 지킬지, 계속 받아 가용성을 지킬지 선택해야 한다.
+    - id: g.rebalancing
+      name: 리밸런싱
+      aliases:
+        - Rebalancing
+        - 재분배
+        - 파티션 재할당
+      concept: dist.sharding
+      gloss: 리밸런싱은 노드나 소비자가 추가되거나 빠질 때 데이터와 파티션의 담당을 다시 나누는 과정이다. 리밸런싱 동안 데이터 이동이나 소비 중단이 생기므로, 배포나 확장 시점에 지연이 튀는 원인이 된다.
+    - id: g.graceful-degradation
+      name: 점진적 기능 저하
+      aliases:
+        - Graceful Degradation
+        - 우아한 성능 저하
+        - 기능 축소 운영
+      concept: dist.circuit-breaker
+      gloss: 점진적 기능 저하는 일부 의존 서비스가 실패해도 핵심 기능은 유지하고 부가 기능만 끄거나 단순화하는 설계다. 추천 영역이 실패하면 빈 칸이나 기본 목록을 보여 주고 결제는 정상 동작하게 하는 식이다.
+    - id: g.deduplication
+      name: 중복 제거
+      aliases:
+        - Deduplication
+        - Dedup
+        - 디듑
+        - 메시지 ID 중복 검사
+      concept: dist.idempotency
+      gloss: 중복 제거는 처리한 메시지나 요청의 ID를 기록해 두었다가 같은 ID가 다시 오면 처리를 건너뛰는 기법이다. 최소 한 번 전달 환경에서 소비자를 멱등하게 만드는 가장 흔한 구현 방법이다.

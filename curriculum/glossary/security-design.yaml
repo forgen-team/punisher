@@ -1,0 +1,245 @@
+area: security-design
+concepts:
+    sec.api-contracts: API 계약은 요청과 응답의 형태와 의미에 대해 제공자와 사용자가 맺은 약속이다. 버전 관리는 이 약속을 깨지 않고 API를 바꾸는 방법이다. 필드 이름 하나를 바꾼 배포가 갱신하지 않은 클라이언트를 일제히 망가뜨릴 수 있다.
+    sec.authentication: 인증은 요청을 보낸 주체가 스스로 주장하는 그 사용자가 맞는지 확인하는 과정이다. 로그인 API, 로그인 상태 유지, 대입 공격 방어가 모두 여기에 속한다. 인증이 무너지면 그 뒤의 권한 검사도 의미를 잃는다.
+    sec.authorization: 인가는 인증된 사용자가 특정 자원에 어떤 행동을 할 수 있는지 판단하는 과정이다. 권한 모델은 그 규칙을 역할 같은 구조로 정리한 것이다. 서버가 요청마다 소유권과 권한을 검사하지 않으면 ID만 바꿔 남의 데이터를 보는 사고가 난다.
+    sec.cryptography-basics: 암호학 기초는 해시, 대칭키 암호, 공개키 암호, 전자 서명처럼 데이터를 숨기거나 위조 여부를 확인하는 기본 도구를 다룬다. 비밀번호 저장, HTTPS, 토큰 서명이 모두 이 도구를 쓴다. 그래서 어떤 도구를 어디에 쓰는지 구분해야 설계 실수를 피한다.
+    sec.csrf: CSRF는 브라우저가 쿠키를 자동으로 붙이는 점을 이용한 공격이다. 다른 사이트가 로그인한 사용자의 브라우저로 사용자가 원하지 않은 요청을 보내게 한다. 쿠키 기반 인증을 쓰는 상태 변경 API라면 SameSite 설정과 토큰 검증을 반드시 점검해야 한다.
+    sec.dependency-direction: 의존성 방향은 어떤 모듈이 다른 어떤 모듈을 알고 호출하는지의 방향이다. 핵심 도메인 규칙이 DB나 외부 SDK 같은 세부 구현을 직접 알지 않도록 방향을 정한다. 방향이 잘못되면 공급자 교체와 테스트가 어려워지고 순환 의존이 생긴다.
+    sec.injection: 인젝션은 사용자 입력이 데이터가 아니라 SQL이나 셸 명령의 일부로 해석되어 의도하지 않은 코드가 실행되는 취약점이다. 쿼리를 문자열로 이어 붙이는 코드 한 줄에서 생긴다. 파라미터 바인딩과 허용 목록 검증으로 막는다.
+    sec.jwt: JWT는 헤더, 페이로드, 서명 세 부분을 점으로 이은 토큰 형식으로, 서명된 JSON 클레임을 주고받는 데 쓴다. 페이로드는 암호화되지 않아 누구나 읽을 수 있다. 서명·만료·대상 검증을 빠뜨리면 위조된 토큰을 그대로 믿게 된다.
+    sec.least-privilege: 최소 권한 원칙은 사용자, 서비스, 프로세스마다 맡은 일에 꼭 필요한 권한만 주는 설계 원칙이다. 계정 하나가 탈취되어도 피해가 그 권한 범위에 머문다. DB 계정, 클라우드 역할, 컨테이너 실행 사용자 설정에 적용한다.
+    sec.module-boundaries: 모듈 경계와 책임은 코드를 어떤 단위로 나누고 각 단위가 무엇을 맡을지 정하는 설계 문제다. 응집도는 높이고 결합도는 낮추는 것이 목표다. 정책 하나를 바꿀 때 고쳐야 하는 파일과 서비스의 수에 경계 설계의 결과가 드러난다.
+    sec.oauth-oidc: OAuth 2.0은 사용자가 비밀번호를 넘기지 않고 다른 앱에 자원 접근 권한을 위임하는 프로토콜이다. OpenID Connect는 그 위에 사용자 신원 정보를 더한 규격이다. 소셜 로그인을 구현할 때 이 흐름과 검증 단계를 알아야 인가 코드나 토큰 탈취를 막는다.
+    sec.password-hashing: 비밀번호 저장은 원문을 되살릴 수 없게 하는 보관 방식이다. 비밀번호에 솔트를 붙인 뒤 일부러 느리게 만든 해시 함수로 변환해 저장한다. DB가 유출되어도 공격자가 비밀번호를 대량으로 복원하지 못하게 막는 마지막 방어선이 된다.
+    sec.secrets-management: 비밀 관리는 API 키, DB 비밀번호, 서명 키 같은 민감한 값을 코드 밖에 보관하고 실행 환경에 주입하며 교체하는 운영 방식이다. 커밋 한 번이나 로그 한 줄로 키가 새는 일이 흔하다. 그래서 유출을 전제로 한 교체 절차가 필요하다.
+    sec.session-vs-token: 로그인 상태를 담는 두 방식을 비교한 개념이다. 세션 방식은 상태를 서버 저장소에 두고, 토큰 방식은 서명된 토큰에 담아 클라이언트가 들고 다니게 한다. 이 선택에 따라 강제 로그아웃이 바로 되는지, 저장 위치 때문에 XSS·CSRF에 얼마나 노출되는지가 달라진다.
+    sec.ssrf: SSRF는 서버가 사용자가 준 URL로 대신 요청을 보내는 기능을 악용하는 공격이다. 공격자는 이를 통해 외부에서는 닿을 수 없는 내부 주소에 접근한다. 링크 미리보기, 웹훅, 피드 수집처럼 URL을 받는 기능을 만들 때는 요청 대상 주소를 검증해야 한다.
+    sec.supply-chain: 소프트웨어 공급망 보안은 직접 작성하지 않은 라이브러리, 베이스 이미지, 빌드 도구가 공격 경로가 되는 위험을 관리하는 일이다. 패키지 하나를 잘못 설치하면 빌드 서버의 토큰이 유출될 수 있다. 그래서 버전 고정, 취약점 스캔, 출처 검증이 필요하다.
+    sec.tls-certificates: 인증서는 인증 기관(CA)이 특정 도메인의 공개키임을 서명으로 보증한 문서이다. PKI는 이 신뢰를 이어 주는 체계 전체를 말한다. 인증서는 HTTPS가 동작하는 근거이고 갱신을 놓치면 사이트 접속이 막히므로 자동 갱신과 만료 감시가 필요하다.
+    sec.trust-boundary: 신뢰 경계는 브라우저와 서버, 외부 API와 내부 서비스 사이처럼 데이터의 신뢰 수준이 달라지는 지점이다. 경계를 넘어 들어온 값은 가격이든 사용자 ID든 서버가 다시 검증해야 한다. 경계가 어디인지 알아야 검증 위치를 정할 수 있다.
+    sec.xss: XSS는 공격자가 넣은 스크립트가 다른 사용자의 브라우저에서 그 사이트의 권한으로 실행되는 취약점이다. 댓글, 마크다운, 외부 HTML을 렌더링하는 화면에서 생긴다. 세션 탈취나 사용자를 가장한 요청 전송으로 이어진다.
+terms:
+    - id: g.hmac
+      name: HMAC
+      aliases:
+        - Hash-based Message Authentication Code
+        - 메시지 인증 코드
+        - MAC
+      concept: sec.cryptography-basics
+      gloss: HMAC은 비밀 키와 해시 함수로 메시지의 인증 값을 만드는 방식이다. 같은 키를 가진 쪽만 값을 만들고 검증할 수 있어 메시지가 변조되었는지 알 수 있다. 웹훅 서명 검증이나 대칭키 방식 JWT 서명에 쓰인다.
+    - id: g.aes
+      name: AES
+      aliases:
+        - Advanced Encryption Standard
+        - AES 암호화
+      concept: sec.cryptography-basics
+      gloss: AES는 같은 키로 암호화와 복호화를 하는 대칭키 블록 암호의 표준 알고리즘이다. DB에 저장하는 민감 정보나 파일을 암호화할 때 쓴다. 키를 어디에 보관하느냐가 보안 수준을 좌우한다.
+    - id: g.rsa
+      name: RSA
+      aliases:
+        - RSA 암호
+        - RSA 키
+      concept: sec.cryptography-basics
+      gloss: RSA는 공개키와 개인키 한 쌍을 쓰는 공개키 암호 알고리즘이다. 전자 서명과 키 교환에 쓰인다. 인증서나 비대칭키 방식 JWT 서명에서 자주 만나는 이름이다.
+    - id: g.base64
+      name: Base64
+      aliases:
+        - 베이스64
+        - Base64 인코딩
+        - Base64URL
+      concept: sec.cryptography-basics
+      gloss: Base64는 바이너리 데이터를 정해진 64개 문자로 바꿔 표현하는 인코딩이다. 키 없이 누구나 원래 값으로 되돌릴 수 있으므로 암호화가 아니다. JWT 각 부분과 HTTP Basic 인증 헤더가 이 방식으로 인코딩된다.
+    - id: g.rainbow-table
+      name: 레인보우 테이블
+      aliases:
+        - Rainbow Table
+      concept: sec.password-hashing
+      gloss: 레인보우 테이블은 해시 체인 기법으로 특정 범위 비밀번호의 해시 값을 미리 계산해 압축해 둔 표다. 솔트 없이 빠른 해시로 저장한 비밀번호는 표가 다루는 범위 안에 있으면 빠르게 원문이 밝혀질 수 있다. 사용자마다 다른 솔트를 쓰면 이런 사전 계산이 쓸모없어진다.
+    - id: g.credential-stuffing
+      name: 크리덴셜 스터핑
+      aliases:
+        - Credential Stuffing
+        - 계정 대입 공격
+      concept: sec.authentication
+      gloss: 크리덴셜 스터핑은 다른 서비스에서 유출된 아이디·비밀번호 조합을 자동으로 대량 입력해 로그인을 시도하는 공격이다. 비밀번호를 재사용하는 사용자가 많아 대량으로 시도하면 일부 계정이 뚫린다. 로그인 시도 제한과 다중 인증으로 막는다.
+    - id: g.totp
+      name: TOTP
+      aliases:
+        - Time-based One-Time Password
+        - OTP
+        - 일회용 비밀번호
+        - 인증 앱 코드
+      concept: sec.authentication
+      gloss: TOTP는 공유한 비밀 값과 현재 시각으로 짧은 시간 동안만 유효한 일회용 코드를 만드는 방식이다. 인증 앱에 뜨는 숫자 코드가 이것이다. 비밀번호만 유출된 상황에서는 로그인을 막아 주는 추가 인증 수단으로 쓴다.
+    - id: g.pkce
+      name: PKCE
+      aliases:
+        - Proof Key for Code Exchange
+        - 픽시
+      concept: sec.oauth-oidc
+      gloss: PKCE는 OAuth 인가 코드 흐름에서 요청을 시작한 클라이언트만 코드를 토큰으로 교환할 수 있게 하는 확장이다. 시작할 때 만든 무작위 값을 교환할 때 증명하는 방식이다. 중간에 인가 코드가 탈취되어도 악용하지 못한다.
+    - id: g.oauth-scope
+      name: 스코프
+      aliases:
+        - Scope
+        - OAuth Scope
+        - 권한 범위
+      concept: sec.oauth-oidc
+      gloss: 스코프는 OAuth에서 앱이 요청하고 사용자가 동의한 접근 권한의 범위를 나타내는 값이다. 발급된 토큰은 이 범위 안에서만 쓸 수 있다. 필요 이상으로 넓게 요청하면 토큰이 유출됐을 때 피해가 커진다.
+    - id: g.id-token
+      name: ID 토큰
+      aliases:
+        - ID Token
+        - id_token
+      concept: sec.oauth-oidc
+      gloss: ID 토큰은 OpenID Connect에서 인증된 사용자의 식별자와 발급자·대상·만료 시각 같은 인증 정보를 담아 발급하는 JWT다. 로그인 신원 확인에 쓰는 것이고 API 호출용 액세스 토큰과는 용도가 다르다. 서명과 발급자·대상 검증 후에 신뢰해야 한다.
+    - id: g.claim
+      name: 클레임
+      aliases:
+        - Claim
+        - JWT Claim
+        - exp
+        - aud
+        - iss
+      concept: sec.jwt
+      gloss: 클레임은 JWT 페이로드에 담긴 이름과 값의 쌍으로, 사용자 식별자, 만료 시각, 발급자, 대상 같은 정보를 표현한다. 서버는 서명뿐 아니라 만료와 대상 클레임까지 확인해야 토큰을 안전하게 쓸 수 있다.
+    - id: g.jwks
+      name: JWKS
+      aliases:
+        - JSON Web Key Set
+        - JWK
+        - 공개키 엔드포인트
+      concept: sec.jwt
+      gloss: JWKS는 토큰 서명 검증에 쓸 공개키 목록을 JSON으로 제공하는 형식이다. 인증 서버가 이를 공개하면 각 서비스가 키를 받아 JWT를 검증한다. 키 교체도 목록을 갱신하는 방식으로 처리할 수 있다.
+    - id: g.open-redirect
+      name: 오픈 리다이렉트
+      aliases:
+        - Open Redirect
+        - 열린 리다이렉트
+      concept: sec.oauth-oidc
+      gloss: 오픈 리다이렉트는 요청 파라미터로 받은 주소로 검증 없이 이동시키는 취약점이다. 신뢰받는 도메인을 거쳐 피싱 사이트로 보내거나 OAuth 인가 코드를 빼돌리는 데 악용된다. 이동 대상을 허용 목록으로 제한해 막는다.
+    - id: g.path-traversal
+      name: 경로 탐색
+      aliases:
+        - Path Traversal
+        - Directory Traversal
+        - 디렉터리 탐색
+      concept: sec.injection
+      gloss: 경로 탐색은 파일 이름 입력에 상위 디렉터리 이동 표기를 넣어 의도한 폴더 밖의 파일을 읽거나 쓰는 공격이다. 파일 다운로드나 업로드 기능에서 생긴다. 경로를 정규화한 뒤 허용된 디렉터리 안인지 확인해 막는다.
+    - id: g.allowlist
+      name: 허용 목록
+      aliases:
+        - Allowlist
+        - Whitelist
+        - 화이트리스트
+      concept: sec.injection
+      gloss: 허용 목록은 미리 정한 안전한 값만 받아들이고 나머지는 모두 거부하는 검증 방식이다. 위험한 값을 골라 막는 차단 목록보다 빠뜨리는 경우가 적다. 정렬 컬럼명이나 리다이렉트 주소처럼 값의 종류가 한정된 입력에 쓴다.
+    - id: g.escaping
+      name: 이스케이프
+      aliases:
+        - Escaping
+        - Output Encoding
+        - 출력 인코딩
+      concept: sec.xss
+      gloss: 이스케이프는 특수 문자를 해당 문맥에서 코드로 해석되지 않는 표현으로 바꾸는 처리다. HTML 본문, 속성, URL, 스크립트마다 규칙이 다르다. 출력하는 위치에 맞는 방식을 써야 XSS를 막을 수 있다.
+    - id: g.sanitize
+      name: HTML 정제
+      aliases:
+        - Sanitize
+        - Sanitization
+        - HTML Sanitizer
+        - 새니타이즈
+      concept: sec.xss
+      gloss: HTML 정제는 HTML을 그대로 보여 줘야 할 때 허용된 태그와 속성만 남기고 스크립트가 될 수 있는 부분을 제거하는 처리다. 마크다운 렌더링이나 외부 본문 표시 기능에서 검증된 라이브러리로 수행한다.
+    - id: g.dns-rebinding
+      name: DNS 리바인딩
+      aliases:
+        - DNS Rebinding
+        - DNS 재바인딩
+      concept: sec.ssrf
+      gloss: DNS 리바인딩은 같은 도메인이 처음에는 외부 IP로, 다음 조회에서는 내부 IP로 응답하게 만들어 주소 검증을 우회하는 기법이다. 검증할 때와 실제로 요청할 때 다른 IP를 쓰게 만든다. SSRF 방어에서는 실제 접속하는 IP를 기준으로 검사해야 한다.
+    - id: g.iam
+      name: IAM
+      aliases:
+        - Identity and Access Management
+        - IAM 역할
+        - IAM Role
+        - 서비스 계정
+      concept: sec.least-privilege
+      gloss: IAM은 클라우드나 조직에서 누가 어떤 자원에 어떤 작업을 할 수 있는지 정의하고 관리하는 체계다. 사람뿐 아니라 서버와 배포 파이프라인에도 역할을 부여한다. 범위를 넓게 잡으면 키 하나 유출이 전체 계정 침해로 번질 수 있다.
+    - id: g.mtls
+      name: mTLS
+      aliases:
+        - Mutual TLS
+        - 상호 TLS
+        - 상호 인증 TLS
+      concept: sec.trust-boundary
+      gloss: mTLS는 서버뿐 아니라 클라이언트도 인증서를 제시해 양쪽이 서로의 신원을 확인하는 TLS 방식이다. 내부 서비스 간 호출에서 요청한 서비스가 누구인지 확인할 때 쓴다. 내부망이라고 무조건 신뢰하지 않는 설계에서 자주 등장한다.
+    - id: g.certificate-chain
+      name: 인증서 체인
+      aliases:
+        - Certificate Chain
+        - 중간 인증서
+        - Intermediate Certificate
+        - 루트 인증서
+      concept: sec.tls-certificates
+      gloss: 인증서 체인은 사이트 인증서에서 중간 인증서를 거쳐 신뢰된 루트 인증서까지 서명으로 이어지는 연결이다. 서버가 중간 인증서를 함께 보내지 않으면 일부 클라이언트에서만 인증서 오류가 나는 문제가 생긴다.
+    - id: g.acme
+      name: ACME
+      aliases:
+        - ACME 프로토콜
+        - Automatic Certificate Management Environment
+      concept: sec.tls-certificates
+      gloss: ACME는 도메인 소유 확인부터 인증서 발급과 갱신까지 자동으로 처리하는 프로토콜이다. 무료 인증서 발급 기관과 자동 갱신 도구가 이 방식을 쓴다. 갱신이 조용히 실패하지 않도록 결과를 감시해야 한다.
+    - id: g.kms
+      name: KMS
+      aliases:
+        - Key Management Service
+        - 키 관리 서비스
+      concept: sec.secrets-management
+      gloss: KMS는 암호화 키를 안전하게 생성·보관하고 키 사용을 통제하는 관리 서비스다. 애플리케이션은 마스터 키를 직접 꺼내지 않고 KMS에 암호화·복호화를 요청한다. 키 접근 기록이 남아 유출 추적과 교체가 쉬워진다.
+    - id: g.cve
+      name: CVE
+      aliases:
+        - Common Vulnerabilities and Exposures
+        - 취약점 번호
+      concept: sec.supply-chain
+      gloss: CVE는 공개된 보안 취약점마다 붙는 고유 식별 번호 체계다. 의존성 스캐너가 이 번호로 영향받는 패키지와 버전을 알려 준다. 실제 위험은 우리 코드가 해당 기능을 쓰는지까지 따져 판단해야 한다.
+    - id: g.typosquatting
+      name: 타이포스쿼팅
+      aliases:
+        - Typosquatting
+        - 유사 패키지명 공격
+      concept: sec.supply-chain
+      gloss: 타이포스쿼팅은 인기 패키지와 철자가 비슷한 이름으로 악성 패키지를 올려 오타 설치를 노리는 공격이다. 설치 스크립트가 빌드 환경의 토큰이나 환경 변수를 빼돌릴 수 있다. 패키지 이름과 출처를 확인하는 습관이 필요하다.
+    - id: g.semver
+      name: 시맨틱 버저닝
+      aliases:
+        - Semantic Versioning
+        - SemVer
+        - 유의적 버전
+      concept: sec.api-contracts
+      gloss: 시맨틱 버저닝은 버전을 주, 부, 수 세 숫자로 나누는 규칙이다. 주 버전은 호환이 깨지는 변경, 부 버전은 기능 추가, 수 버전은 버그 수정을 뜻한다. 의존성 범위 지정과 API 변경 공지에서 변경의 위험도를 판단하는 기준이 된다.
+    - id: g.breaking-change
+      name: 호환성을 깨는 변경
+      aliases:
+        - Breaking Change
+        - 브레이킹 체인지
+        - 깨지는 변경
+      concept: sec.api-contracts
+      gloss: 호환성을 깨는 변경은 기존 클라이언트가 코드를 고치지 않으면 동작하지 않게 되는 API 변경이다. 필드 삭제, 이름 변경, 타입이나 의미 변경이 대표적이다. 배포 전에 변경을 이렇게 분류해야 버전 분리나 폐기 예고 여부를 정할 수 있다.
+    - id: g.dependency-injection
+      name: 의존성 주입
+      aliases:
+        - Dependency Injection
+        - DI
+      concept: sec.dependency-direction
+      gloss: 의존성 주입은 모듈이 필요한 구현체를 직접 만들지 않고 외부에서 전달받는 방식이다. 도메인 코드는 인터페이스만 알고 DB나 외부 API 구현은 조립 단계에서 넣는다. 그래서 테스트용 대체 구현으로 바꾸기 쉬워진다.
+    - id: g.owasp-top-10
+      name: OWASP Top 10
+      aliases:
+        - OWASP
+        - 오와스프
+      concept: ""
+      gloss: OWASP Top 10은 OWASP 재단이 웹 애플리케이션에서 흔하고 위험한 보안 취약점 유형을 추려 발표하는 목록이다. 보안 점검이나 코드 리뷰에서 공통 기준과 용어로 자주 인용된다. 항목은 주기적으로 개정된다.

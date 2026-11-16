@@ -13,7 +13,7 @@ const (
 
 // RecoveredChecks counts what RecoverInterruptedChecks failed.
 type RecoveredChecks struct {
-	Jobs, Sessions, Turns int64
+	Jobs, Sessions, Turns, Attempts int64
 }
 
 // RecoverInterruptedChecks runs once at startup, before the server takes
@@ -33,7 +33,7 @@ func (s *SQLiteStore) RecoverInterruptedChecks(ctx context.Context) (RecoveredCh
 		}
 		r.Jobs = affected(res)
 		res, err = c.exec(ctx, `UPDATE check_sessions SET status = 'failed', error = $1, updated_at = NOW()
-			WHERE status = 'preparing' AND kind IN ('check', 'known_verify', 'placement')`, InterruptedPrepareMessage)
+			WHERE status = 'preparing' AND kind IN ('check', 'known_verify', 'placement', 'synthesis')`, InterruptedPrepareMessage)
 		if err != nil {
 			return fmt.Errorf("recover check sessions: %w", err)
 		}
@@ -43,6 +43,11 @@ func (s *SQLiteStore) RecoverInterruptedChecks(ctx context.Context) (RecoveredCh
 			return fmt.Errorf("recover check turns: %w", err)
 		}
 		r.Turns = affected(res)
+		res, err = c.exec(ctx, `UPDATE lecture_exercise_attempts SET status = 'failed' WHERE status = 'pending'`)
+		if err != nil {
+			return fmt.Errorf("recover exercise attempts: %w", err)
+		}
+		r.Attempts = affected(res)
 		return nil
 	})
 	return r, err

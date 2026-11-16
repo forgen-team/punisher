@@ -1,8 +1,9 @@
-
 import type { ReactNode } from "react";
-import { AlertTriangle, BookMarked, ListChecks, NotebookPen, ScrollText, Sparkles, type LucideIcon } from "lucide-react";
+import { AlertTriangle, BookMarked, ListChecks, NotebookPen, ScrollText, Sparkles, Terminal, type LucideIcon } from "lucide-react";
 import { cn } from "@/src/shared/ui/kit";
 import { Markdown, type RenderTerm } from "@/src/shared/ui/punisher/Markdown";
+import { ExercisePanel, LabResultPanel, parseLab } from "@/src/features/punisher/lecture-exercise";
+import { CodeBlock } from "./CodeBlock";
 import { closeUnclosedFence } from "../../lib/fences";
 import { toInlineTermLinks } from "../../lib/inlineTerms";
 import { BLOCK_LABELS, KEYPOINT_FALLBACK_LABEL, KEYPOINT_LABELS } from "./constants";
@@ -54,19 +55,55 @@ export function PauseBlock({ question, output, renderTerm }: { question?: string
   );
 }
 
-/** `@@exercise` (+ 바로 다음 `@@answer`) — 문제 카드 + 접힌 풀이 */
-export function ExerciseBlock({ text, answer, renderTerm }: { text?: string; answer?: string; renderTerm?: RenderTerm }) {
+/** `@@exercise` (+ 바로 다음 `@@answer`) — 문제 카드. 강의 화면에서는 답을 써야 풀이가 열리고(건너뛰기 가능)
+ * 튜터 평이 뒤따른다. 미리보기에선 접힌 풀이. */
+export function ExerciseBlock({ anchor, text, answer, renderTerm }: { anchor?: string; text?: string; answer?: string; renderTerm?: RenderTerm }) {
+  const folded = answer !== undefined && (
+    <Reveal label={BLOCK_LABELS.showAnswer}>
+      <div className="border-l-2 border-line-strong pl-3">
+        <Body text={answer} renderTerm={renderTerm} />
+      </div>
+    </Reveal>
+  );
   return (
     <section className="my-4 rounded-md border border-line bg-canvas-elevated px-3 py-2">
       <CardTitle icon={NotebookPen} className="text-fg">{BLOCK_LABELS.exercise}</CardTitle>
       <Body text={text} renderTerm={renderTerm} />
       {answer !== undefined && (
-        <Reveal label={BLOCK_LABELS.showAnswer}>
-          <div className="border-l-2 border-line-strong pl-3">
-            <Body text={answer} renderTerm={renderTerm} />
-          </div>
-        </Reveal>
+        <ExercisePanel
+          anchor={anchor ?? ""}
+          problem={text ?? ""}
+          solution={answer}
+          solutionView={<Body text={answer} renderTerm={renderTerm} />}
+          fallback={folded}
+        />
       )}
+    </section>
+  );
+}
+
+/** `@@lab os=…` — 내 터미널에서 실행할 명령(복사) · 보는 곳 · 예상, 결과를 붙여 넣으면 튜터가 읽어 준다. */
+export function LabBlock({ anchor, text }: { anchor?: string; text?: string }) {
+  const lab = parseLab(text ?? "");
+  return (
+    <section className="my-4 rounded-md border border-line bg-canvas-elevated px-3 py-2">
+      <CardTitle icon={Terminal} className="text-fg">{BLOCK_LABELS.lab}</CardTitle>
+      <CodeBlock code={lab.command} lang="bash" label={BLOCK_LABELS.labCommand} />
+      <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+        {lab.look && (
+          <>
+            <dt className="font-medium text-fg-secondary">{BLOCK_LABELS.labLook}</dt>
+            <dd className="break-keep">{lab.look}</dd>
+          </>
+        )}
+        {lab.expect && (
+          <>
+            <dt className="font-medium text-fg-secondary">{BLOCK_LABELS.labExpect}</dt>
+            <dd className="break-keep">{lab.expect}</dd>
+          </>
+        )}
+      </dl>
+      <LabResultPanel anchor={anchor ?? ""} text={text ?? ""} />
     </section>
   );
 }

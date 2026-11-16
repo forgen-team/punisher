@@ -94,6 +94,10 @@ type CheckTurn struct {
 	Model      string      `json:"model,omitempty"`
 	Error      string      `json:"error,omitempty"`
 	CreatedAt  time.Time   `json:"createdAt"`
+	// Confidence: the learner's sure|unsure|unknown before the item's first answer (learner turns, v3 §3).
+	Confidence string `json:"confidence,omitempty"`
+	// ConfidentError: the item failed although the learner was sure ('착각', on the item's last judgement).
+	ConfidentError bool `json:"confidentError,omitempty"`
 	// GradeRaw is the stored grade (with prev/appliedAt) for the service; never sent.
 	GradeRaw json.RawMessage `json:"-"`
 }
@@ -212,4 +216,18 @@ type ReviewSummary struct {
 	Verify int `json:"verify"`
 	// Today: today's latest review session (nil = none yet).
 	Today *ReviewSessionRef `json:"today"`
+}
+
+// ExerciseAttempt is one answer to an in-lecture exercise or lab (v3 §2, §4).
+type ExerciseAttempt struct {
+	ID          string    `json:"id"`
+	LectureID   string    `json:"lectureId"`
+	Anchor      string    `json:"anchor"`
+	ContentHash string    `json:"contentHash"`
+	Kind        string    `json:"kind"`
+	Answer      string    `json:"answer"`
+	Verdict     string    `json:"verdict"`
+	Feedback    string    `json:"feedback"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"createdAt"`
 }

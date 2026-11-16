@@ -48,6 +48,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	router.Route("/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler.Health)
 		r.Get("/status", statusHandler.Status)
+		r.Get("/export", statusHandler.Export)
 
 		r.Get("/concepts", conceptsHandler.List)
 		r.Get("/concepts/{id}", conceptsHandler.Detail)
@@ -99,6 +100,9 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Post("/lectures/{id}/dismiss", learn.Dismiss)
 		r.Delete("/lectures/{id}/dismiss", learn.Restore)
 		r.Post("/lectures/{id}/explain", learn.Explain)
+		r.Get("/lectures/{id}/exercises", learn.ListExercises)
+		r.Post("/lectures/{id}/exercises", learn.SubmitExercise)
+		r.Delete("/lectures/{id}/exercises/{attemptId}", learn.DeleteExercise)
 		r.Get("/lectures/{id}/links", learn.Links)
 		r.Post("/lectures/{id}/regenerate", learn.Regenerate)
 		r.Get("/lectures/{id}/questions", learn.ListQuestions)

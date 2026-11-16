@@ -6,3 +6,8 @@ import "embed"
 
 //go:embed *.yaml
 var Files embed.FS
+
+// Glossary is the term dictionary (glossary/*.yaml, internal/glossary).
+//
+//go:embed glossary
+var Glossary embed.FS

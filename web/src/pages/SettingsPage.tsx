@@ -1,8 +1,9 @@
-import { CheckCircle2, AlertTriangle, ScrollText } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Download, ScrollText } from "lucide-react";
 import { List, ListRow, PageHeader, Section, Skeleton, ThemeSelect } from "@/src/shared/ui/kit";
 import { Link } from "@/src/shared/lib/router";
 import { LearningSettingsForm } from "@/src/features/punisher/learning-settings";
 import { useAppStatus } from "@/src/shared/api/status";
+import { PUNISHER_API_BASE } from "@/src/shared/api/punisher";
 import { BRAND_LINE, PunisherLogo } from "@/src/shared/ui/brand";
 
 /** 설정: 예시 코드 언어 · 화면 테마 · Claude Code 연결 상태 · 데이터 위치. */
@@ -21,6 +22,12 @@ export function SettingsPage() {
             leading={<ScrollText />}
             title="강의 프롬프트"
             meta="강의를 만드는 지시문을 단계별로 보고 고쳐요"
+          />
+          <ListRow
+            href={`${PUNISHER_API_BASE}/export`}
+            leading={<Download />}
+            title="데이터 내보내기"
+            meta="강의·진도·기록을 파일 하나로 받아요"
           />
         </List>
       </Section>

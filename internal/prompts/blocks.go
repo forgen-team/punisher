@@ -26,6 +26,9 @@ const (
 	BlockCheckItems     = "check.items"
 	BlockCheckTutor     = "check.tutor"
 	BlockCheckPretest   = "check.pretest"
+	BlockExerciseGrade  = "exercise.grade"
+	BlockLabRead        = "lab.read"
+	BlockCheckSynthesis = "check.synthesis"
 )
 
 // Var is a {{name}} placeholder a block may use.
@@ -132,6 +135,18 @@ var Blocks = []Block{
 		Purpose:   "강의 시작 때의 예측 질문, '이미 앎' 확인 문항, 새 챕터 배치 진단 문항을 개념·목표만으로 만듭니다.",
 		AppliesTo: "내 예측 질문·'이미 앎' 확인·배치 진단 문항", Vars: []Var{varConcept, varLanguage}, Default: SystemCheckPretest,
 		Warning: "문항은 JSON(items·material.choices·rubric.correct)으로 받습니다. 키 이름과 '출력은 JSON 하나뿐' 문장은 남겨 두세요."},
+	{ID: BlockCheckSynthesis, Stage: StageCheck, StageTitle: "확인", Title: "종합 문제 만들기(시스템)",
+		Purpose:   "이미 확인한 여러 개념을 실무 장면 하나에서 함께 쓰게 하는 주간 종합 문항 2개를 만듭니다.",
+		AppliesTo: "내 '이번 주 종합 문제'", Default: SystemCheckSynthesis,
+		Warning: "문항은 JSON(items·rubric.covers)으로 받습니다. 키 이름과 '출력은 JSON 하나뿐' 문장은 남겨 두세요."},
+	{ID: BlockExerciseGrade, Stage: StageCheck, StageTitle: "확인", Title: "직접 해 보기 평(시스템)",
+		Purpose:   "강의 속 '직접 해 보기'에 쓴 답을 풀이 기준으로 판정하고 한두 문장 평을 씁니다.",
+		AppliesTo: "내 '직접 해 보기' 평", Default: SystemExerciseGrade,
+		Warning: "판정은 JSON(verdict·feedback)으로 받습니다. 키 이름과 '출력은 JSON 하나뿐' 문장은 남겨 두세요."},
+	{ID: BlockLabRead, Stage: StageCheck, StageTitle: "확인", Title: "실습 결과 읽기(시스템)",
+		Purpose:   "강의 속 실습에서 붙여 넣은 명령 출력을 예상과 비교해 어디를 보면 되는지 알려 줍니다.",
+		AppliesTo: "내 실습 결과 읽기", Default: SystemLabRead,
+		Warning: "판정은 JSON(verdict·feedback)으로 받습니다. 키 이름과 '출력은 JSON 하나뿐' 문장은 남겨 두세요."},
 }
 
 var blockIndex = func() map[string]Block {

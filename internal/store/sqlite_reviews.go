@@ -87,11 +87,11 @@ func (s *SQLiteStore) ReleaseQueuedReviews(ctx context.Context, userID string, t
 			id string
 			m  learning.Mastery
 		}
-		list, err := collect(c.query(ctx, `SELECT m.objective_id, m.box, m.grad_step FROM user_objective_mastery m`+reviewScope+`
+		list, err := collect(c.query(ctx, `SELECT m.objective_id, m.box, m.grad_step, m.ease FROM user_objective_mastery m`+reviewScope+`
 			WHERE m.user_id = $1 AND m.queued AND m.grad_step < 2
 			ORDER BY m.updated_at, m.objective_id LIMIT $2`, userID, n), func(row rowScanner) (waiting, error) {
 			var w waiting
-			err := row.Scan(&w.id, &w.m.Box, &w.m.GradStep)
+			err := row.Scan(&w.id, &w.m.Box, &w.m.GradStep, &w.m.Ease)
 			return w, err
 		})
 		if err != nil {

@@ -90,16 +90,32 @@ func otherModel(grading, lecture, fast string) string {
 }
 
 // DefaultDataDir is ~/Library/Application Support/Punisher on macOS and
-// ~/.punisher elsewhere.
+// $XDG_DATA_HOME/punisher (~/.local/share/punisher) elsewhere. A ~/.punisher
+// folder from older versions is kept in use.
 func DefaultDataDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil || home == "" {
 		return ".punisher"
 	}
-	if runtime.GOOS == "darwin" {
+	return defaultDataDir(runtime.GOOS, home, os.Getenv("XDG_DATA_HOME"), dirExists)
+}
+
+func defaultDataDir(goos, home, xdgDataHome string, exists func(string) bool) string {
+	if goos == "darwin" {
 		return filepath.Join(home, "Library", "Application Support", "Punisher")
 	}
-	return filepath.Join(home, ".punisher")
+	if legacy := filepath.Join(home, ".punisher"); exists(legacy) {
+		return legacy
+	}
+	if xdgDataHome != "" && filepath.IsAbs(xdgDataHome) {
+		return filepath.Join(xdgDataHome, "punisher")
+	}
+	return filepath.Join(home, ".local", "share", "punisher")
+}
+
+func dirExists(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && fi.IsDir()
 }
 
 func readInt(key string, fallback int) int {

@@ -1,4 +1,3 @@
-
 import { useCallback, useMemo, useRef, type ReactNode } from "react";
 import { EmptyState, ErrorState, Skeleton, Spinner, type MenuItem } from "@/src/shared/ui/kit";
 import {
@@ -32,7 +31,8 @@ import {
   topBarTitle,
 } from "./lib/checkView";
 import { useFollowScroll } from "./lib/useFollowScroll";
-import { CheckComposer, CheckItemCard, CheckResult, LectureCompleteAction, PlacementResult, ReviewMoreAction, chapterMapHref } from "./ui";
+import { CheckComposer, CheckItemCard, CheckResult, LectureCompleteAction, PlacementResult, ReviewMoreAction, SynthesisDoneAction, chapterMapHref } from "./ui";
+import { synthesisRows } from "./lib/synthesis";
 import { DIAGNOSTIC_TITLES, REVIEW_STATUS_LABELS, SESSION_STATUS_LABELS } from "./ui/constants";
 
 const NO_SECTIONS: LectureSection[] = [];
@@ -74,6 +74,7 @@ export function CheckView({ checkId }: { checkId: string }) {
     [lectureId, sections],
   );
   const rows = useMemo(() => (d ? resultRows(d) : []), [d]);
+  const synthesis = useMemo(() => (d ? synthesisRows(d) : []), [d]);
   const acknowledged = useMemo(() => new Set(d?.misconceptionTurnIds ?? []), [d?.misconceptionTurnIds]);
 
   const currentId = d ? currentItemId(d) : null;
@@ -173,7 +174,9 @@ export function CheckView({ checkId }: { checkId: string }) {
             acknowledgedTurnIds={acknowledged}
             anchorLink={anchorLink}
             lectureSummary={review ? undefined : sessionLectureSummary(detail)}
+            synthesis={synthesis}
           >
+            {kind === "synthesis" && <SynthesisDoneAction />}
             {review && <ReviewMoreAction remaining={summary.data?.due ?? 0} />}
             {!review && lectureId && (
               <LectureCompleteAction lectureId={lectureId} lectureCompleted={Boolean(lecture.data?.progress?.completedAt)} />

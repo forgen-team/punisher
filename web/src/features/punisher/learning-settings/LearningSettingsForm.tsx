@@ -1,11 +1,12 @@
-
 import { ErrorState, Field, ListSkeleton, Select, Spinner, Switch } from "@/src/shared/ui/kit";
 import { describeSettingsError, useLearningSettings, useSaveLearningSettings } from "@/src/entities/punisher";
-import { describePunisherError, type ExampleLanguage, type LearningSettingsPatch } from "@/src/shared/api/punisher";
+import { describePunisherError, type ExampleLanguage, type LabOS, type LearningSettingsPatch } from "@/src/shared/api/punisher";
 import { ReviewSettingsFields } from "./ReviewSettingsFields";
 import type { SettingsField } from "./reviewSettings";
 
 const DAILY_MINUTE_OPTIONS = [15, 30, 45, 60] as const;
+const LAB_OS_OPTIONS: readonly LabOS[] = ["macos", "linux", "none"];
+const LAB_OS_LABELS: Record<LabOS, string> = { macos: "macOS", linux: "Linux", none: "쓰지 않음" };
 
 /**
  * 학습 설정 — 예시 코드 언어 · 하루 학습량 · 숙달 기준 · 복습 간격 · 하루 복습 시간 · 복습 채점 방식 · 예측 질문.
@@ -68,6 +69,15 @@ export function LearningSettingsForm() {
           </Select>
         </Field>
         <ReviewSettingsFields settings={shown} saving={save.isPending} onSave={saveField} fieldError={fieldError} />
+        <Field label="실습 환경" error={fieldError("labOs")}>
+          <Select value={shown.labOs ?? "macos"} disabled={save.isPending} onChange={(event) => saveField({ labOs: event.target.value as LabOS })}>
+            {LAB_OS_OPTIONS.map((os) => (
+              <option key={os} value={os}>
+                {LAB_OS_LABELS[os]}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <Field label="강의 전 예측 질문" error={fieldError("pretestEnabled")}>
           <Switch
             checked={shown.pretestEnabled ?? true}

@@ -23,9 +23,11 @@ import (
 	"time"
 
 	seedfiles "github.com/wooo-jin/punisher/curriculum"
+	"github.com/wooo-jin/punisher/internal/backup"
 	"github.com/wooo-jin/punisher/internal/claudecli"
 	"github.com/wooo-jin/punisher/internal/config"
 	"github.com/wooo-jin/punisher/internal/curriculum"
+	"github.com/wooo-jin/punisher/internal/glossary"
 	httpapi "github.com/wooo-jin/punisher/internal/http"
 	"github.com/wooo-jin/punisher/internal/llm"
 	"github.com/wooo-jin/punisher/internal/middleware"
@@ -44,6 +46,12 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "phone" {
 		os.Exit(runPhone(os.Args[2:]))
 	}
+	if len(os.Args) > 1 && os.Args[1] == "samples" {
+		os.Exit(runSamples(os.Args[2:]))
+	}
+	if len(os.Args) > 1 && (os.Args[1] == "export" || os.Args[1] == "import") {
+		os.Exit(runBackup(os.Args[1], os.Args[2:]))
+	}
 	cfg := config.Load()
 	showVersion := flag.Bool("version", false, "버전을 출력하고 종료")
 	flag.IntVar(&cfg.Port, "port", cfg.Port, "포트 (0 = 4710, 사용 중이면 빈 포트)")
@@ -52,7 +60,7 @@ func main() {
 	flag.Usage = func() {
 		flag.CommandLine.SetOutput(os.Stderr)
 		flag.PrintDefaults()
-		fmt.Fprintln(os.Stderr, "\n"+phoneUsage)
+		fmt.Fprintln(os.Stderr, "\n"+phoneUsage+"\n\n"+backupUsage)
 	}
 	flag.Parse()
 	if flag.NArg() > 0 {
@@ -72,7 +80,7 @@ func main() {
 }
 
 const phoneUsage = `폰 연결 (순서는 README.ko.md의 8번을 보세요):
-  punisher phone on    내 폰에서 열 수 있게 켜기. Tailscale 앱이 필요하고, Mac에 로그인할 때 자동으로 켜져요
+  punisher phone on    내 폰에서 열 수 있게 켜기. Tailscale이 필요하고, 로그인할 때 자동으로 켜져요
   punisher phone off   끄기. 자동 시작도 함께 꺼져요`
 
 // runPhone handles `punisher phone on|off` and returns the exit code.
@@ -81,8 +89,8 @@ func runPhone(args []string) int {
 		fmt.Fprintln(os.Stderr, phoneUsage)
 		return 2
 	}
-	if runtime.GOOS != "darwin" {
-		fmt.Fprintln(os.Stderr, "폰 연결은 지금은 macOS에서만 쓸 수 있어요.")
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
+		fmt.Fprintln(os.Stderr, "폰 연결은 macOS와 Linux에서만 쓸 수 있어요.")
 		return 1
 	}
 	m, err := newPhoneManager()
@@ -158,6 +166,13 @@ func run(cfg config.Config) error {
 	}
 	url := "http://" + ln.Addr().String()
 
+	// 같은 데이터 폴더를 두 번 열지 않게(가져오기와 겹치지 않게) 잠근다.
+	lock, err := backup.Lock(cfg.DataDir)
+	if err != nil {
+		_ = ln.Close()
+		return err
+	}
+	defer backup.Unlock(lock)
 	ctx := context.Background()
 	dbPath := filepath.Join(cfg.DataDir, "punisher.db")
 	st, err := store.Open(dbPath)
@@ -172,11 +187,12 @@ func run(cfg config.Config) error {
 	if err := syncCurriculum(ctx, cfg, st); err != nil {
 		return fmt.Errorf("curriculum seed: %w", err)
 	}
+	seedSamples(ctx, st)
 	// 확인 문항 만들기·채점은 이 프로세스 안에서만 돌므로, 지난 실행이 남긴 진행 중 작업은 끝나지 않는다.
 	if r, err := st.RecoverInterruptedChecks(ctx); err != nil {
 		log.Printf("recover interrupted checks: %v", err)
 	} else if r != (store.RecoveredChecks{}) {
-		log.Printf("recovered interrupted checks: %d jobs, %d sessions, %d turns", r.Jobs, r.Sessions, r.Turns)
+		log.Printf("recovered interrupted checks: %d jobs, %d sessions, %d turns, %d exercise attempts", r.Jobs, r.Sessions, r.Turns, r.Attempts)
 	}
 
 	claude := claudecli.New(claudecli.Config{
@@ -186,11 +202,16 @@ func run(cfg config.Config) error {
 		DefaultModel: cfg.LectureModel,
 		DailyLimit:   cfg.DailyCallLimit,
 	})
+	terms, err := glossary.Load(seedfiles.Glossary)
+	if err != nil {
+		log.Printf("glossary: %v (term glosses are generated instead)", err)
+	}
 	svc := &services.Service{
-		Store: st,
-		LLM:   claude,
-		Keys:  services.GatewayKeys{},
-		Hub:   services.NewHub(),
+		Glossary: terms,
+		Store:    st,
+		LLM:      claude,
+		Keys:     services.GatewayKeys{},
+		Hub:      services.NewHub(),
 		Cfg: services.Config{
 			LectureModel:      cfg.LectureModel,
 			FastModel:         cfg.FastModel,

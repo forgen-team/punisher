@@ -101,8 +101,10 @@ func (s *Service) StartDiagnostic(ctx context.Context, userID string, req Diagno
 			return nil, false, err
 		}
 		return s.createDiagnostic(ctx, userID, plan)
+	case check.PurposeSynthesis:
+		return s.startSynthesis(ctx, userID)
 	}
-	return nil, false, invalidCheck(CodeInvalidKind, "kind must be check|pretest|known_verify|placement")
+	return nil, false, invalidCheck(CodeInvalidKind, "kind must be check|pretest|known_verify|placement|synthesis")
 }
 
 // startPretest: the prediction questions of a lecture start — at most once per
@@ -269,6 +271,8 @@ func (s *Service) retryDiagnostic(ctx context.Context, userID string, sess model
 		plan, err = s.knownVerifyPlan(ctx, userID, sess.ConceptID)
 	case check.PurposePlacement:
 		plan, err = s.placementPlan(ctx, userID, chapterOfKey(sess.SessionKey))
+	case check.PurposeSynthesis:
+		return s.retrySynthesis(ctx, userID, sess)
 	default:
 		return models.CheckDetail{}, ErrCheckState
 	}

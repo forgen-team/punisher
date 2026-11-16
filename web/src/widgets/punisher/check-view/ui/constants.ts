@@ -1,5 +1,9 @@
 import type { BadgeTone } from "@/src/shared/ui/kit";
-import type { CheckOutcome, CheckSessionStatus, CheckVerdict } from "@/src/shared/api/punisher";
+import type { CheckOutcome, CheckSessionStatus, CheckVerdict, Confidence } from "@/src/shared/api/punisher";
+
+/** 확신도(v3 §3) */
+export const CONFIDENCE_ORDER: readonly Confidence[] = ["sure", "unsure", "unknown"];
+export const CONFIDENCE_LABELS: Record<Confidence, string> = { sure: "확실", unsure: "대충", unknown: "모름" };
 
 export const VERDICT_TONE: Record<CheckVerdict, BadgeTone> = {
   correct: "success",
@@ -61,7 +65,17 @@ export const DIAGNOSTIC_TITLES = {
   pretest: "예측 질문",
   "known_verify": "이미 앎 확인",
   placement: "배치 진단",
+  synthesis: "이번 주 종합 문제",
 } as const;
+
+/** 종합 문제 결과(v3 §5) — 상자는 움직이지 않는다. */
+export const SYNTHESIS_RESULT_LABELS = {
+  passed: "통과 — 함께 설명할 수 있어요",
+  pulled: "관련 복습을 앞당겼어요",
+  recorded: "기록만 남겼어요",
+} as const;
+
+export const CONFIDENT_ERROR_TITLE = "착각";
 
 /** 배치 진단 결과 */
 export const PLACEMENT_LABELS = {

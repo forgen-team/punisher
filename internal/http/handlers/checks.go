@@ -54,11 +54,16 @@ func (h *LearnHandler) StartCheck(w http.ResponseWriter, r *http.Request) {
 // ErrorNoPlacement: the chapter has too few concepts left to diagnose.
 const ErrorNoPlacement ErrorCode = "NO_PLACEMENT"
 
+// ErrorNoSynthesis: not enough checked concepts for a synthesis, or one this week already.
+const ErrorNoSynthesis ErrorCode = "NO_SYNTHESIS"
+
 func (h *LearnHandler) startDiagnostic(w http.ResponseWriter, r *http.Request, userID string, req services.DiagnosticRequest) {
 	d, created, err := h.Svc.StartDiagnostic(r.Context(), userID, req)
 	switch {
 	case errors.Is(err, services.ErrNoPlacement):
 		writeError(w, r, http.StatusConflict, ErrorNoPlacement, err.Error())
+	case errors.Is(err, services.ErrNoSynthesis):
+		writeError(w, r, http.StatusConflict, ErrorNoSynthesis, err.Error())
 	case err != nil:
 		writeCheckError(w, r, "start diagnostic", err)
 	case d == nil:
@@ -92,6 +97,8 @@ func (h *LearnHandler) AnswerCheck(w http.ResponseWriter, r *http.Request) {
 	}
 	var body struct {
 		Text string `json:"text"`
+		// Confidence: sure | unsure | unknown before the first answer ("" = not chosen, v3 §3).
+		Confidence string `json:"confidence"`
 		// Choice / DontKnow: a diagnostic option (0-based) or '모르겠어요' (P3).
 		Choice   *int `json:"choice"`
 		DontKnow bool `json:"dontKnow"`
@@ -110,7 +117,7 @@ func (h *LearnHandler) AnswerCheck(w http.ResponseWriter, r *http.Request) {
 		writeCheck(w, d)
 		return
 	}
-	d, err := h.Svc.AnswerCheck(r.Context(), userID, id, body.Text)
+	d, err := h.Svc.AnswerCheck(r.Context(), userID, id, body.Text, body.Confidence)
 	if err != nil {
 		writeCheckError(w, r, "answer check", err)
 		return

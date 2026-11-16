@@ -141,6 +141,17 @@ export function showReveal(detail: CheckDetail): boolean {
   return !detail.pending && Boolean(detail.current?.canReveal);
 }
 
+/** 확신도를 묻는지 — 확인·복습 문항의 첫 답 전에만(v3 §3). */
+export function asksConfidence(detail: CheckDetail): boolean {
+  const kind = detail.session.kind;
+  return (kind === "check" || kind === "review") && detail.current?.answers === 0;
+}
+
+/** 결과의 '착각' 묶음 — 확실하다고 했는데 틀린 목표 줄. */
+export function confidentErrors(rows: ResultRow[]): ResultRow[] {
+  return rows.filter((r) => r.confidentError);
+}
+
 /** 보내기 — 답할 차례이고 실행 중이 아니며 1~최대 글자. */
 export function canSend(detail: CheckDetail, text: string): boolean {
   const trimmed = text.trim();

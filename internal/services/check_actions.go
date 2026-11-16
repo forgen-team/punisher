@@ -13,7 +13,13 @@ import (
 // AnswerCheck stores the learner's answer to the current item. With the LLM
 // grader the tutor's reply is written in the background (202, poll while
 // pending); a self-graded session only records the answer (then self-grade).
-func (s *Service) AnswerCheck(ctx context.Context, userID, id, text string) (models.CheckDetail, error) {
+// AnswerCheck answers the current item. confidence (sure|unsure|unknown|"") is
+// the learner's choice before the item's first answer (v3 §3); it is kept on
+// the first answer of a check or review item only and never changes the verdict.
+func (s *Service) AnswerCheck(ctx context.Context, userID, id, text, confidence string) (models.CheckDetail, error) {
+	if !learning.ValidConfidence(confidence) {
+		return models.CheckDetail{}, invalidCheck(CodeInvalidConfidence, "confidence must be sure|unsure|unknown")
+	}
 	text, ok := validText(text, MaxCheckAnswerRunes)
 	if !ok {
 		if text == "" {
@@ -34,6 +40,9 @@ func (s *Service) AnswerCheck(ctx context.Context, userID, id, text string) (mod
 	}
 	p := progressOf(st.turns, item.ID)
 	learner := &store.TurnWrite{ItemID: item.ID, Role: "learner", Move: check.MoveAnswer, Text: text, Aided: len(p.answers) > 0}
+	if len(p.answers) == 0 && confidenceKinds[st.sess.Kind] {
+		learner.Confidence = confidence
+	}
 	if st.sess.Grader == learning.GraderSelf {
 		if len(p.answers) > 0 || p.done {
 			return models.CheckDetail{}, ErrCheckState
@@ -59,6 +68,19 @@ func (s *Service) AnswerCheck(ctx context.Context, userID, id, text string) (mod
 		return s.runCheckTurn(bg, apiKey, userID, id, turn.ID)
 	}, s.failTurn(userID, turn.ID))
 	return s.GetCheck(ctx, userID, id)
+}
+
+// confidenceKinds: sessions whose items ask '확실/대충/모름' (not diagnostics or synthesis).
+var confidenceKinds = map[string]bool{check.PurposeCheck: true, check.PurposeReview: true}
+
+// firstConfidence is the confidence of the item's first learner answer.
+func firstConfidence(turns []models.CheckTurn, itemID string) string {
+	for _, t := range turns {
+		if t.ItemID == itemID && t.Role == "learner" && t.Move == check.MoveAnswer {
+			return t.Confidence
+		}
+	}
+	return ""
 }
 
 func checkStateErr(st checkState) error {
@@ -179,7 +201,8 @@ func judgedTurn(st checkState, turnID string) (models.CheckTurn, store.CheckItem
 	}
 	item, ok := itemByID(st.items, judged.ItemID)
 	// 자기 채점은 학습자 자신의 판정이라 LLM 재채점으로 뒤집지 않는다.
-	if !ok || item.ObjectiveID == "" || !disputable[judged.Outcome] || judged.Verdict == learning.VerdictRevealed ||
+	integrativeBlocked := item.ObjectiveID == "" && st.sess.Kind != check.PurposeSynthesis
+	if !ok || integrativeBlocked || !disputable[judged.Outcome] || judged.Verdict == learning.VerdictRevealed ||
 		judged.Grader == learning.GraderSelf {
 		return *judged, item, ErrCheckState
 	}

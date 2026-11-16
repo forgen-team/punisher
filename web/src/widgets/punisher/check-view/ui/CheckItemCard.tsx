@@ -50,6 +50,7 @@ export function CheckItemCard({ index, total, item, turns, missing, anchorHref, 
       )}
       <div className="text-base">
         <BlockRenderer block={{ anchor: "", type: "markdown", text: item.prompt }} />
+        {item.material?.log && <BlockRenderer block={{ anchor: "", type: "log", text: item.material.log, lang: "text" }} />}
         {item.material?.code && <BlockRenderer block={{ anchor: "", type: "code", text: item.material.code, lang: item.material.lang }} />}
       </div>
       {dialogue.length > 0 && <ul className="flex flex-col gap-3">{dialogue.map((t) => renderTurn(t))}</ul>}

@@ -13,7 +13,10 @@ function card(conceptId: string, patch: Partial<RecheckCard> = {}): RecheckCard 
 const PREFIX = { recheck: "re:", unchecked: "un:" } as const;
 
 const order = (rows: ReturnType<typeof todayRows>) =>
-  rows.map((r) => (r.type === "recommendation" ? r.item.conceptId : `${PREFIX[r.type]}${r.card.conceptId}`));
+  rows.map((r) => {
+    if (r.type === "synthesis") { return "synthesis"; }
+    return r.type === "recommendation" ? r.item.conceptId : `${PREFIX[r.type]}${r.card.conceptId}`;
+  });
 
 function unchecked(conceptId: string): UncheckedCard {
   return { lectureId: `l-${conceptId}`, conceptId, conceptName: conceptId, area: "os", title: "" };
@@ -43,5 +46,9 @@ describe("recheckAction", () => {
     expect(recheckAction(card("x", { due: true, lectureId: "l1" }))).toBe("review");
     expect(recheckAction(card("x", { lectureId: "l1" }))).toBe("check");
     expect(recheckAction(card("x", { lectureId: "" }))).toBe("map");
+  });
+  it("puts this week's synthesis first, before the unchecked lectures", () => {
+    const rows = todayRows([rec("goal_path", "b")], [], [unchecked("u")], true);
+    expect(order(rows)).toEqual(["synthesis", "un:u", "b"]);
   });
 });

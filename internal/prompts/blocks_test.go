@@ -8,7 +8,8 @@ import (
 
 func TestRegistryCoversEditableBlocks(t *testing.T) {
 	want := []string{BlockOutlineTask, BlockTeacherSystem, BlockLectureFormat, BlockReviewerSystem, BlockReviewTask, BlockReviewRecheck, BlockAdjudicator,
-		BlockGlossSystem, BlockQASystem, BlockExplainSystem, BlockResolveSystem, BlockCheckItems, BlockCheckTutor, BlockCheckPretest}
+		BlockGlossSystem, BlockQASystem, BlockExplainSystem, BlockResolveSystem, BlockCheckItems, BlockCheckTutor, BlockCheckPretest,
+		BlockExerciseGrade, BlockLabRead, BlockCheckSynthesis}
 	for _, id := range want {
 		b, ok := LookupBlock(id)
 		if !ok || strings.TrimSpace(b.Default) == "" || b.Purpose == "" || b.StageTitle == "" {
@@ -92,7 +93,7 @@ func TestUnknownVars(t *testing.T) {
 }
 
 func TestAssumedKnowledgeRules(t *testing.T) {
-	if Version != "punisher-prompts-2026-11-13.6" {
+	if Version != "punisher-prompts-2026-11-16.1" {
 		t.Fatalf("version = %s (bump when default blocks change)", Version)
 	}
 	for _, want := range []string{"전제하지 않습니다", "첫 등장에서 정의합니다", "2~3문장", "\"당연히\""} {

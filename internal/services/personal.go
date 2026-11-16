@@ -14,6 +14,10 @@ import (
 type personalContext struct {
 	weak           map[string]bool
 	misconceptions []prompts.Misconception
+	// labOS: the learner's lab environment (user-owned generations only, v3 §4.1).
+	labOS string
+	// signals: '고칠 곳' of the version being remade (regenerations only, v3 §6).
+	signals []string
 }
 
 // LectureContext is the prompt context of t. User-owned generations (Owner set:
@@ -34,6 +38,8 @@ func personalize(pc prompts.LectureContext, p personalContext) prompts.LectureCo
 	pc.Catalog, fromCatalog = splitCatalog(pc.Catalog, p.weak)
 	pc.Revisit = mergeRefs(revisit, fromCatalog)
 	pc.Misconceptions = p.misconceptions
+	pc.LabOS = p.labOS
+	pc.LearnerSignals = p.signals
 	return pc
 }
 

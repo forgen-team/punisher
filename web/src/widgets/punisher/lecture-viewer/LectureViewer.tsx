@@ -5,19 +5,21 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useAtom } from "jotai";
 import { ArrowLeft } from "lucide-react";
 import { Button, EmptyState, ErrorState, ListSkeleton, type MenuItem } from "@/src/shared/ui/kit";
-import { lectureBookmarkAtom, useConceptDetail, useLecture, useLectureLinks, useMastery, usePrompts } from "@/src/entities/punisher";
+import { lectureBookmarkAtom, useConceptDetail, useLecture, useLectureExercises, useLectureLinks, useMastery, usePrompts } from "@/src/entities/punisher";
+import { ExerciseProvider } from "@/src/features/punisher/lecture-exercise";
 import { CheckStartButton, CheckStartError, KnownVerifyChoice, useKnownChoice, useLaunchCheck } from "@/src/features/punisher/check-start";
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import { useLectureProgress } from "@/src/features/punisher/lecture-progress";
 import { PretestPanel, usePretest } from "@/src/features/punisher/pretest";
 import { SelectionExplain } from "@/src/features/punisher/reading-assist";
 import { LectureActionStatus, LectureWrapup, useLectureActions } from "@/src/features/punisher/lecture-actions";
-import { describePunisherError, type DocumentLink } from "@/src/shared/api/punisher";
+import { describePunisherError, type DocumentLink, type SectionFix } from "@/src/shared/api/punisher";
 import { DeeperLecturesSection, ParentLectureLink } from "./ui/DeeperLectures";
 import { FlaggedBanner } from "./ui/FlaggedBanner";
 import { latestPublished } from "./lib/newerVersion";
 import { LectureBody } from "./ui/LectureBody";
 import { RegenerateSheet } from "./ui/RegenerateSheet";
+import { FixesSheet } from "./ui/FixesSheet";
 import { LectureHeader } from "./ui/LectureHeader";
 import { LectureAssistPanel, LectureAssistSheet } from "./ui/LectureSidePanel";
 import { LectureLayout } from "./ui/LectureLayout";
@@ -32,6 +34,8 @@ import { SourcesList } from "./ui/blocks";
  * 강의 뷰어(모바일 우선): 고정 상단 바(목차·질문/메모 시트·⋯) → 제목·메타 → 접힌 목표/범위 → 본문.
  * 넓은 화면 배치는 LectureLayout(lg 접은 목차 · xl 보조 열 · 2xl 펼친 목차). 진도는 스크롤 앵커로 저장·복원된다.
  */
+const NO_FIXES: SectionFix[] = [];
+
 export function LectureViewer({ lectureId }: { lectureId: string }) {
   const router = useRouter();
   const lectureQuery = useLecture(lectureId);
@@ -53,6 +57,8 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
   const links = useLectureLinks(lectureId);
   const prompts = usePrompts();
   const [regenOpen, setRegenOpen] = useState(false);
+  const [fixesOpen, setFixesOpen] = useState(false);
+  const fixes = useLectureExercises(lectureId).data?.fixes ?? NO_FIXES;
   // 본문 생성에 쓰는 블록(개요·강사 원칙·형식·감수)을 바꿨을 때만 '다시 만들기'를 보인다.
   const lecturePromptEdited = (prompts.data?.blocks ?? []).some(
     (b) => b.overridden && (b.stage === "outline" || b.stage === "lecture" || b.stage === "review"),
@@ -130,6 +136,9 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
           },
         ]
       : []),
+    ...(fixes.length > 0
+      ? [{ key: "fixes", label: `고칠 곳 ${fixes.length}`, onSelect: () => setFixesOpen(true) }]
+      : []),
     ...(lecturePromptEdited
       ? [{ key: "regenerate", label: "이 강의 새 프롬프트로 다시 만들기", onSelect: () => setRegenOpen(true) }]
       : []),
@@ -193,7 +202,9 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
           <CheckStartError check={check} />
         </div>
         <div ref={bodyRef} className="mt-6">
-          <LectureBody content={content} onBeforeDeeper={onBeforeDeeper} />
+          <ExerciseProvider lectureId={lectureId}>
+            <LectureBody content={content} onBeforeDeeper={onBeforeDeeper} />
+          </ExerciseProvider>
         </div>
         <SelectionExplain lectureId={lectureId} containerRef={bodyRef} />
         <SourcesList sources={sources} title="이 강의의 출처" />
@@ -212,6 +223,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
       </LectureLayout>
       <TocSheet open={tocOpen} onClose={() => setTocOpen(false)} sections={content.sections} totalMinutes={totalMinutes} />
       <RegenerateSheet lectureId={lectureId} open={regenOpen} onClose={() => setRegenOpen(false)} />
+      <FixesSheet lectureId={lectureId} fixes={fixes} sections={content.sections} open={fixesOpen} onClose={() => setFixesOpen(false)} />
       <KnownVerifyChoice choice={knownChoice} />
       <LectureAssistSheet
         open={assistOpen}

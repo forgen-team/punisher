@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
@@ -88,6 +89,11 @@ func (h *LearnHandler) Today(w http.ResponseWriter, r *http.Request) {
 	}
 	payload := map[string]any{"items": res.Items, "exhausted": res.Exhausted, "review": res.Review, "recheck": res.Recheck, "unchecked": res.Unchecked,
 		"session": res.Session}
+	if due, err := h.Svc.SynthesisDue(r.Context(), userID, time.Now()); err != nil {
+		log.Printf("today synthesis for %s: %v", userID, err) // 종합 카드가 없어도 '오늘'은 그대로 보인다.
+	} else {
+		payload["synthesis"] = map[string]bool{"due": due}
+	}
 	if res.NextChapter != nil {
 		payload["nextChapter"] = res.NextChapter
 	}

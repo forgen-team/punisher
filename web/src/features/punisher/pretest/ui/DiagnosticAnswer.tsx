@@ -1,4 +1,3 @@
-
 import { useState, type FormEvent } from "react";
 import { Button, Input } from "@/src/shared/ui/kit";
 import { describeCheckError, useCheckAnswer, useCheckChoice } from "@/src/entities/punisher";
@@ -21,7 +20,7 @@ export function DiagnosticAnswer({ detail, item }: { detail: CheckDetail; item: 
     event.preventDefault();
     const trimmed = text.trim();
     if (!trimmed || busy) { return; }
-    answer.mutate(trimmed, { onSuccess: () => setText("") });
+    answer.mutate({ text: trimmed }, { onSuccess: () => setText("") });
   }
 
   return (

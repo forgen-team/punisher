@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/wooo-jin/punisher/internal/glossary"
 	"strings"
 	"time"
 
@@ -87,6 +88,8 @@ type Service struct {
 	Now   func() time.Time
 	// Signals: RSS interests/trends for next-chapter suggestions (nil = off, e.g. standalone).
 	Signals SignalSource
+	// Glossary: the shipped term dictionary (nil = none — glosses are generated as before).
+	Glossary *glossary.Glossary
 }
 
 func (s *Service) now() time.Time {

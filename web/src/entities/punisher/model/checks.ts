@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import {
@@ -8,6 +7,7 @@ import {
   punisherKeys,
   punisherQueryDefaults,
   type CheckDetail,
+  type Confidence,
   type ConceptMastery,
   type DiagnosticChoice,
   type DiagnosticRequest,
@@ -88,7 +88,8 @@ function useCheckAction<T>(run: (variables: T) => Promise<CheckDetail>) {
 
 /** 현재 문항에 답하기(202 — 튜터 응답은 폴링으로 받는다). */
 export function useCheckAnswer(id: string) {
-  return useCheckAction((text: string) => punisherApi.answerCheck(id, text));
+  return useCheckAction(({ text, confidence }: { text: string; confidence?: Confidence }) =>
+    punisherApi.answerCheck(id, text, confidence));
 }
 
 /** 예측·배치 문항 — 보기 또는 '모르겠어요'(피드백 없이 기록하고 다음 문항으로). */

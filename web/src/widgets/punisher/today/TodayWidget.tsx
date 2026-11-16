@@ -12,11 +12,13 @@ import { AddStudyRequestForm } from "@/src/features/punisher/study-request-add";
 import { todayRows, type TodayRow } from "./lib/recheck";
 import { reviewCardState } from "./lib/reviewCard";
 import { sessionTimeLabel } from "./lib/sessionTime";
-import { InquiryList, NEW_CHAPTER_PATH, NextChapterCard, RecheckRow, RecommendationRow, RecommendationSheet, ReviewCard, StudyRequestList, UncheckedRow } from "./ui";
+import { InquiryList, NEW_CHAPTER_PATH, NextChapterCard, RecheckRow, RecommendationRow, RecommendationSheet, ReviewCard, StudyRequestList, SynthesisRow, UncheckedRow } from "./ui";
 
 /** 추천 목록의 한 줄 — 확인하기 · 다시 확인 · 추천. */
 function renderRow(row: TodayRow, onOpen: (item: Recommendation) => void) {
   switch (row.type) {
+    case "synthesis":
+      return <SynthesisRow key="synthesis" />;
     case "unchecked":
       return <UncheckedRow key={`unchecked-${row.card.conceptId}`} card={row.card} />;
     case "recheck":
@@ -53,7 +55,7 @@ export function TodayWidget() {
   const items = today.data?.items ?? [];
   const resume = items.filter((item) => item.kind === "resume");
   const recommendations = items.filter((item) => item.kind !== "resume");
-  const rows = todayRows(recommendations, today.data?.recheck, today.data?.unchecked);
+  const rows = todayRows(recommendations, today.data?.recheck, today.data?.unchecked, Boolean(today.data?.synthesis?.due));
   const ready = !today.isLoading && !today.error;
   // 복습 카드는 열들 위 전체 폭 띠(맨 앞) — 3단에서도 열 배치를 바꾸지 않고, '추천 소진' 안내와 다른 칸에 둔다.
   // 완료 여부(오늘 세션)를 받기 전에는 그리지 않는다(숨김 ↔ 접힌 완료가 깜빡이지 않게).

@@ -43,6 +43,9 @@ type settingsBody struct {
 	ReviewMinutes   *int    `json:"reviewMinutes"`
 	ReviewGrader    *string `json:"reviewGrader"`
 	PretestEnabled  *bool   `json:"pretestEnabled"`
+	LabOS           *string `json:"labOs"`
+	// AdaptiveIntervals false resets every objective's ease (interval scale) to the ladder.
+	AdaptiveIntervals *bool `json:"adaptiveIntervals"`
 }
 
 var dailyMinuteOptions = map[int]bool{15: true, 30: true, 45: true, 60: true}
@@ -55,6 +58,7 @@ const (
 	ErrorInvalidMasteryTarget ErrorCode = "INVALID_MASTERY_TARGET"
 	ErrorInvalidIntervals     ErrorCode = "INVALID_INTERVALS"
 	ErrorInvalidReviewMinutes ErrorCode = "INVALID_REVIEW_MINUTES"
+	ErrorInvalidLabOS         ErrorCode = "INVALID_LAB_OS"
 	ErrorSettingsRequired     ErrorCode = "SETTINGS_REQUIRED"
 )
 
@@ -67,7 +71,15 @@ type settingsError struct {
 // settingsPatch validates the given fields; nil error = valid.
 func settingsPatch(body settingsBody) (store.LearningSettingsPatch, *settingsError) {
 	p := store.LearningSettingsPatch{DailyMinutes: body.DailyMinutes, MasteryTarget: body.MasteryTarget,
-		ReviewIntervals: body.ReviewIntervals, ReviewMinutes: body.ReviewMinutes, PretestEnabled: body.PretestEnabled}
+		ReviewIntervals: body.ReviewIntervals, ReviewMinutes: body.ReviewMinutes, PretestEnabled: body.PretestEnabled,
+		AdaptiveIntervals: body.AdaptiveIntervals}
+	if body.LabOS != nil {
+		os := strings.ToLower(strings.TrimSpace(*body.LabOS))
+		if !learning.ValidLabOS(os) {
+			return p, &settingsError{ErrorInvalidLabOS, "labOs must be macos|linux|none"}
+		}
+		p.LabOS = &os
+	}
 	if body.ExampleLanguage != nil {
 		lang := strings.ToLower(strings.TrimSpace(*body.ExampleLanguage))
 		if !learning.IsValidExampleLanguage(lang) {
@@ -92,7 +104,7 @@ func settingsPatch(body settingsBody) (store.LearningSettingsPatch, *settingsErr
 	case body.ReviewMinutes != nil && !learning.ValidReviewMinutes(*body.ReviewMinutes):
 		return p, &settingsError{ErrorInvalidReviewMinutes, "reviewMinutes must be 0~30"}
 	case p.ExampleLanguage == nil && p.DailyMinutes == nil && p.MasteryTarget == nil && p.ReviewIntervals == nil &&
-		p.ReviewMinutes == nil && p.ReviewGrader == nil && p.PretestEnabled == nil:
+		p.ReviewMinutes == nil && p.ReviewGrader == nil && p.PretestEnabled == nil && p.LabOS == nil && p.AdaptiveIntervals == nil:
 		return p, &settingsError{ErrorSettingsRequired, "at least one setting is required"}
 	}
 	return p, nil

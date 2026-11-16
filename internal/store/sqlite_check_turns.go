@@ -29,6 +29,9 @@ type TurnWrite struct {
 	Model        string
 	InputTokens  int
 	OutputTokens int
+	// Confidence: learner turn only (v3 §3); ConfidentError: the item's last judgement.
+	Confidence     string
+	ConfidentError bool
 }
 
 // GradeRecord is check_turns.grade: the evidence of a judgement plus, on the
@@ -46,12 +49,14 @@ type GradeRecord struct {
 }
 
 const turnColumns = `id, COALESCE(item_id, ''), seq, role, move, text, status, COALESCE(verdict, ''),
-	COALESCE(outcome, ''), aided, grader, reused_item, grade, model, error, created_at`
+	COALESCE(outcome, ''), aided, grader, reused_item, grade, model, error, created_at,
+	COALESCE(learner_confidence, ''), confident_error`
 
 func scanTurn(row rowScanner) (models.CheckTurn, error) {
 	var t models.CheckTurn
 	err := row.Scan(&t.ID, &t.ItemID, &t.Seq, &t.Role, &t.Move, &t.Text, &t.Status, &t.Verdict,
-		&t.Outcome, &t.Aided, &t.Grader, &t.ReusedItem, rawJSON(&t.GradeRaw), &t.Model, &t.Error, ts(&t.CreatedAt))
+		&t.Outcome, &t.Aided, &t.Grader, &t.ReusedItem, rawJSON(&t.GradeRaw), &t.Model, &t.Error, ts(&t.CreatedAt),
+		&t.Confidence, &t.ConfidentError)
 	return t, err
 }
 
@@ -97,13 +102,13 @@ func insertTurn(ctx context.Context, c conn, t TurnWrite) (models.CheckTurn, err
 	}
 	saved, err := scanTurn(c.row(ctx, `
 		INSERT INTO check_turns (id, session_id, user_id, item_id, seq, role, move, text, status, verdict, outcome,
-			aided, grader, reused_item, grade, model, input_tokens, output_tokens)
+			aided, grader, reused_item, grade, model, input_tokens, output_tokens, learner_confidence, confident_error)
 		SELECT $17, $1, $2, NULLIF($3, ''),
 			(SELECT COALESCE(MAX(seq), 0) + 1 FROM check_turns WHERE session_id = $1),
-			$4, $5, $6, $7, NULLIF($8, ''), NULLIF($9, ''), $10, $11, $12, $13, $14, $15, $16
+			$4, $5, $6, $7, NULLIF($8, ''), NULLIF($9, ''), $10, $11, $12, $13, $14, $15, $16, NULLIF($18, ''), $19
 		RETURNING `+turnColumns,
 		t.SessionID, t.UserID, t.ItemID, t.Role, t.Move, t.Text, t.Status, t.Verdict, t.Outcome,
-		t.Aided, t.Grader, t.ReusedItem, grade, t.Model, t.InputTokens, t.OutputTokens, t.ID))
+		t.Aided, t.Grader, t.ReusedItem, grade, t.Model, t.InputTokens, t.OutputTokens, t.ID, t.Confidence, t.ConfidentError))
 	if err != nil {
 		return saved, constraintErr(err)
 	}
@@ -119,9 +124,10 @@ func updateTurn(ctx context.Context, c conn, t TurnWrite) error {
 	res, err := c.exec(ctx, `
 		UPDATE check_turns SET status = 'ready', move = $3, text = $4, verdict = NULLIF($5, ''), outcome = NULLIF($6, ''),
 			aided = $7, grader = $8, grade = $9, model = $10, input_tokens = input_tokens + $11, output_tokens = output_tokens + $12, error = '',
-			reused_item = (reused_item OR $13)
+			reused_item = (reused_item OR $13), confident_error = $14
 		WHERE user_id = $1 AND id = $2 AND status IN ('pending', 'ready')`,
-		t.UserID, t.ID, t.Move, t.Text, t.Verdict, t.Outcome, t.Aided, t.Grader, grade, t.Model, t.InputTokens, t.OutputTokens, t.ReusedItem)
+		t.UserID, t.ID, t.Move, t.Text, t.Verdict, t.Outcome, t.Aided, t.Grader, grade, t.Model, t.InputTokens, t.OutputTokens, t.ReusedItem,
+		t.ConfidentError)
 	if err != nil {
 		return fmt.Errorf("update check turn: %w", err)
 	}

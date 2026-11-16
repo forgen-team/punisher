@@ -177,6 +177,8 @@ export interface TodayResponse {
   recheck?: RecheckCard[];
   /** 끝냈지만 확인하기를 안 한 강의의 "○○ 확인하기"(추천·exhausted 와 별개) — 확인해야 복습 일정이 잡힌다 */
   unchecked?: UncheckedCard[];
+  /** 이번 주 종합 문제를 지금 할 수 있는지(v3 §5) */
+  synthesis?: { due: boolean };
   /** 오늘 학습 세션 시간 합계(v2.2 §5) */
   session?: TodaySession;
 }
@@ -241,7 +243,9 @@ export interface InstantResponse {
 export type BlockType =
   | "markdown" | "mermaid" | "code" | "log" | "misconception" | "term" | "sources"
   // 구조 블록(v2.2 §6) — data 는 trace·chart·diff, kind 는 keypoint 종류
-  | "keypoint" | "trace" | "chart" | "diff" | "pause" | "exercise" | "answer" | "summary";
+  | "keypoint" | "trace" | "chart" | "diff" | "pause" | "exercise" | "answer" | "summary"
+  // 실습(v3 §4) — kind 는 os(macos | linux | any), text 는 "$ 명령" · 보는 곳: · 예상:
+  | "lab";
 
 export interface LectureBlock {
   anchor: string;
@@ -254,7 +258,7 @@ export interface LectureBlock {
   sources?: DocumentLink[];
   /** 구조 블록 데이터(JSON 객체) — 화면이 검증한 뒤 그린다 */
   data?: unknown;
-  /** keypoint 종류: definition | caution | rule */
+  /** keypoint 종류: definition | caution | rule · lab 은 os: macos | linux | any */
   kind?: string;
 }
 

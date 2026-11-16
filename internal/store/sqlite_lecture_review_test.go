@@ -80,13 +80,12 @@ func TestUpgradeFromV013(t *testing.T) {
 	if !indexExists(t, s, "check_turns_user_item_idx") || !indexExists(t, s, "check_turns_user_created_idx") {
 		t.Fatal("014 indexes missing")
 	}
-	var l lockedMastery
-	if err := s.tx(ctx, func(c conn) error {
-		var err error
-		l, err = lockMastery(ctx, c, testUser, objectiveID)
-		return err
-	}); err != nil || !l.Exists || l.Mark != "" || l.M.Box != 2 {
-		t.Fatalf("mastery after 014 = %+v (%v)", l, err)
+	// 014 schema (no ease yet): read the row directly rather than with today's lockMastery.
+	var box int
+	var mark string
+	if err := s.c().row(ctx, `SELECT box, COALESCE(last_evidence_turn_id, '') FROM user_objective_mastery WHERE user_id = $1 AND objective_id = $2`,
+		testUser, objectiveID).Scan(&box, &mark); err != nil || mark != "" || box != 2 {
+		t.Fatalf("mastery after 014 = box %d mark %q (%v)", box, mark, err)
 	}
 	if m, created, err := s.AcknowledgeMisconception(ctx, testUser, turnID); err != nil || !created || m.Text != "항상 디스크에서 읽는다" {
 		t.Fatalf("old turn acknowledged after 014 = %+v %v (%v)", m, created, err)
@@ -94,12 +93,9 @@ func TestUpgradeFromV013(t *testing.T) {
 	if _, err := s.ReopenObjective(ctx, testUser, objectiveID); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.tx(ctx, func(c conn) error {
-		var err error
-		l, err = lockMastery(ctx, c, testUser, objectiveID)
-		return err
-	}); err != nil || l.Mark == "" || l.M.Box != 0 {
-		t.Fatalf("relearn moves the marker: %+v (%v)", l, err)
+	if err := s.c().row(ctx, `SELECT box, COALESCE(last_evidence_turn_id, '') FROM user_objective_mastery WHERE user_id = $1 AND objective_id = $2`,
+		testUser, objectiveID).Scan(&box, &mark); err != nil || mark == "" || box != 0 {
+		t.Fatalf("relearn moves the marker: box %d mark %q (%v)", box, mark, err)
 	}
 
 	// 014 → 015
@@ -144,4 +140,58 @@ func TestUpgradeFromV013(t *testing.T) {
 	if _, err := s.LoadToday(ctx, testUser, time.Now()); err != nil {
 		t.Fatalf("today after 015: %v", err)
 	}
+}
+
+// TestUpgradeFromV015 builds a v0.7.0 database (001–015) with a mastery row and
+// saved settings, then applies 016: the row keeps its box with ease 2.0 (the
+// ladder as set), settings get the machine's lab environment and adaptive
+// intervals on, and the new tables/columns work.
+func TestUpgradeFromV015(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "punisher.db")
+	old, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := old.Migrate(ctx, migrationsBefore(t, "016")); err != nil {
+		t.Fatalf("015 migrate: %v", err)
+	}
+	conceptID, objectiveID := masteryFixture(t, old, testUser)
+	if _, err := old.c().exec(ctx, `INSERT INTO user_objective_mastery (user_id, objective_id, concept_id, box, best, lapses)
+		VALUES ($1, $2, $3, 2, 'unaided', 0)`, testUser, objectiveID, conceptID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := old.c().exec(ctx, `INSERT INTO user_learning_settings (user_id, example_language, daily_minutes, updated_at)
+		VALUES ($1, 'go', 30, NOW())`, testUser); err != nil {
+		t.Fatal(err)
+	}
+
+	s := reopenAt(t, old, path, "")
+	t.Cleanup(func() { _ = s.Close() })
+	var l lockedMastery
+	if err := s.tx(ctx, func(c conn) error {
+		var err error
+		l, err = lockMastery(ctx, c, testUser, objectiveID)
+		return err
+	}); err != nil || l.M.Box != 2 || l.M.Ease != learning.EaseDefault {
+		t.Fatalf("mastery after 016 = %+v (%v)", l.M, err)
+	}
+	st, err := s.GetLearningSettings(ctx, testUser)
+	if err != nil || st.ExampleLanguage != "go" || st.LabOS != defaultLabOS() || !st.AdaptiveIntervals {
+		t.Fatalf("settings after 016 = %+v (%v)", st, err)
+	}
+	if a, err := s.InsertExerciseAttempt(ctx, NewExerciseAttempt{UserID: testUser, LectureID: insertLecture(t, s, conceptID, objectiveID),
+		Anchor: "principles-1", ContentHash: "h", Kind: learning.AttemptExercise, Verdict: learning.ExerciseSkipped, Status: AttemptDone}); err != nil || a.ID == "" {
+		t.Fatalf("exercise attempt after 016: %+v (%v)", a, err)
+	}
+}
+
+func insertLecture(t *testing.T, s *SQLiteStore, conceptID, objectiveID string) string {
+	t.Helper()
+	id := NewID()
+	if _, err := s.c().exec(context.Background(), `INSERT INTO lectures (id, concept_id, objective_ids, objective_key, depth, kind, status, title, content)
+		VALUES ($1, $2, $3, $4, 1, 'instant', 'published', 't', '{}')`, id, conceptID, []string{objectiveID}, objectiveID+":v3"); err != nil {
+		t.Fatal(err)
+	}
+	return id
 }

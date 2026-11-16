@@ -38,6 +38,7 @@ func (s *Service) writeItemSet(ctx context.Context, apiKey string, call itemSetC
 		}
 		parsed, perr := llmjson.TryParseJSON[check.ItemSet](text)
 		if perr != nil {
+			logf("item set attempt %d: %v; output tail: %q", n, perr, tail(text, 400))
 			problems = []string{"JSON 을 해석할 수 없습니다: " + perr.Error()}
 			tries = append(tries, store.AttemptRecord{Attempt: n, Result: "parse_error", Message: perr.Error()})
 			continue
@@ -50,4 +51,12 @@ func (s *Service) writeItemSet(ctx context.Context, apiKey string, call itemSetC
 		return parsed, u, tries, nil
 	}
 	return check.ItemSet{}, u, tries, errors.New("check items failed validation: " + strings.Join(problems, "; "))
+}
+
+// tail is the last n bytes of s (for logging a malformed model output).
+func tail(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[len(s)-n:]
 }

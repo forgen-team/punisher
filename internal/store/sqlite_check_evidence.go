@@ -39,7 +39,13 @@ type ItemFinish struct {
 	// review counts as one while its objective is in the verification queue.
 	KnownVerify bool
 	Intervals   []int
-	Now         time.Time
+	// Confidence: the learner's choice before the item's first answer (v3 §3, "" = none).
+	Confidence string
+	// Adaptive: adaptive intervals on — the objective's ease is updated (v3 §7).
+	Adaptive bool
+	// Synthesis: a synthesis session item — a failure pulls the covered reviews forward (v3 §5).
+	Synthesis bool
+	Now       time.Time
 }
 
 // ResultEntry is one item's line of the session result (check_sessions.result.items).
@@ -58,6 +64,8 @@ type ResultEntry struct {
 	Queued bool `json:"queued"`
 	// Relearn: a '이미 앎' verification that did not pass — '다시 배우기' is offered.
 	Relearn bool `json:"relearn,omitempty"`
+	// ConfidentError: failed although sure ('착각', v3 §3).
+	ConfidentError bool `json:"confidentError,omitempty"`
 }
 
 // FinishCheckItem applies an item's evidence (see ItemFinish) and returns its outcome.
@@ -86,6 +94,7 @@ func (s *SQLiteStore) FinishCheckItem(ctx context.Context, f ItemFinish) (string
 			return err
 		}
 		f.Turn.UserID, f.Turn.SessionID, f.Turn.Outcome, f.Turn.Grade = f.UserID, f.SessionID, entry.Outcome, grade
+		f.Turn.ConfidentError = entry.ConfidentError
 		if insert {
 			_, err = insertTurn(ctx, c, f.Turn)
 		} else {
@@ -119,6 +128,9 @@ func applyItemEvidence(ctx context.Context, c conn, f ItemFinish) (ResultEntry, 
 		if f.IntegrativeOK {
 			return entry, grade, creditIntegrative(ctx, c, f.UserID, f.Item.Rubric.Covers)
 		}
+		if f.Synthesis && entry.Outcome == learning.OutcomeFailed {
+			return entry, grade, pullDueCovers(ctx, c, f.UserID, f.Item.Rubric.Covers, f.Now, f.Intervals)
+		}
 		return entry, grade, nil
 	}
 	l, err := lockMastery(ctx, c, f.UserID, f.Item.ObjectiveID)
@@ -138,6 +150,10 @@ func applyItemEvidence(ctx context.Context, c conn, f ItemFinish) (ResultEntry, 
 		if verify {
 			next = learning.ApplyKnownVerify(m, entry.Outcome, f.Now, f.Intervals)
 		}
+		next.Ease = prev.Ease
+		if f.Adaptive {
+			next.Ease = learning.UpdateEase(prev.Ease, prev, next, entry.Outcome, f.Confidence)
+		}
 		m = learning.QueueEntry(prev, next, f.Hold)
 		if updated, err = saveMastery(ctx, c, f.UserID, f.Item.ObjectiveID, f.Turn.Grader, m, f.Turn.ID); err != nil {
 			return entry, grade, err
@@ -145,6 +161,7 @@ func applyItemEvidence(ctx context.Context, c conn, f ItemFinish) (ResultEntry, 
 		mark = f.Turn.ID
 	}
 	grade.Mark = &mark
+	entry.ConfidentError = learning.ConfidentError(f.Confidence, entry.Outcome)
 	if entry.Outcome == learning.OutcomeUnaidedCorrect { // 혼자 맞히면 그 목표의 인정한 오개념은 고친 것(design §5 P4).
 		if err := resolveMisconceptions(ctx, c, f.UserID, f.Item.ObjectiveID); err != nil {
 			return entry, grade, err
@@ -200,6 +217,8 @@ type DisputeResolve struct {
 	ConflictText string
 	Now          time.Time
 	Intervals    []int
+	// Covers: a synthesis item's objectives — an accepted dispute credits them (v3 §5).
+	Covers []string
 }
 
 // ResolveDispute stores the regrade. When accepted, the item's evidence is
@@ -216,6 +235,11 @@ func (s *SQLiteStore) ResolveDispute(ctx context.Context, d DisputeResolve) (boo
 		if d.Accepted && d.ObjectiveID != "" {
 			var err error
 			if conflict, err = restoreEvidence(ctx, c, d); err != nil {
+				return err
+			}
+		}
+		if d.Accepted && d.ObjectiveID == "" && len(d.Covers) > 0 {
+			if err := creditIntegrative(ctx, c, d.UserID, d.Covers); err != nil {
 				return err
 			}
 		}

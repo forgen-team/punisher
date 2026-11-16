@@ -200,4 +200,17 @@ type Store interface {
 	OpenMisconceptions(ctx context.Context, userID, conceptID string, limit int) ([]models.Misconception, error)
 	MisconceptionTurnIDs(ctx context.Context, userID, sessionID string) ([]string, error)
 	EvidencedMastery(ctx context.Context, userID string) ([]models.ObjectiveMastery, error)
+
+	// v3: in-lecture exercises/labs, lecture signals, synthesis (design v3 §2·§5·§6)
+	InsertExerciseAttempt(ctx context.Context, a NewExerciseAttempt) (models.ExerciseAttempt, error)
+	FinishExerciseAttempt(ctx context.Context, userID, id, status, verdict, feedback, model string) error
+	LatestExerciseAttempts(ctx context.Context, userID, lectureID string) ([]models.ExerciseAttempt, error)
+	GetExerciseAttempt(ctx context.Context, userID, id string) (models.ExerciseAttempt, error)
+	DeleteExerciseAttempt(ctx context.Context, userID, id string) error
+	LectureSignals(ctx context.Context, userID, lectureID string) ([]learning.SectionSignal, error)
+	SynthesisCandidates(ctx context.Context, userID string) ([]learning.SynthesisCandidate, error)
+	ConceptNeighbors(ctx context.Context, conceptIDs []string) (map[string][]string, error)
+	LastSynthesisAt(ctx context.Context, userID string) (*time.Time, error)
+	SaveSynthesisItems(ctx context.Context, d SynthesisItems) ([]CheckItem, error)
+	SynthesisObjectives(ctx context.Context, userID string, ids []string) ([]SynthesisObjective, error)
 }

@@ -29,10 +29,10 @@ func ApplyKnownVerify(m Mastery, outcome string, now time.Time, intervals []int)
 	m.Best, m.Stale = BestUnaided, false
 	if m.Box < 1 {
 		m.Box, m.LastCreditAt = 1, timePtr(now)
-		next := Due(1, now, intervals)
+		next := m.due(1, now, intervals)
 		m.NextReviewAt = &next
 	} else if m.NextReviewAt == nil && m.GradStep != GradDone {
-		next := Due(m.Box, now, intervals)
+		next := m.due(m.Box, now, intervals)
 		m.NextReviewAt = &next
 	}
 	return m

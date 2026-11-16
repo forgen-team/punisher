@@ -1,6 +1,5 @@
-
 import { useState, type FocusEvent, type KeyboardEvent } from "react";
-import { Field, FieldInput, Select } from "@/src/shared/ui/kit";
+import { Field, FieldInput, Select, Switch } from "@/src/shared/ui/kit";
 import { MASTERY_LABELS, REVIEW_GRADER_LABELS } from "@/src/entities/punisher";
 import type { LearningSettings, LearningSettingsPatch, ReviewGrader } from "@/src/shared/api/punisher";
 import { MASTERY_TARGET_OPTIONS, REVIEW_MINUTE_OPTIONS, formatIntervals, parseIntervals, type SettingsField } from "./reviewSettings";
@@ -82,6 +81,13 @@ export function ReviewSettingsFields({ settings, saving, onSave, fieldError }: R
             </option>
           ))}
         </Select>
+      </Field>
+      <Field label="복습 간격 자동 조절" error={fieldError("adaptiveIntervals")}>
+        <Switch
+          checked={settings.adaptiveIntervals ?? true}
+          disabled={saving}
+          onCheckedChange={(checked) => onSave({ adaptiveIntervals: checked })}
+        />
       </Field>
       <Field label="복습 채점 방식" error={fieldError("reviewGrader")}>
         <Select value={settings.reviewGrader} disabled={saving} onChange={(event) => onSave({ reviewGrader: event.target.value as ReviewGrader })}>

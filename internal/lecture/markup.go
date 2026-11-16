@@ -180,6 +180,9 @@ func (p *parser) openBlock(kind string, attrs map[string]string) {
 		if kind == BlockKeypoint {
 			b.Kind = attrs["kind"]
 		}
+		if kind == BlockLab {
+			b.Kind = attrs["os"]
+		}
 		b.ConceptID = attrs["concept"]
 		b.Term = attrs["term"]
 		_, b.Proposed = attrs["proposed"]
@@ -218,7 +221,7 @@ func (p *parser) flushBlock() {
 // proseBlocks keep their text trimmed (markdown or a single line).
 var proseBlocks = map[string]bool{
 	BlockMarkdown: true, BlockMisconception: true, BlockTerm: true, BlockKeypoint: true,
-	BlockPause: true, BlockExercise: true, BlockAnswer: true, BlockSummary: true,
+	BlockPause: true, BlockExercise: true, BlockAnswer: true, BlockSummary: true, BlockLab: true,
 }
 
 func (p *parser) flushSection() {

@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -35,8 +36,11 @@ type Manager struct {
 	Tailscale     string   // explicit CLI path ("" = search)
 	AppPaths      []string // CLI locations tried after PATH
 	Launchctl     string
-	Out           io.Writer
-	In            io.Reader
+	// GOOS picks the service manager: launchd on darwin, systemd --user on linux.
+	GOOS      string
+	Systemctl string
+	Out       io.Writer
+	In        io.Reader
 
 	// Probes (real ones by default; see New).
 	IsPunisher func(port int) bool
@@ -55,7 +59,7 @@ func New(dataDir string, customDataDir bool, executable, home string, env []stri
 			"/usr/local/bin/tailscale",
 			"/opt/homebrew/bin/tailscale",
 		},
-		Launchctl: "/bin/launchctl", Out: os.Stdout, In: os.Stdin,
+		Launchctl: "/bin/launchctl", GOOS: runtime.GOOS, Systemctl: "systemctl", Out: os.Stdout, In: os.Stdin,
 		IsPunisher: localPunisher, PortFree: localPortFree,
 		Wait: 15 * time.Second, Poll: 200 * time.Millisecond,
 	}
@@ -89,7 +93,7 @@ func localPortFree(port int) bool {
 }
 
 const msgNoTailscale = `Tailscale을 찾을 수 없어요.
-https://tailscale.com/download 에서 Mac용 Tailscale을 설치하고 로그인한 뒤 다시 실행해 주세요.`
+https://tailscale.com/download 에서 Tailscale을 설치하고 로그인한 뒤 다시 실행해 주세요.`
 
 const msgAskOwner = "직접 설정한 적이 없다면 이 문구를 Punisher를 준 사람에게 보여 주세요."
 
@@ -104,6 +108,9 @@ func (m *Manager) findTailscale() (string, error) {
 		if fi, err := os.Stat(p); err == nil && !fi.IsDir() && fi.Mode()&0o111 != 0 {
 			return p, nil
 		}
+	}
+	if m.GOOS == "linux" {
+		return "", errors.New(msgNoTailscale + "\n" + msgOperator)
 	}
 	return "", errors.New(msgNoTailscale)
 }
@@ -229,11 +236,17 @@ func (m *Manager) launchctl(ctx context.Context, args ...string) ([]byte, error)
 }
 
 func (m *Manager) agentLoaded(ctx context.Context) bool {
+	if m.GOOS == "linux" {
+		return m.unitActive(ctx)
+	}
 	_, err := m.launchctl(ctx, "print", m.launchDomain()+"/"+Label)
 	return err == nil
 }
 
 func (m *Manager) bootout(ctx context.Context) error {
+	if m.GOOS == "linux" {
+		return m.stopUnit(ctx)
+	}
 	if !m.agentLoaded(ctx) {
 		return nil
 	}
@@ -262,6 +275,9 @@ func (m *Manager) waitUntil(ctx context.Context, cond func() bool) bool {
 }
 
 func (m *Manager) installAgent(ctx context.Context) error {
+	if m.GOOS == "linux" {
+		return m.installUnit(ctx)
+	}
 	if err := os.MkdirAll(filepath.Dir(m.plistPath()), 0o755); err != nil {
 		return err
 	}
@@ -279,7 +295,11 @@ func (m *Manager) installAgent(ctx context.Context) error {
 
 func (m *Manager) removeAgent(ctx context.Context) error {
 	err := m.bootout(ctx)
-	if rerr := os.Remove(m.plistPath()); rerr != nil && !errors.Is(rerr, os.ErrNotExist) {
+	path := m.plistPath()
+	if m.GOOS == "linux" {
+		path = m.unitPath()
+	}
+	if rerr := os.Remove(path); rerr != nil && !errors.Is(rerr, os.ErrNotExist) {
 		err = errors.Join(err, rerr)
 	}
 	return err
@@ -292,7 +312,13 @@ func (m *Manager) serveOn(ctx context.Context, ts string) error {
 	defer cancel()
 	cmd := exec.CommandContext(ctx, ts, "serve", "--bg", "--https="+httpsPort, strconv.Itoa(m.Port))
 	cmd.Stdout, cmd.Stderr, cmd.Stdin = m.Out, m.Out, m.In
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		if m.GOOS == "linux" {
+			return fmt.Errorf("%w\n%s", err, msgOperator)
+		}
+		return err
+	}
+	return nil
 }
 
 // On turns phone access on. Refusals happen before anything changes; if a

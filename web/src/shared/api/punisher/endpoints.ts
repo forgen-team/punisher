@@ -30,9 +30,10 @@ import type { LearningSettingsPatch, LearningSettingsResponse, LectureLinks, Sel
 import type { PromptHistoryEntry, PromptPreview, PromptSaveResponse, PromptsResponse } from "./promptTypes";
 import type { ChapterDraftResponse, ChapterSuggestionsResponse } from "./chapterTypes";
 import type { CompletedArea, CompletedItem, Inquiry, InquiryFollowup } from "./inquiryTypes";
-import type { CheckDetail, ConceptMastery, DiagnosticChoice, DiagnosticRequest } from "./checkTypes";
+import type { CheckDetail, ConceptMastery, Confidence, DiagnosticChoice, DiagnosticRequest } from "./checkTypes";
 import type { CheckHistoryKind, CheckHistoryPage, ConceptMasterySummary, MasteryMetrics, ReviewSummary } from "./reviewTypes";
 import type { Misconception, MisconceptionStatus } from "./misconceptionTypes";
+import type { ExerciseAttempt, ExerciseInput, LectureExercises } from "./exerciseTypes";
 
 const enc = encodeURIComponent;
 
@@ -67,7 +68,9 @@ export const punisherApi = {
       json: options.queueVerify ? { queueVerify: true } : undefined,
     }),
   getGloss: (conceptId: string) =>
-    punisherFetch<{ conceptId: string; gloss: string; cached: boolean }>(`/terms/${enc(conceptId)}/gloss`),
+    punisherFetch<{ conceptId: string; gloss: string; cached: boolean; term?: string; relatedConceptId?: string }>(
+      `/terms/${enc(conceptId)}/gloss`,
+    ),
 
   // Today & study requests
   getToday: (limit = 5) => punisherFetch<TodayResponse>(`/today${query({ limit })}`),
@@ -126,6 +129,13 @@ export const punisherApi = {
       method: "POST",
       json: { anchor, selection },
     }),
+  listExercises: (lectureId: string) => punisherFetch<LectureExercises>(`/lectures/${enc(lectureId)}/exercises`),
+  submitExercise: (lectureId: string, input: ExerciseInput) =>
+    punisherFetch<{ attempt: ExerciseAttempt }>(`/lectures/${enc(lectureId)}/exercises`, { method: "POST", json: input }).then(
+      (r) => r.attempt,
+    ),
+  deleteExercise: (lectureId: string, attemptId: string) =>
+    punisherFetch<void>(`/lectures/${enc(lectureId)}/exercises/${enc(attemptId)}`, { method: "DELETE" }),
   getQuestion: (id: string) =>
     punisherFetch<{ question: Question }>(`/questions/${enc(id)}`).then((r) => r.question),
 
@@ -199,8 +209,9 @@ export const punisherApi = {
   /** 예측·배치 문항의 보기 또는 '모르겠어요'(피드백 없이 기록). */
   answerChoice: (id: string, answer: DiagnosticChoice) =>
     punisherFetch<CheckDetail>(`/checks/${enc(id)}/answers`, { method: "POST", json: answer }),
-  answerCheck: (id: string, text: string) =>
-    punisherFetch<CheckDetail>(`/checks/${enc(id)}/answers`, { method: "POST", json: { text } }),
+  /** confidence: 답 전에 고른 확신도(첫 답만 저장, v3 §3). */
+  answerCheck: (id: string, text: string, confidence?: Confidence) =>
+    punisherFetch<CheckDetail>(`/checks/${enc(id)}/answers`, { method: "POST", json: confidence ? { text, confidence } : { text } }),
   revealCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/reveal`, { method: "POST" }),
   disputeCheck: (id: string, turnId: string, reason?: string) =>
     punisherFetch<CheckDetail>(`/checks/${enc(id)}/turns/${enc(turnId)}/dispute`, {

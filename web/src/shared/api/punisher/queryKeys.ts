@@ -36,6 +36,7 @@ export const punisherKeys = {
   reviewSummary: () => ["punisher", "review-summary"] as const,
   checkHistory: () => ["punisher", "check-history"] as const,
   misconceptions: (status: string) => ["punisher", "misconceptions", status] as const,
+  exercises: (lectureId: string) => ["punisher", "exercises", lectureId] as const,
 };
 
 /** Keys whose data depends on the user's learning state. */

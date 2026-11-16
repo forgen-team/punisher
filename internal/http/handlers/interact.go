@@ -100,7 +100,11 @@ func (h *LearnHandler) Gloss(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, r, "gloss", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"conceptId": conceptID, "gloss": gloss, "cached": cached})
+	payload := map[string]any{"conceptId": conceptID, "gloss": gloss, "cached": cached}
+	if t, ok := h.Svc.Glossary.Term(conceptID); ok { // 기본 용어: 이름과 '더 깊게' 대상 개념
+		payload["term"], payload["relatedConceptId"] = t.Name, t.Concept
+	}
+	writeJSON(w, http.StatusOK, payload)
 }
 
 type noteBody struct {

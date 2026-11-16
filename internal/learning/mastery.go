@@ -73,6 +73,9 @@ type Mastery struct {
 	Queued bool `json:"queued"`
 	// Verify: in the known-verification queue (bulk '이미 앎', design §5 P3).
 	Verify bool `json:"verify,omitempty"`
+	// Ease scales this objective's review intervals (v3 §7): 2.0 = the ladder as set,
+	// 0 = neutral (adaptive intervals off, or a snapshot from before v3).
+	Ease float64 `json:"ease,omitempty"`
 }
 
 // NewMastery is the state of an objective without evidence.
@@ -142,7 +145,7 @@ func ApplyEvidence(m Mastery, outcome string, now time.Time, intervals []int) Ma
 	case OutcomeUnaidedCorrect:
 		m = applyUnaidedCorrect(m, now, intervals)
 	case OutcomeUnaidedPartial:
-		next := Due(max(m.Box-1, 0), now, intervals)
+		next := m.due(max(m.Box-1, 0), now, intervals)
 		m.NextReviewAt = &next
 	case OutcomeAided, OutcomeFailed:
 		best := BestAided
@@ -152,7 +155,7 @@ func ApplyEvidence(m Mastery, outcome string, now time.Time, intervals []int) Ma
 		if m.Box >= 2 {
 			m.Lapses++
 		}
-		next := Due(0, now, intervals)
+		next := m.due(0, now, intervals)
 		m.Box, m.GradStep, m.Best = 0, GradLadder, MaxBest(m.Best, best)
 		m.LastFailAt, m.NextReviewAt = timePtr(now), &next
 	default: // held (and anything unknown): no change
@@ -167,7 +170,7 @@ func applyUnaidedCorrect(m Mastery, now time.Time, intervals []int) Mastery {
 	if m.LastCreditAt != nil && now.Sub(*m.LastCreditAt) < MinCreditGap {
 		m.Box = max(m.Box, 1)
 		if m.NextReviewAt == nil && m.GradStep != GradDone {
-			next := Due(m.Box, now, intervals)
+			next := m.due(m.Box, now, intervals)
 			m.NextReviewAt = &next
 		}
 		return m
@@ -178,11 +181,11 @@ func applyUnaidedCorrect(m Mastery, now time.Time, intervals []int) Mastery {
 	case m.GradStep == GradDone:
 		m.NextReviewAt = nil
 	case m.Box >= MaxBox:
-		next := dueIn(GraduationDays, now)
+		next := dueIn(ScaledDays(GraduationDays, m.Ease), now)
 		m.GradStep, m.NextReviewAt = GradPending, &next
 	default:
 		m.Box++
-		next := Due(m.Box, now, intervals)
+		next := m.due(m.Box, now, intervals)
 		m.NextReviewAt = &next
 	}
 	if m.Box >= 2 {
@@ -242,6 +245,15 @@ func Due(box int, now time.Time, intervals []int) time.Time {
 	}
 	i := min(max(box-1, 0), len(intervals)-1)
 	return dueIn(intervals[i], now)
+}
+
+// due is Due with the objective's interval scale (Ease).
+func (m Mastery) due(box int, now time.Time, intervals []int) time.Time {
+	if len(intervals) == 0 {
+		intervals = DefaultReviewIntervals
+	}
+	i := min(max(box-1, 0), len(intervals)-1)
+	return dueIn(ScaledDays(intervals[i], m.Ease), now)
 }
 
 func dueIn(days int, now time.Time) time.Time {

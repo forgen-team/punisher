@@ -94,7 +94,7 @@ func (s *Service) targetForPlan(ctx context.Context, userID string, concept mode
 	pc := prompts.LectureContext{
 		ConceptID: concept.ID, ConceptName: concept.Name, Area: concept.Area, Depth: plan.Depth,
 		Summary: concept.Summary, PracticalCases: concept.PracticalCases, StyleHint: prompts.StyleHintFor(feedback),
-		Query: query, ExampleLanguage: s.exampleLanguageName(ctx, userID),
+		Query: query, ExampleLanguage: s.exampleLanguageName(ctx, userID), Glossary: s.glossaryRefs(),
 	}
 	for _, d := range concept.DocLinks {
 		pc.DocLinks = append(pc.DocLinks, prompts.DocLink{Title: d.Title, URL: d.URL})
@@ -134,6 +134,7 @@ func (s *Service) targetForPlan(ctx context.Context, userID string, concept mode
 	if personal.misconceptions, err = s.promptMisconceptions(ctx, userID, conceptID); err != nil {
 		return Target{}, err
 	}
+	personal.labOS = s.labOS(ctx, userID)
 
 	return Target{
 		Plan:     plan,
@@ -141,7 +142,7 @@ func (s *Service) targetForPlan(ctx context.Context, userID string, concept mode
 		Prompt:   pc,
 		personal: personal,
 		Validation: lecture.ValidationContext{
-			KnownConceptIDs:     known,
+			KnownConceptIDs:     s.withGlossary(known),
 			PlannedObjectiveIDs: plan.ObjectiveIDs,
 			AllowedObjectiveIDs: allowed,
 		},
@@ -165,4 +166,30 @@ func (t Target) parseAndValidate(markup string) (lecture.Content, []lecture.Issu
 	lecture.NormalizeInlineTerms(&content, t.Validation.KnownConceptIDs)
 	issues := lecture.Validate(content, t.Validation)
 	return content, append(issues, lecture.MachineCheck(content)...), nil
+}
+
+// withGlossary adds the glossary term ids (term:g.…) to the link targets a lecture may use.
+func (s *Service) withGlossary(known map[string]bool) map[string]bool {
+	ids := s.Glossary.IDs()
+	if len(ids) == 0 {
+		return known
+	}
+	out := make(map[string]bool, len(known)+len(ids))
+	for id, ok := range known {
+		out[id] = ok
+	}
+	for _, id := range ids {
+		out[id] = true
+	}
+	return out
+}
+
+// glossaryRefs are the basic terms for the lecture prompt.
+func (s *Service) glossaryRefs() []prompts.GlossaryRef {
+	terms := s.Glossary.Terms()
+	out := make([]prompts.GlossaryRef, 0, len(terms))
+	for _, t := range terms {
+		out = append(out, prompts.GlossaryRef{ID: t.ID, Name: t.Name})
+	}
+	return out
 }

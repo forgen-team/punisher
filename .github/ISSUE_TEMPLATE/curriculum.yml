@@ -1,0 +1,25 @@
+name: 커리큘럼 / Curriculum
+description: 개념·학습 목표를 더하거나 고쳐요 / Add or fix a concept or objective
+labels: [curriculum]
+body:
+  - type: input
+    id: concept
+    attributes:
+      label: 개념 id 또는 이름 / Concept id or name
+      description: "예: net.tcp-handshake"
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 종류 / Kind
+      options: [새 개념 / new concept, 학습 목표 고치기 / fix objectives, 선행 관계 / prerequisites, 사실 오류 / factual error]
+    validations:
+      required: true
+  - type: textarea
+    id: detail
+    attributes:
+      label: 내용 / Details
+      description: 근거가 되는 공식 문서 링크를 함께 적어 주세요 / Link official documentation
+    validations:
+      required: true
