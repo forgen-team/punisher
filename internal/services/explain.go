@@ -9,10 +9,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/wooo-jin/punisher/internal/lecture"
-	"github.com/wooo-jin/punisher/internal/llm"
-	"github.com/wooo-jin/punisher/internal/models"
-	"github.com/wooo-jin/punisher/internal/prompts"
+	"github.com/forgen-team/punisher/internal/lecture"
+	"github.com/forgen-team/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/prompts"
 )
 
 // Selection limits for "이 부분 설명".

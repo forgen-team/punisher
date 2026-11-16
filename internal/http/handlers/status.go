@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/claudecli"
-	"github.com/wooo-jin/punisher/internal/services"
+	"github.com/forgen-team/punisher/internal/claudecli"
+	"github.com/forgen-team/punisher/internal/services"
 )
 
 // ClaudeStatusSource reports the local claude CLI state.

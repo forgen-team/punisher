@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 
-	"github.com/wooo-jin/punisher/internal/check"
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/prompts"
-	"github.com/wooo-jin/punisher/internal/store"
-	"github.com/wooo-jin/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/check"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/prompts"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 // MarkKnown is '이미 앎' (POST /v1/concepts/{id}/known). queueVerify (bulk

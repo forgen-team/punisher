@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/models"
 )
 
 const questionColumns = `id, COALESCE(lecture_id, ''), COALESCE(concept_id, ''), anchor, kind,

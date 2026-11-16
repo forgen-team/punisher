@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/models"
 )
 
 const settingsColumns = `example_language, daily_minutes, mastery_target, review_intervals, review_minutes, review_grader, pretest_enabled, lab_os, adaptive_intervals, updated_at`

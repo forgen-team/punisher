@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 
-	"github.com/wooo-jin/punisher/internal/check"
-	"github.com/wooo-jin/punisher/internal/curriculum"
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/prompts"
-	"github.com/wooo-jin/punisher/internal/store"
+	"github.com/forgen-team/punisher/internal/check"
+	"github.com/forgen-team/punisher/internal/curriculum"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/prompts"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 // PreviewConceptID is the example concept used by prompt previews (falls back

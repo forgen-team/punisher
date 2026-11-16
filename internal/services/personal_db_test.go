@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/prompts"
-	"github.com/wooo-jin/punisher/internal/store"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/prompts"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 func tutorWithMisconception(verdict, move, text, misconception string) string {

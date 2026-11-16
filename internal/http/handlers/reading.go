@@ -6,8 +6,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/forgen-team/punisher/internal/services"
 	"github.com/go-chi/chi/v5"
-	"github.com/wooo-jin/punisher/internal/services"
 )
 
 // Dismiss handles POST /v1/lectures/{id}/dismiss — hide from 이어보기 (soft).

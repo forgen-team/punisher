@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/models"
 )
 
 // Link kinds.

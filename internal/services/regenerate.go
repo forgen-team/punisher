@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/prompts"
-	"github.com/wooo-jin/punisher/internal/store"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/prompts"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 // RegenerateLecture generates a new version of lecture lectureID (same concept,

@@ -25,7 +25,7 @@ if [ "$(uname -s)" = "Darwin" ]; then
 fi
 
 echo "설치 완료: $dest_dir/punisher ($("$dest_dir/punisher" --version | head -1))"
-echo "Punisher · part of the forgen family (https://github.com/wooo-jin/forgen) · © 2026 jang-ujin"
+echo "Punisher · part of the forgen family (https://github.com/forgen-team/forgen) · © 2026 jang-ujin"
 case ":$PATH:" in
   *":$dest_dir:"*) echo "이제 터미널에서 punisher 를 입력하면 실행됩니다." ;;
   *)

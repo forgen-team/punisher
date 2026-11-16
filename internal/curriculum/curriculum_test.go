@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	seed "github.com/wooo-jin/punisher/curriculum"
+	seed "github.com/forgen-team/punisher/curriculum"
 )
 
 func concept(id string, prereqs ...string) Concept {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wooo-jin/punisher/internal/lecture"
+	"github.com/forgen-team/punisher/internal/lecture"
 )
 
 // driftWarnRatio: a partial rewrite that changed more than this share of the

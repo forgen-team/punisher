@@ -1,6 +1,6 @@
 package learning
 
-import "github.com/wooo-jin/punisher/internal/curriculum"
+import "github.com/forgen-team/punisher/internal/curriculum"
 
 // AliasIndex maps a normalized alias/name (curriculum.NormalizeAlias) to a
 // concept id. Concept ids map to themselves.

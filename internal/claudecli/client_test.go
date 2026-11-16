@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/llm"
 )
 
 // fakeClaude stands in for the claude CLI. Behaviour is selected by the

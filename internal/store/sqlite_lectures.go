@@ -7,9 +7,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/lecture"
-	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/lecture"
+	"github.com/forgen-team/punisher/internal/models"
 )
 
 const lectureColumns = `l.id, l.concept_id, l.objective_ids, l.objective_key, l.depth, l.kind, l.status,

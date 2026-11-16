@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/migrations"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/migrations"
 )
 
 // TestMigration012Pretest: 012 is recorded and adds only the two columns, with

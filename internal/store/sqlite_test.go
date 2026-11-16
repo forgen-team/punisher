@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	seedfiles "github.com/wooo-jin/punisher/curriculum"
-	"github.com/wooo-jin/punisher/internal/curriculum"
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/models"
-	"github.com/wooo-jin/punisher/migrations"
+	seedfiles "github.com/forgen-team/punisher/curriculum"
+	"github.com/forgen-team/punisher/internal/curriculum"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/models"
+	"github.com/forgen-team/punisher/migrations"
 )
 
 const testUser = "local"

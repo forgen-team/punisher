@@ -7,9 +7,9 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/forgen-team/punisher/internal/prompts"
+	"github.com/forgen-team/punisher/internal/services"
 	"github.com/go-chi/chi/v5"
-	"github.com/wooo-jin/punisher/internal/prompts"
-	"github.com/wooo-jin/punisher/internal/services"
 )
 
 // maxPromptRunes bounds a saved block body.

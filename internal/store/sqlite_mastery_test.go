@@ -10,11 +10,11 @@ import (
 	"testing/fstest"
 	"time"
 
-	seedfiles "github.com/wooo-jin/punisher/curriculum"
-	"github.com/wooo-jin/punisher/internal/check"
-	"github.com/wooo-jin/punisher/internal/curriculum"
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/migrations"
+	seedfiles "github.com/forgen-team/punisher/curriculum"
+	"github.com/forgen-team/punisher/internal/check"
+	"github.com/forgen-team/punisher/internal/curriculum"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/migrations"
 )
 
 func masteryFixture(t *testing.T, s *SQLiteStore, user string) (conceptID, objectiveID string) {

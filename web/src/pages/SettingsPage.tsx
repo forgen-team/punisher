@@ -42,7 +42,7 @@ export function SettingsPage() {
           <PunisherLogo size={20} />
           <span>
             {BRAND_LINE.split("forgen")[0]}
-            <a href="https://github.com/wooo-jin/forgen" target="_blank" rel="noreferrer" className="text-accent-text underline-offset-2 hover:underline">
+            <a href="https://github.com/forgen-team/forgen" target="_blank" rel="noreferrer" className="text-accent-text underline-offset-2 hover:underline">
               forgen
             </a>
             {BRAND_LINE.split("forgen")[1]}

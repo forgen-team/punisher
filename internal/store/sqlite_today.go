@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/curriculum"
-	"github.com/wooo-jin/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/curriculum"
+	"github.com/forgen-team/punisher/internal/learning"
 )
 
 // TodayData is the raw input for learning.BuildToday plus active goals.

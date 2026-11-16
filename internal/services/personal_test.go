@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wooo-jin/punisher/internal/prompts"
+	"github.com/forgen-team/punisher/internal/prompts"
 )
 
 func personalTarget(owner string) Target {

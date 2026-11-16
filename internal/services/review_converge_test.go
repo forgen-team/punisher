@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/wooo-jin/punisher/internal/lecture"
+	"github.com/forgen-team/punisher/internal/lecture"
 )
 
 // convergeFake adds a scripted targeted recheck and adjudication to fakeSteps.

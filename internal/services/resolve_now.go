@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/llm"
 )
 
 // resolveNowTimeout bounds one immediate resolution (alias match + one LLM call + pre-generation kick).

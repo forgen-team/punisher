@@ -8,13 +8,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/wooo-jin/punisher/internal/glossary"
+	"github.com/forgen-team/punisher/internal/glossary"
 	"strings"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/llm"
-	"github.com/wooo-jin/punisher/internal/store"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 var (

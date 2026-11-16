@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/check"
-	"github.com/wooo-jin/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/check"
+	"github.com/forgen-team/punisher/internal/learning"
 )
 
 // ItemFinish closes the current item of a session: its outcome is decided and

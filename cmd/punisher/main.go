@@ -22,21 +22,21 @@ import (
 	"syscall"
 	"time"
 
-	seedfiles "github.com/wooo-jin/punisher/curriculum"
-	"github.com/wooo-jin/punisher/internal/backup"
-	"github.com/wooo-jin/punisher/internal/claudecli"
-	"github.com/wooo-jin/punisher/internal/config"
-	"github.com/wooo-jin/punisher/internal/curriculum"
-	"github.com/wooo-jin/punisher/internal/glossary"
-	httpapi "github.com/wooo-jin/punisher/internal/http"
-	"github.com/wooo-jin/punisher/internal/llm"
-	"github.com/wooo-jin/punisher/internal/middleware"
-	"github.com/wooo-jin/punisher/internal/phone"
-	"github.com/wooo-jin/punisher/internal/scheduler"
-	"github.com/wooo-jin/punisher/internal/services"
-	"github.com/wooo-jin/punisher/internal/store"
-	"github.com/wooo-jin/punisher/internal/webui"
-	"github.com/wooo-jin/punisher/migrations"
+	seedfiles "github.com/forgen-team/punisher/curriculum"
+	"github.com/forgen-team/punisher/internal/backup"
+	"github.com/forgen-team/punisher/internal/claudecli"
+	"github.com/forgen-team/punisher/internal/config"
+	"github.com/forgen-team/punisher/internal/curriculum"
+	"github.com/forgen-team/punisher/internal/glossary"
+	httpapi "github.com/forgen-team/punisher/internal/http"
+	"github.com/forgen-team/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/middleware"
+	"github.com/forgen-team/punisher/internal/phone"
+	"github.com/forgen-team/punisher/internal/scheduler"
+	"github.com/forgen-team/punisher/internal/services"
+	"github.com/forgen-team/punisher/internal/store"
+	"github.com/forgen-team/punisher/internal/webui"
+	"github.com/forgen-team/punisher/migrations"
 )
 
 // version is set at build time (-ldflags "-X main.version=...").
@@ -68,7 +68,7 @@ func main() {
 		os.Exit(2)
 	}
 	if *showVersion {
-		fmt.Printf("punisher %s\npart of the forgen family — https://github.com/wooo-jin/forgen\n© 2026 jang-ujin · MIT License\n", version)
+		fmt.Printf("punisher %s\npart of the forgen family — https://github.com/forgen-team/forgen\n© 2026 jang-ujin · MIT License\n", version)
 		return
 	}
 	if *noBrowser {

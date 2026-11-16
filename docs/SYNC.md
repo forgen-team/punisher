@@ -62,7 +62,7 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 
 | witems | 단독판 |
 | --- | --- |
-| `github.com/wooo-jin/witems/apps/punisher-server` | `github.com/wooo-jin/punisher` |
+| `github.com/wooo-jin/witems/apps/punisher-server` | `github.com/forgen-team/punisher` (2026-11-16 forgen-team 으로 이전) |
 | `packages/go-shared/llm`, `llmjson` | `internal/llm`, `internal/llmjson` |
 | `*store.PostgresStore` | `store.Store` (인터페이스) |
 | `@witems/ui` | `@/src/shared/ui/kit` |

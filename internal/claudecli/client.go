@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/llm"
 )
 
 // Config sizes the client. Zero values get sane defaults.

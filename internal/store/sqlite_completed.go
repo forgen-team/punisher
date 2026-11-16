@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/wooo-jin/punisher/internal/curriculum"
-	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/curriculum"
+	"github.com/forgen-team/punisher/internal/models"
 )
 
 // AreaOther groups inquiries with no concept on the map.

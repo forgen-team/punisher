@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/forgen-team/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/services"
+	"github.com/forgen-team/punisher/internal/store"
 	"github.com/go-chi/chi/v5"
-	"github.com/wooo-jin/punisher/internal/models"
-	"github.com/wooo-jin/punisher/internal/services"
-	"github.com/wooo-jin/punisher/internal/store"
 )
 
 func writeInquiryError(w http.ResponseWriter, r *http.Request, op string, err error) {

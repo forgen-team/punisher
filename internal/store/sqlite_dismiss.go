@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/wooo-jin/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/learning"
 )
 
 // DismissLecture hides an in-progress lecture from 이어보기 (soft: the lecture

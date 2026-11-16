@@ -3,10 +3,10 @@ package services
 import (
 	"context"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/store"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/store"
 
-	"github.com/wooo-jin/punisher/internal/prompts"
+	"github.com/forgen-team/punisher/internal/prompts"
 )
 
 // UserPrompts is the user's effective instruction blocks (overrides on top of

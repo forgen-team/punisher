@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/models"
-	"github.com/wooo-jin/punisher/internal/store"
+	"github.com/forgen-team/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 func inquiryMarkup(a, b, proposedSlug string, withSources bool) string {

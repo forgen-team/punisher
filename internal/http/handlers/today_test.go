@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/wooo-jin/punisher/internal/services"
-	"github.com/wooo-jin/punisher/internal/store"
-	"github.com/wooo-jin/punisher/migrations"
+	"github.com/forgen-team/punisher/internal/services"
+	"github.com/forgen-team/punisher/internal/store"
+	"github.com/forgen-team/punisher/migrations"
 )
 
 // TestTodayResponseKeys: GET /v1/today carries every TodayResult part the web

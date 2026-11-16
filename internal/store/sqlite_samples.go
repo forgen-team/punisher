@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wooo-jin/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/learning"
 )
 
 // Sample is a shipped lecture (curriculum/samples/*.json): the lecture row,

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wooo-jin/punisher/internal/services"
+	"github.com/forgen-team/punisher/internal/services"
 )
 
 func TestParseConceptIDs(t *testing.T) {

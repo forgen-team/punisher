@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/store"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 // TestCheckLectureSummary: a done item carries its lecture's '한 장 요약'

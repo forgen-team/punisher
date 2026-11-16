@@ -7,11 +7,11 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/forgen-team/punisher/internal/http/handlers"
+	"github.com/forgen-team/punisher/internal/services"
+	"github.com/forgen-team/punisher/internal/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/wooo-jin/punisher/internal/http/handlers"
-	"github.com/wooo-jin/punisher/internal/services"
-	"github.com/wooo-jin/punisher/internal/store"
 )
 
 type RouterDependencies struct {

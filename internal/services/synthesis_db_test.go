@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/check"
-	"github.com/wooo-jin/punisher/internal/store"
+	"github.com/forgen-team/punisher/internal/check"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 // synthFixture adds three of the user's own concepts in two areas, one

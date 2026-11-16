@@ -7,8 +7,8 @@ import (
 	"io"
 	"net/http"
 
+	appMiddleware "github.com/forgen-team/punisher/internal/middleware"
 	"github.com/go-chi/chi/v5/middleware"
-	appMiddleware "github.com/wooo-jin/punisher/internal/middleware"
 )
 
 const maxBodyBytes = 64 << 10

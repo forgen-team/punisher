@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/models"
 )
 
 const misconceptionColumns = `m.id, m.concept_id, COALESCE(c.name, ''), COALESCE(m.objective_id, ''), COALESCE(o.text, ''),

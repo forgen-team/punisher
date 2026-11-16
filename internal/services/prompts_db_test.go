@@ -8,12 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	seedfiles "github.com/wooo-jin/punisher/curriculum"
-	"github.com/wooo-jin/punisher/internal/curriculum"
-	"github.com/wooo-jin/punisher/internal/llm"
-	"github.com/wooo-jin/punisher/internal/prompts"
-	"github.com/wooo-jin/punisher/internal/store"
-	"github.com/wooo-jin/punisher/migrations"
+	seedfiles "github.com/forgen-team/punisher/curriculum"
+	"github.com/forgen-team/punisher/internal/curriculum"
+	"github.com/forgen-team/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/prompts"
+	"github.com/forgen-team/punisher/internal/store"
+	"github.com/forgen-team/punisher/migrations"
 )
 
 // dbService is a Service on a fresh SQLite file (migrated, curriculum seeded)

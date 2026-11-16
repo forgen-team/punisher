@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/models"
 )
 
 const studyRequestColumns = `id, user_id, source, source_ref, query, context,

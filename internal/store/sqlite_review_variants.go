@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/check"
+	"github.com/forgen-team/punisher/internal/check"
 )
 
 // VariantTarget is a soon-due objective without an unseen item: a review

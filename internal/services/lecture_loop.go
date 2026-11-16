@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/lecture"
-	"github.com/wooo-jin/punisher/internal/prompts"
-	"github.com/wooo-jin/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/lecture"
+	"github.com/forgen-team/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/prompts"
 )
 
 // Per-attempt time limits of a lecture generation (an attempt = one draft and

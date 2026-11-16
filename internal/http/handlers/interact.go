@@ -5,8 +5,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/forgen-team/punisher/internal/models"
 	"github.com/go-chi/chi/v5"
-	"github.com/wooo-jin/punisher/internal/models"
 )
 
 // ListQuestions handles GET /v1/lectures/{id}/questions (the user's thread).

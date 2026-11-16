@@ -11,10 +11,10 @@ import (
 	"testing/fstest"
 	"time"
 
-	seedfiles "github.com/wooo-jin/punisher/curriculum"
-	"github.com/wooo-jin/punisher/internal/curriculum"
-	"github.com/wooo-jin/punisher/internal/models"
-	"github.com/wooo-jin/punisher/migrations"
+	seedfiles "github.com/forgen-team/punisher/curriculum"
+	"github.com/forgen-team/punisher/internal/curriculum"
+	"github.com/forgen-team/punisher/internal/models"
+	"github.com/forgen-team/punisher/migrations"
 )
 
 // rawLecture inserts a published instant lecture owned by user (content may be "").

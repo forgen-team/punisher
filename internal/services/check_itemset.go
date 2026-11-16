@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/check"
-	"github.com/wooo-jin/punisher/internal/store"
-	"github.com/wooo-jin/punisher/internal/llm"
-	"github.com/wooo-jin/punisher/internal/llmjson"
+	"github.com/forgen-team/punisher/internal/check"
+	"github.com/forgen-team/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/llmjson"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 // itemSetCall is one item generation: model, attempts (2 = one rewrite with

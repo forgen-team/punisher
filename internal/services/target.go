@@ -4,10 +4,10 @@ import (
 	"context"
 	"log"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/lecture"
-	"github.com/wooo-jin/punisher/internal/models"
-	"github.com/wooo-jin/punisher/internal/prompts"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/lecture"
+	"github.com/forgen-team/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/prompts"
 )
 
 func logf(format string, args ...any) { log.Printf("[services] "+format, args...) }

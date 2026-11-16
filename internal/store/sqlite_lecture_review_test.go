@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/models"
-	"github.com/wooo-jin/punisher/migrations"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/models"
+	"github.com/forgen-team/punisher/migrations"
 )
 
 const upgradeLectureContent = `{"schemaVersion":1,"title":"캐시","sections":[

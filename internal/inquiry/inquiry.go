@@ -9,9 +9,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/wooo-jin/punisher/internal/curriculum"
-	"github.com/wooo-jin/punisher/internal/lecture"
-	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/curriculum"
+	"github.com/forgen-team/punisher/internal/lecture"
+	"github.com/forgen-team/punisher/internal/models"
 )
 
 // Section kinds, in order. assumptions separates guesses about the asker's

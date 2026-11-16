@@ -4,10 +4,10 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/services"
+	"github.com/forgen-team/punisher/internal/store"
 	"github.com/go-chi/chi/v5"
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/services"
-	"github.com/wooo-jin/punisher/internal/store"
 )
 
 // ErrorChapterInvalid: the model's chapter design failed validation twice.

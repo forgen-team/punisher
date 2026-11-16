@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/models"
 )
 
 // reviewScope joins a mastery row `m` (user $1) to its active objective and a

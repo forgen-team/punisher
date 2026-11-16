@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/models"
-	"github.com/wooo-jin/punisher/internal/store"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 // TestCheckNeedsPassedReview (v2.2 §2.1): a lecture without a pass review gets

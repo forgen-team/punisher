@@ -6,14 +6,15 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/models"
-	"github.com/wooo-jin/punisher/internal/prompts"
-	"github.com/wooo-jin/punisher/internal/store"
-	"github.com/wooo-jin/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/prompts"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 // checkLLM answers by the system prompt (items, tutor, regrade) from queues;
@@ -26,6 +27,8 @@ type checkLLM struct {
 	// hold (set before the run starts): tutor and diagnostic-item calls wait
 	// until it is closed; lecture check items and regrades never wait.
 	hold chan struct{}
+	// waiting: calls currently blocked on hold (atomic; see waitHeld).
+	waiting atomic.Int32
 }
 
 // pretestRole: the opening line of the check.pretest default (no template vars).
@@ -44,7 +47,9 @@ func held(system string) bool {
 
 func (f *checkLLM) Create(_ context.Context, _ string, req llm.MessagesRequest) (llm.MessagesResult, error) {
 	if f.hold != nil && held(req.System) {
+		f.waiting.Add(1)
 		<-f.hold
+		f.waiting.Add(-1)
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -500,5 +505,17 @@ func TestCheckSelfGrade(t *testing.T) {
 	}
 	if a := masteryOf(t, s, user, f.conceptID, f.objA); a.LastGrader != "self" || a.NextReviewAt == nil || a.Level != 0 {
 		t.Fatalf("self-graded partial = %+v (box kept, next = due(0))", a)
+	}
+}
+
+// waitHeld blocks until a fake call is waiting on hold (the run reached the LLM).
+func waitHeld(t *testing.T, f *checkLLM) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for f.waiting.Load() == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("no call reached the held fake LLM")
+		}
+		time.Sleep(5 * time.Millisecond)
 	}
 }

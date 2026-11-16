@@ -11,8 +11,8 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"/></a>
   <img src="https://img.shields.io/badge/macOS-universal-lightgrey.svg" alt="macOS universal"/>
   <img src="https://img.shields.io/badge/Linux-amd64%20%7C%20arm64-lightgrey.svg" alt="Linux amd64 | arm64"/>
-  <a href="https://github.com/wooo-jin/punisher/actions/workflows/ci.yml"><img src="https://github.com/wooo-jin/punisher/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
-  <a href="https://github.com/wooo-jin/forgen"><img src="https://img.shields.io/badge/forgen-family-f97316.svg" alt="Part of the forgen family"/></a>
+  <a href="https://github.com/forgen-team/punisher/actions/workflows/ci.yml"><img src="https://github.com/forgen-team/punisher/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
+  <a href="https://github.com/forgen-team/forgen"><img src="https://img.shields.io/badge/forgen-family-f97316.svg" alt="Part of the forgen family"/></a>
 </p>
 
 <p align="center">
@@ -239,9 +239,9 @@ cd web && npm run dev   # 프론트 개발 서버(:5173), /v1 은 punisher --no-
 
 ## forgen 패밀리
 
-Punisher 는 Claude 를 내 방식에 맞추는 [forgen](https://github.com/wooo-jin/forgen) 의 형제 프로젝트입니다.
+Punisher 는 Claude 를 내 방식에 맞추는 [forgen](https://github.com/forgen-team/forgen) 의 형제 프로젝트입니다.
 같은 개발자가 만든 Handoff(내 노트북에서 일을 맡기고 휴대폰으로 확인하는 워크플로 에이전트)와 같은 불꽃 로고·오렌지 색을 씁니다.
 
 ## 라이선스
 
-MIT © 2026 jang-ujin · [forgen](https://github.com/wooo-jin/forgen) 패밀리의 형제 프로젝트입니다.
+MIT © 2026 jang-ujin · [forgen](https://github.com/forgen-team/forgen) 패밀리의 형제 프로젝트입니다.

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/forgen-team/punisher/internal/services"
 	"github.com/go-chi/chi/v5"
-	"github.com/wooo-jin/punisher/internal/services"
 )
 
 // ListExercises handles GET /v1/lectures/{id}/exercises — the caller's latest

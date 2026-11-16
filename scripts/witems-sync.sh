@@ -24,9 +24,9 @@ mkdir -p "$out"
 
 # 단독판에서 바뀐 모듈 경로·import. 새 규칙이 생기면 여기에만 추가한다.
 go_rewrite() {
-  sed -e 's#github.com/wooo-jin/witems/apps/punisher-server#github.com/wooo-jin/punisher#g' \
-      -e 's#github.com/wooo-jin/witems/packages/go-shared/llmjson#github.com/wooo-jin/punisher/internal/llmjson#g' \
-      -e 's#github.com/wooo-jin/witems/packages/go-shared/llm"#github.com/wooo-jin/punisher/internal/llm"#g' \
+  sed -e 's#github.com/wooo-jin/witems/apps/punisher-server#github.com/forgen-team/punisher#g' \
+      -e 's#github.com/wooo-jin/witems/packages/go-shared/llmjson#github.com/forgen-team/punisher/internal/llmjson#g' \
+      -e 's#github.com/wooo-jin/witems/packages/go-shared/llm"#github.com/forgen-team/punisher/internal/llm"#g' \
       -e 's#\*store\.PostgresStore#store.Store#g'
 }
 web_rewrite() {

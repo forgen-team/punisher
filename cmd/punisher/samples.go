@@ -9,9 +9,9 @@ import (
 	"os"
 	"path/filepath"
 
-	seedfiles "github.com/wooo-jin/punisher/curriculum"
-	"github.com/wooo-jin/punisher/internal/config"
-	"github.com/wooo-jin/punisher/internal/store"
+	seedfiles "github.com/forgen-team/punisher/curriculum"
+	"github.com/forgen-team/punisher/internal/config"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 // seedSamples adds the shipped sample lectures (curriculum/samples/*.json)

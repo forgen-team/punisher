@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/wooo-jin/punisher/internal/lecture"
-	"github.com/wooo-jin/punisher/internal/prompts"
-	"github.com/wooo-jin/punisher/internal/llmjson"
+	"github.com/forgen-team/punisher/internal/lecture"
+	"github.com/forgen-team/punisher/internal/llmjson"
+	"github.com/forgen-team/punisher/internal/prompts"
 )
 
 // How a draft was reviewed (Attempt.ReviewMode).

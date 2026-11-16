@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/models"
 )
 
 // TurnWrite is a turn to insert, or (ID set) the fields that complete a pending turn.

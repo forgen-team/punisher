@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wooo-jin/punisher/internal/chapter"
-	"github.com/wooo-jin/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/chapter"
+	"github.com/forgen-team/punisher/internal/llm"
 )
 
 type failingSignals struct{ calls int }

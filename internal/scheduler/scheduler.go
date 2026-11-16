@@ -10,8 +10,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/llm"
-	"github.com/wooo-jin/punisher/internal/services"
+	"github.com/forgen-team/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/services"
 )
 
 // staleJobAge: a pending/running job older than this is from a dead process

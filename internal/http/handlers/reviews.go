@@ -4,9 +4,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/wooo-jin/punisher/internal/check"
-	"github.com/wooo-jin/punisher/internal/models"
-	"github.com/wooo-jin/punisher/internal/services"
+	"github.com/forgen-team/punisher/internal/check"
+	"github.com/forgen-team/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/services"
 )
 
 // ErrorNoReviews: nothing is due today (or review time is 0 minutes).

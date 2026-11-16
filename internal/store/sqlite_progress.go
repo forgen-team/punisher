@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/wooo-jin/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/learning"
 )
 
 // SetConceptState applies an explicit state request (learning.NextState rules)

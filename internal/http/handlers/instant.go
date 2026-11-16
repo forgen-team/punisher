@@ -9,8 +9,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/forgen-team/punisher/internal/services"
 	"github.com/go-chi/chi/v5"
-	"github.com/wooo-jin/punisher/internal/services"
 )
 
 // InstantCreate handles POST /v1/lectures/instant.

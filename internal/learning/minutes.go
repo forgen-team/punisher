@@ -5,7 +5,7 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/wooo-jin/punisher/internal/lecture"
+	"github.com/forgen-team/punisher/internal/lecture"
 )
 
 // Reading-time constants (quality design v2.2 §5, Q4) [사용자 체감 기반 — 실측 데이터가 생기면 보정].

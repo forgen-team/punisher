@@ -3,8 +3,8 @@ package glossary
 import (
 	"testing"
 
-	seedfiles "github.com/wooo-jin/punisher/curriculum"
-	"github.com/wooo-jin/punisher/internal/curriculum"
+	seedfiles "github.com/forgen-team/punisher/curriculum"
+	"github.com/forgen-team/punisher/internal/curriculum"
 )
 
 // TestRealGlossaryIsValid: the shipped dictionary matches the knowledge map —

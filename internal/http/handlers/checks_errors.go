@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/wooo-jin/punisher/internal/models"
-	"github.com/wooo-jin/punisher/internal/services"
+	"github.com/forgen-team/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/services"
 )
 
 // ErrorLectureNotReviewed: '확인하기' on a lecture without a pass review (queued for the backfill review).

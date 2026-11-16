@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wooo-jin/punisher/internal/lecture"
+	"github.com/forgen-team/punisher/internal/lecture"
 )
 
 func blocks(bs ...lecture.Block) lecture.Content {

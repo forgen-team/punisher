@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/chapter"
-	"github.com/wooo-jin/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/chapter"
+	"github.com/forgen-team/punisher/internal/learning"
 )
 
 // ChapterInfo is one of the user's chapters (map grouping).

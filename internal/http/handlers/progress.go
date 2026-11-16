@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/store"
 	"github.com/go-chi/chi/v5"
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/store"
 )
 
 type ProgressHandler struct {

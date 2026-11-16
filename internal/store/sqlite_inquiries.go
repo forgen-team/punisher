@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/models"
 )
 
 const inquiryFollowupCountSQL = `(SELECT COUNT(*) FROM inquiry_followups f WHERE f.inquiry_id = inquiries.id)`

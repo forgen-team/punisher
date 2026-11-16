@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/migrations"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/migrations"
 )
 
 // TestMigration013Misconceptions: 013 is recorded and creates user_misconceptions

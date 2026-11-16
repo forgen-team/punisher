@@ -9,11 +9,11 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/services"
+	"github.com/forgen-team/punisher/internal/store"
 	"github.com/go-chi/chi/v5"
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/llm"
-	"github.com/wooo-jin/punisher/internal/services"
-	"github.com/wooo-jin/punisher/internal/store"
 )
 
 // LearnHandler serves lectures, today, Q&A, notes and goals.

@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/lecture"
-	"github.com/wooo-jin/punisher/internal/store"
-	"github.com/wooo-jin/punisher/internal/llm"
-	"github.com/wooo-jin/punisher/internal/llmjson"
+	"github.com/forgen-team/punisher/internal/lecture"
+	"github.com/forgen-team/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/llmjson"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 // Review gates: a blocking finding stops publishing (factual error,

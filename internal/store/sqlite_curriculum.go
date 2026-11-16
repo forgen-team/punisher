@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/wooo-jin/punisher/internal/curriculum"
+	"github.com/forgen-team/punisher/internal/curriculum"
 )
 
 // SyncCurriculum upserts the seed in a single transaction. It is a no-op when

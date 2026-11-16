@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wooo-jin/punisher/internal/lecture"
+	"github.com/forgen-team/punisher/internal/lecture"
 )
 
 const validMarkup = `@@lecture

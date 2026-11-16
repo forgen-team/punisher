@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/models"
 )
 
 var (

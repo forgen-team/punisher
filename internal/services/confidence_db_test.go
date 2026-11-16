@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/wooo-jin/punisher/internal/models"
-	"github.com/wooo-jin/punisher/internal/store"
+	"github.com/forgen-team/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 // TestReviewConfidenceAndEase: a review answered 'sure' and self-graded wrong is

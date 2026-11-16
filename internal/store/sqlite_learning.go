@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/wooo-jin/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/learning"
 )
 
 // UpdateProgress upserts the reading position (percent never decreases once

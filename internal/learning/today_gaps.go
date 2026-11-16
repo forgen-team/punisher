@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/wooo-jin/punisher/internal/curriculum"
+	"github.com/forgen-team/punisher/internal/curriculum"
 )
 
 // addEssentialGaps adds depth-1 frontier concepts, round-robin across areas

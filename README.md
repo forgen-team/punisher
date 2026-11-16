@@ -11,8 +11,8 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"/></a>
   <img src="https://img.shields.io/badge/macOS-universal-lightgrey.svg" alt="macOS universal"/>
   <img src="https://img.shields.io/badge/Linux-amd64%20%7C%20arm64-lightgrey.svg" alt="Linux amd64 | arm64"/>
-  <a href="https://github.com/wooo-jin/punisher/actions/workflows/ci.yml"><img src="https://github.com/wooo-jin/punisher/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
-  <a href="https://github.com/wooo-jin/forgen"><img src="https://img.shields.io/badge/forgen-family-f97316.svg" alt="Part of the forgen family"/></a>
+  <a href="https://github.com/forgen-team/punisher/actions/workflows/ci.yml"><img src="https://github.com/forgen-team/punisher/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
+  <a href="https://github.com/forgen-team/forgen"><img src="https://img.shields.io/badge/forgen-family-f97316.svg" alt="Part of the forgen family"/></a>
 </p>
 
 <p align="center">
@@ -108,7 +108,7 @@ Punisher is ported from a private monorepo; see [NOTICE](NOTICE) and [docs/SYNC.
 
 ## Part of the forgen family
 
-Punisher is a companion to [forgen](https://github.com/wooo-jin/forgen), which makes Claude fit the way you work.
+Punisher is a companion to [forgen](https://github.com/forgen-team/forgen), which makes Claude fit the way you work.
 It shares the forgen flame and orange accent with its sibling Handoff, a local workflow agent you drive from your phone.
 
 ## License

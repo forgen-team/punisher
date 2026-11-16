@@ -1,4 +1,4 @@
-module github.com/wooo-jin/punisher
+module github.com/forgen-team/punisher
 
 go 1.26.0
 

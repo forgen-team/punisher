@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/backup"
-	"github.com/wooo-jin/punisher/internal/config"
-	"github.com/wooo-jin/punisher/migrations"
+	"github.com/forgen-team/punisher/internal/backup"
+	"github.com/forgen-team/punisher/internal/config"
+	"github.com/forgen-team/punisher/migrations"
 )
 
 const backupUsage = `데이터 내보내기·가져오기:

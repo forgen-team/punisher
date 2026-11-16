@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/forgen-team/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/services"
 	"github.com/go-chi/chi/v5"
-	"github.com/wooo-jin/punisher/internal/models"
-	"github.com/wooo-jin/punisher/internal/services"
 )
 
 // StartCheck handles POST /v1/checks — '확인하기' {kind:"check", lectureId} and

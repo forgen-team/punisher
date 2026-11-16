@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/models"
 )
 
 // ErrJobActive means another pending/running job already targets the same

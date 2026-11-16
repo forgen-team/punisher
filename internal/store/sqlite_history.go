@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/models"
 )
 
 // ErrInvalidCursor is returned for malformed pagination cursors.

@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wooo-jin/punisher/internal/check"
-	"github.com/wooo-jin/punisher/internal/learning"
-	"github.com/wooo-jin/punisher/internal/models"
-	"github.com/wooo-jin/punisher/internal/store"
+	"github.com/forgen-team/punisher/internal/check"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 // startedCheck opens a check session of the fixture lecture (items A, B, integrative) and waits for its first ask.
@@ -96,6 +96,7 @@ func TestPendingTurnOnClosedItemFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	pending := lastTurn(d)
+	waitHeld(t, fake) // 채점이 튜터 호출에 들어간 뒤에 문항을 닫는다(호출 전에 닫히면 호출 없이 실패하는 다른 경우가 된다).
 	// 예전 경쟁의 결과: 채점 중에 문항이 닫혀 커서가 다음 문항으로 넘어간 상태.
 	if _, err := testDB(s).ExecContext(ctx, `UPDATE check_sessions SET cursor = 1 WHERE id = ?`, id); err != nil {
 		t.Fatal(err)

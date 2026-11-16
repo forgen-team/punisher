@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/wooo-jin/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/models"
 )
 
 // Backfill review of stored lectures (quality design v2.2 §2.2): published
