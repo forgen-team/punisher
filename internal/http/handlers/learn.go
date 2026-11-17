@@ -31,6 +31,19 @@ const (
 	ErrorLLMRateLimited ErrorCode = "LLM_RATE_LIMITED"
 )
 
+// localeOf is the user's locale (ko|en) for the few texts the server still words (i18n L4).
+func (h *LearnHandler) localeOf(r *http.Request, userID string) string {
+	return h.Store.LocaleFor(r.Context(), userID)
+}
+
+// inLocale picks the English text for an en user.
+func inLocale(locale, ko, en string) string {
+	if locale == "en" {
+		return en
+	}
+	return ko
+}
+
 // writeServiceError maps service/store errors to HTTP responses.
 func writeServiceError(w http.ResponseWriter, r *http.Request, op string, err error) {
 	switch {
@@ -98,7 +111,9 @@ func (h *LearnHandler) Today(w http.ResponseWriter, r *http.Request) {
 		payload["nextChapter"] = res.NextChapter
 	}
 	if res.Exhausted {
-		payload["message"] = "추천할 다음 강의가 없습니다. 새 목표를 선택해 주세요."
+		payload["messageCode"] = "TODAY_EXHAUSTED"
+		payload["message"] = inLocale(h.localeOf(r, userID), "추천할 다음 강의가 없습니다. 새 목표를 선택해 주세요.",
+			"No next lecture to recommend. Pick a new goal.")
 	}
 	writeJSON(w, http.StatusOK, payload)
 }

@@ -106,7 +106,7 @@ func validateAliases(concepts []Concept) []error {
 	owner := make(map[string]string)
 	var errs []error
 	for _, c := range concepts {
-		for _, raw := range append([]string{c.Name}, c.Aliases...) {
+		for _, raw := range c.aliasNames() {
 			key := NormalizeAlias(raw)
 			if key == "" {
 				errs = append(errs, fmt.Errorf("concept %q: empty alias", c.ID))
@@ -181,4 +181,14 @@ func closeCycle(stack []string, start string) []string {
 		}
 	}
 	return []string{start}
+}
+
+// aliasNames are the names a learner may type for the concept: the Korean
+// name, the aliases and the English name (overlay), in that order.
+func (c Concept) aliasNames() []string {
+	names := append([]string{c.Name}, c.Aliases...)
+	if c.NameEn != "" {
+		names = append(names, c.NameEn)
+	}
+	return names
 }

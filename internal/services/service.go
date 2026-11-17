@@ -65,8 +65,13 @@ type Config struct {
 	DailyLectureLimit int    // lecture generations per KST day (library + instant)
 	DailyTokenLimit   int    // tokens per KST day across all LLM calls
 	LibraryAhead      int    // library lectures to keep ready (0 = no ahead pre-generation)
-	StudyPregenerate  bool   // pre-generate the starting lecture of newly resolved study requests
-	LectureMaxTokens  int
+	// Night window (KST hours [NightStartHour, NightEndHour)): keep NightAhead
+	// recommended lectures ready while the owner sleeps (0 or start == end = off).
+	NightAhead       int
+	NightStartHour   int
+	NightEndHour     int
+	StudyPregenerate bool // pre-generate the starting lecture of newly resolved study requests
+	LectureMaxTokens int
 	// LibraryUsesUserPrompts applies the owner's prompt overrides to library
 	// lectures too (standalone: the single user is the library's only reader).
 	LibraryUsesUserPrompts bool

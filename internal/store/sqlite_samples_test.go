@@ -50,7 +50,20 @@ func TestSeedSample(t *testing.T) {
 		t.Fatalf("seeded: kind=%s review=%s items=%d", kind, verdict, items)
 	}
 	dumped, err := s.DumpSample(ctx, id)
-	if err != nil || dumped.Title != "맛보기" || len(dumped.CheckItems) != 2 || dumped.CheckItems[1].ObjectiveID != "" {
+	if err != nil || dumped.Title != "맛보기" || len(dumped.CheckItems) != 2 || dumped.CheckItems[1].ObjectiveID != "" || dumped.Language != "ko" {
 		t.Fatalf("dump = %+v %v", dumped, err)
+	}
+
+	// The English sample of the same concept is its own lecture (i18n L9).
+	en := sm
+	en.Title, en.Language = "Sample", "en"
+	if added, err := s.SeedSample(ctx, en); err != nil || !added {
+		t.Fatalf("en sample beside the ko one: %v %v", added, err)
+	}
+	var lang string
+	var enItems int
+	if err := s.c().row(ctx, `SELECT l.language, (SELECT COUNT(*) FROM check_items ci WHERE ci.lecture_id = l.id AND ci.language = 'en')
+		FROM lectures l WHERE l.concept_id = 'net.network-layers' AND l.title = 'Sample'`).Scan(&lang, &enItems); err != nil || lang != "en" || enItems != 2 {
+		t.Fatalf("en sample: %q items=%d %v", lang, enItems, err)
 	}
 }

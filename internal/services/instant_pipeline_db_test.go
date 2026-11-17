@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/forgen-team/punisher/internal/i18n"
 	"strings"
 	"sync"
 	"testing"
@@ -236,7 +237,7 @@ func TestInstantNotPublishedAfterRewrites(t *testing.T) {
 		t.Fatalf("stages = %s, want %s", got, want)
 	}
 	last := r.last()
-	if last.LectureID != "" || len(last.Reasons) == 0 || len(last.Reasons) > 3 || last.Reasons[0] != reviewReasons["factual_error"] {
+	if last.LectureID != "" || len(last.Reasons) == 0 || len(last.Reasons) > 3 || last.Reasons[0] != i18n.ReasonKo(i18n.ReviewReasonCode("factual_error")) {
 		t.Fatalf("failed stage = %+v", last)
 	}
 	for _, reason := range last.Reasons {

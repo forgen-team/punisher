@@ -55,22 +55,25 @@ type SectionFlag struct {
 const FlagMinQuestions = 2
 
 // FlagSections marks a section when at least one exercise or lab missed and
-// misses are half or more of its attempts, or when it drew FlagMinQuestions questions.
-func FlagSections(signals []SectionSignal) []SectionFlag {
+// misses are half or more of its attempts, or when it drew FlagMinQuestions
+// questions. Reasons are worded in locale (ko|en; they are shown and fed to a regeneration).
+func FlagSections(signals []SectionSignal, locale string) []SectionFlag {
 	out := []SectionFlag{}
 	for _, s := range signals {
 		var reasons []string
 		attempts, misses := s.Exercises+s.Labs, s.ExerciseMs+s.LabMisses
 		if misses >= 1 && misses*2 >= attempts {
 			if s.ExerciseMs > 0 {
-				reasons = append(reasons, fmt.Sprintf("직접 해 보기 %d번 중 %d번 틀리거나 건너뜀", s.Exercises, s.ExerciseMs))
+				reasons = append(reasons, fmt.Sprintf(inLocale(locale, "직접 해 보기 %d번 중 %d번 틀리거나 건너뜀",
+					"missed or skipped %[2]d of %[1]d exercises"), s.Exercises, s.ExerciseMs))
 			}
 			if s.LabMisses > 0 {
-				reasons = append(reasons, fmt.Sprintf("실습 %d번 중 %d번 결과가 예상과 다름", s.Labs, s.LabMisses))
+				reasons = append(reasons, fmt.Sprintf(inLocale(locale, "실습 %d번 중 %d번 결과가 예상과 다름",
+					"%[2]d of %[1]d labs differed from the expected result"), s.Labs, s.LabMisses))
 			}
 		}
 		if s.Questions >= FlagMinQuestions {
-			reasons = append(reasons, fmt.Sprintf("질문 %d개", s.Questions))
+			reasons = append(reasons, fmt.Sprintf(inLocale(locale, "질문 %d개", "%d questions"), s.Questions))
 		}
 		if len(reasons) > 0 {
 			out = append(out, SectionFlag{Section: s.Section, Reasons: reasons})

@@ -9,6 +9,8 @@ import { LectureViewer } from "@/src/widgets/punisher/lecture-viewer";
 import { InstantStreamView } from "@/src/widgets/punisher/instant-stream";
 import { InquiryView } from "@/src/widgets/punisher/inquiry-view";
 import { CheckView } from "@/src/widgets/punisher/check-view";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 
 export function TodayPage() {
   return <TodayWidget />;
@@ -51,12 +53,13 @@ export function InstantPage() {
 }
 
 export function NotFoundPage() {
+  const t = useT(messages);
   return (
     <EmptyState
-      title="페이지를 찾을 수 없어요"
+      title={t.notFoundTitle}
       description={
         <Link href="/" className="underline">
-          오늘의 강의로 돌아가기
+          {t.backToToday}
         </Link>
       }
     />

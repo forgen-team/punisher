@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { CheckTurn, Prediction } from "@/src/shared/api/punisher";
 import { isRevealNotice, showPrediction, topBarTitle } from "../lib/checkView";
 import { CheckTurnItem } from "../ui/CheckTurnItem";
-import { SYSTEM_TURN_LABELS } from "../ui/constants";
+import { messages } from "../i18n";
 
 function turn(patch: Partial<CheckTurn>): CheckTurn {
   return { id: "t1", itemId: "i1", seq: 1, role: "tutor", move: "reveal", text: "", status: "ready", aided: true, reusedItem: false, createdAt: "", ...patch };
@@ -43,6 +43,6 @@ describe("답 공개 턴", () => {
         <CheckTurnItem turn={turn({ verdict: "revealed" })} />
       </ul>,
     );
-    expect(screen.getByRole("listitem").textContent).toBe(SYSTEM_TURN_LABELS.revealed);
+    expect(screen.getByRole("listitem").textContent).toBe(messages.ko.revealedNotice);
   });
 });

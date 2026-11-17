@@ -192,3 +192,20 @@ func TestPathToAndStartingPoint(t *testing.T) {
 		t.Fatalf("all done should give empty, got %q", sp)
 	}
 }
+
+// ko keeps the pre-i18n key strings (running jobs and stored keys stay valid);
+// en gets its own target, so the two languages never share a job or Hub slot.
+func TestTargetKeysSplitByLanguage(t *testing.T) {
+	plan := LecturePlan{ConceptID: "os.process", ObjectiveIDs: []string{"os.process#1"}, ObjectiveKey: "os.process#1", Depth: 1}
+	if TargetKey(plan) != "os.process#1@1" || LibraryJobKey(plan, "2026-11-16") != "library:os.process#1@1:2026-11-16" {
+		t.Fatalf("legacy keys changed: %s %s", TargetKey(plan), LibraryJobKey(plan, "2026-11-16"))
+	}
+	plan.Language = LocaleKO
+	if TargetKey(plan) != "os.process#1@1" {
+		t.Fatalf("explicit ko must equal the legacy key: %s", TargetKey(plan))
+	}
+	plan.Language = LocaleEN
+	if TargetKey(plan) != "os.process#1@1|en" || LibraryJobKey(plan, "2026-11-16") != "library:os.process#1@1|en:2026-11-16" {
+		t.Fatalf("en keys: %s %s", TargetKey(plan), LibraryJobKey(plan, "2026-11-16"))
+	}
+}

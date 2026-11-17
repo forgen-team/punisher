@@ -12,15 +12,18 @@ import { LectureLayout, LectureTopBar } from "../lecture-viewer";
 import { currentStep, failureLines, stageLabel, type StageState, type StepKey } from "./lib/stageState";
 import { useInstantStream } from "./useInstantStream";
 import { useRetryInstant } from "./useRetryInstant";
+import { useLocale, translate } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 
-const STEPS: Array<{ key: StepKey; label: string }> = [
-  { key: "write", label: "작성" },
-  { key: "review", label: "검수" },
-  { key: "fix", label: "고침" },
+const STEPS: Array<{ key: StepKey; label: "stepWrite" | "stepReview" | "stepFix" }> = [
+  { key: "write", label: "stepWrite" },
+  { key: "review", label: "stepReview" },
+  { key: "fix", label: "stepFix" },
 ];
 
 /** 작업이 시작된 뒤 지난 시간. 시작 시각을 못 받으면 화면을 연 때를 기준으로 한다. */
 function useElapsedLabel(jobId: string, running: boolean): string {
+  const t = translate(messages, useLocale());
   const [seconds, setSeconds] = useState(0);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   useEffect(() => {
@@ -40,11 +43,13 @@ function useElapsedLabel(jobId: string, running: boolean): string {
     return () => window.clearInterval(timer);
   }, [running, startedAt]);
   if (!running || seconds < 5) { return ""; }
-  return seconds < 60 ? `${seconds}초` : `${Math.floor(seconds / 60)}분 ${seconds % 60}초`;
+  return seconds < 60 ? t.elapsedSeconds(seconds) : t.elapsedMinutes(Math.floor(seconds / 60), seconds % 60);
 }
 
 /** 작성 → 검수 → (고침) — 지금 칸만 단계 이름(고치는 중 n/2 등)으로 강조한다. 고침 칸은 고쳐 쓰기가 시작돼야 나온다. */
 function StageSteps({ state }: { state: StageState }) {
+  const locale = useLocale();
+  const t = translate(messages, locale);
   const now = currentStep(state.stage);
   const steps = STEPS.filter((s) => s.key !== "fix" || state.attempt > 0);
   return (
@@ -58,7 +63,7 @@ function StageSteps({ state }: { state: StageState }) {
               s.key === now ? "bg-accent-subtle font-medium text-accent-text" : "text-fg-muted",
             )}
           >
-            {s.key === now ? stageLabel(state) : s.label}
+            {s.key === now ? stageLabel(state, locale) : t[s.label]}
           </span>
         </li>
       ))}
@@ -67,13 +72,14 @@ function StageSteps({ state }: { state: StageState }) {
 }
 
 function FailurePanel({ state, jobId }: { state: StageState; jobId: string }) {
+  const t = translate(messages, useLocale());
   const retry = useRetryInstant(jobId);
   const lines = failureLines(state);
   return (
     <div role="alert" className="flex flex-col gap-2 rounded-md bg-danger-subtle px-3 py-3">
       <p className="flex items-center gap-1.5 text-sm font-semibold text-danger">
         <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
-        강의를 만들지 못했어요
+        {t.failedTitle}
       </p>
       {lines.length > 0 && (
         <ul className="flex flex-col gap-0.5 text-sm text-fg">
@@ -84,7 +90,7 @@ function FailurePanel({ state, jobId }: { state: StageState; jobId: string }) {
       )}
       {retry.available && (
         <Button size="sm" className="self-start" loading={retry.isPending} onClick={retry.run}>
-          다시 만들기
+          {t.retry}
         </Button>
       )}
     </div>
@@ -94,6 +100,7 @@ function FailurePanel({ state, jobId }: { state: StageState; jobId: string }) {
 /** 즉석 강의 생성 — 초안 본문 대신 단계(작성 → 검수 → 고침)만 보이고, 기다리는 동안 예측 질문을 둔다. 발행되면 강의로 이동. */
 export function InstantStreamView({ jobId }: { jobId: string }) {
   const router = useRouter();
+  const locale = useLocale();
   const queryClient = useQueryClient();
   const state = useInstantStream(jobId);
   const pretest = usePretest({ jobId });
@@ -110,7 +117,7 @@ export function InstantStreamView({ jobId }: { jobId: string }) {
 
   return (
     <div className="flex w-full flex-col">
-      <LectureTopBar title="즉석 강의" />
+      <LectureTopBar title={translate(messages, locale).title} />
       <LectureLayout sections={[]} totalMinutes={0} activeAnchor="">
         <div aria-busy={busy} className="flex flex-col gap-4 pt-4">
           {stage === "failed" ? (
@@ -121,7 +128,7 @@ export function InstantStreamView({ jobId }: { jobId: string }) {
               <div role="status" aria-live="polite" className="flex flex-wrap items-center gap-3">
                 {busy && <Spinner size="sm" label={null} />}
                 <StageSteps state={state} />
-                {stage === "published" && <span className="text-sm font-medium text-success">{stageLabel(state)}</span>}
+                {stage === "published" && <span className="text-sm font-medium text-success">{stageLabel(state, locale)}</span>}
               </div>
               {elapsed && <span className="ml-auto text-xs text-fg-muted tabular-nums">{elapsed}</span>}
             </div>

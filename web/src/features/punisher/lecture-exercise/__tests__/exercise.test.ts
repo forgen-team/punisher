@@ -21,6 +21,13 @@ describe("parseLab", () => {
       expect: "LISTEN 0 4096 0.0.0.0:22",
     });
   });
+  it("also reads English Look / Expect lines", () => {
+    expect(parseLab("$ ss -tlnp\nLook: Local Address column\nExpect: LISTEN")).toEqual({
+      command: "ss -tlnp",
+      look: "Local Address column",
+      expect: "LISTEN",
+    });
+  });
 });
 
 describe("labForOS", () => {

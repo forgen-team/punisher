@@ -10,13 +10,18 @@ import type { LectureTerm } from "../lib/lectureTerms";
 import { NotesPanel } from "./NotesPanel";
 import { QuestionsPanel } from "./QuestionsPanel";
 import { TermList } from "./TermList";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 
 type AssistTab = "questions" | "notes";
+type T = typeof messages.ko;
 
-const TABS = [
-  { value: "questions", label: "질문" },
-  { value: "notes", label: "메모" },
-] as const;
+function assistTabs(t: T) {
+  return [
+    { value: "questions", label: t.tabQuestions },
+    { value: "notes", label: t.tabNotes },
+  ] as const;
+}
 
 interface LectureAssistSheetProps {
   open: boolean;
@@ -32,14 +37,15 @@ interface LectureAssistSheetProps {
  * 상단 바 버튼으로 열어 하단 탭 바와 겹치는 플로팅 버튼을 두지 않는다.
  */
 export function LectureAssistSheet({ open, onClose, lectureId, conceptId, getAnchor }: LectureAssistSheetProps) {
+  const t = useT(messages);
   const [tab, setTab] = useState<AssistTab>("questions");
   const panelId = useId();
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="질문과 메모" desktop="side">
+    <BottomSheet open={open} onClose={onClose} title={t.questionsAndNotes} desktop="side">
       <SegmentedTabs
-        aria-label="질문 또는 메모"
-        items={TABS.map((t) => ({ ...t, panelId }))}
+        aria-label={t.assistTabs}
+        items={assistTabs(t).map((item) => ({ ...item, panelId }))}
         value={tab}
         onChange={setTab}
         fill
@@ -56,7 +62,9 @@ export function LectureAssistSheet({ open, onClose, lectureId, conceptId, getAnc
   );
 }
 
-const PANEL_TABS = [...TABS, { value: "terms", label: "용어" }] as const;
+function panelTabs(t: T) {
+  return [...assistTabs(t), { value: "terms", label: t.tabTerms }] as const;
+}
 type PanelTab = AssistTab | "terms";
 
 interface LectureAssistPanelProps extends Omit<LectureAssistSheetProps, "open" | "onClose"> {
@@ -71,12 +79,13 @@ interface LectureAssistPanelProps extends Omit<LectureAssistSheetProps, "open" |
  * 그리고 '더 깊게' 본 강의가 있으면 그 목록. 시트를 열 필요 없이 본문 옆에 늘 펼쳐 둔다.
  */
 export function LectureAssistPanel({ lectureId, conceptId, getAnchor, terms, onBeforeDeeper, deeper }: LectureAssistPanelProps) {
+  const t = useT(messages);
   const [tab, setTab] = useState<PanelTab>("questions");
   const panelId = useId();
   return (
     <div className="flex flex-col gap-6">
-      <section aria-label="질문 · 메모 · 용어" className="flex flex-col gap-3">
-        <SegmentedTabs aria-label="보조 정보" items={PANEL_TABS.map((t) => ({ ...t, panelId }))} value={tab} onChange={setTab} fill />
+      <section aria-label={t.panelSection} className="flex flex-col gap-3">
+        <SegmentedTabs aria-label={t.panelTabs} items={panelTabs(t).map((item) => ({ ...item, panelId }))} value={tab} onChange={setTab} fill />
         <div role="tabpanel" id={panelId}>
           {tab === "questions" && <QuestionsPanel lectureId={lectureId} getAnchor={getAnchor} />}
           {tab === "notes" && <NotesPanel lectureId={lectureId} conceptId={conceptId} getAnchor={getAnchor} />}
@@ -84,7 +93,7 @@ export function LectureAssistPanel({ lectureId, conceptId, getAnchor, terms, onB
         </div>
       </section>
       {deeper.length > 0 && (
-        <Section title="더 깊게 본 강의" headingLevel={3}>
+        <Section title={t.deeperShort} headingLevel={3}>
           <List>
             {deeper.map((l) => (
               <ListRow key={l.id} href={lectureHref(l.id)} linkAs={Link} leading={<Layers aria-hidden="true" />} title={l.conceptName || l.title} titleLines={1} />
@@ -98,9 +107,10 @@ export function LectureAssistPanel({ lectureId, conceptId, getAnchor, terms, onB
 
 /** 생성 중(즉석 강의) 보조 열 자리 — 완성된 강의로 바뀔 때 본문이 옆으로 밀리지 않도록 같은 폭을 미리 잡는다. */
 export function LectureAssistPlaceholder({ children }: { children?: ReactNode }) {
+  const t = useT(messages);
   return (
     <p className="break-keep rounded-xl border border-line bg-canvas-elevated p-4 text-sm text-fg-muted shadow-xs">
-      {children ?? "강의가 완성되면 여기서 질문·메모를 남기고 용어 설명을 볼 수 있어요."}
+      {children ?? t.assistPlaceholder}
     </p>
   );
 }

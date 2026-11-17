@@ -1,12 +1,15 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/src/shared/ui/kit";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 
 /**
  * 본문 표를 감싸는 가로 스크롤 상자. 표가 상자보다 넓을 때만, 아직 끝까지 밀지 않은 쪽 가장자리에 흐림 단서를 둔다
  * (다 들어가면 아무것도 그리지 않는다).
  */
 export function TableFrame({ children }: { children: ReactNode }) {
+  const t = useT(messages);
   const ref = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ start: false, end: false });
 
@@ -31,7 +34,7 @@ export function TableFrame({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative my-3">
-      <div ref={ref} role="region" aria-label="표" tabIndex={0} className="max-w-full overflow-x-auto">
+      <div ref={ref} role="region" aria-label={t.table} tabIndex={0} className="max-w-full overflow-x-auto">
         {children}
       </div>
       <span

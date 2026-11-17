@@ -1,3 +1,4 @@
+import { getLocale, localeTag } from "@/src/shared/i18n";
 /** 경량 SVG 차트의 스케일·눈금·좌표 계산(라이브러리 없이). 화면 좌표는 위가 0 이다. */
 import type { ChartData, ChartScaleKind } from "./blockData";
 
@@ -59,15 +60,29 @@ export function makeScale(kind: ChartScaleKind, values: number[], range: [number
   return kind === "log" ? logScale(values, range) : linearScale(values, range);
 }
 
-const COMPACT = new Intl.NumberFormat("ko-KR", { notation: "compact", maximumFractionDigits: 1 });
-const PLAIN = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 3 });
+const formatters = new Map<string, { compact: Intl.NumberFormat; plain: Intl.NumberFormat }>();
+
+/** 축·값 숫자 형식 — 화면 언어를 따른다(ko: 1.2만, en: 12K). */
+function numberFormats() {
+  const tag = localeTag(getLocale());
+  let f = formatters.get(tag);
+  if (!f) {
+    f = {
+      compact: new Intl.NumberFormat(tag, { notation: "compact", maximumFractionDigits: 1 }),
+      plain: new Intl.NumberFormat(tag, { maximumFractionDigits: 3 }),
+    };
+    formatters.set(tag, f);
+  }
+  return f;
+}
 
 export function formatTick(value: number): string {
-  return Math.abs(value) >= 10_000 ? COMPACT.format(value) : PLAIN.format(value);
+  const f = numberFormats();
+  return Math.abs(value) >= 10_000 ? f.compact.format(value) : f.plain.format(value);
 }
 
 export function formatValue(value: number): string {
-  return PLAIN.format(value);
+  return numberFormats().plain.format(value);
 }
 
 export interface ChartLayout {

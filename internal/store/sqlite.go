@@ -85,15 +85,15 @@ var placeholderRE = regexp.MustCompile(`\$(\d+)`)
 var rewriteCache sync.Map
 
 // rewrite converts the PostgreSQL-flavoured query text used in this package
-// to SQLite: NOW() → strftime, $N → ?N.
+// to SQLite: NOW() → strftime, $N → ?N, and fills the default locale (userLocaleSQL).
 func rewrite(q string) string {
 	if v, ok := rewriteCache.Load(q); ok {
-		return v.(string)
+		return fillDefaultLocale(v.(string))
 	}
 	out := strings.ReplaceAll(q, "NOW()", nowExpr)
 	out = placeholderRE.ReplaceAllString(out, "?$1")
 	rewriteCache.Store(q, out)
-	return out
+	return fillDefaultLocale(out)
 }
 
 // FormatTime renders t in the stored format.

@@ -4,6 +4,8 @@ import { MessageCirclePlus } from "lucide-react";
 import { cn, focusRing, useMediaQuery } from "@/src/shared/ui/kit";
 import { useTextSelection } from "@/src/features/punisher/reading-assist";
 import { INQUIRY_MAX_QUOTE_CHARS } from "@/src/shared/api/punisher";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 
 const BUTTON_GAP = 10;
 const MIN_CHARS = 2;
@@ -11,6 +13,7 @@ const TOP_CLEARANCE = 112;
 
 /** 해설에서 고른 구절 옆 '여기 더 자세히' — 누르면 그 구절을 인용으로 붙여 이어서 묻기로 간다. */
 export function QuoteAsk({ containerRef, onQuote }: { containerRef: RefObject<HTMLElement>; onQuote: (text: string) => void }) {
+  const t = useT(messages);
   const coarse = useMediaQuery("(pointer: coarse)");
   const selection = useTextSelection(containerRef, true);
   if (!selection || Array.from(selection.text).length < MIN_CHARS) { return null; }
@@ -37,7 +40,7 @@ export function QuoteAsk({ containerRef, onQuote }: { containerRef: RefObject<HT
         )}
       >
         <MessageCirclePlus className="size-4 text-accent-text" aria-hidden="true" />
-        여기 더 자세히
+        {t.quoteAsk}
       </button>
     </div>,
     document.body,

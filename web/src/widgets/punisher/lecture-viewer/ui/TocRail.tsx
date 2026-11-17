@@ -6,6 +6,8 @@ import { SECTION_KIND_LABELS } from "@/src/entities/punisher";
 import { scrollToAnchor } from "@/src/features/punisher/lecture-progress";
 import type { LectureSection } from "@/src/shared/api/punisher";
 import { SectionToc } from "./SectionToc";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 
 interface TocRailProps {
   sections: LectureSection[];
@@ -18,6 +20,7 @@ interface TocRailProps {
  * 점은 읽은 위치까지 채워지고(진행), 누르면 그 섹션으로 간다. 아이콘을 누르면 목차가 본문 위에 펼쳐진다(폭을 밀지 않음).
  */
 export function TocRail({ sections, totalMinutes, activeAnchor }: TocRailProps) {
+  const t = useT(messages);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
@@ -41,10 +44,10 @@ export function TocRail({ sections, totalMinutes, activeAnchor }: TocRailProps) 
 
   return (
     <div ref={rootRef} className="relative flex flex-col items-center gap-2">
-      <IconButton aria-label={open ? "목차 접기" : "목차 펼치기"} aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((v) => !v)}>
+      <IconButton aria-label={open ? t.tocCollapse : t.tocExpand} aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((v) => !v)}>
         <ListOrdered aria-hidden="true" />
       </IconButton>
-      <ol aria-label="섹션 위치" className="flex flex-col items-center">
+      <ol aria-label={t.sectionPositions} className="flex flex-col items-center">
         {sections.map((s, index) => {
           const label = `${index + 1}. ${s.title || SECTION_KIND_LABELS[s.kind] || s.kind}`;
           const current = index === activeIndex;

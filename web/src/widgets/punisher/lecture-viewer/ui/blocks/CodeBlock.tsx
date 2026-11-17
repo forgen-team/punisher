@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { Copy } from "lucide-react";
 import { cn } from "@/src/shared/ui/kit";
+import { useT } from "@/src/shared/i18n";
+import { blockMessages } from "../../i18n";
 
 type ChangeTone = "removed" | "added";
 
@@ -26,6 +28,7 @@ const NO_LINES: readonly number[] = [];
 
 /** Code/log block; shiki is lazy-loaded and themed via CSS variables (light/dark). */
 export function CodeBlock({ code, lang, isLog, label, changedLines = NO_LINES, changeTone = "added" }: CodeBlockProps) {
+  const t = useT(blockMessages);
   const [html, setHtml] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -52,7 +55,7 @@ export function CodeBlock({ code, lang, isLog, label, changedLines = NO_LINES, c
     }
   }
 
-  const heading = label ?? (isLog ? `로그${lang ? ` · ${lang}` : ""}` : lang || "코드");
+  const heading = label ?? (isLog ? `${t.log}${lang ? ` · ${lang}` : ""}` : lang || t.code);
   const marking = changedLines.length > 0;
 
   return (
@@ -63,10 +66,10 @@ export function CodeBlock({ code, lang, isLog, label, changedLines = NO_LINES, c
           type="button"
           onClick={copy}
           className="inline-flex min-h-9 items-center gap-1 px-3 hover:text-fg"
-          aria-label={copied ? "복사됨" : "코드 복사"}
+          aria-label={copied ? t.copied : t.copyCode}
         >
           <Copy className="size-3.5" aria-hidden="true" />
-          <span aria-hidden="true">{copied ? "복사됨" : "복사"}</span>
+          <span aria-hidden="true">{copied ? t.copied : t.copy}</span>
         </button>
       </figcaption>
       {html ? (

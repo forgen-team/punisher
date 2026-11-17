@@ -27,7 +27,7 @@ func (s *SQLiteStore) ChapterSignals(ctx context.Context, userID string) (propos
 	// (a) the user's proposed concepts; mentions = lectures the user opened that
 	// name the concept (term block or inline link) + questions proposing it by name.
 	if proposed, err = collect(s.c().query(ctx, `
-		SELECT c.id, c.name, c.area,
+		SELECT c.id, `+locName("c", userLocaleSQL("$1"))+`, c.area,
 			(SELECT COUNT(*) FROM lectures l JOIN user_lecture_progress p ON p.lecture_id = l.id AND p.user_id = $1
 			 WHERE l.content LIKE '%' || c.id || '%')
 			+ (SELECT COUNT(*) FROM lecture_questions q WHERE q.user_id = $1 AND q.proposed_concepts LIKE '%' || c.name || '%')
@@ -44,14 +44,14 @@ func (s *SQLiteStore) ChapterSignals(ctx context.Context, userID string) (propos
 
 	// (b) finished concepts with deeper (depth 2-3) objectives still pending.
 	if deepen, err = collect(s.c().query(ctx, `
-		SELECT c.id, c.name, c.area, COUNT(o.id)
+		SELECT c.id, `+locName("c", userLocaleSQL("$1"))+`, c.area, COUNT(o.id)
 		FROM concepts c
 		JOIN user_concept_states st ON st.concept_id = c.id AND st.user_id = $1 AND st.state IN ('completed', 'known')
 		JOIN objectives o ON o.concept_id = c.id AND o.status = 'active' AND o.depth >= 2
 		WHERE c.status = 'active' AND `+visibleTo("c", "$1")+`
 		  AND NOT EXISTS (SELECT 1 FROM user_objective_states us
 		                  WHERE us.user_id = $1 AND us.objective_id = o.id AND us.state IN ('completed', 'known'))
-		GROUP BY c.id, c.name, c.area
+		GROUP BY c.id
 		ORDER BY COUNT(o.id) DESC, c.id LIMIT 20`, userID), func(r rowScanner) (learning.DeepenSignal, error) {
 		var d learning.DeepenSignal
 		err := r.Scan(&d.ConceptID, &d.Name, &d.Area, &d.Remaining)
@@ -61,7 +61,8 @@ func (s *SQLiteStore) ChapterSignals(ctx context.Context, userID string) (propos
 	}
 
 	list, err := collect(s.c().query(ctx, `
-		SELECT c.name FROM concepts c WHERE c.status = 'active' AND `+visibleTo("c", "$1"), userID), scanString)
+		SELECT c.name FROM concepts c WHERE c.status = 'active' AND `+visibleTo("c", "$1")+`
+		UNION SELECT c.name_en FROM concepts c WHERE c.status = 'active' AND c.name_en <> '' AND `+visibleTo("c", "$1"), userID), scanString)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("covered names: %w", err)
 	}
@@ -77,7 +78,7 @@ func (s *SQLiteStore) ChapterContext(ctx context.Context, userID string) (chapte
 	c := chapter.Context{UserID: userID, Visible: map[string]string{}, OwnProposed: map[string]string{}}
 	type row struct{ id, name, status string }
 	list, err := collect(s.c().query(ctx, `
-		SELECT c.id, c.name, c.status FROM concepts c
+		SELECT c.id, `+locName("c", userLocaleSQL("$1"))+`, c.status FROM concepts c
 		WHERE c.status IN ('active', 'proposed') AND `+visibleTo("c", "$1"), userID), func(r rowScanner) (row, error) {
 		var x row
 		err := r.Scan(&x.id, &x.name, &x.status)

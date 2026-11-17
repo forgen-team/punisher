@@ -1,0 +1,112 @@
+# English overlay for ../os.yaml — same ids.
+area: os
+concepts:
+  os.atomic-and-cas: An atomic operation is a single step that nothing else can interrupt partway through. CAS (compare-and-swap) is an atomic instruction that writes a new value only if the current value matches the expected one. Simple shared values like counters can be updated safely without locks.
+  os.cgroups: cgroups is a Linux kernel feature that limits and measures the CPU, memory, and I/O used by a group of processes. Container CPU and memory limits are built on it, so it is the starting point for explaining periodic latency spikes or OOM kills.
+  os.context-switch: A context switch is the CPU swapping the running thread for another, saving and restoring registers and state. Each switch has a cost and hurts cache efficiency, so adding too many threads can actually lower throughput.
+  os.deadlock: A deadlock is when two or more flows each wait for resources the other holds, so none can make progress. It shows up as requests hanging without errors. Consistent lock ordering or timeouts are practical ways to prevent it.
+  os.event-loop: An event loop is a single-threaded execution model that waits for events such as I/O completion and runs registered callbacks one at a time. Node.js servers work this way, so one CPU-heavy task holding the loop delays every response.
+  os.exit-code-and-signals: An exit code is the number a process leaves when it ends. 0 means success and anything else means failure. Signals are short external notifications used to request or force termination. A container that exited with 137 was likely killed by SIGKILL.
+  os.file-descriptor: A file descriptor is an integer that refers to a file, socket, or pipe a process has open. Each process can only open so many, so failing to close response bodies or connections causes Too many open files errors and new requests fail.
+  os.file-system: A file system builds and manages the structure of files and directories on disk. File metadata lives in inodes, so running out of inodes blocks file creation even with free space, and deleting a file that is still open does not free its space.
+  os.gc-memory-management: Garbage collection is the runtime automatically finding and reclaiming heap memory that is no longer referenced. It uses CPU and can pause execution, causing latency spikes under heavy traffic, so reducing allocations comes first.
+  os.io-models: Blocking I/O halts the thread until data is ready, while non-blocking I/O returns immediately. I/O multiplexing such as epoll lets one thread handle only the ready connections among many, and it underpins servers with many concurrent connections.
+  os.kernel-and-syscall: The kernel is the OS core that manages hardware and resources, and system calls are the official way apps request work from it. File reads, socket connections, and process creation all use them, so check this boundary for slow I/O or permission errors.
+  os.memory-metrics: Memory metrics such as VSZ, RSS, and working set each count a different scope of memory. You need them to explain why dashboards and top disagree, which number drives memory limits and OOM decisions, and how to tell leaks from cache.
+  os.memory-oom: OOM means memory has run out, and the OOM Killer is the kernel feature that picks a process to kill when it does. A container that exceeds its memory limit dies with exit code 137 and no app log, so check kernel logs and container status.
+  os.mutex-and-lock: A lock is a synchronization tool that lets only a set number of flows into a critical section at once. A mutex is a lock that allows just one. Locks prevent race conditions but add wait time, so with a wide lock scope, adding cores won't raise throughput.
+  os.namespaces: Namespaces are a Linux kernel feature that isolates what a process sees, such as PIDs, network, filesystem mounts, and hostname. This is why localhost inside a container isn't the host's localhost and why the app shows up as PID 1.
+  os.page-cache: The page cache is where the kernel keeps disk contents in memory to speed up reads and writes. It is why near-zero free memory on a server can be normal, and why data from a successful write may not be on disk until fsync.
+  os.process: A process is a running program with its own address space, list of open files, environment variables, and PID. Services on a server and apps in containers are processes too, so the process is the basic unit for issues like port conflicts or duplicate instances.
+  os.process-lifecycle-fork-exec: On Unix-like systems, a process is created when fork copies an existing one and exec replaces the copy with another program. It is fully gone only after its parent reaps it. This is why a container's PID 1 must forward signals and reap children.
+  os.race-condition: A race condition is a bug where the result depends on execution order when multiple flows read and write shared data at once. Undercounted views and negative stock are examples. It stays hidden in tests and appears under heavy traffic.
+  os.scheduling: CPU scheduling is the kernel deciding which runnable thread gets the CPU, when, and for how long. It explains why load average and CPU usage measure different things and why CPU limits show up as latency.
+  os.socket: A socket is an OS interface that lets programs handle a network endpoint like a file descriptor. Servers bind to an address and port, then take connections with listen and accept. Binding only to 127.0.0.1 blocks access from outside the container.
+  os.stdout-stderr-logs: Standard output and standard error are output channels every process has by default, as file descriptors 1 and 2. Container platforms collect them as logs, so if a forced kill cuts output off, you need evidence beyond the logs.
+  os.thread: A thread is a flow of execution that runs concurrently with others in the same process and shares its memory. It is lighter than starting a new process, but shared data touched by several threads causes bugs, and one thread's crash can kill the whole process.
+  os.virtual-memory: Virtual memory gives each process its own address space, which the kernel and hardware map onto physical memory pages. This is why a process can have a large virtual memory size but small actual usage.
+terms:
+  g.strace:
+    name: strace
+    gloss: strace is a Linux tool that shows the system calls a process makes and their results in real time. Use it to find why a file failed to open or which call an unresponsive process is stuck on.
+  g.errno:
+    name: errno
+    gloss: errno is a number that tells you why a system call failed. ENOENT means the file does not exist and EACCES means permission denied. These names in error messages let you tell path problems from permission problems.
+  g.proc-fs:
+    name: /proc
+    gloss: /proc is a virtual file system where the kernel exposes process and system state as files. These are not real files on disk, and tools like ps and top read them to display their information.
+  g.ps-top:
+    name: ps and top
+    gloss: ps prints a one-time list of current processes and their state, while top shows CPU and memory usage and refreshes it in real time. They are the first tools to reach for when checking which process is using the most resources on a server.
+  g.ppid:
+    name: Parent process
+    gloss: A parent process is a process that created another process, and its ID is called the PPID. When a child exits, the parent must collect its exit status. Following the process tree shows which process started which.
+  g.waitpid:
+    name: wait / waitpid
+    gloss: wait and waitpid are system calls a parent process uses to wait for a child to exit and collect its exit status. Without them, finished children stay behind as zombies and keep taking up slots in the process table.
+  g.sigint:
+    name: SIGINT
+    gloss: SIGINT is the interrupt signal sent to a process when you press Ctrl+C in a terminal. Like SIGTERM, a process can catch it to clean up, so it comes up often when checking how a local dev server shuts down.
+  g.sigsegv:
+    name: Segmentation fault
+    gloss: A segmentation fault is when the kernel sends SIGSEGV and kills a process that accessed memory it has no permission for or that isn't mapped. It appears when a server suddenly dies from a bug in a native module or C library.
+  g.core-dump:
+    name: Core dump
+    gloss: A core dump is a file that saves a process's memory state at the moment it terminated abnormally. Opening it in a debugger shows the call stack and variable values at crash time, which helps analyze crashes that are hard to reproduce.
+  g.thread-pool:
+    name: Thread pool
+    gloss: A thread pool creates a fixed number of threads up front and hands work out to them. It avoids the cost of creating a thread per request and caps concurrency, so pool size shapes throughput and latency.
+  g.goroutine:
+    name: Goroutine
+    gloss: A goroutine is a lightweight unit of execution managed by the Go runtime, which runs many goroutines on a few OS threads. They are cheap to create, but goroutines that never exit pile up and leak memory, and ones that keep holding connections leak FDs too.
+  g.preemption:
+    name: Preemption
+    gloss: Preemption is the scheduler forcibly taking the CPU from a running thread and giving it to another. It stops any one task from monopolizing the CPU, but it also causes more involuntary context switches.
+  g.spinlock:
+    name: Spinlock
+    gloss: A spinlock waits for a lock to be released by checking it over and over instead of sleeping. When waits are very short, it saves the cost of sleeping and waking up, but longer waits waste CPU.
+  g.condition-variable:
+    name: Condition variable
+    gloss: A condition variable is a synchronization tool that puts threads to sleep until a condition is met and wakes them when another thread signals. It is used with a mutex, for example to keep workers waiting until a job arrives in a work queue.
+  g.thread-dump:
+    name: Thread dump
+    gloss: A thread dump is a snapshot showing which function each thread is in and what it is waiting on at a given moment. Take one when a server hangs without errors to find deadlocks or the points where threads wait on locks.
+  g.aba-problem:
+    name: ABA problem
+    gloss: The ABA problem is when a value changes from A to B and back to A, and CAS wrongly concludes nothing changed. It occurs in lock-free data structures that compare only values, and it is avoided by comparing a version number as well.
+  g.page-fault:
+    name: Page fault
+    gloss: A page fault is an event where the kernel steps in because a process accessed a virtual address with no valid page table mapping or with mismatched permissions. Major faults, which must read from disk or swap, are costly and cause latency.
+  g.mmu-tlb:
+    name: MMU and TLB
+    gloss: The MMU is hardware in the CPU that translates virtual addresses to physical ones, and the TLB is a cache of recent translations. When a translation isn't in the TLB, the page table must be looked up again, which slows memory access.
+  g.mmap:
+    name: mmap
+    gloss: mmap is a system call that maps a file or memory region into a process's address space. It lets programs read and write files as if they were memory, so some databases and runtimes use it. It is one reason virtual memory size can look large.
+  g.memory-leak:
+    name: Memory leak
+    gloss: A memory leak is memory that is no longer used but never freed, so it keeps piling up. It happens even in GC languages when global caches or tasks that never finish hold references, and it eventually leads to an OOM kill.
+  g.dmesg:
+    name: dmesg
+    gloss: dmesg is a command that prints messages left by the kernel, including records of OOM Killer actions and hardware errors. It is the first evidence to check when a process disappears without any app log.
+  g.pipe:
+    name: Pipe
+    gloss: A pipe is a one-way kernel channel that passes one process's output directly into another process's input. Joining shell commands with a vertical bar creates a pipe, and each process sees its end as a file descriptor.
+  g.lsof:
+    name: lsof
+    gloss: lsof is a tool that lists the files, sockets, and pipes a process has open. Use it to see which process holds a port, where FDs are leaking, or which process is still holding on to a deleted file.
+  g.listen-backlog:
+    name: Listen backlog
+    gloss: The listen backlog is the queue where connections that are established but not yet accepted by the server wait. If the server is slow to accept, the queue fills and new connections are refused or delayed, which becomes a problem during sudden traffic spikes.
+  g.unix-domain-socket:
+    name: Unix domain socket
+    gloss: A Unix domain socket lets processes on the same machine communicate using a file path as the address. It skips the network stack, which makes it lightweight, and it is commonly used by the Docker daemon and for local database connections.
+  g.libuv:
+    name: libuv
+    gloss: libuv is the C library that implements Node.js's event loop and asynchronous I/O. It wraps each OS's I/O multiplexing and hands work that is hard to do without blocking, such as file I/O, to an internal thread pool.
+  g.stop-the-world:
+    name: Stop-the-world
+    gloss: Stop-the-world is a phase where the GC briefly pauses all application execution so it can work safely. Request handling stops during this phase too, so long pauses show up as p99 latency spikes.
+  g.escape-analysis:
+    name: Escape analysis
+    gloss: Escape analysis is the compiler checking whether a variable is used outside its function to decide whether it goes on the stack or the heap. Fewer values escaping to the heap means less for the GC to reclaim and a lighter GC load.

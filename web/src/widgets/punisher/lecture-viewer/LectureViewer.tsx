@@ -29,6 +29,8 @@ import { extractLectureTerms } from "./lib/lectureTerms";
 import { sourcesNotInSections } from "./lib/lectureSources";
 import { useActiveSection } from "./lib/useActiveSection";
 import { SourcesList } from "./ui/blocks";
+import { messages } from "./i18n";
+import { useT } from "@/src/shared/i18n";
 
 /**
  * 강의 뷰어(모바일 우선): 고정 상단 바(목차·질문/메모 시트·⋯) → 제목·메타 → 접힌 목표/범위 → 본문.
@@ -38,6 +40,7 @@ const NO_FIXES: SectionFix[] = [];
 
 export function LectureViewer({ lectureId }: { lectureId: string }) {
   const router = useRouter();
+  const t = useT(messages);
   const lectureQuery = useLecture(lectureId);
   const lecture = lectureQuery.data;
   const content = lecture?.content;
@@ -82,7 +85,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
 
   if (lectureQuery.isLoading) {
     return (
-      <div aria-busy="true" aria-label="강의를 불러오는 중" className="mx-auto w-full max-w-2xl pt-4">
+      <div aria-busy="true" aria-label={t.loading} className="mx-auto w-full max-w-2xl pt-4">
         <ListSkeleton rows={6} />
       </div>
     );
@@ -93,13 +96,13 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
       <div className="flex flex-col items-center gap-2">
         <ErrorState message={describePunisherError(lectureQuery.error)} onRetry={() => lectureQuery.refetch()} />
         <Link href="/" className="text-sm text-fg-secondary underline-offset-2 hover:text-fg hover:underline">
-          강의 화면으로 돌아가기
+          {t.backToLectures}
         </Link>
       </div>
     );
   }
   if (!lecture || !content || content.sections.length === 0) {
-    return <EmptyState title="강의 본문이 없습니다" description="강의가 아직 생성 중이거나 비어 있습니다." />;
+    return <EmptyState title={t.emptyTitle} description={t.emptyDescription} />;
   }
 
   // 표시 시간은 서버가 분량으로 계산한 값(v2.2 §5). 예전 응답(0)이면 섹션 합.
@@ -113,12 +116,12 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
   const returnHref = bookmark ? `${lectureHref(bookmark.lectureId)}#pa-${bookmark.anchor}` : "";
 
   const menuItems: MenuItem[] = [
-    { key: "complete", label: actions.done ? "완료함" : "완료로 표시", disabled: actions.done || actions.complete.isPending, onSelect: actions.markComplete },
-    { key: "check", label: "확인하기", disabled: check.isPending, onSelect: check.launch },
-    { key: "known", label: actions.knownDone ? "이미 앎으로 표시됨" : "이미 앎", disabled: actions.knownDone || actions.known.isPending, onSelect: actions.markKnown },
+    { key: "complete", label: actions.done ? t.menuCompleted : t.menuComplete, disabled: actions.done || actions.complete.isPending, onSelect: actions.markComplete },
+    { key: "check", label: t.menuCheck, disabled: check.isPending, onSelect: check.launch },
+    { key: "known", label: actions.knownDone ? t.menuKnownDone : t.menuKnown, disabled: actions.knownDone || actions.known.isPending, onSelect: actions.markKnown },
     {
       key: "feedback",
-      label: "피드백 남기기",
+      label: t.menuFeedback,
       onSelect: () => {
         wrapupRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
         wrapupRef.current?.focus({ preventScroll: true });
@@ -128,7 +131,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
       ? [
           {
             key: "deeper",
-            label: `더 깊게 본 강의 ${deeperLectures.length}개`,
+            label: t.menuDeeper(deeperLectures.length),
             onSelect: () => {
               deeperRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
               deeperRef.current?.focus({ preventScroll: true });
@@ -137,24 +140,24 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
         ]
       : []),
     ...(fixes.length > 0
-      ? [{ key: "fixes", label: `고칠 곳 ${fixes.length}`, onSelect: () => setFixesOpen(true) }]
+      ? [{ key: "fixes", label: t.menuFixes(fixes.length), onSelect: () => setFixesOpen(true) }]
       : []),
     ...(lecturePromptEdited
-      ? [{ key: "regenerate", label: "이 강의 새 프롬프트로 다시 만들기", onSelect: () => setRegenOpen(true) }]
+      ? [{ key: "regenerate", label: t.menuRegenerate, onSelect: () => setRegenOpen(true) }]
       : []),
     {
       key: "prompts",
-      label: "강의 프롬프트 보기·고치기",
+      label: t.menuPrompts,
       onSelect: () => router.push("/settings/prompts"),
     },
     {
       key: "example-language",
-      label: "예시 코드 언어 바꾸기",
+      label: t.menuExampleLanguage,
       onSelect: () => router.push("/settings"),
     },
     {
       key: "map",
-      label: "지도에서 보기",
+      label: t.menuMap,
       onSelect: () => router.push(`/map?concept=${encodeURIComponent(lecture.conceptId)}`),
     },
   ];
@@ -187,15 +190,15 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
           <div className="flex items-center gap-2 border-b border-line py-1 text-sm">
             <Link href={returnHref} className="inline-flex min-h-touch min-w-0 flex-1 items-center gap-1 text-accent-text">
               <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
-              <span className="truncate">읽던 강의로 돌아가기: {bookmark.title}</span>
+              <span className="truncate">{t.returnTo(bookmark.title)}</span>
             </Link>
             <Button variant="ghost" size="sm" onClick={() => setBookmark(null)}>
-              지우기
+              {t.clear}
             </Button>
           </div>
         )}
         <LectureHeader lecture={lecture} content={content} concept={concept.data} mastery={mastery.data} minutes={totalMinutes} />
-        {lecture.reviewState === "flagged" && <FlaggedBanner lectureId={lectureId} reason={lecture.flagReason} newerId={newerVersion?.id} />}
+        {lecture.reviewState === "flagged" && <FlaggedBanner lectureId={lectureId} reason={lecture.flagReason} reasonCodes={lecture.flagReasonCodes} newerId={newerVersion?.id} />}
         <PretestPanel detail={pretest.data} />
         <LectureActionStatus actions={actions} />
         <div aria-live="polite" className="empty:hidden">
@@ -207,7 +210,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
           </ExerciseProvider>
         </div>
         <SelectionExplain lectureId={lectureId} containerRef={bodyRef} />
-        <SourcesList sources={sources} title="이 강의의 출처" />
+        <SourcesList sources={sources} title={t.sourcesTitle} />
         <DeeperLecturesSection ref={deeperRef} kind="deeper" lectures={deeperLectures} />
         <DeeperLecturesSection kind="regenerated" lectures={regenerated} />
         <div className="mt-10">

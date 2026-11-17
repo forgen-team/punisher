@@ -9,6 +9,8 @@ import {
   type ThemePreference
 } from "@/src/shared/lib/theme";
 import { cn } from "../lib/utils";
+import { useT } from "@/src/shared/i18n";
+import { kitMessages } from "../lib/messages";
 
 // Icons for theme states
 function SunIcon({ className }: { className?: string }) {
@@ -174,11 +176,12 @@ interface ThemeSelectProps {
 
 export function ThemeSelect({ className }: ThemeSelectProps) {
   const [preference, setPreference] = useAtom(themePreferenceAtom);
+  const t = useT(kitMessages);
 
   const options: { value: ThemePreference; label: string; icon: React.ReactNode }[] = [
-    { value: "light", label: "라이트", icon: <SunIcon className="h-4 w-4" /> },
-    { value: "dark", label: "다크", icon: <MoonIcon className="h-4 w-4" /> },
-    { value: "system", label: "시스템", icon: <MonitorIcon className="h-4 w-4" /> }
+    { value: "light", label: t.themeLight, icon: <SunIcon className="h-4 w-4" /> },
+    { value: "dark", label: t.themeDark, icon: <MoonIcon className="h-4 w-4" /> },
+    { value: "system", label: t.themeSystem, icon: <MonitorIcon className="h-4 w-4" /> }
   ];
 
   return (

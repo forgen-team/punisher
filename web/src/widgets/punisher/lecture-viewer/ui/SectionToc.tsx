@@ -4,6 +4,8 @@ import type { LectureSection } from "@/src/shared/api/punisher";
 import { SECTION_KIND_LABELS } from "@/src/entities/punisher";
 import { scrollToAnchor } from "@/src/features/punisher/lecture-progress";
 import { sectionMinutes } from "../lib/sectionMinutes";
+import { messages } from "../i18n";
+import { useT } from "@/src/shared/i18n";
 
 interface SectionTocProps {
   sections: LectureSection[];
@@ -17,11 +19,12 @@ interface SectionTocProps {
 }
 
 export function SectionToc({ sections, totalMinutes, onNavigate, hideHeading = false, activeAnchor }: SectionTocProps) {
+  const t = useT(messages);
   return (
-    <nav aria-label="강의 목차" className="flex flex-col gap-1 text-sm">
+    <nav aria-label={t.tocNav} className="flex flex-col gap-1 text-sm">
       {!hideHeading && (
         <p className="px-2 py-1 font-semibold text-fg">
-          목차 <span className="font-normal text-fg-muted">· 약 {totalMinutes}분</span>
+          {t.toc} <span className="font-normal text-fg-muted">· {t.aboutMinutes(totalMinutes)}</span>
         </p>
       )}
       <ol className="flex flex-col">
@@ -49,7 +52,7 @@ export function SectionToc({ sections, totalMinutes, onNavigate, hideHeading = f
                 <span className="w-4 shrink-0 text-right tabular-nums">{index + 1}.</span>
                 <span className="min-w-0 break-keep">{s.title || SECTION_KIND_LABELS[s.kind] || s.kind}</span>
               </span>
-              {sectionMinutes(s) > 0 && <span className="shrink-0 pt-px text-xs text-fg-muted">{sectionMinutes(s)}분</span>}
+              {sectionMinutes(s) > 0 && <span className="shrink-0 pt-px text-xs text-fg-muted">{t.minutes(sectionMinutes(s))}</span>}
             </a>
           </li>
         ))}
@@ -67,8 +70,9 @@ interface TocSheetProps {
 
 /** 모바일·태블릿 목차 시트 (lg 이상은 왼쪽 고정 목차). */
 export function TocSheet({ open, onClose, sections, totalMinutes }: TocSheetProps) {
+  const t = useT(messages);
   return (
-    <BottomSheet open={open} onClose={onClose} title="목차" description={`약 ${totalMinutes}분`} desktop="sheet">
+    <BottomSheet open={open} onClose={onClose} title={t.toc} description={t.totalMinutes(totalMinutes)} desktop="sheet">
       <SectionToc sections={sections} totalMinutes={totalMinutes} onNavigate={onClose} hideHeading />
     </BottomSheet>
   );

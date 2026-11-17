@@ -124,12 +124,12 @@ func (s *Service) SubmitExercise(ctx context.Context, userID string, lec models.
 	if err != nil {
 		return saved, err
 	}
-	conceptName := lec.ConceptID
-	if info, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID); err == nil {
+	conceptName, lang := lec.ConceptID, learning.NormalizeLocale(lec.Language) // 연습 평·실습 읽기는 강의 언어(i18n §1.1)
+	if info, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID, lang); err == nil {
 		conceptName = info.Name
 	}
 	runDetached("exercise", saved.ID, exerciseTimeout, func(bg context.Context) error {
-		return s.gradeExercise(bg, apiKey, userID, lec.ConceptID, conceptName, saved.ID, blk, answer)
+		return s.gradeExercise(bg, apiKey, userID, lec.ConceptID, conceptName, lang, saved.ID, blk, answer)
 	}, func(bg context.Context, err error) {
 		if ferr := s.Store.FinishExerciseAttempt(bg, userID, saved.ID, store.AttemptFailed, "", "", ""); ferr != nil {
 			logf("fail exercise attempt %s: %v", saved.ID, ferr)
@@ -148,7 +148,7 @@ var exerciseVerdicts = map[string]map[string]bool{
 	learning.AttemptLab:      {learning.LabMatched: true, learning.LabDifferent: true, learning.LabUnreadable: true},
 }
 
-func (s *Service) gradeExercise(ctx context.Context, apiKey, userID, conceptID, conceptName, attemptID string, blk exerciseBlock, answer string) error {
+func (s *Service) gradeExercise(ctx context.Context, apiKey, userID, conceptID, conceptName, lang, attemptID string, blk exerciseBlock, answer string) error {
 	set := s.UserPrompts(ctx, userID)
 	req := llm.MessagesRequest{Model: s.Cfg.FastModel, System: set.Text(prompts.BlockExerciseGrade, nil),
 		User: prompts.ExerciseGrade(conceptName, blk.problem, blk.solution, answer), MaxTokens: 400, Timeout: 60 * time.Second,
@@ -159,6 +159,7 @@ func (s *Service) gradeExercise(ctx context.Context, apiKey, userID, conceptID, 
 		req.Model, req.System, req.User = s.Cfg.CheckModel, set.Text(prompts.BlockLabRead, nil), prompts.LabRead(conceptName, blk.problem, answer)
 		req.MaxTokens, label = 700, "lab"
 	}
+	req.System = prompts.WithOutputLanguage(req.System, lang)
 	var u usage
 	text, err := s.complete(ctx, apiKey, req, &u)
 	s.recordUsage(ctx, userID, label, conceptID, u, err)
@@ -193,7 +194,7 @@ func (s *Service) LectureFixes(ctx context.Context, userID, lectureID string) ([
 	if err != nil {
 		return nil, err
 	}
-	return learning.FlagSections(signals), nil
+	return learning.FlagSections(signals, s.Store.LocaleFor(ctx, userID)), nil
 }
 
 // signalLines are the lecture's '고칠 곳' as prompt lines ("섹션 제목 — 이유; 이유").

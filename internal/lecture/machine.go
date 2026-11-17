@@ -7,10 +7,21 @@ import (
 )
 
 // Prose volume bounds of a new lecture (quality design v2.2 §4: 본문 6,500~11,000자, 공백 제외).
+// English needs about twice the letters for the same content (i18n §3).
 const (
-	MinProseChars = 6500
-	MaxProseChars = 11000
+	MinProseChars   = 6500
+	MaxProseChars   = 11000
+	MinProseCharsEn = 13000
+	MaxProseCharsEn = 22000
 )
+
+// ProseBounds are the prose volume bounds for a lecture language.
+func ProseBounds(lang string) (minChars, maxChars int) {
+	if lang == "en" {
+		return MinProseCharsEn, MaxProseCharsEn
+	}
+	return MinProseChars, MaxProseChars
+}
 
 // Minimum material blocks of a new lecture (§4 블록 구성).
 const (
@@ -20,7 +31,7 @@ const (
 
 var (
 	// metaPhraseRe: generation meta text that leaked into the lecture (2026-11-13 비평: "MDN이 아닌").
-	metaPhraseRe = regexp.MustCompile(`MDN이 아닌|다른 강의에서 다룹`)
+	metaPhraseRe = regexp.MustCompile(`MDN이 아닌|다른 강의에서 다룹|(?i)rather than MDN|covered in (?:another|a separate) lecture`)
 	// sectionIDRe: internal section kind identifiers shown to the reader.
 	sectionIDRe = regexp.MustCompile(`\b(?:situation_question|principles|walkthrough|judgment_next)\b`)
 )
@@ -44,8 +55,9 @@ func MachineCheck(c Content) []Issue {
 	}
 	checkLeaks(c, add)
 	checkComposition(c, advise)
-	if n := MeasureContent(c).ProseChars; n < MinProseChars || n > MaxProseChars {
-		advise("sections", "prose must be %d..%d characters without spaces (code/log excluded), got %d", MinProseChars, MaxProseChars, n)
+	m := MeasureContent(c)
+	if lo, hi := ProseBounds(m.Language()); m.ProseChars < lo || m.ProseChars > hi {
+		advise("sections", "prose must be %d..%d characters without spaces (code/log excluded), got %d", lo, hi, m.ProseChars)
 	}
 	return issues
 }

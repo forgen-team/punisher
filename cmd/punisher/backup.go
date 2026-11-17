@@ -40,7 +40,7 @@ func runBackup(cmd string, args []string) int {
 func exportTo(dataDir, out string) int {
 	f, err := os.OpenFile(out, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "파일을 만들 수 없어요: %v\n", err)
+		fmt.Fprintf(os.Stderr, tr("파일을 만들 수 없어요: %v\n", "Could not create the file: %v\n"), err)
 		return 1
 	}
 	m, err := backup.Export(context.Background(), filepath.Join(dataDir, "punisher.db"), version, f)
@@ -49,10 +49,10 @@ func exportTo(dataDir, out string) int {
 	}
 	if err != nil {
 		_ = os.Remove(out)
-		fmt.Fprintf(os.Stderr, "내보내지 못했어요: %v\n", err)
+		fmt.Fprintf(os.Stderr, tr("내보내지 못했어요: %v\n", "Export failed: %v\n"), err)
 		return 1
 	}
-	fmt.Printf("내보냈어요: %s (스키마 %s)\n", out, m.Schema)
+	fmt.Printf(tr("내보냈어요: %s (스키마 %s)\n", "Exported: %s (schema %s)\n"), out, m.Schema)
 	return 0
 }
 
@@ -71,13 +71,13 @@ func importFrom(dataDir, in string) int {
 	bak, m, err := backup.Import(in, dataDir, known, time.Now())
 	backup.Unlock(lock)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "가져오지 못했어요: %v\n", err)
+		fmt.Fprintf(os.Stderr, tr("가져오지 못했어요: %v\n", "Import failed: %v\n"), err)
 		return 1
 	}
-	fmt.Printf("가져왔어요 (%s에 내보낸 데이터, 스키마 %s).\n", m.ExportedAt.Local().Format("2006-01-02 15:04"), m.Schema)
+	fmt.Printf(tr("가져왔어요 (%s에 내보낸 데이터, 스키마 %s).\n", "Imported (data exported at %s, schema %s).\n"), m.ExportedAt.Local().Format("2006-01-02 15:04"), m.Schema)
 	if bak != "" {
-		fmt.Printf("이전 데이터는 여기에 남겨 뒀어요: %s\n", bak)
+		fmt.Printf(tr("이전 데이터는 여기에 남겨 뒀어요: %s\n", "Your previous data was kept here: %s\n"), bak)
 	}
-	fmt.Println("punisher 를 실행하면 필요한 DB 변경이 자동으로 적용돼요.")
+	fmt.Println(tr("punisher 를 실행하면 필요한 DB 변경이 자동으로 적용돼요.", "Database changes are applied automatically the next time you run punisher."))
 	return 0
 }

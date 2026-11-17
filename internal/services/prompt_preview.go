@@ -113,6 +113,7 @@ func (s *Service) PreviewPrompt(ctx context.Context, userID, blockID string, dra
 	case prompts.StagePretest:
 		out.System, out.User = set.Text(blockID, vars), previewPretest(pc)
 	}
+	out.System = prompts.WithOutputLanguage(out.System, t.Plan.Language) // 실제 호출과 같은 출력 언어 규칙
 	if out.Version == "" {
 		out.Version = set.Version(blockID)
 	}
@@ -123,13 +124,14 @@ func (s *Service) PreviewPrompt(ctx context.Context, userID, blockID string, dra
 // depth-1 objectives, ignoring what the user already learned. It is the
 // user's own (Owner set) so the personal blocks show as in instant lectures.
 func (s *Service) previewTarget(ctx context.Context, userID string) (Target, error) {
-	concept, err := s.Store.ConceptInfo(ctx, userID, PreviewConceptID)
+	lang := s.Store.LocaleFor(ctx, userID)
+	concept, err := s.Store.ConceptInfo(ctx, userID, PreviewConceptID, lang)
 	if errors.Is(err, store.ErrNotFound) {
-		catalog, cerr := s.Store.ConceptCatalog(ctx, userID)
+		catalog, cerr := s.Store.ConceptCatalog(ctx, userID, lang)
 		if cerr != nil || len(catalog) == 0 {
 			return Target{}, err
 		}
-		concept, err = s.Store.ConceptInfo(ctx, userID, catalog[0].ID)
+		concept, err = s.Store.ConceptInfo(ctx, userID, catalog[0].ID, lang)
 	}
 	if err != nil {
 		return Target{}, err
@@ -142,6 +144,7 @@ func (s *Service) previewTarget(ctx context.Context, userID string) (Target, err
 	if err != nil {
 		return Target{}, err
 	}
+	plan.Language = lang
 	t, err := s.targetForPlan(ctx, userID, concept, plan, "")
 	t.Owner = userID
 	return t, err

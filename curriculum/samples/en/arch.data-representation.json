@@ -1,0 +1,513 @@
+{
+  "conceptId": "arch.data-representation",
+  "objectiveIds": [
+    "arch.data-representation#1",
+    "arch.data-representation#2",
+    "arch.data-representation#3"
+  ],
+  "objectiveTexts": [
+    "비트·바이트·워드와 부호 있는 정수(2의 보수) 표현을 설명한다",
+    "정수 오버플로가 생기는 조건과 실무에서 드러나는 모습을 설명한다",
+    "문자 인코딩(UTF-8)이 바이트 수와 문자 수를 다르게 만드는 이유를 설명한다"
+  ],
+  "depth": 1,
+  "title": "Fixed Width, Fixed Rules: Why IDs Overflow and Korean Text Takes More Bytes",
+  "content": {
+    "schemaVersion": 1,
+    "title": "Fixed Width, Fixed Rules: Why IDs Overflow and Korean Text Takes More Bytes",
+    "conceptId": "arch.data-representation",
+    "objectiveIds": [
+      "arch.data-representation#1",
+      "arch.data-representation#2",
+      "arch.data-representation#3"
+    ],
+    "depth": 1,
+    "estimatedMinutes": 19,
+    "newScope": [
+      "Bits, bytes, and words; fixed-width integers and two's complement; what happens when a result does not fit; how UTF-8 maps characters to bytes and why byte count differs from character count."
+    ],
+    "prerequisitesReferenced": [
+      "arch.cpu-instruction-execution",
+      "arch.floating-point",
+      "arch.endianness-alignment",
+      "db.schema-migration"
+    ],
+    "sections": [
+      {
+        "anchor": "situation_question",
+        "kind": "situation_question",
+        "title": "Two outages with the same root: a number that is too big and a string that is too long",
+        "minutes": 2,
+        "blocks": [
+          {
+            "anchor": "situation_question-1",
+            "type": "markdown",
+            "text": "At 02:14, every `POST /orders` request starts returning 500. The deploy history is empty and traffic is normal. The database log shows an error that names a *sequence*, the counter the database uses to hand out the next ID for the `orders` table's primary key (the column that uniquely identifies each row). The table holds roughly 310 million rows, yet the counter is at 2,147,483,647 because deleted rows and failed inserts also consumed numbers.\n\nEarlier the same week, a different team had a quieter problem. Product titles in Korean were being cut off in the middle of the text, even though the title was well under the 20-character limit the form advertised."
+          },
+          {
+            "anchor": "situation_question-2",
+            "type": "log",
+            "text": "2026-11-17T02:14:09Z ERROR order-api  POST /orders -\u003e 500\n2026-11-17T02:14:09Z ERROR order-api  db: nextval: reached maximum value of sequence \"orders_id_seq\" (2147483647)\n2026-11-17T02:14:10Z ERROR order-api  POST /orders -\u003e 500 (same error, repeating)\n\n2026-11-17T09:40:51Z INFO  product-api title_chars=13 title_bytes=35 limit_bytes=20\n2026-11-17T09:40:51Z INFO  product-api stored_title=\"한글 상품명 테\"",
+            "lang": "text"
+          },
+          {
+            "anchor": "situation_question-3",
+            "type": "markdown",
+            "text": "Two questions come out of these lines. First, why does the counter stop at exactly 2,147,483,647, and not at 2,000,000,000 or 4,000,000,000? Second, why does a 13-character title count as 35 against a limit of 20, and why was it cut after 8 characters? Both answers come from how a computer stores a value: in a fixed number of bits, interpreted by a fixed rule."
+          }
+        ]
+      },
+      {
+        "anchor": "principles",
+        "kind": "principles",
+        "title": "Bits, two's complement, overflow, and UTF-8",
+        "minutes": 9,
+        "blocks": [
+          {
+            "anchor": "principles-1",
+            "type": "markdown",
+            "text": "Two small skills make the rest easy to follow. The first is reading a binary number. Each position has a weight that doubles as you move left: 1, 2, 4, 8, and so on. So `1101` is 8 + 4 + 0 + 1 = 13.\n\nThe second is hexadecimal (\"hex\", base 16), a shorthand where one digit stands for four bits. The digits go 0–9 then A–F (A = 10, F = 15), so `0xED` is `1110 1101` in binary, which is 14×16 + 13 = 237. The prefix `0x` only marks \"this is hex\"."
+          },
+          {
+            "anchor": "principles-2",
+            "type": "keypoint",
+            "text": "A **bit** is a single 0 or 1. A **byte** is 8 bits, which can form 256 different patterns. A **word** is the number of bits the CPU's instructions ([CPU and Instruction Execution](term:arch.cpu-instruction-execution)) handle as one unit; its size depends on the processor architecture, and 64 bits is common on current desktops and servers.",
+            "kind": "definition"
+          },
+          {
+            "anchor": "principles-3",
+            "type": "markdown",
+            "text": "A value stored in n bits can take only 2ⁿ distinct patterns. An 8-bit type has 256 patterns, a 16-bit type has 65,536, and a 32-bit type has 4,294,967,296. That is the whole reason limits exist. The type has no room for more patterns, so it cannot represent more distinct values.\n\nThe next question is how to spend those patterns on negative numbers. Almost every current CPU uses [two's complement](term:g.twos-complement), which gives the top bit a negative weight."
+          },
+          {
+            "anchor": "principles-4",
+            "type": "keypoint",
+            "text": "In **two's complement** with n bits, the top bit has weight −2ⁿ⁻¹ and every other bit has its usual positive weight. The representable range is −2ⁿ⁻¹ to 2ⁿ⁻¹ − 1. To negate a value, invert every bit and add 1.",
+            "kind": "definition"
+          },
+          {
+            "anchor": "principles-5",
+            "type": "trace",
+            "data": {
+              "caption": "All the interesting patterns of a 4-bit two's complement type (weights −8, 4, 2, 1)",
+              "columns": [
+                "Bit pattern",
+                "As unsigned",
+                "As signed",
+                "Signed calculation"
+              ],
+              "rows": [
+                [
+                  "0000",
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "0001",
+                  "1",
+                  "1",
+                  "1"
+                ],
+                [
+                  "0111",
+                  "7",
+                  "7",
+                  "4 + 2 + 1"
+                ],
+                [
+                  "1000",
+                  "8",
+                  "−8",
+                  "−8"
+                ],
+                [
+                  "1001",
+                  "9",
+                  "−7",
+                  "−8 + 1"
+                ],
+                [
+                  "1101",
+                  "13",
+                  "−3",
+                  "−8 + 4 + 1"
+                ],
+                [
+                  "1110",
+                  "14",
+                  "−2",
+                  "−8 + 4 + 2"
+                ],
+                [
+                  "1111",
+                  "15",
+                  "−1",
+                  "−8 + 4 + 2 + 1"
+                ]
+              ],
+              "note": "The same 16 patterns, read two ways. Negating 3: 0011 → invert → 1100 → add 1 → 1101, which the table reads as −3. Range with n = 4: −8 to 7."
+            }
+          },
+          {
+            "anchor": "principles-6",
+            "type": "markdown",
+            "text": "Why this design? In two's complement, the circuit that adds two unsigned numbers also adds two signed numbers correctly, so the hardware does not need a separate signed adder. The cost is an asymmetric range: there is one more negative value than positive ones. For n = 32 the range is −2,147,483,648 to 2,147,483,647, and that upper bound is the number in the outage log. For n = 64 it is −9,223,372,036,854,775,808 to 9,223,372,036,854,775,807."
+          },
+          {
+            "anchor": "principles-7",
+            "type": "exercise",
+            "text": "(1) Write −6 as an 8-bit two's complement pattern, in binary and in hex. (2) In an 8-bit signed type, what is the result of 100 + 30 when the bits are added and the result is read as signed?"
+          },
+          {
+            "anchor": "principles-8",
+            "type": "answer",
+            "text": "(1) 6 is `00000110`. Invert every bit: `11111001`. Add 1: `11111010`, which is `0xFA`. Check with weights: −128 + 64 + 32 + 16 + 8 + 2 = −6. (2) 100 is `01100100` and 30 is `00011110`. Adding gives `10000010`. The top bit is now 1, so the pattern reads as −128 + 2 = −126, not 130. The true result, 130, is above the 8-bit signed maximum of 127."
+          },
+          {
+            "anchor": "principles-9",
+            "type": "keypoint",
+            "text": "**Integer overflow** happens when the mathematically correct result of an operation does not fit in the type's n bits. What the program observes next depends on the layer doing the arithmetic: the value may wrap around, the operation may fail with an error, or the behavior may be left undefined by the language.",
+            "kind": "definition"
+          },
+          {
+            "anchor": "principles-10",
+            "type": "trace",
+            "data": {
+              "caption": "Overflow in 8 bits, step by step",
+              "columns": [
+                "Step",
+                "Bits",
+                "Meaning"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "01111111",
+                  "127, the largest signed 8-bit value"
+                ],
+                [
+                  "2",
+                  "00000001",
+                  "1"
+                ],
+                [
+                  "3",
+                  "01111111 + 00000001 = 10000000",
+                  "The addition itself is ordinary column-by-column binary addition"
+                ],
+                [
+                  "4",
+                  "10000000 as unsigned",
+                  "128: correct, because unsigned 8-bit holds 0 to 255"
+                ],
+                [
+                  "5",
+                  "10000000 as signed",
+                  "−128: the sign flipped, which is the signed overflow"
+                ],
+                [
+                  "6",
+                  "11111111 + 00000001",
+                  "Unsigned 255 + 1 is 100000000 (9 bits). Only the low 8 bits are kept: 00000000, which is 0"
+                ]
+              ],
+              "note": "Hardware reports 'carry out of the top bit' (the unsigned case) and 'signed overflow' (the sign flipped unexpectedly) separately. Both mean the true result did not fit."
+            }
+          },
+          {
+            "anchor": "principles-11",
+            "type": "chart",
+            "data": {
+              "kind": "line",
+              "title": "Largest value an n-bit integer can hold",
+              "x": {
+                "label": "Width in bits",
+                "values": [
+                  8,
+                  16,
+                  24,
+                  32,
+                  48,
+                  64
+                ]
+              },
+              "y": {
+                "label": "Maximum value (log scale)",
+                "scale": "log"
+              },
+              "series": [
+                {
+                  "name": "Signed max (2^(n−1) − 1)",
+                  "values": [
+                    127,
+                    32767,
+                    8388607,
+                    2147483647,
+                    140737488355327,
+                    9.223372036854776e18
+                  ]
+                },
+                {
+                  "name": "Unsigned max (2^n − 1)",
+                  "values": [
+                    255,
+                    65535,
+                    16777215,
+                    4294967295,
+                    281474976710655,
+                    1.8446744073709552e19
+                  ]
+                }
+              ],
+              "note": "Each added bit doubles the range, so the log-scale lines are straight. Going from 32 to 64 bits multiplies the maximum by about 4.3 billion."
+            }
+          },
+          {
+            "anchor": "principles-12",
+            "type": "markdown",
+            "text": "How overflow shows up depends on the layer. The table lists the cases that matter most for a TypeScript and database developer.\n\n| Layer | What happens past the limit |\n|---|---|\n| Database integer column (for example PostgreSQL `integer`) | Storing an out-of-range value is an error, per the PostgreSQL docs. An ID sequence has a maximum too, and the sequence itself fails when it reaches it. |\n| JS `Int32Array`, `Uint8Array` | Assigned values are converted modulo 2ⁿ, so they wrap silently. |\n| JS bitwise operators (`\\|`, `\u0026`, `\u003e\u003e`) | Operands are converted to 32-bit signed integers first, so results wrap. |\n| JS `number` | No wrapping. It is a 64-bit floating-point value ([Floating Point](term:arch.floating-point)), and integers are exact only up to 2⁵³ − 1 (`Number.MAX_SAFE_INTEGER`, 9007199254740991). Above that, neighboring integers collapse into one value. |\n| JS `bigint` | Arbitrary precision, so no overflow, at a cost in speed and memory. |\n| C and C++ | Unsigned arithmetic wraps modulo 2ⁿ. Signed overflow is left undefined by the language standard, so the compiler may assume it never happens. |\n\nThe outage in the opening is the first row. The ID column was a 4-byte signed integer, and its sequence refused to hand out a number above 2,147,483,647. The failure was loud here. In the typed-array and bitwise rows, the same overflow is silent and produces a wrong number instead."
+          },
+          {
+            "anchor": "principles-13",
+            "type": "misconception",
+            "text": "① \"Overflow means the program crashes or throws an exception, so I would have noticed.\" ② Counterexample: `(2147483647 + 1) | 0` in JavaScript evaluates to −2147483648 with no error, and `new Uint8Array([256])[0]` is 0. ③ Overflow is just a result that does not fit in n bits. Whether it is reported as an error, wraps silently, or is undefined depends on the language and the layer, so check which one you are in."
+          },
+          {
+            "anchor": "principles-14",
+            "type": "markdown",
+            "text": "The second half of the lecture is about text. A computer stores a character as a number, and the number has to be turned into bytes. Unicode assigns each character a number called a **code point**, written as `U+` followed by hex digits, for example `U+0041` for \"A\" and `U+D55C` for \"한\". A **character encoding** is the rule that turns code points into bytes and back. The most common one on the web and in files is [UTF-8](term:g.utf-8)."
+          },
+          {
+            "anchor": "principles-15",
+            "type": "keypoint",
+            "text": "**UTF-8** is a variable-length character encoding that stores each Unicode code point in 1 to 4 bytes: the smaller the code point, the fewer bytes. RFC 3629 defines it.",
+            "kind": "definition"
+          },
+          {
+            "anchor": "principles-16",
+            "type": "markdown",
+            "text": "| Code point range | Bytes | Byte template (x = payload bits) | Examples |\n|---|---|---|---|\n| U+0000 – U+007F | 1 | `0xxxxxxx` | A, digits, space |\n| U+0080 – U+07FF | 2 | `110xxxxx 10xxxxxx` | é, most Latin accented letters |\n| U+0800 – U+FFFF | 3 | `1110xxxx 10xxxxxx 10xxxxxx` | Hangul syllables like 한 |\n| U+10000 – U+10FFFF | 4 | `11110xxx 10xxxxxx 10xxxxxx 10xxxxxx` | many emoji |\n\nThe `10` prefix on the extra bytes marks them as continuation bytes. A reader can therefore find the start of any character by skipping bytes that begin with `10`. The cost is that some bits in each byte are overhead instead of payload."
+          },
+          {
+            "anchor": "principles-17",
+            "type": "trace",
+            "data": {
+              "caption": "Encoding 한 (U+D55C) into UTF-8",
+              "columns": [
+                "Step",
+                "Value",
+                "Explanation"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "U+D55C",
+                  "The code point Unicode assigns to 한"
+                ],
+                [
+                  "2",
+                  "1101 0101 0101 1100",
+                  "D55C in binary (16 bits)"
+                ],
+                [
+                  "3",
+                  "U+0800–U+FFFF → 3 bytes",
+                  "The range table picks the template 1110xxxx 10xxxxxx 10xxxxxx (16 payload bits)"
+                ],
+                [
+                  "4",
+                  "1101 | 010101 | 011100",
+                  "Split the 16 bits as 4 + 6 + 6, one group per byte"
+                ],
+                [
+                  "5",
+                  "11101101 10010101 10011100",
+                  "Put each group behind its prefix: 1110 + 1101, then 10 + 010101, then 10 + 011100"
+                ],
+                [
+                  "6",
+                  "ED 95 9C",
+                  "The same three bytes in hex"
+                ]
+              ],
+              "note": "The Hangul syllable fits in 16 bits, yet it needs 3 bytes because 4 + 6 + 6 payload bits fit in a 3-byte template and nothing smaller."
+            }
+          },
+          {
+            "anchor": "principles-18",
+            "type": "markdown",
+            "text": "So the same text has several different \"lengths\", depending on the unit you count.\n\n- **Bytes**: what a storage limit or a network `Content-Length` counts. \"한\" is 3.\n- **Code points**: what a Unicode-aware loop over a string counts. \"한\" is 1.\n- **UTF-16 code units**: what JavaScript's `string.length` counts. \"한\" is 1, but \"😀\" (U+1F600) is 2, because JavaScript strings use a different encoding that spends two 16-bit units on code points above U+FFFF.\n- **Graphemes**: what a reader perceives as one character. One grapheme can be several code points, such as \"e\" followed by a combining accent mark."
+          },
+          {
+            "anchor": "principles-19",
+            "type": "keypoint",
+            "text": "Name the unit whenever you see a length or a limit. \"20 characters\", \"20 bytes\", and \"`.length` of 20\" are three different constraints for any text that is not plain ASCII.",
+            "kind": "caution"
+          },
+          {
+            "anchor": "principles-20",
+            "type": "exercise",
+            "text": "How many bytes does the string `café 한` take in UTF-8, and how many code points does it have? Assume the \"é\" is the single code point U+00E9."
+          },
+          {
+            "anchor": "principles-21",
+            "type": "answer",
+            "text": "Each letter is its own code point: c, a, f, é, space, 한. That makes 6 code points. Bytes: c, a, f take 1 each (3), é is U+00E9 in the 2-byte range (2), the space is 1, and 한 is in the 3-byte range (3). The total is 3 + 2 + 1 + 3 = 9 bytes. If the \"é\" were written as \"e\" followed by a combining accent (U+0065 U+0301), there would be 7 code points and 10 bytes, yet it would still look like 6 characters on screen (6 graphemes). Side by side: precomposed is 6 code points, 9 bytes, 6 graphemes; decomposed is 7 code points, 10 bytes, 6 graphemes."
+          },
+          {
+            "anchor": "principles-22",
+            "type": "misconception",
+            "text": "① \"A 20-character limit and a 20-byte limit are the same thing; characters are bytes.\" ② The title `한글 상품명 테스트입니다` has 13 characters but 35 bytes: 11 Hangul syllables × 3 bytes plus 2 spaces. A limit of 20 bytes allows only 8 of its characters (17 bytes through \"상품명 \", then \"테\" brings it to 20). ③ Characters, code points, and bytes are different units, and in UTF-8 the byte count is at least the code point count, with each non-ASCII code point costing 2 to 4 bytes."
+          },
+          {
+            "anchor": "principles-23",
+            "type": "sources",
+            "sources": [
+              {
+                "title": "ECMAScript Language Specification: Number type, ToInt32, TypedArray conversions",
+                "url": "https://tc39.es/ecma262/"
+              },
+              {
+                "title": "PostgreSQL documentation: Numeric Types (integer ranges and out-of-range behavior)",
+                "url": "https://www.postgresql.org/docs/current/datatype-numeric.html"
+              },
+              {
+                "title": "RFC 3629: UTF-8, a transformation format of ISO 10646",
+                "url": "https://www.rfc-editor.org/rfc/rfc3629"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "anchor": "walkthrough",
+        "kind": "walkthrough",
+        "title": "Reproducing both incidents in TypeScript",
+        "minutes": 6,
+        "blocks": [
+          {
+            "anchor": "walkthrough-1",
+            "type": "markdown",
+            "text": "The two production symptoms can be reproduced in a few lines of TypeScript. `TextEncoder` is a standard web and Node API that always encodes a string to UTF-8 bytes, so its output length is the byte count."
+          },
+          {
+            "anchor": "walkthrough-2",
+            "type": "code",
+            "text": "const MAX_INT32 = 2 ** 31 - 1;\nconsole.log(MAX_INT32);\n\n// `| 0` converts the number to a 32-bit signed integer, as an Int32 column would store it\nconsole.log((MAX_INT32 + 1) | 0);\n\nconst title = \"한글 상품명 테스트입니다\";\nconsole.log(title.length); // UTF-16 code units\nconsole.log(new TextEncoder().encode(title).length); // UTF-8 bytes\nconsole.log(\"😀\".length, new TextEncoder().encode(\"😀\").length);",
+            "lang": "ts"
+          },
+          {
+            "anchor": "walkthrough-3",
+            "type": "pause",
+            "text": "What do these five lines of output show, and which of the numbers differ between \"length\" and \"bytes\"?"
+          },
+          {
+            "anchor": "walkthrough-4",
+            "type": "log",
+            "text": "2147483647\n-2147483648\n13\n35\n2 4",
+            "lang": "text"
+          },
+          {
+            "anchor": "walkthrough-5",
+            "type": "markdown",
+            "text": "The second line is the sign flip from the earlier section \"Bits, two's complement, overflow, and UTF-8\": 2,147,483,647 plus 1 would need a 33rd pattern, so the 32-bit signed view wraps to −2,147,483,648. The database refuses to wrap and raises an error instead, which is why the incident was loud. The third and fourth lines are the 13 versus 35 from the log. The last line shows a third count: `\"😀\".length` is 2 even though it is one code point, and its UTF-8 size is 4 bytes. In other words, the same two rules, a fixed number of bits and a fixed interpretation of them, explain both the stopped counter and the cut-off title.\n\nThe 20-byte limit on the product title is a storage rule, so the code that enforces it must count bytes. A common first attempt cuts the byte array at the limit and decodes it. That can slice through the middle of a three-byte character."
+          },
+          {
+            "anchor": "walkthrough-6",
+            "type": "diff",
+            "lang": "ts",
+            "data": {
+              "before": "const bytes = new TextEncoder().encode(title).slice(0, limitBytes);\nconst stored = new TextDecoder().decode(bytes);\n// with limitBytes = 19, the last character is cut after 2 of its 3 bytes\n// and decodes to the replacement character �",
+              "after": "function truncateUtf8(s: string, limitBytes: number): string {\n  const enc = new TextEncoder();\n  let used = 0;\n  let out = \"\";\n  for (const ch of s) { // iterates code points, not bytes\n    const n = enc.encode(ch).length;\n    if (used + n \u003e limitBytes) break;\n    used += n;\n    out += ch;\n  }\n  return out;\n}\nconst stored = truncateUtf8(title, limitBytes);",
+              "note": "The new version stops before the first code point that would not fit, so it never produces a partial character. It does not split code points that belong to one grapheme, so an accented letter written as two code points can still lose its accent."
+            }
+          },
+          {
+            "anchor": "walkthrough-7",
+            "type": "markdown",
+            "text": "Tracing the fix with `limitBytes = 19`: the loop adds 한 (3), 글 (6), a space (7), 상 (10), 품 (13), 명 (16), another space (17). The next code point, 테, would bring the total to 20, which is above 19, so the loop stops. The result is `한글 상품명 ` with 17 bytes and no broken character. A better long-term fix is usually to make the limit match what users see (for example, a character-count limit that your database supports) or to widen the column.\n\nFor the ID incident, a wider type is part of the fix, but the width has to change everywhere it appears. The component that failed in the log was the sequence, and a sequence has its own maximum, separate from the column's. In PostgreSQL, a sequence created for an `integer` column has a maximum of 2,147,483,647, so widening only the column would leave the next insert failing with the same error. The sequence, any columns in other tables that store this ID (such as foreign keys), and any client code that parses the ID all need to hold 64-bit values. Once all of them are widened, the next ID, 2,147,483,648, fits, because a signed 64-bit integer holds values up to 9,223,372,036,854,775,807. The exact commands, locking behavior, and table-rewrite cost depend on the product and version, so check the vendor documentation.\n\nOne application-side hazard follows: JavaScript's `number` is exact only up to 9,007,199,254,740,991. If the API returns 64-bit IDs as JSON numbers, IDs above that value can be silently altered by a JavaScript client. Check what type your database driver returns for 64-bit columns, and consider sending large IDs as strings."
+          },
+          {
+            "anchor": "walkthrough-8",
+            "type": "lab",
+            "text": "$ getconf LONG_BIT\nLook: the number printed is the width in bits of the C `long` type on this machine, a hint of its native word size.\nExpect: a single number, typically 64 on a current Mac. The exact value depends on the system.",
+            "kind": "macos"
+          },
+          {
+            "anchor": "walkthrough-9",
+            "type": "exercise",
+            "text": "A teammate reasons: \"The ID column is a signed 32-bit integer. A 32-bit type has 2³² = 4,294,967,296 patterns, so we can store up to 4,294,967,295 rows. We are at 2.1 billion, so we still have about half the capacity left.\" Find the error."
+          },
+          {
+            "anchor": "walkthrough-10",
+            "type": "answer",
+            "text": "The count of patterns is right, but a signed type spends half of them on negative values. In two's complement the largest value is 2³¹ − 1 = 2,147,483,647, so a signed 32-bit ID column is already at its limit. Only an unsigned 32-bit column would reach 4,294,967,295, and the column in this incident was signed. A second error: IDs are counter values, not row counts. Deleted rows and failed inserts consume numbers, so the highest ID can be well above the number of rows."
+          },
+          {
+            "anchor": "walkthrough-11",
+            "type": "sources",
+            "sources": [
+              {
+                "title": "WHATWG Encoding Standard: TextEncoder and TextDecoder",
+                "url": "https://encoding.spec.whatwg.org/"
+              },
+              {
+                "title": "ECMAScript Language Specification: Number.MAX_SAFE_INTEGER and BigInt",
+                "url": "https://tc39.es/ecma262/"
+              },
+              {
+                "title": "RFC 3629: UTF-8, a transformation format of ISO 10646",
+                "url": "https://www.rfc-editor.org/rfc/rfc3629"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "anchor": "judgment_next",
+        "kind": "judgment_next",
+        "title": "Closing the numbers, and deciding what to check",
+        "minutes": 3,
+        "blocks": [
+          {
+            "anchor": "judgment_next-1",
+            "type": "markdown",
+            "text": "Both incidents now have a numeric explanation. The ID counter stopped at 2,147,483,647 because that is 2³¹ − 1, the top of a signed 32-bit range. At a sustained 1,000 IDs per second, that range lasts about 25 days; a signed 64-bit range at the same rate lasts roughly 292 million years. The title was 35 bytes long because 11 Hangul syllables cost 3 bytes each in UTF-8, and a 20-byte limit holds only 8 of the 13 characters.\n\n| Situation | What to decide or check |\n|---|---|\n| Choosing a type for an ID or counter | Estimate how many numbers will be consumed over the system's life, including gaps. If the answer is not clearly far below 2³¹ − 1, use a 64-bit type. |\n| Exposing 64-bit IDs through JSON to JavaScript | Values above 2⁵³ − 1 are not exact in a `number`. Check what your driver and client return, and consider strings. |\n| A length limit on text | Find out the unit: bytes, code points, or UTF-16 code units. Read your database's documentation for how its text types count length. |\n| A value arrives from a typed array, a bitwise operation, or a binary protocol | Know the width and signedness at each step, because wraparound is silent. |\n| Reading a binary file or network message that holds multi-byte integers | The byte order matters; see [Endianness and Memory Alignment](term:arch.endianness-alignment). |\n\nTo observe these problems before an outage, compare each ID sequence's current value with the maximum of its type. Where that value lives depends on the database, so look it up in your database's documentation and put it on a dashboard or an alert at a threshold you choose. For text, log both the character count and the UTF-8 byte count at the point where a limit is enforced, as the product-api log did.\n\nChanging a column type on a large table is a schema change. The procedure, the locking behavior, and the time it takes depend on the database product and version, so check the vendor documentation before planning one; [Schema Migration](term:db.schema-migration) covers the general approach.\n\nNext topics: [Floating Point](term:arch.floating-point) explains why a JavaScript `number` stops being exact above 2⁵³ and why 0.1 + 0.2 is not 0.3. [Endianness and Memory Alignment](term:arch.endianness-alignment) covers how multi-byte integers are laid out in memory and on the wire. [CPU and Instruction Execution](term:arch.cpu-instruction-execution) shows how the word size and the adder discussed here fit into what the CPU actually does."
+          },
+          {
+            "anchor": "judgment_next-2",
+            "type": "summary",
+            "text": "- A bit is 0 or 1, a byte is 8 bits, and a word is the unit the CPU's instructions handle at once. An n-bit type has exactly 2ⁿ patterns.\n- In two's complement, the top bit has weight −2ⁿ⁻¹. The signed range is −2ⁿ⁻¹ to 2ⁿ⁻¹ − 1, so 32 bits give −2,147,483,648 to 2,147,483,647.\n- Integer overflow means the true result does not fit. It may raise an error (a database column), wrap silently (typed arrays, JS bitwise operators), lose exactness (JS `number` above 2⁵³ − 1), or be undefined (signed C and C++).\n- An ID counter is not a row count: gaps from deletes and failed inserts mean the counter reaches the type's limit before the table has that many rows.\n- UTF-8 stores each code point in 1 to 4 bytes; Hangul syllables take 3, so a Korean string's byte count is about three times its character count.\n- State the unit of every length or limit: bytes, code points, UTF-16 code units (`string.length`), or graphemes."
+          }
+        ]
+      }
+    ]
+  },
+  "contentHash": "3203edca46fb054211eeb63b27d51ad4210f3750d6f756607f81e75947da775a",
+  "sources": [
+    {
+      "title": "ECMAScript Language Specification: Number type, ToInt32, TypedArray conversions",
+      "url": "https://tc39.es/ecma262/"
+    },
+    {
+      "title": "PostgreSQL documentation: Numeric Types (integer ranges and out-of-range behavior)",
+      "url": "https://www.postgresql.org/docs/current/datatype-numeric.html"
+    },
+    {
+      "title": "RFC 3629: UTF-8, a transformation format of ISO 10646",
+      "url": "https://www.rfc-editor.org/rfc/rfc3629"
+    },
+    {
+      "title": "WHATWG Encoding Standard: TextEncoder and TextDecoder",
+      "url": "https://encoding.spec.whatwg.org/"
+    }
+  ],
+  "model": "claude-sonnet-5-5",
+  "promptVersion": "punisher-prompts-2026-11-16.1",
+  "estimatedMinutes": 19,
+  "reviewModel": "claude-sonnet-5-5",
+  "reviewSummary": "Both previous blocking issues are fixed. The grapheme count is now 6 in both forms and the figures check out. The ID-incident fix now says the sequence, referencing columns and client parsing must all be widened. One minor PostgreSQL nuance is left, plus a claim about the log that I could not verify.",
+  "checkItems": [],
+  "language": "en"
+}

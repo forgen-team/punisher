@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import {
   PunisherApiError,
   describePunisherError,
+  errorCodeMessage,
   punisherApi,
   punisherKeys,
   punisherQueryDefaults,
@@ -147,12 +148,15 @@ export function useRelearn() {
 }
 
 /**
- * 확인·복습 화면의 오류 문구 — 400 은 서버 code 별 안내, 409 는 서버의 한국어 안내 그대로
+ * 확인·복습 화면의 오류 문구 — 400 은 서버 code 별 안내, 409 는 code 별 안내(모르는 code 면 서버 문구)
  * (공통 describePunisherError 의 강의 생성 409 문구가 섞이지 않게). 그 밖은 공통 문구.
  */
 export function describeCheckError(error: unknown): string {
   if (!(error instanceof PunisherApiError)) { return describePunisherError(error); }
-  if (error.status === 409) { return error.code === "NO_REVIEWS" ? CHECK_ERROR_MESSAGES.NO_REVIEWS : error.message; }
+  if (error.status === 409) {
+    const known = CHECK_ERROR_MESSAGES[error.code as CheckErrorCode];
+    return known ?? errorCodeMessage(error.code) ?? error.message;
+  }
   if (error.status === 400) { return CHECK_ERROR_MESSAGES[error.code as CheckErrorCode] ?? CHECK_ERROR_MESSAGES.BAD_REQUEST; }
   return describePunisherError(error);
 }

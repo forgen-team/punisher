@@ -34,14 +34,15 @@ func (s *Service) runDiagnosticItems(ctx context.Context, apiKey, userID, sessio
 	if plan.kind == check.PurposePretest { // 예측 질문은 강의를 기다리는 동안 나와야 하므로 짧은 호출 자리를 쓴다.
 		priority = llm.ShortUnlessBackground(ctx)
 	}
+	lang := s.Store.LocaleFor(ctx, userID) // 강의에 묶이지 않은 문항은 만든 사용자의 언어(i18n §1.2).
 	items, u, _, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.diagnosticModel(plan.kind), attempts: plan.attempts,
-		priority: priority, system: set.Text(prompts.BlockCheckPretest, s.interactionVars(ctx, userID, conceptID))},
+		priority: priority, system: set.Text(prompts.BlockCheckPretest, s.interactionVars(ctx, userID, conceptID, lang)), language: lang},
 		func(revisions []string) string { dc.Revisions = revisions; return prompts.Diagnostic(dc) },
 		func(set check.ItemSet) []string { return check.ValidateDiagnostic(set, vc) })
 	s.recordUsage(done, userID, "check_items", conceptID, u, err)
 	var saved []store.CheckItem
 	if err == nil {
-		saved, err = s.Store.SaveDiagnosticItems(done, store.DiagnosticItems{PromptHash: set.Hash(prompts.BlockCheckPretest),
+		saved, err = s.Store.SaveDiagnosticItems(done, store.DiagnosticItems{Language: lang, PromptHash: set.Hash(prompts.BlockCheckPretest),
 			CreatedFor: userID, Model: u.model, PromptVersion: diagnosticPromptVersion(set), Items: check.NormalizeDiagnostic(items)})
 	}
 	if err == nil {

@@ -10,6 +10,9 @@ import (
 
 // ListExercises handles GET /v1/lectures/{id}/exercises — the caller's latest
 // attempt per exercise/lab block and the lecture's '고칠 곳' (v3 §2, §6).
+// ErrorExerciseStale: the lecture changed since the exercise was shown (translated by the web).
+const ErrorExerciseStale ErrorCode = "EXERCISE_STALE"
+
 func (h *LearnHandler) ListExercises(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -58,7 +61,7 @@ func (h *LearnHandler) SubmitExercise(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, services.ErrExerciseNotFound):
 		writeError(w, r, http.StatusNotFound, ErrorNotFound, err.Error())
 	case errors.Is(err, services.ErrExerciseStale):
-		writeError(w, r, http.StatusConflict, ErrorConflict, err.Error())
+		writeError(w, r, http.StatusConflict, ErrorExerciseStale, err.Error())
 	case errors.Is(err, services.ErrInvalidCheck):
 		writeCheckError(w, r, "submit exercise", err)
 	case err != nil:

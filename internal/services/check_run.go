@@ -19,8 +19,24 @@ import (
 const checkAttempts = 2
 
 // heldText is shown when a grade is held: the model answer and '판정 보류'.
-func heldText(answer string) string {
+func heldText(answer, lang string) string {
+	if learning.NormalizeLocale(lang) == learning.LocaleEN {
+		return "Verdict held (grading was not certain, so this answer does not count as mastery evidence). Model answer: " + answer
+	}
 	return "판정을 보류했어요(채점이 확실하지 않아 이번 답은 숙달 근거로 쓰지 않아요). 모범답: " + answer
+}
+
+// disputeTexts are the stored tutor lines of a dispute in the item's language:
+// rejected, accepted, and accepted with later records keeping the box.
+func disputeTexts(lang string) (rejected, accepted, conflict string) {
+	if learning.NormalizeLocale(lang) == learning.LocaleEN {
+		return "Regraded: the verdict stands.",
+			"Regraded: your answer was correct. This item's result was reverted.",
+			"Regraded: your answer was correct. The verdict is fixed, but later records keep the box as it is."
+	}
+	return "다시 채점해도 판정은 그대로예요.",
+		"다시 채점한 결과 맞는 답이었어요. 이 문항의 반영을 되돌렸어요.",
+		"다시 채점한 결과 맞는 답이었어요. 판정은 바로잡았지만 이후 기록이 있어 상자는 그대로예요."
 }
 
 // runCheckItems writes the lecture's item set (one rewrite on problems),
@@ -30,9 +46,9 @@ func (s *Service) runCheckItems(ctx context.Context, apiKey, userID, sessionID s
 	done := context.WithoutCancel(ctx)
 	set := s.UserPrompts(ctx, userID)
 	ic, sc := checkItemsContext(cl)
-	system := set.Text(prompts.BlockCheckItems, s.interactionVars(ctx, userID, cl.info.ID))
+	system := set.Text(prompts.BlockCheckItems, s.interactionVars(ctx, userID, cl.info.ID, learning.NormalizeLocale(cl.lec.Language)))
 	items, u, tries, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.Cfg.LectureModel, attempts: checkAttempts,
-		priority: llm.PriorityInteractive, system: system},
+		priority: llm.PriorityInteractive, system: system, language: key.Language},
 		func(revisions []string) string { ic.Revisions = revisions; return prompts.CheckItems(ic) },
 		func(set check.ItemSet) []string { return check.ValidateItems(set, sc) })
 	return s.saveCheckItems(done, userID, sessionID, cl, key, jobID, set, items, u, tries, err)
@@ -110,7 +126,7 @@ func (s *Service) runCheckTurn(ctx context.Context, apiKey, userID, sessionID, t
 		Grade: store.GradeRecord{CheckGrade: models.CheckGrade{Met: reply.Met, Missing: reply.Missing, Quote: reply.Quote,
 			Misconception: truncateRunes(strings.TrimSpace(reply.Misconception), learning.MaxMisconceptionRunes), Confidence: reply.Confidence}}}
 	if verdict == learning.VerdictHeld {
-		turn.Text = heldText(item.Rubric.Answer)
+		turn.Text = heldText(item.Rubric.Answer, item.Language)
 	}
 	if !check.EndsItem(turn.Move) {
 		return s.Store.CompleteCheckTurn(done, turn)
@@ -134,14 +150,16 @@ func (s *Service) tutorReply(ctx context.Context, apiKey, userID, conceptID stri
 		return check.TutorReply{}, u, errors.New("no answer to grade")
 	}
 	learner := p.answers[len(p.answers)-1].Text
-	tc := prompts.CheckTutorContext{ConceptName: s.interactionVars(ctx, userID, conceptID)["concept_name"],
-		Objective: s.objectiveText(ctx, userID, conceptID, item.ObjectiveID), Prompt: item.Prompt, Material: materialText(item),
+	lang := learning.NormalizeLocale(item.Language) // 문항(=강의) 언어로 답한다(i18n §1.1).
+	vars := s.interactionVars(ctx, userID, conceptID, lang)
+	tc := prompts.CheckTutorContext{ConceptName: vars["concept_name"],
+		Objective: s.objectiveText(ctx, userID, conceptID, item.ObjectiveID, lang), Prompt: item.Prompt, Material: materialText(item),
 		Must: item.Rubric.Must, Nice: item.Rubric.Nice, Misconceptions: item.Rubric.Misconceptions, Answer: item.Rubric.Answer,
 		LearnerAnswer: learner, Allowed: stage.AllowedMoves()}
 	for _, t := range p.dialogue() {
 		tc.Dialogue = append(tc.Dialogue, prompts.CheckTurnRef{Role: t.Role, Move: t.Move, Text: t.Text})
 	}
-	system := s.UserPrompts(ctx, userID).Text(prompts.BlockCheckTutor, s.interactionVars(ctx, userID, conceptID))
+	system := prompts.WithOutputLanguage(s.UserPrompts(ctx, userID).Text(prompts.BlockCheckTutor, vars), lang)
 	var problems []string
 	for n := 1; n <= checkAttempts; n++ {
 		tc.Revisions = problems
@@ -232,13 +250,13 @@ func (s *Service) runDispute(ctx context.Context, apiKey, userID, sessionID, tur
 		return s.Store.FailCheckTurn(done, userID, turnID, u.model, checkErrorText(err))
 	}
 	accepted := check.DisputeAccepted(reply)
-	text := "다시 채점해도 판정은 그대로예요."
+	text, acceptedText, conflictText := disputeTexts(item.Language)
 	if accepted {
-		text = "다시 채점한 결과 맞는 답이었어요. 이 문항의 반영을 되돌렸어요."
+		text = acceptedText
 	}
 	_, err = s.Store.ResolveDispute(done, store.DisputeResolve{UserID: userID, SessionID: sessionID, ObjectiveID: item.ObjectiveID,
 		JudgedTurnID: judged.ID, Accepted: accepted, Now: s.now(), Intervals: s.reviewIntervals(done, userID), Covers: synthesisCovers(st, item),
-		ConflictText: "다시 채점한 결과 맞는 답이었어요. 판정은 바로잡았지만 이후 기록이 있어 상자는 그대로예요.",
+		ConflictText: conflictText,
 		Turn: store.TurnWrite{ID: turnID, ItemID: item.ID, Role: "tutor",
 			Move: check.MoveDispute, Text: text, Verdict: check.GradeVerdict(reply.Verdict, reply.Quote, reply.Confidence),
 			Grader: learning.GraderRegrade, Model: u.model, InputTokens: u.input, OutputTokens: u.output,
@@ -263,7 +281,7 @@ func (s *Service) regrade(ctx context.Context, apiKey string, item store.CheckIt
 		if len(problems) > 0 {
 			prompt += "\n## 이전 출력의 문제(고쳐서 다시 출력)\n- " + strings.Join(problems, "\n- ") + "\n"
 		}
-		text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.regradeModel(), System: prompts.SystemCheckRegrade,
+		text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.regradeModel(), System: prompts.WithOutputLanguage(prompts.SystemCheckRegrade, learning.NormalizeLocale(item.Language)),
 			User: prompt, MaxTokens: 1500, Timeout: 2 * time.Minute, Priority: llm.ShortUnlessBackground(ctx)}, &u)
 		if err != nil {
 			return check.RegradeReply{}, u, err

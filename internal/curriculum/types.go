@@ -33,6 +33,28 @@ var AreaTitles = map[string]string{
 	"security-design":       "보안과 설계",
 }
 
+// AreaTitlesEn are the English area names (i18n/en/*.yaml title).
+var AreaTitlesEn = map[string]string{
+	"data-structures":       "Data Structures and Algorithms",
+	"computer-architecture": "Computer Architecture",
+	"os":                    "Operating Systems",
+	"network-web":           "Networking and the Web",
+	"database":              "Databases",
+	"distributed":           "Distributed Systems",
+	"infra-ops":             "Infrastructure and Operations",
+	"security-design":       "Security and Design",
+}
+
+// AreaTitleIn is the area name in the locale ("en" → English, otherwise Korean).
+func AreaTitleIn(area, locale string) string {
+	if locale == "en" {
+		if t, ok := AreaTitlesEn[area]; ok {
+			return t
+		}
+	}
+	return AreaTitle(area)
+}
+
 // AreaTitle 은 영역 표시 이름을 반환한다(모르는 영역이면 slug 그대로).
 func AreaTitle(area string) string {
 	if t, ok := AreaTitles[area]; ok {
@@ -69,6 +91,8 @@ type DocLink struct {
 type Objective struct {
 	Text  string `json:"text"`
 	Depth int    `json:"depth"`
+	// TextEn: English overlay (i18n/en); "" = fall back to Text.
+	TextEn string `json:"textEn,omitempty"`
 }
 
 func (o *Objective) UnmarshalYAML(node *yaml.Node) error {
@@ -101,6 +125,10 @@ type Concept struct {
 	PartOf         []string    `yaml:"part_of" json:"partOf"`
 	PracticalCases []string    `yaml:"practical_cases" json:"practicalCases"`
 	DocLinks       []DocLink   `yaml:"doc_links" json:"docLinks"`
+	// English overlay (curriculum/i18n/en, applied by Load); "" / nil = fall back to Korean.
+	NameEn           string   `yaml:"-" json:"nameEn,omitempty"`
+	SummaryEn        string   `yaml:"-" json:"summaryEn,omitempty"`
+	PracticalCasesEn []string `yaml:"-" json:"practicalCasesEn,omitempty"`
 }
 
 // ObjectiveID returns the stable id of the n-th (1-based) objective.

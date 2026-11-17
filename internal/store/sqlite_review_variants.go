@@ -22,7 +22,8 @@ type VariantTarget struct {
 
 // ReviewVariantTargets lists objectives due before `until` (in the queue: not
 // queued, not graduated, active) whose visible items were all asked already,
-// with the newest lecture that has an item for them. Earliest due first.
+// with the newest lecture that has an item for them. Earliest due first. Only
+// items in the user's language count as unseen (i18n §9): the variant fills it.
 // JOIN LATERAL (… LIMIT 1) src → a correlated scalar subquery, kept only when present.
 func (s *SQLiteStore) ReviewVariantTargets(ctx context.Context, userID string, until time.Time, limit int) ([]VariantTarget, error) {
 	targets, err := collect(s.c().query(ctx, `
@@ -36,7 +37,7 @@ func (s *SQLiteStore) ReviewVariantTargets(ctx context.Context, userID string, u
 			  AND NOT EXISTS (
 				SELECT 1 FROM check_items ci
 				WHERE ci.objective_id = m.objective_id AND ci.status = 'active' AND ci.purpose IN ('check', 'review')
-				  AND `+checkItemVisible+`
+				  AND ci.language = `+userLocaleSQL("$1")+` AND `+checkItemVisible+`
 				  AND NOT EXISTS (SELECT 1 FROM check_turns t WHERE t.user_id = $1 AND t.item_id = ci.id)))
 		WHERE lecture_id IS NOT NULL
 		ORDER BY next_review_at, objective_id LIMIT $3`, userID, until, limit), func(row rowScanner) (VariantTarget, error) {
@@ -60,14 +61,16 @@ func (s *SQLiteStore) ReviewVariantTargets(ctx context.Context, userID string, u
 
 // SaveVariantItems stores validated review variants under the lecture's key
 // without retiring anything; each points to its objective's active check item
-// of that lecture (variant_of).
+// of that lecture (variant_of) — of the variant's language first.
 func (s *SQLiteStore) SaveVariantItems(ctx context.Context, key CheckItemKey, conceptID, jobID, model, promptVersion string, items []check.Item) ([]CheckItem, error) {
 	out := make([]CheckItem, 0, len(items))
 	err := s.tx(ctx, func(c conn) error {
 		for _, it := range items {
 			var variantOf string
 			err := c.row(ctx, `SELECT id FROM check_items WHERE lecture_id = $1 AND objective_id = $2
-				AND purpose = 'check' AND status = 'active' ORDER BY created_at DESC, rowid DESC LIMIT 1`, key.LectureID, it.ObjectiveID).Scan(&variantOf)
+				AND purpose = 'check' AND status = 'active'
+				ORDER BY (language = `+keyLanguageSQL("$3", "$1")+`) DESC, created_at DESC, rowid DESC LIMIT 1`,
+				key.LectureID, it.ObjectiveID, key.Language).Scan(&variantOf)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				return fmt.Errorf("variant source: %w", err)
 			}

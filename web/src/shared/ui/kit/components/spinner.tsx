@@ -1,5 +1,7 @@
 import * as React from "react";
 import { cn } from "../lib/utils";
+import { useT } from "@/src/shared/i18n";
+import { kitMessages } from "../lib/messages";
 
 export interface SpinnerProps extends React.HTMLAttributes<HTMLSpanElement> {
   size?: "sm" | "md";
@@ -8,11 +10,13 @@ export interface SpinnerProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 /** 원형 로딩 표시. currentColor를 따르므로 부모 글자색에 맞춰진다. */
-export function Spinner({ size = "md", label = "불러오는 중", className, ...props }: SpinnerProps) {
+export function Spinner({ size = "md", label, className, ...props }: SpinnerProps) {
+  const t = useT(kitMessages);
+  const text = label === undefined ? t.loading : label;
   return (
     <span
-      role={label ? "status" : undefined}
-      aria-hidden={label ? undefined : true}
+      role={text ? "status" : undefined}
+      aria-hidden={text ? undefined : true}
       className={cn("inline-flex shrink-0 items-center justify-center", className)}
       {...props}
     >
@@ -22,7 +26,7 @@ export function Spinner({ size = "md", label = "불러오는 중", className, ..
           size === "sm" ? "h-4 w-4" : "h-5 w-5"
         )}
       />
-      {label ? <span className="sr-only">{label}</span> : null}
+      {text ? <span className="sr-only">{text}</span> : null}
     </span>
   );
 }

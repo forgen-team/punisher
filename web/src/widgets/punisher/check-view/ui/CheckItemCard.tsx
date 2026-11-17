@@ -1,6 +1,8 @@
 
 import type { CheckItem, CheckTurn } from "@/src/shared/api/punisher";
+import { useT } from "@/src/shared/i18n";
 import { BlockRenderer } from "../../lecture-viewer";
+import { messages } from "../i18n";
 import { showItemReview } from "../lib/checkView";
 import { checkItemAnchorId } from "../lib/followScroll";
 import { CheckTurnItem } from "./CheckTurnItem";
@@ -32,6 +34,7 @@ interface CheckItemCardProps {
  * 이의 문답은 판정 아래.
  */
 export function CheckItemCard({ index, total, item, turns, missing, anchorHref, anchorLabel, retryTurnId, onRetry, retrying, onDispute, disputing, showLectureSummary, showIndex = true }: CheckItemCardProps) {
+  const t = useT(messages);
   const dialogue = turns.filter((t) => t.move !== "dispute");
   const disputes = turns.filter((t) => t.move === "dispute");
   const renderTurn = (t: CheckTurn) => (
@@ -40,12 +43,12 @@ export function CheckItemCard({ index, total, item, turns, missing, anchorHref, 
   return (
     <section
       id={checkItemAnchorId(item.id)}
-      aria-label={`문항 ${index}/${total}`}
+      aria-label={t.itemProgress(index, total)}
       className="flex scroll-mt-28 flex-col gap-3 border-t border-line pt-4 first:border-t-0"
     >
       {showIndex && (
         <p className="text-xs font-medium text-fg-muted">
-          문항 {index}/{total}
+          {t.itemProgress(index, total)}
         </p>
       )}
       <div className="text-base">

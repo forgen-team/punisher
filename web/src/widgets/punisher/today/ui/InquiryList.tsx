@@ -1,10 +1,12 @@
 import { Link } from "@/src/shared/lib/router";
 import { ErrorState, List, ListRow, Section } from "@/src/shared/ui/kit";
-import { INQUIRY_STATUS_LABELS, InquiryStatusIcon, inquiryRowTitle } from "@/src/entities/punisher";
+import { INQUIRY_STATUS_LABELS_BY_LOCALE, InquiryStatusIcon, inquiryRowTitle } from "@/src/entities/punisher";
 import { inquiryHref } from "@/src/features/punisher/instant-start";
 import { describePunisherError, type Inquiry } from "@/src/shared/api/punisher";
+import { formatDate, useLocale, useT } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 
-const dateFormat = new Intl.DateTimeFormat("ko-KR", { month: "short", day: "numeric" });
+const DATE: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
 
 interface InquiryListProps {
   inquiries: Inquiry[] | undefined;
@@ -18,16 +20,18 @@ interface InquiryListProps {
  * (스켈레톤이 떴다 사라지며 아래가 밀리지 않게). 행 제목은 해설 제목(없으면 질문).
  */
 export function InquiryList({ inquiries, error, onRetry }: InquiryListProps) {
+  const locale = useLocale();
+  const t = useT(messages);
   if (error) {
     return (
-      <Section variant="card" title="질문 해설">
+      <Section variant="card" title={t.inquiries}>
         <ErrorState compact message={describePunisherError(error)} onRetry={onRetry} />
       </Section>
     );
   }
   if (!inquiries || inquiries.length === 0) { return null; }
   return (
-    <Section variant="card" title="질문 해설" description="다 본 질문은 지도의 관련 개념과 기록에 남아요">
+    <Section variant="card" title={t.inquiries} description={t.inquiriesDescription}>
       <List>
         {inquiries.map((q) => (
           <ListRow
@@ -36,7 +40,7 @@ export function InquiryList({ inquiries, error, onRetry }: InquiryListProps) {
             linkAs={Link}
             leading={<InquiryStatusIcon status={q.status} />}
             title={inquiryRowTitle(q)}
-            meta={`${INQUIRY_STATUS_LABELS[q.status] ?? q.status} · ${dateFormat.format(new Date(q.createdAt))}`}
+            meta={`${INQUIRY_STATUS_LABELS_BY_LOCALE[locale][q.status] ?? q.status} · ${formatDate(new Date(q.createdAt), locale, DATE)}`}
           />
         ))}
       </List>

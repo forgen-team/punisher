@@ -5,6 +5,8 @@ import { useRouter } from "@/src/shared/lib/router";
 import { canGoBack } from "@/src/shared/lib/in-app-history";
 import { ArrowLeft, ListOrdered, MessagesSquare } from "lucide-react";
 import { IconButton, Menu, cn, iconButtonVariants, type MenuItem } from "@/src/shared/ui/kit";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 
 /** 본문 강의 제목(h1) id — 이 제목이 화면 위로 지나가면 상단 바에 작게 나타난다. */
 export const LECTURE_TITLE_ID = "lecture-title";
@@ -52,6 +54,7 @@ interface LectureTopBarProps {
  */
 export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, menuItems }: LectureTopBarProps) {
   const router = useRouter();
+  const t = useT(messages);
   const barRef = useRef<HTMLDivElement>(null);
   const titleAway = useTitleScrolledAway(barRef, title);
   return (
@@ -66,7 +69,7 @@ export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, 
           }
         }}
         // 단독판: 셸 상단 바에 ← 가 없어 모든 폭에서 보인다(witems 는 lg 이상만 — docs/SYNC.md).
-        aria-label="뒤로" className={iconButtonVariants({ variant: "ghost" })}>
+        aria-label={t.back} className={iconButtonVariants({ variant: "ghost" })}>
         <ArrowLeft aria-hidden="true" />
       </Link>
       <p
@@ -76,16 +79,16 @@ export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, 
         {title}
       </p>
       {onOpenToc && (
-        <IconButton aria-label="목차" onClick={onOpenToc} className="lg:hidden">
+        <IconButton aria-label={t.toc} onClick={onOpenToc} className="lg:hidden">
           <ListOrdered aria-hidden="true" />
         </IconButton>
       )}
       {onOpenAssist && (
-        <IconButton aria-label="질문과 메모" onClick={onOpenAssist} className="xl:hidden">
+        <IconButton aria-label={t.questionsAndNotes} onClick={onOpenAssist} className="xl:hidden">
           <MessagesSquare aria-hidden="true" />
         </IconButton>
       )}
-      {menuItems && menuItems.length > 0 && <Menu items={menuItems} label="강의 메뉴" />}
+      {menuItems && menuItems.length > 0 && <Menu items={menuItems} label={t.lectureMenu} />}
     </div>
   );
 }

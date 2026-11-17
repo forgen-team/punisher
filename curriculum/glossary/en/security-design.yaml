@@ -1,0 +1,110 @@
+# English overlay for ../security-design.yaml — same ids.
+area: security-design
+concepts:
+  sec.api-contracts: An API contract is the agreement between provider and consumer on the shape and meaning of requests and responses. Versioning is how you change an API without breaking that agreement. A deploy that renames one field can break every client that hasn't updated.
+  sec.authentication: Authentication verifies that whoever sent a request is the user they claim to be. It covers login APIs, keeping users logged in, and defending against brute-force attacks. If authentication breaks, the permission checks that follow it become meaningless.
+  sec.authorization: Authorization decides what an authenticated user may do with a given resource. A permission model organizes those rules into structures such as roles. If the server doesn't check ownership and permissions on every request, changing an ID exposes others' data.
+  sec.cryptography-basics: 'Cryptography basics cover the core tools for hiding data or detecting forgery: hashes, symmetric and public-key encryption, and digital signatures. Password storage, HTTPS, and token signing all use them, so knowing which tool fits where prevents design mistakes.'
+  sec.csrf: CSRF exploits the fact that browsers attach cookies automatically. Another site makes a logged-in user's browser send requests the user didn't intend. State-changing APIs that use cookie-based auth must check SameSite settings and token validation.
+  sec.dependency-direction: Dependency direction is which module knows about and calls which. It is chosen so core domain rules don't directly know details like the DB or external SDKs. The wrong direction makes swapping providers and testing hard, and creates circular dependencies.
+  sec.injection: Injection is a vulnerability where user input is interpreted as part of a SQL query or shell command instead of as data, running unintended code. A single line that builds a query by string concatenation is enough. Parameter binding and allowlist validation prevent it.
+  sec.jwt: A JWT is a token format of header, payload, and signature joined by dots, used to exchange signed JSON claims. The payload is not encrypted, so anyone can read it. If you skip signature, expiry, or audience checks, you end up trusting forged tokens.
+  sec.least-privilege: Least privilege is a design principle that gives each user, service, and process only the permissions its job needs. If one account is compromised, the damage stays within that scope. Apply it to DB accounts, cloud roles, and the user a container runs as.
+  sec.module-boundaries: Module boundaries and responsibilities are the design question of how to split code into units and what each unit owns. The goal is high cohesion and low coupling. The number of files and services one policy change touches shows how good the boundaries are.
+  sec.oauth-oidc: OAuth 2.0 is a protocol that lets users delegate resource access to another app without handing over their password. OpenID Connect adds user identity on top. For social login, knowing this flow and its checks is what stops authorization code or token theft.
+  sec.password-hashing: 'Password hashing stores passwords so the original can''t be recovered: add a salt, then apply a deliberately slow hash function. If the DB leaks, it is the last line of defense against attackers recovering passwords in bulk.'
+  sec.secrets-management: Secrets management keeps sensitive values such as API keys, DB passwords, and signing keys out of code, injects them into the runtime, and rotates them. Keys often leak through one commit or one log line, so rotation procedures should assume a leak.
+  sec.session-vs-token: 'Compares two ways to hold login state: sessions keep it in server-side storage, while tokens put it in a signed token the client carries. The choice decides whether forced logout is immediate and, through storage location, how exposed you are to XSS and CSRF.'
+  sec.ssrf: SSRF abuses a server feature that sends requests to user-supplied URLs. Attackers use it to reach internal addresses that can't be reached from outside. Features that accept URLs, such as link previews, webhooks, and feed fetching, must validate the target address.
+  sec.supply-chain: Software supply chain security manages the risk that libraries, base images, and build tools you didn't write become attack vectors. One wrong package install can leak build-server tokens, so pin versions, scan for vulnerabilities, and verify provenance.
+  sec.tls-certificates: A certificate is a document in which a certificate authority (CA) vouches by signature that a public key belongs to a domain. PKI is the system that chains this trust. HTTPS depends on certificates, and a missed renewal blocks access, so automate renewal and monitor expiry.
+  sec.trust-boundary: A trust boundary is where data's trust level changes, e.g. between browser and server or external API and internal service. Any value crossing it, whether a price or a user ID, must be revalidated by the server. Knowing the boundaries tells you where to validate.
+  sec.xss: XSS is a vulnerability where an attacker's script runs in another user's browser with that site's privileges. It appears on pages that render comments, Markdown, or external HTML. It leads to session hijacking or requests sent while impersonating the user.
+terms:
+  g.hmac:
+    name: HMAC
+    gloss: HMAC computes an authentication value for a message from a secret key and a hash function. Only parties holding the key can create and verify it, so tampering is detectable. It is used for webhook signature verification and symmetric-key JWT signing.
+  g.aes:
+    name: AES
+    gloss: AES is the standard symmetric-key block cipher, using the same key to encrypt and decrypt. It is used to encrypt sensitive data stored in a DB, or files. Where the key is kept determines how secure it is.
+  g.rsa:
+    name: RSA
+    gloss: RSA is a public-key algorithm that uses a public/private key pair. It is used for digital signatures and key exchange. You often see the name in certificates and asymmetric JWT signing.
+  g.base64:
+    name: Base64
+    gloss: Base64 is an encoding that represents binary data using a fixed set of 64 characters. Anyone can decode it without a key, so it is not encryption. JWT parts and HTTP Basic auth headers are encoded this way.
+  g.rainbow-table:
+    name: Rainbow table
+    gloss: A rainbow table stores precomputed hashes for a range of passwords, compressed using hash chains. Unsalted passwords stored with a fast hash can be recovered quickly if they fall within its range. Per-user salts make this precomputation useless.
+  g.credential-stuffing:
+    name: Credential stuffing
+    gloss: Credential stuffing is an attack that automatically tries large volumes of username/password pairs leaked from other services. Because many users reuse passwords, some accounts get breached. Login attempt limits and multi-factor authentication block it.
+  g.totp:
+    name: TOTP
+    gloss: TOTP generates a one-time code, valid only briefly, from a shared secret and the current time. It's the numeric code shown in authenticator apps. It serves as an extra factor that blocks login when only the password has leaked.
+  g.pkce:
+    name: PKCE
+    gloss: PKCE is an OAuth authorization code flow extension that lets only the client that started the request exchange the code for a token. At exchange, the client proves a random value it created at the start. A stolen authorization code can't be misused.
+  g.oauth-scope:
+    name: Scope
+    gloss: A scope is an OAuth value describing the access an app requests and the user consents to. The issued token can be used only within that scope. Requesting more than needed increases the damage if the token leaks.
+  g.id-token:
+    name: ID token
+    gloss: An ID token is an OpenID Connect JWT carrying the authenticated user's identifier plus issuer, audience, and expiry. It confirms login identity and differs from access tokens used for API calls. Trust it only after verifying signature, issuer, and audience.
+  g.claim:
+    name: Claim
+    gloss: A claim is a name-value pair in a JWT payload expressing information such as user identifier, expiry, issuer, and audience. To use a token safely, the server must check not just the signature but also the expiry and audience claims.
+  g.jwks:
+    name: JWKS
+    gloss: JWKS is a JSON format that publishes the public keys used to verify token signatures. When the auth server publishes it, each service fetches the keys to verify JWTs. Key rotation can be handled by updating the list.
+  g.open-redirect:
+    name: Open redirect
+    gloss: An open redirect is a vulnerability that redirects to an address from a request parameter without validation. It is abused to send users via a trusted domain to phishing sites or to steal OAuth authorization codes. Restrict targets with an allowlist.
+  g.path-traversal:
+    name: Path traversal
+    gloss: Path traversal uses parent-directory sequences in a filename input to read or write files outside the intended folder. It appears in file download and upload features. Normalize the path, then confirm it is inside an allowed directory.
+  g.allowlist:
+    name: Allowlist
+    gloss: An allowlist accepts only predefined safe values and rejects everything else. It misses fewer cases than a blocklist that tries to filter out dangerous values. Use it for inputs with a limited set of values, like sort column names or redirect URLs.
+  g.escaping:
+    name: Escaping
+    gloss: Escaping converts special characters into forms that aren't interpreted as code in a given context. Rules differ for HTML body, attributes, URLs, and scripts. Only escaping that matches the output location prevents XSS.
+  g.sanitize:
+    name: HTML sanitization
+    gloss: HTML sanitization keeps only allowed tags and attributes and removes anything that could become script, for cases where HTML must be displayed as is. Do it with a proven library in Markdown rendering or external content display.
+  g.dns-rebinding:
+    name: DNS rebinding
+    gloss: DNS rebinding bypasses address validation by making a domain resolve first to an external IP and then to an internal one, so the check and the actual request use different IPs. SSRF defenses must check the IP actually connected to.
+  g.iam:
+    name: IAM
+    gloss: IAM defines and manages who can perform which actions on which resources in a cloud or organization. Roles are granted to servers and deployment pipelines, not just people. Overly broad scopes can turn one leaked key into a full account compromise.
+  g.mtls:
+    name: mTLS
+    gloss: mTLS is TLS in which the client also presents a certificate, so both sides verify each other's identity. Internal services use it to confirm which service is calling. It often appears in designs that don't trust the internal network unconditionally.
+  g.certificate-chain:
+    name: Certificate chain
+    gloss: A certificate chain links a site certificate through intermediate certificates to a trusted root certificate via signatures. If the server doesn't send the intermediates, certificate errors appear on only some clients.
+  g.acme:
+    name: ACME
+    gloss: ACME is a protocol that automates everything from domain ownership validation to certificate issuance and renewal. Free certificate authorities and auto-renewal tools use it. Monitor the results so renewals don't fail silently.
+  g.kms:
+    name: KMS
+    gloss: A KMS is a managed service that securely generates and stores encryption keys and controls their use. Applications ask the KMS to encrypt or decrypt instead of retrieving the master key. Key access is logged, easing leak tracing and rotation.
+  g.cve:
+    name: CVE
+    gloss: CVE is a system of unique IDs assigned to each publicly disclosed security vulnerability. Dependency scanners use these IDs to report affected packages and versions. Real risk depends on whether your code actually uses the affected functionality.
+  g.typosquatting:
+    name: Typosquatting
+    gloss: Typosquatting publishes malicious packages under names similar to popular ones, targeting typo installs. Install scripts can steal tokens or environment variables from the build environment. Make a habit of checking package names and sources.
+  g.semver:
+    name: Semantic versioning
+    gloss: 'Semantic versioning splits a version into major, minor, and patch numbers: major means breaking changes, minor new features, patch bug fixes. It helps judge a change''s risk when setting dependency ranges and reading API change notices.'
+  g.breaking-change:
+    name: Breaking change
+    gloss: A breaking change is an API change that breaks existing clients until they update their code. Typical cases are removed or renamed fields and changed types or meaning. Classify changes before deploying to decide on versioning or deprecation notices.
+  g.dependency-injection:
+    name: Dependency injection
+    gloss: Dependency injection passes a module the implementations it needs instead of having it create them. Domain code knows only interfaces, and DB or external API implementations are wired in at composition time. That makes test doubles easy to swap in.
+  g.owasp-top-10:
+    name: OWASP Top 10
+    gloss: The OWASP Top 10 is the OWASP Foundation's list of common, dangerous web application vulnerability types. Security audits and code reviews often cite it as a shared baseline and vocabulary. Its entries are revised periodically.

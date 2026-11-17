@@ -90,6 +90,8 @@ type NewArea struct {
 	Key      string
 	Title    string
 	Pitch    string
+	TitleEn  string
+	PitchEn  string
 	Keywords []string
 }
 
@@ -102,6 +104,8 @@ type SuggestionInput struct {
 	NewAreas  []NewArea
 	// Covered: normalized names of concepts already on the user's map (skip as topics).
 	Covered map[string]bool
+	// Locale: ko|en of titles and reasons ("" = ko).
+	Locale string
 }
 
 // Suggestion is one card of "다음엔 어떤 걸 공부해 보고 싶어요?".
@@ -125,23 +129,29 @@ func RankSuggestions(in SuggestionInput, limit int) []Suggestion {
 		hot = append(hot, t.Topic)
 	}
 	var all []Suggestion
+	loc := in.Locale
 	for _, p := range in.Proposed {
 		score := 2 + math.Min(float64(p.Mentions), 5)*0.5
-		reason := fmt.Sprintf("강의·질문에서 %d번 나왔지만 아직 지도에 없는 개념이에요.", p.Mentions)
+		reason := fmt.Sprintf(inLocale(loc, "강의·질문에서 %d번 나왔지만 아직 지도에 없는 개념이에요.",
+			"Came up %d times in lectures and questions but is not on your map yet."), p.Mentions)
 		if matchesAny(p.Name, hot) {
 			score += 1.5
-			reason = fmt.Sprintf("강의·질문에서 %d번 나왔고 요즘 읽는 글의 관심사와도 겹쳐요.", p.Mentions)
+			reason = fmt.Sprintf(inLocale(loc, "강의·질문에서 %d번 나왔고 요즘 읽는 글의 관심사와도 겹쳐요.",
+				"Came up %d times in lectures and questions and matches what you have been reading."), p.Mentions)
 		}
 		all = append(all, Suggestion{ID: SuggestProposed + ":" + p.ID, Kind: SuggestProposed, Title: p.Name,
 			Reason: reason, Score: score, ConceptIDs: []string{p.ID}})
 	}
 	for _, d := range in.Deepen {
 		score := 1.5 + math.Min(float64(d.Remaining), 6)*0.25 + math.Min(float64(d.Mentions), 4)*0.3
-		reason := fmt.Sprintf("기본은 마쳤고 심화 목표 %d개가 남았어요.", d.Remaining)
+		reason := fmt.Sprintf(inLocale(loc, "기본은 마쳤고 심화 목표 %d개가 남았어요.",
+			"You finished the basics; %d advanced objectives remain."), d.Remaining)
 		if d.Mentions > 0 {
-			reason = fmt.Sprintf("기본은 마쳤고 심화 목표 %d개가 남았어요. 최근 글 해설에서도 %d번 이어졌어요.", d.Remaining, d.Mentions)
+			reason = fmt.Sprintf(inLocale(loc, "기본은 마쳤고 심화 목표 %d개가 남았어요. 최근 글 해설에서도 %d번 이어졌어요.",
+				"You finished the basics; %d advanced objectives remain. Recent article explanations led here %d times."), d.Remaining, d.Mentions)
 		}
-		all = append(all, Suggestion{ID: SuggestDeepen + ":" + d.ConceptID, Kind: SuggestDeepen, Title: d.Name + " 심화",
+		title := d.Name + inLocale(loc, " 심화", " (advanced)")
+		all = append(all, Suggestion{ID: SuggestDeepen + ":" + d.ConceptID, Kind: SuggestDeepen, Title: title,
 			Reason: reason, Score: score, ConceptIDs: []string{d.ConceptID}})
 	}
 	trendTopics := map[string]bool{}
@@ -151,25 +161,29 @@ func RankSuggestions(in SuggestionInput, limit int) []Suggestion {
 		}
 		trendTopics[normalize(t.Topic)] = true
 		all = append(all, Suggestion{ID: SuggestTrend + ":" + t.Topic, Kind: SuggestTrend, Title: t.Topic,
-			Reason: "RSS 흐름에서 최근 크게 늘어난 주제예요.", Score: 1 + math.Min(math.Max(t.Score, 0), 5)*0.4})
+			Reason: inLocale(loc, "RSS 흐름에서 최근 크게 늘어난 주제예요.", "A topic rising sharply in your RSS feeds."), Score: 1 + math.Min(math.Max(t.Score, 0), 5)*0.4})
 	}
 	for _, name := range in.Interests {
 		if covered(name, in.Covered) || trendTopics[normalize(name)] {
 			continue
 		}
 		all = append(all, Suggestion{ID: SuggestInterest + ":" + name, Kind: SuggestInterest, Title: name,
-			Reason: "RSS 관심 분야로 등록해 둔 주제예요.", Score: 1.2})
+			Reason: inLocale(loc, "RSS 관심 분야로 등록해 둔 주제예요.", "A topic you registered as an RSS interest."), Score: 1.2})
 	}
 	for _, a := range in.NewAreas {
-		score, reason := 0.8, a.Pitch
+		pitch, areaTitle := a.Pitch, a.Title
+		if loc == LocaleEN && a.PitchEn != "" {
+			pitch, areaTitle = a.PitchEn, a.TitleEn
+		}
+		score, reason := 0.8, pitch
 		for _, k := range a.Keywords {
 			if matchesAny(k, hot) {
 				score += 1.5
-				reason = a.Pitch + " 요즘 읽는 글과도 이어져요."
+				reason = pitch + inLocale(loc, " 요즘 읽는 글과도 이어져요.", " It also connects to what you have been reading.")
 				break
 			}
 		}
-		all = append(all, Suggestion{ID: SuggestNewArea + ":" + a.Key, Kind: SuggestNewArea, Title: a.Title,
+		all = append(all, Suggestion{ID: SuggestNewArea + ":" + a.Key, Kind: SuggestNewArea, Title: areaTitle,
 			Reason: reason, Score: score})
 	}
 
@@ -228,11 +242,15 @@ func matchesAny(s string, list []string) bool {
 // DefaultNewAreas are topics outside the seed curriculum (source d).
 var DefaultNewAreas = []NewArea{
 	{Key: "llm-engineering", Title: "LLM 엔지니어링", Pitch: "프롬프트·RAG·평가처럼 LLM을 제품에 넣는 기술은 지금 지도 밖에 있어요.",
+		TitleEn: "LLM engineering", PitchEn: "Building LLMs into products — prompting, RAG, evaluation — is outside your map today.",
 		Keywords: []string{"llm", "rag", "ai", "프롬프트", "에이전트", "임베딩", "claude", "gpt"}},
 	{Key: "web-performance", Title: "웹 성능", Pitch: "렌더링·번들·Core Web Vitals처럼 화면이 빨라지는 원리는 지도에 없는 영역이에요.",
+		TitleEn: "Web performance", PitchEn: "What makes pages fast — rendering, bundles, Core Web Vitals — is an area not on your map.",
 		Keywords: []string{"성능", "performance", "web vitals", "렌더링", "번들", "react"}},
 	{Key: "data-pipelines", Title: "데이터 파이프라인", Pitch: "배치·스트리밍·CDC로 데이터를 옮기고 가공하는 일은 지도 밖이에요.",
+		TitleEn: "Data pipelines", PitchEn: "Moving and shaping data with batch, streaming and CDC is outside your map.",
 		Keywords: []string{"kafka", "스트리밍", "etl", "파이프라인", "cdc", "데이터"}},
 	{Key: "testing-quality", Title: "테스트와 품질 엔지니어링", Pitch: "테스트 전략·플레이키 테스트·계약 테스트처럼 품질을 지키는 기술은 지도 밖이에요.",
+		TitleEn: "Testing and quality engineering", PitchEn: "Keeping quality — test strategy, flaky tests, contract tests — is outside your map.",
 		Keywords: []string{"테스트", "test", "qa", "품질", "e2e"}},
 }

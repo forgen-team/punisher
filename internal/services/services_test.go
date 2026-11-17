@@ -298,3 +298,15 @@ func TestReviewLoopAttemptLogKeepsFailedParse(t *testing.T) {
 		t.Fatalf("attempt log = %+v", log)
 	}
 }
+
+func TestUserGlossKeyLanguage(t *testing.T) {
+	cases := []struct{ hash, lang, want string }{
+		{"", learning.LocaleKO, ""}, {"ab12", learning.LocaleKO, "ab12"},
+		{"", learning.LocaleEN, "default|en"}, {"ab12", learning.LocaleEN, "ab12|en"},
+	}
+	for _, c := range cases {
+		if got := userGlossKey(c.hash, c.lang); got != c.want {
+			t.Errorf("userGlossKey(%q, %q) = %q, want %q", c.hash, c.lang, got, c.want)
+		}
+	}
+}

@@ -4,7 +4,7 @@ package curriculum
 
 import "embed"
 
-//go:embed *.yaml
+//go:embed *.yaml i18n
 var Files embed.FS
 
 // Glossary is the term dictionary (glossary/*.yaml, internal/glossary).

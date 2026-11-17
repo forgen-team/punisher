@@ -9,6 +9,8 @@ import {
   useConcepts,
 } from "@/src/entities/punisher";
 import type { InstantResponse } from "@/src/shared/api/punisher";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 
 interface ResolutionChoicesProps {
   response: InstantResponse;
@@ -23,6 +25,7 @@ function mapHref(id: string): string {
 /** 자유 질의 해석 결과: 오늘의 출발점 · 관련 개념 · 선행 경로. */
 export function ResolutionChoices({ response, disabled, onPick }: ResolutionChoicesProps) {
   const { data: concepts } = useConcepts();
+  const t = useT(messages);
   const resolution = response.resolution;
   const nameOf = (id: string) => concepts?.find((c) => c.id === id)?.name ?? id;
 
@@ -31,9 +34,9 @@ export function ResolutionChoices({ response, disabled, onPick }: ResolutionChoi
     return (
       <p role="status" className="flex flex-wrap items-center gap-1.5 text-sm text-fg">
         <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
-        <strong className="font-semibold">{nameOf(id)}</strong>의 학습 목표를 이미 모두 마쳤습니다.
+        <strong className="font-semibold">{nameOf(id)}</strong>{t.alreadyLearned}
         <Link className="text-accent-text underline underline-offset-2" href={mapHref(id)}>
-          지도에서 보기
+          {t.viewOnMap}
         </Link>
       </p>
     );
@@ -43,8 +46,7 @@ export function ResolutionChoices({ response, disabled, onPick }: ResolutionChoi
   if (!resolution || conceptIds.length === 0) {
     return (
       <p role="status" className="text-sm text-fg-secondary">
-        입력한 내용과 맞는 개념을 찾지 못했습니다.{resolution?.error ? ` (${resolution.error})` : ""} 다른 표현으로 다시
-        입력해 보세요.
+        {t.noMatch(resolution?.error ? ` (${resolution.error})` : "")}
       </p>
     );
   }
@@ -58,20 +60,20 @@ export function ResolutionChoices({ response, disabled, onPick }: ResolutionChoi
         <p className="text-sm text-fg">
           {start ? (
             <>
-              오늘의 출발점: <strong className="font-semibold">{nameOf(start)}</strong>
+              {t.startingPoint}<strong className="font-semibold">{nameOf(start)}</strong>
             </>
           ) : (
-            "이 경로의 개념을 모두 학습했습니다."
+            t.pathAllLearned
           )}
         </p>
         {start && (
           <Button size="sm" disabled={disabled} onClick={() => onPick(start)}>
-            출발점부터 시작
+            {t.startFromStart}
           </Button>
         )}
       </div>
-      <p className="text-xs text-fg-muted">해석 방식: {RESOLUTION_METHOD_LABELS[resolution.method] ?? resolution.method}</p>
-      <div role="group" aria-label="관련 개념 직접 선택" className="flex gap-2 overflow-x-auto pb-1">
+      <p className="text-xs text-fg-muted">{t.method(RESOLUTION_METHOD_LABELS[resolution.method] ?? resolution.method)}</p>
+      <div role="group" aria-label={t.pickRelated} className="flex gap-2 overflow-x-auto pb-1">
         {conceptIds.map((id) => (
           <Button key={id} variant="secondary" size="sm" disabled={disabled} onClick={() => onPick(id)}>
             {nameOf(id)}
@@ -80,7 +82,7 @@ export function ResolutionChoices({ response, disabled, onPick }: ResolutionChoi
       </div>
       {path.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-fg-secondary">선행 경로</p>
+          <p className="text-xs font-semibold text-fg-secondary">{t.prerequisitePath}</p>
           <List>
             {path.map((step, index) => (
               <ListRow
@@ -91,7 +93,7 @@ export function ResolutionChoices({ response, disabled, onPick }: ResolutionChoi
                 titleLines={1}
                 title={`${index + 1}. ${step.name}`}
                 meta={`${areaLabel(step.area)} · ${USER_STATE_LABELS[step.state] ?? step.state}`}
-                trailing={step.isNext ? <Badge tone="accent">다음</Badge> : undefined}
+                trailing={step.isNext ? <Badge tone="accent">{t.next}</Badge> : undefined}
               />
             ))}
           </List>

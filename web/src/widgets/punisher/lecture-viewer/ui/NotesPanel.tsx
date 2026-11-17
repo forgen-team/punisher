@@ -6,6 +6,8 @@ import { useCreateNote, useDeleteNote, useNotes } from "@/src/entities/punisher"
 import { scrollToAnchor } from "@/src/features/punisher/lecture-progress";
 import { describePunisherError } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 
 interface NotesPanelProps {
   lectureId: string;
@@ -17,6 +19,7 @@ interface NotesPanelProps {
 
 /** 앵커 기준 메모 (design §3.3 메모·하이라이트). */
 export function NotesPanel({ lectureId, conceptId, getAnchor, onJump }: NotesPanelProps) {
+  const t = useT(messages);
   const notes = useNotes({ lectureId });
   const create = useCreateNote();
   const remove = useDeleteNote();
@@ -39,11 +42,11 @@ export function NotesPanel({ lectureId, conceptId, getAnchor, onJump }: NotesPan
   return (
     <div className="flex flex-col gap-3">
       <form onSubmit={submit} className="flex flex-col gap-2">
-        <Field label="현재 위치에 메모">
+        <Field label={t.noteLabel}>
           <FieldTextarea value={body} rows={3} maxLength={10000} onChange={(event) => setBody(event.target.value)} />
         </Field>
         <Button type="submit" size="sm" variant="secondary" loading={create.isPending} disabled={!body.trim()} className="self-end">
-          메모 저장
+          {t.saveNote}
         </Button>
         <div aria-live="polite">
           <InlineError error={create.error ?? remove.error} />
@@ -54,7 +57,7 @@ export function NotesPanel({ lectureId, conceptId, getAnchor, onJump }: NotesPan
       ) : notes.error ? (
         <ErrorState compact message={describePunisherError(notes.error)} onRetry={() => notes.refetch()} />
       ) : items.length === 0 ? (
-        <EmptyState compact title="메모가 없습니다" />
+        <EmptyState compact title={t.noNotes} />
       ) : (
         <ul role="list">
           {items.map((n) => (
@@ -68,11 +71,11 @@ export function NotesPanel({ lectureId, conceptId, getAnchor, onJump }: NotesPan
                     className="mt-1 text-xs text-fg-muted underline underline-offset-2 hover:text-fg"
                     onClick={() => jumpTo(n.anchor)}
                   >
-                    메모 위치로 이동
+                    {t.jumpToNote}
                   </button>
                 )}
               </div>
-              <IconButton aria-label="메모 삭제" size="sm" disabled={remove.isPending} onClick={() => remove.mutate(n.id)}>
+              <IconButton aria-label={t.deleteNote} size="sm" disabled={remove.isPending} onClick={() => remove.mutate(n.id)}>
                 <Trash2 aria-hidden="true" />
               </IconButton>
             </li>

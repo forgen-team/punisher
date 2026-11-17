@@ -1,6 +1,7 @@
 package services
 
 import (
+	"github.com/forgen-team/punisher/internal/i18n"
 	"sync"
 	"time"
 )
@@ -37,12 +38,14 @@ type StageEvent struct {
 	MaxAttempts int      `json:"maxAttempts"`
 	LectureID   string   `json:"lectureId,omitempty"`
 	Reasons     []string `json:"reasons,omitempty"`
+	// ReasonCodes: the codes of Reasons for the web to translate (omitted when a reason has no code).
+	ReasonCodes []string `json:"reasonCodes,omitempty"`
 }
 
 // stageEvent builds an EventStage.
 func stageEvent(stage string, attempt, maxAttempts int, lectureID string, reasons []string) Event {
 	return Event{Type: EventStage, Data: StageEvent{Type: EventStage, Stage: stage, Attempt: attempt,
-		MaxAttempts: maxAttempts, LectureID: lectureID, Reasons: reasons}}
+		MaxAttempts: maxAttempts, LectureID: lectureID, Reasons: reasons, ReasonCodes: i18n.ReasonCodes(reasons)}}
 }
 
 // Event is one stream event.

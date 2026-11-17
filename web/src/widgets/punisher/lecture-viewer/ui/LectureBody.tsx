@@ -6,6 +6,8 @@ import type { DeeperOrigin } from "@/src/features/punisher/term-popover";
 import { groupBlocks, type BlockGroup } from "../lib/blockGroups";
 import { sectionMinutes } from "../lib/sectionMinutes";
 import { BlockGroupRenderer } from "./blocks";
+import { messages } from "../i18n";
+import { useT } from "@/src/shared/i18n";
 
 function anchorProps(anchor: string) {
   return anchor ? { id: anchorElementId(anchor), "data-lecture-anchor": anchor } : {};
@@ -27,6 +29,7 @@ interface LectureBodyProps {
 
 /** 강의 본문 — 16px / 행간 1.7 (모바일·데스크톱 동일), 읽기 폭은 부모 열이 제한한다. */
 export function LectureBody({ content, onBeforeDeeper, sectionNote }: LectureBodyProps) {
+  const t = useT(messages);
   return (
     <div className="flex flex-col gap-10 text-base leading-[1.7] text-fg">
       {content.sections.map((section, index) => (
@@ -39,7 +42,7 @@ export function LectureBody({ content, onBeforeDeeper, sectionNote }: LectureBod
           <header className="mb-3 border-b border-line pb-2">
             <p className="text-xs font-medium text-fg-muted">
               {index + 1}. {SECTION_KIND_LABELS[section.kind] ?? section.kind}
-              {sectionMinutes(section) > 0 && ` · 약 ${sectionMinutes(section)}분`}
+              {sectionMinutes(section) > 0 && ` · ${t.aboutMinutes(sectionMinutes(section))}`}
             </p>
             <h2 id={`h-${section.anchor || index}`} className="text-xl font-semibold text-fg">
               {section.title || SECTION_KIND_LABELS[section.kind] || section.kind}

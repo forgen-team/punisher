@@ -166,12 +166,13 @@ func (s *Service) inBackground(id string, run func(context.Context) error, fail 
 // back), adds proposed concepts to the map and stores the answer. LLM or
 // validation failure is stored as failed (never as an answer).
 func (s *Service) runInquiry(ctx context.Context, apiKey, userID string, q models.Inquiry) error {
-	done := context.WithoutCancel(ctx) // 생성 시간이 다 돼도 결과·사용량 기록은 남긴다.
-	ic, known, err := s.inquiryContext(ctx, userID, q.Question)
+	done := context.WithoutCancel(ctx)     // 생성 시간이 다 돼도 결과·사용량 기록은 남긴다.
+	lang := s.Store.LocaleFor(ctx, userID) // 자유 질문·이어 묻기는 사용자 언어(i18n §1.2)
+	ic, known, err := s.inquiryContext(ctx, userID, q.Question, lang)
 	if err != nil {
 		return s.Store.FailInquiry(done, userID, q.ID, "", err.Error(), nil)
 	}
-	system := s.UserPrompts(ctx, userID).Text(prompts.BlockTeacherSystem, s.interactionVars(ctx, userID, ""))
+	system := prompts.WithOutputLanguage(s.UserPrompts(ctx, userID).Text(prompts.BlockTeacherSystem, s.interactionVars(ctx, userID, "", lang)), lang)
 	var u usage
 	var tries []store.AttemptRecord
 	var answer inquiry.Answer
@@ -255,8 +256,8 @@ func allowedIDs(known map[string]bool, extra []string) map[string]bool {
 	return out
 }
 
-func (s *Service) inquiryContext(ctx context.Context, userID, question string) (prompts.InquiryContext, map[string]bool, error) {
-	catalog, err := s.Store.ConceptCatalog(ctx, userID)
+func (s *Service) inquiryContext(ctx context.Context, userID, question, lang string) (prompts.InquiryContext, map[string]bool, error) {
+	catalog, err := s.Store.ConceptCatalog(ctx, userID, lang)
 	if err != nil {
 		return prompts.InquiryContext{}, nil, err
 	}
@@ -346,7 +347,8 @@ func (s *Service) runFollowup(ctx context.Context, apiKey, userID, inquiryID str
 	if err != nil {
 		return s.Store.FailFollowup(done, userID, f.ID, "", err.Error())
 	}
-	ic, known, err := s.inquiryContext(ctx, userID, q.Question)
+	lang := s.Store.LocaleFor(ctx, userID) // 자유 질문·이어 묻기는 사용자 언어(i18n §1.2)
+	ic, known, err := s.inquiryContext(ctx, userID, q.Question, lang)
 	if err != nil {
 		return s.Store.FailFollowup(done, userID, f.ID, "", err.Error())
 	}
@@ -354,7 +356,7 @@ func (s *Service) runFollowup(ctx context.Context, apiKey, userID, inquiryID str
 	if err != nil {
 		return s.Store.FailFollowup(done, userID, f.ID, "", err.Error())
 	}
-	system := s.UserPrompts(ctx, userID).Text(prompts.BlockTeacherSystem, s.interactionVars(ctx, userID, ""))
+	system := prompts.WithOutputLanguage(s.UserPrompts(ctx, userID).Text(prompts.BlockTeacherSystem, s.interactionVars(ctx, userID, "", lang)), lang)
 	var u usage
 	var answer inquiry.Answer
 	var problems []string

@@ -1,34 +1,35 @@
-import { CHECK_KIND_LABELS } from "@/src/entities/punisher";
+import { CHECK_KIND_LABELS_BY_LOCALE } from "@/src/entities/punisher";
 import type { CheckHistoryItem, Misconception, RetentionBucket } from "@/src/shared/api/punisher";
-import { HISTORY_STATUS_LABELS } from "../ui/constants";
+import { translate, type Locale } from "@/src/shared/i18n";
+import { HISTORY_STATUS_LABELS, messages } from "../i18n";
 import { historyDay } from "./historyDate";
 
 
 /** 세션 날짜 — 복습은 그 KST 날짜(reviewDay), 확인은 시작 시각. */
-export function sessionDate(item: CheckHistoryItem): string {
+export function sessionDate(item: CheckHistoryItem, locale: Locale): string {
   const source = item.reviewDay ? `${item.reviewDay}T00:00:00+09:00` : item.createdAt;
-  return historyDay(source);
+  return historyDay(source, locale);
 }
 
 /** 고친 오개념 한 줄 메타 — 개념 · 고친 날짜. */
-export function resolvedMeta(m: Pick<Misconception, "conceptName" | "resolvedAt">): string {
-  const day = m.resolvedAt ? historyDay(m.resolvedAt) : "";
+export function resolvedMeta(m: Pick<Misconception, "conceptName" | "resolvedAt">, locale: Locale): string {
+  const day = m.resolvedAt ? historyDay(m.resolvedAt, locale) : "";
   return [m.conceptName, day].filter(Boolean).join(" · ");
 }
 
 /** 기록 한 줄 제목 — "확인 · 개념 · 강의" / "복습". */
-export function historyTitle(item: CheckHistoryItem): string {
+export function historyTitle(item: CheckHistoryItem, locale: Locale): string {
   const subject = [item.conceptName, item.lectureTitle].filter((v, index, all) => v && all.indexOf(v) === index);
-  return [CHECK_KIND_LABELS[item.kind], ...subject].join(" · ");
+  return [CHECK_KIND_LABELS_BY_LOCALE[locale][item.kind], ...subject].join(" · ");
 }
 
 /** 기록 한 줄 메타 — 날짜 · n/N · 혼자 맞힘 k (· 진행 중/그만둠). */
-export function historyMeta(item: CheckHistoryItem): string {
+export function historyMeta(item: CheckHistoryItem, locale: Locale): string {
   return [
-    sessionDate(item),
+    sessionDate(item, locale),
     `${item.doneCount}/${item.itemCount}`,
-    `혼자 맞힘 ${item.unaidedCorrect}`,
-    HISTORY_STATUS_LABELS[item.status] ?? item.status,
+    translate(messages, locale).unaided(item.unaidedCorrect),
+    HISTORY_STATUS_LABELS[locale][item.status] ?? item.status,
   ]
     .filter(Boolean)
     .join(" · ");

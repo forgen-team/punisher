@@ -2,6 +2,8 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../lib/utils";
+import { useT } from "@/src/shared/i18n";
+import { kitMessages } from "../lib/messages";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { IconButton } from "./button";
@@ -48,6 +50,7 @@ const panelByDesktop: Record<BottomSheetDesktop, string> = {
 export function BottomSheet({
   open, onClose, title, description, children, footer, desktop = "dialog", dismissible = true, className,
 }: BottomSheetProps) {
+  const t = useT(kitMessages);
   const [mounted, setMounted] = React.useState(false);
   const [dragY, setDragY] = React.useState(0);
   const panelRef = React.useRef<HTMLDivElement>(null);
@@ -123,7 +126,7 @@ export function BottomSheet({
             <h2 id={titleId} className="text-base font-semibold text-fg">{title}</h2>
             {description ? <p id={descId} className="mt-0.5 text-sm text-fg-secondary">{description}</p> : null}
           </div>
-          <IconButton aria-label="닫기" onClick={onClose} className="-mr-2">
+          <IconButton aria-label={t.close} onClick={onClose} className="-mr-2">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>

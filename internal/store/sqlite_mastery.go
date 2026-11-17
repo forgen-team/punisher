@@ -144,7 +144,7 @@ func (s *SQLiteStore) ObjectivesMastery(ctx context.Context, userID string, obje
 
 func (s *SQLiteStore) objectiveMastery(ctx context.Context, userID, where string, arg any) ([]models.ObjectiveMastery, error) {
 	list, err := collect(s.c().query(ctx, `
-		SELECT o.id, o.concept_id, o.text, o.depth, o.ordinal,
+		SELECT o.id, o.concept_id, `+locObjective("o", userLocaleSQL("$1"))+`, o.depth, o.ordinal,
 			COALESCE(m.box, 0), COALESCE(m.grad_step, 0), COALESCE(m.best, 'none'), COALESCE(m.integrative_ok, 0),
 			COALESCE(m.lapses, 0), m.next_review_at, COALESCE(m.stale, 0), COALESCE(m.queued, 0),
 			COALESCE(m.last_grader, ''), m.updated_at
@@ -206,14 +206,17 @@ func (s *SQLiteStore) ReopenObjective(ctx context.Context, userID, objectiveID s
 // markObjectiveChanges runs right after the seed upsert, in the same
 // transaction (design §2.5): items and evidence written for an objective text
 // or depth that changed since are retired / marked stale (box ≤ 1, no
-// integrative credit — learning.MarkStale). The same EXISTS statements as
-// witems (LEAST → MIN, clock_timestamp() → clockNow).
+// integrative credit — learning.MarkStale). English items are also retired
+// when the objective's English text changed (i18n §9; mastery follows the
+// Korean text only). The same EXISTS statements as witems (LEAST → MIN,
+// clock_timestamp() → clockNow).
 func markObjectiveChanges(ctx context.Context, c conn) error {
 	if _, err := c.exec(ctx, `
 		UPDATE check_items SET status = 'retired'
 		WHERE status = 'active' AND objective_id IS NOT NULL AND EXISTS (
 			SELECT 1 FROM objectives o WHERE o.id = check_items.objective_id
-			  AND (o.text <> check_items.objective_text OR o.depth <> check_items.objective_depth))`); err != nil {
+			  AND (o.text <> check_items.objective_text OR o.depth <> check_items.objective_depth
+			    OR (check_items.language = 'en' AND o.text_en <> check_items.objective_text_en)))`); err != nil {
 		return fmt.Errorf("retire changed check items: %w", err)
 	}
 	if _, err := c.exec(ctx, `

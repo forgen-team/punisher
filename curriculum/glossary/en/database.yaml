@@ -1,0 +1,112 @@
+# English overlay for ../database.yaml — same ids.
+area: database
+concepts:
+  db.backup-and-restore: Backup and restore keeps separate copies of data so you can recover after an incident, using logical backups, physical backups or point-in-time recovery. Each method differs in the recovery point and the time it takes. Only an actual restore proves a backup is usable.
+  db.composite-index: A composite index sorts several columns together in a fixed order. It is used effectively only when the leading columns have conditions. If it holds every column a query needs, the query can be answered from the index alone without reading the table.
+  db.connection-pool: A connection pool lets many requests reuse pre-opened DB connections, because opening one is costly and the DB caps total connections. If instances × pool size exceeds that cap or the pool runs dry, requests wait and then time out.
+  db.deadlock: A deadlock occurs when two transactions each wait for a lock the other holds, so neither can proceed. The DB detects this and aborts one with an error, so code should update rows in a consistent order and retry failed transactions.
+  db.index: An index is a sorted auxiliary structure on column values that finds rows without reading the whole table, at the cost of storage and extra work per write. A function on the filtered column or a condition matching a large share of rows may keep it unused.
+  db.isolation-levels: Isolation levels set how much concurrent transactions can see of each other's changes. Lost updates can occur even at the default level. If two requests read the same value and each update it, one change is lost.
+  db.joins: A join combines rows from several tables into one result by following key relationships. Choosing INNER or LEFT can make rows disappear, and one-to-many joins often multiply rows and inflate totals in report queries.
+  db.locking: A DB lock lets one transaction hold a row or table so other transactions trying to modify it must wait. When long transactions or DDL in production hold locks for a long time, the requests behind them pile up blocked.
+  db.mvcc: MVCC writes a new row version on update and has each transaction read the version as of its own snapshot, so reads and writes don't block each other. PostgreSQL's VACUUM removes old versions; long-open transactions block it and tables grow.
+  db.n-plus-one: The N+1 query problem is fetching a list with one query, then issuing N more to load each item's related data. It is common with ORM lazy loading and stays hidden on dev data until it shows up in production as latency and DB load.
+  db.normalization: Normalization splits tables so each fact is stored in one place, preventing update anomalies. Denormalization deliberately allows duplication for read performance, so you must decide who keeps copies in sync, and how, when the source changes.
+  db.nosql-models: NoSQL data models, such as key-value, document and wide-column, store data shaped around query patterns instead of tables and joins. They scale out easily but give up joins and some multi-record transactions, so define query patterns before choosing one.
+  db.optimistic-locking: Optimistic locking takes no lock up front; on update it detects conflicts by checking that the version value read earlier is unchanged. It prevents overwrites where conflicts are rare, like concurrent admin edits; on conflict, retry or ask the user.
+  db.pagination: Pagination fetches large results in fixed-size chunks, via OFFSET or keyset (cursor) pagination that reads only past the last key. OFFSET slows on later pages and duplicates or skips rows as data is added, so cursors suit infinite scroll.
+  db.query-plan: 'A query plan is the execution method (scan types, join order, etc.) the optimizer chose from statistics, viewable with EXPLAIN. To fix a slow query, don''t guess: find the cause from actual timings and gaps between estimated and actual row counts.'
+  db.relational-model: The relational model stores data in tables of rows and columns, identifying rows by primary keys and linking tables with foreign keys. Constraints like unique and foreign keys in the DB reject violating data even with code bugs or concurrent requests.
+  db.replication: Replication ships changes from the primary DB to replicas so they hold the same data, for read scaling and failure readiness. With async replication a fresh write may not have reached the replica yet, so the screen can show the old value right after a user edits their information.
+  db.schema-migration: Schema migrations manage table, column and index changes as versioned scripts applied in order. In production, consider locks and compatibility with old code; splitting changes into expand, migrate and contract steps enables zero-downtime deploys and rollbacks.
+  db.sql-basics: 'SQL is a declarative query language: you state the data you want and the DB decides how to get it. Filtering, aggregating and sorting in SQL cuts the data sent to the application. Not knowing NULL rules makes conditions silently wrong.'
+  db.transaction: A transaction groups reads and writes into one unit that is fully applied (commit) or fully undone (rollback). If changes that must succeed together, like creating an order and deducting stock, aren't grouped, a failure leaves data inconsistent.
+  db.wal-and-durability: WAL writes changes to a log on disk before modifying data files, so committed data survives crashes; this is called durability. Replication and point-in-time recovery also run on WAL, so piled-up WAL filling the disk is a failure mode too.
+terms:
+  g.seq-scan:
+    name: Sequential Scan
+    gloss: A sequential scan reads every row of a table from start to end, checking the condition. It is normal for small tables. On a large table it likely means an index is missing or can't be used.
+  g.selectivity:
+    name: Selectivity
+    gloss: Selectivity is the fraction of all rows that satisfy a condition. For conditions matching most rows, a sequential scan can beat an index. That is why the optimizer may skip an existing index.
+  g.cardinality:
+    name: Cardinality
+    gloss: Cardinality is the number of distinct values in a column, or the estimated row count at each step of a query plan. Columns with more distinct values gain more from indexes. Wrong row estimates lead the optimizer to a bad plan.
+  g.planner-statistics:
+    name: Planner Statistics
+    gloss: Planner statistics are summary data the optimizer uses to estimate row counts and value distributions, refreshed with ANALYZE. Stale statistics, as after a bulk load, can skew estimates badly and suddenly select a slow plan.
+  g.nested-loop-join:
+    name: Nested Loop Join
+    gloss: A nested loop join looks up matching inner-table rows for each outer-table row. It is fast when outer rows are few and the inner side is indexed. It slows sharply when outer rows exceed estimates.
+  g.hash-join:
+    name: Hash Join
+    gloss: A hash join builds an in-memory hash table on the join key from one table, then scans the other to find matches. It is typically chosen for equality joins between large tables. If memory runs short, it spills to disk and slows down.
+  g.cartesian-product:
+    name: Cartesian Product
+    gloss: A Cartesian product is every combination of rows from two tables, produced when join conditions are missing or wrong. Row counts multiply, so the query may never finish or the result grows abnormally large.
+  g.unique-constraint:
+    name: Unique Constraint
+    gloss: A unique constraint is a DB-enforced rule that values in the given columns don't repeat within a table. Checking first in code can't stop concurrent requests. So values that must be unique, like emails, get a DB constraint.
+  g.upsert:
+    name: Upsert
+    gloss: An upsert is a single SQL operation that inserts a row if it is absent or updates it if the key exists. Select-then-insert code tends to hit duplicate errors under concurrency. A unique constraint plus upsert avoids those errors.
+  g.cte:
+    name: CTE (Common Table Expression)
+    gloss: A CTE is a named temporary result defined in a WITH clause and referenced within the same query. It breaks complex aggregation queries into readable steps. Recursive CTEs query tree-structured data.
+  g.window-function:
+    name: Window Function
+    gloss: A window function computes values like rank or running total within a group and attaches them to each row, without collapsing rows. It handles latest-row-per-user or cumulative revenue in one query, with no application loop.
+  g.expression-index:
+    name: Expression Index
+    gloss: An expression index is built on the result of an expression like lower(email) rather than the raw column. A function in a condition stops a plain index from being used. An index on the same expression makes it usable for that condition.
+  g.orm:
+    name: ORM (Object-Relational Mapping)
+    gloss: An ORM maps table rows to objects in code so you can work with data without writing SQL. It is convenient but hides which queries run and how often. That makes N+1 and needless all-column fetches easy to introduce.
+  g.eager-loading:
+    name: Eager Loading
+    gloss: Eager loading fetches related data together with the list up front, via joins or an IN clause. It is a common fix for N+1. Loading associations you don't need can increase data volume instead.
+  g.autocommit:
+    name: Autocommit
+    gloss: Autocommit commits each SQL statement immediately when no explicit transaction is open. If statements that belong together run without a transaction, a failure midway leaves only some of them applied.
+  g.dirty-read:
+    name: Dirty Read
+    gloss: A dirty read is reading changes another transaction hasn't committed yet. If that transaction rolls back, you acted on a value that never existed. Most DBs prevent it at their default isolation level.
+  g.phantom-read:
+    name: Phantom Read
+    gloss: A phantom read is when a query repeated in one transaction returns a different row set because another transaction committed inserts or deletes meanwhile. Changed values in existing rows are a non-repeatable read. Check-then-act logic misses it and errs.
+  g.write-skew:
+    name: Write Skew
+    gloss: Write skew is when two transactions read the same condition and each modify different rows, each valid alone but together breaking a rule. It arises with multi-row rules, like a minimum on-call headcount or preventing double booking.
+  g.serialization-failure:
+    name: Serialization Failure
+    gloss: A serialization failure is the DB aborting one of several conflicting concurrent transactions with an error at high isolation levels. This error is expected behavior. So the application must retry the entire transaction.
+  g.shared-exclusive-lock:
+    name: Shared and Exclusive Locks
+    gloss: A shared lock can be held by many transactions at once but blocks modification. An exclusive lock can be held by only one transaction and blocks all other locks. Analyzing lock waits requires knowing which modes conflict.
+  g.lock-timeout:
+    name: lock_timeout and statement_timeout
+    gloss: lock_timeout caps how long to wait for a lock; statement_timeout caps a single SQL statement's runtime. Both are PostgreSQL settings. Setting them short before DDL in production reduces outages where a lock wait blocks all queries.
+  g.dead-tuple:
+    name: Dead Tuple
+    gloss: In PostgreSQL, a tuple is one version of a row. A dead tuple is an old version left by an update or delete that no transaction can see anymore. Until cleaned up, it takes space and slows scans.
+  g.autovacuum:
+    name: Autovacuum
+    gloss: Autovacuum is a PostgreSQL background process that detects tables with accumulated dead tuples and runs VACUUM and statistics updates automatically. If it can't keep up on frequently updated tables, they bloat and queries slow down.
+  g.table-bloat:
+    name: Table Bloat
+    gloss: Table bloat is when table and index files grow much larger than their live data. Disk usage rises, and the same query must read more pages, so it slows down.
+  g.checkpoint:
+    name: Checkpoint
+    gloss: A checkpoint is the point where changed data in memory is written to data files and earlier WAL is marked as no longer needed for recovery. Writes can bunch up and spike I/O at that moment. Longer intervals lengthen crash recovery.
+  g.replication-slot:
+    name: Replication Slot
+    gloss: A replication slot is a PostgreSQL mechanism that makes the primary retain WAL a replica hasn't received yet. If the replica is gone but the slot remains, WAL keeps piling up and can fill the disk.
+  g.failover:
+    name: Failover
+    gloss: Failover is promoting a replica to be the new primary when the primary dies, so service continues. With async replication the last few commits may be lost. Applications must also reconnect to the new primary.
+  g.backfill:
+    name: Backfill
+    gloss: Backfill fills newly added columns or tables with values for existing rows. Running one large UPDATE holds locks for a long time and floods WAL. So it is run in small batches.
+  g.create-index-concurrently:
+    name: CREATE INDEX CONCURRENTLY
+    gloss: CREATE INDEX CONCURRENTLY is a PostgreSQL option that builds an index without blocking writes to the table. A normal index build blocks writes throughout, so use this on production tables. It cannot run inside a transaction block.

@@ -5,16 +5,17 @@ import { Button, Section, buttonVariants } from "@/src/shared/ui/kit";
 import { MasteryDots, describeCheckError, masteryLabel, useCompleteLecture, useRelearn } from "@/src/entities/punisher";
 import { useLaunchReview } from "@/src/features/punisher/check-start";
 import { InlineError } from "@/src/shared/ui/punisher";
-import { DIAGNOSTIC_LABELS } from "@/src/features/punisher/pretest";
+import { DIAGNOSTIC_MESSAGES } from "@/src/features/punisher/pretest";
+import { formatDate, useLocale, useT } from "@/src/shared/i18n";
+import { SYNTHESIS_RESULT_LABELS, messages } from "../i18n";
 import { confidentErrors, showPrediction, suggestRelearn, type ResultRow } from "../lib/checkView";
 import type { SynthesisRow } from "../lib/synthesis";
-import { CONFIDENT_ERROR_TITLE, PREDICTION_LABELS, RESULT_ACTION_LABELS, SYNTHESIS_RESULT_LABELS } from "./constants";
 import { LectureSummary } from "./LectureSummary";
 import { MisconceptionList } from "./MisconceptionList";
 
 const TODAY_HREF = "/";
 
-const reviewDate = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short" });
+const REVIEW_DATE: Intl.DateTimeFormatOptions = { month: "long", day: "numeric", weekday: "short" };
 
 interface CheckResultProps {
   checkId: string;
@@ -33,12 +34,13 @@ interface CheckResultProps {
 
 /** 종합 문제 결과 — 문항마다 한 줄. */
 function SynthesisList({ rows }: { rows: SynthesisRow[] }) {
+  const locale = useLocale();
   return (
     <ul className="flex flex-col divide-y divide-line">
       {rows.map((row) => (
         <li key={row.itemId} className="flex flex-col gap-1 py-3 text-sm">
           <p className="line-clamp-2 break-keep text-fg">{row.prompt}</p>
-          <p className="text-fg-secondary">{SYNTHESIS_RESULT_LABELS[row.result]}</p>
+          <p className="text-fg-secondary">{SYNTHESIS_RESULT_LABELS[locale][row.result]}</p>
         </li>
       ))}
     </ul>
@@ -47,11 +49,12 @@ function SynthesisList({ rows }: { rows: SynthesisRow[] }) {
 
 /** '착각' — 확실하다고 했는데 틀린 목표(있을 때만, 목표 목록 위). */
 function ConfidentErrors({ rows }: { rows: ResultRow[] }) {
+  const t = useT(messages);
   const list = confidentErrors(rows);
   if (list.length === 0) { return null; }
   return (
     <aside className="mb-2 rounded-md border-l-2 border-warning bg-warning-subtle px-3 py-2 text-sm">
-      <p className="font-semibold text-warning">{CONFIDENT_ERROR_TITLE} {list.length}</p>
+      <p className="font-semibold text-warning">{t.confidentErrors(list.length)}</p>
       <ul className="mt-1 list-disc pl-5 text-fg-secondary">
         {list.map((r) => (
           <li key={r.itemId} className="break-keep">{r.text}</li>
@@ -63,9 +66,10 @@ function ConfidentErrors({ rows }: { rows: ResultRow[] }) {
 
 /** 종합 문제는 '오늘로'만. */
 export function SynthesisDoneAction() {
+  const t = useT(messages);
   return (
     <Link href={TODAY_HREF} className={buttonVariants({ variant: "primary" })}>
-      {RESULT_ACTION_LABELS.today}
+      {t.today}
     </Link>
   );
 }
@@ -75,17 +79,18 @@ export function SynthesisDoneAction() {
  * (완료한 강의면 '오늘로'가 주 버튼 — 눌리지 않는 버튼으로 끝나지 않게).
  */
 export function LectureCompleteAction({ lectureId, lectureCompleted }: { lectureId: string; lectureCompleted: boolean }) {
+  const t = useT(messages);
   const complete = useCompleteLecture(lectureId);
   const completed = lectureCompleted || complete.isSuccess;
   return (
     <>
       {!completed && (
         <Button onClick={() => complete.mutate()} loading={complete.isPending}>
-          강의 완료로 표시
+          {t.markComplete}
         </Button>
       )}
       <Link href={TODAY_HREF} className={buttonVariants({ variant: completed ? "primary" : "secondary" })}>
-        {RESULT_ACTION_LABELS.today}
+        {t.today}
       </Link>
       <div aria-live="polite" className="w-full empty:hidden">
         <InlineError error={complete.error} />
@@ -96,16 +101,17 @@ export function LectureCompleteAction({ lectureId, lectureCompleted }: { lecture
 
 /** 복습 결과의 다음 행동 — 만기된 복습이 남아 있으면 '오늘 더 하기'(POST /reviews 를 다시 부른다), 늘 '오늘로'. */
 export function ReviewMoreAction({ remaining }: { remaining: number }) {
+  const t = useT(messages);
   const review = useLaunchReview();
   return (
     <>
       {remaining > 0 && (
         <Button onClick={review.launch} loading={review.isPending}>
-          오늘 더 하기
+          {t.doMore}
         </Button>
       )}
       <Link href={TODAY_HREF} className={buttonVariants({ variant: remaining > 0 ? "secondary" : "primary" })}>
-        {RESULT_ACTION_LABELS.today}
+        {t.today}
       </Link>
       <div aria-live="polite" className="w-full empty:hidden">
         {review.error && (
@@ -119,9 +125,11 @@ export function ReviewMoreAction({ remaining }: { remaining: number }) {
 }
 
 function NextReview({ row }: { row: ResultRow }) {
-  if (row.queued) { return <>복습이 밀려 대기</>; }
+  const locale = useLocale();
+  const t = useT(messages);
+  if (row.queued) { return <>{t.queued}</>; }
   if (!row.nextReviewAt) { return null; }
-  return <>다음 복습 {reviewDate.format(new Date(row.nextReviewAt))}</>;
+  return <>{t.nextReview(formatDate(new Date(row.nextReviewAt), locale, REVIEW_DATE))}</>;
 }
 
 /** 결과 요약(design §4.4, 끝난 세션의 맨 위): 목표별 레벨 변화 · 놓친 기준 한 줄 · 다시 볼 곳 · 드러난 오개념 · 다음 복습일 · 다시 배우기 + 아래 동작. */
@@ -129,12 +137,14 @@ export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function Ch
   { checkId, rows, acknowledgedTurnIds, anchorLink, lectureSummary, synthesis, children },
   ref,
 ) {
+  const t = useT(messages);
+  const dt = useT(DIAGNOSTIC_MESSAGES);
   const relearn = useRelearn();
   const [relearnedIds, setRelearnedIds] = useState<ReadonlySet<string>>(() => new Set());
   const runRelearn = (objectiveId: string) =>
     relearn.mutate(objectiveId, { onSuccess: () => setRelearnedIds((prev) => new Set(prev).add(objectiveId)) });
   return (
-    <Section ref={ref} tabIndex={-1} title="결과" className="mt-4 scroll-mt-28 border-b border-line pb-4 outline-none">
+    <Section ref={ref} tabIndex={-1} title={t.result} className="mt-4 scroll-mt-28 border-b border-line pb-4 outline-none">
       {synthesis && synthesis.length > 0 && <SynthesisList rows={synthesis} />}
       <ConfidentErrors rows={rows} />
       <ul className="flex flex-col divide-y divide-line empty:hidden">
@@ -153,14 +163,14 @@ export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function Ch
               </p>
               {missing && (
                 <p className="truncate text-fg-secondary" title={missing}>
-                  놓친 기준: {missing}
+                  {t.missingLine(missing)}
                 </p>
               )}
               <MisconceptionList checkId={checkId} misconceptions={row.misconceptions} acknowledged={acknowledgedTurnIds} />
               {row.prediction && showPrediction(row) && (
                 <p className="break-keep text-fg-secondary">
-                  {PREDICTION_LABELS.before}: {row.prediction.dontKnow ? DIAGNOSTIC_LABELS.dontKnow : row.prediction.answer} →{" "}
-                  {PREDICTION_LABELS.now}: {row.answer}
+                  {t.predictionBefore}: {row.prediction.dontKnow ? dt.dontKnow : row.prediction.answer} →{" "}
+                  {t.predictionNow}: {row.answer}
                 </p>
               )}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-muted">
@@ -169,7 +179,7 @@ export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function Ch
                 </span>
                 {link && (
                   <Link href={link.href} className="text-accent-text underline underline-offset-2">
-                    다시 볼 곳: {link.label}
+                    {t.revisitLine(link.label)}
                   </Link>
                 )}
               </div>
@@ -182,7 +192,7 @@ export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function Ch
                     loading={relearn.isPending && relearn.variables === row.objectiveId}
                     onClick={() => runRelearn(row.objectiveId)}
                   >
-                    {relearned ? "다시 배우기로 바꿈" : "다시 배우기"}
+                    {relearned ? t.relearned : t.relearn}
                   </Button>
                 </div>
               )}

@@ -1,7 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { Button, Textarea } from "@/src/shared/ui/kit";
 import {
-  SELF_VERDICT_LABELS,
+  SELF_VERDICT_LABELS_BY_LOCALE,
   SELF_VERDICT_ORDER,
   describeCheckError,
   useCheckAnswer,
@@ -9,6 +9,8 @@ import {
   useCheckSelfGrade,
 } from "@/src/entities/punisher";
 import { CHECK_MAX_ANSWER_CHARS, type CheckDetail, type Confidence } from "@/src/shared/api/punisher";
+import { useLocale, useT } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 import { ConfidencePicker } from "./ConfidencePicker";
 import { asksConfidence, canSend, selfGradeStep, showReveal } from "../lib/checkView";
 
@@ -17,6 +19,8 @@ const COMPOSER_CLASS =
 
 /** 자기 채점 — 모범답·기준을 본 뒤 맞음 / 부분 / 틀림. */
 function SelfGradeBar({ id }: { id: string }) {
+  const locale = useLocale();
+  const t = useT(messages);
   const grade = useCheckSelfGrade(id);
   return (
     <div className={COMPOSER_CLASS}>
@@ -25,7 +29,7 @@ function SelfGradeBar({ id }: { id: string }) {
           {describeCheckError(grade.error)}
         </p>
       )}
-      <div role="group" aria-label="자기 채점" className="grid grid-cols-3 gap-2">
+      <div role="group" aria-label={t.selfGrade} className="grid grid-cols-3 gap-2">
         {SELF_VERDICT_ORDER.map((verdict) => (
           <Button
             key={verdict}
@@ -34,7 +38,7 @@ function SelfGradeBar({ id }: { id: string }) {
             loading={grade.isPending && grade.variables === verdict}
             onClick={() => grade.mutate(verdict)}
           >
-            {SELF_VERDICT_LABELS[verdict]}
+            {SELF_VERDICT_LABELS_BY_LOCALE[locale][verdict]}
           </Button>
         ))}
       </div>
@@ -53,6 +57,7 @@ export function CheckComposer({ detail }: { detail: CheckDetail }) {
  * Enter 는 줄바꿈, ⌘/Ctrl+Enter 로 보낸다(질문 해설의 이어서 묻기와 같다). '그냥 알려줘'는 서버가 허용할 때만.
  */
 function AnswerComposer({ detail }: { detail: CheckDetail }) {
+  const t = useT(messages);
   const id = detail.session.id;
   const [text, setText] = useState("");
   const [confidence, setConfidence] = useState<Confidence>();
@@ -91,7 +96,7 @@ function AnswerComposer({ detail }: { detail: CheckDetail }) {
       {asksConfidence(detail) && <ConfidencePicker value={confidence} onChange={setConfidence} />}
       <Textarea
         ref={inputRef}
-        aria-label="답"
+        aria-label={t.answer}
         value={text}
         maxLength={CHECK_MAX_ANSWER_CHARS}
         rows={2}
@@ -101,11 +106,11 @@ function AnswerComposer({ detail }: { detail: CheckDetail }) {
       <div className="flex items-center justify-end gap-2">
         {showReveal(detail) && (
           <Button variant="ghost" onClick={() => reveal.mutate()} disabled={busy} loading={reveal.isPending}>
-            그냥 알려줘
+            {t.reveal}
           </Button>
         )}
         <Button onClick={send} disabled={!sendable} loading={answer.isPending}>
-          보내기
+          {t.send}
         </Button>
       </div>
     </div>

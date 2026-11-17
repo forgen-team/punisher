@@ -37,3 +37,22 @@ func TestRealGlossaryIsValid(t *testing.T) {
 		t.Errorf("only %d basic terms", n)
 	}
 }
+
+// TestRealGlossaryEnglish: every concept gloss and term is translated.
+func TestRealGlossaryEnglish(t *testing.T) {
+	g, err := Load(seedfiles.Glossary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, terms := g.EnglishCoverage()
+	if c != len(g.concepts) || terms != len(g.terms) {
+		t.Fatalf("English coverage %d/%d concepts, %d/%d terms", c, len(g.concepts), terms, len(g.terms))
+	}
+	tm, _ := g.TermIn("g.strace", "en")
+	if tm.Name != "strace" || tm.Gloss == "" || tm.Gloss == g.terms["g.strace"].Gloss {
+		t.Fatalf("English term not applied: %+v", tm)
+	}
+	if g.ConceptGlossIn("os.process", "en") == g.ConceptGloss("os.process") {
+		t.Fatal("English concept gloss not applied")
+	}
+}

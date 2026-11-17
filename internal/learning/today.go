@@ -77,6 +77,8 @@ type TodayInput struct {
 	// LectureMinutes: EstimateMinutes of the lecture a recommendation would open, by concept
 	// (absent = no lecture yet → DefaultLectureMinutes).
 	LectureMinutes map[string]int
+	// Locale: ko|en of the reason texts ("" = ko).
+	Locale string
 }
 
 // LapsedConcept is how a "다시 확인" card opens: today's review when one of the
@@ -207,7 +209,8 @@ func BuildToday(in TodayInput) TodayResult {
 		if c, ok := in.Concepts[r.ConceptID]; ok && !IsDone(NormalizeState(c.State)) {
 			b.add(c, Recommendation{Kind: RecResume, LectureID: r.LectureID, Title: r.Title, Anchor: r.Anchor,
 				Percent: r.Percent, EstimatedMinutes: remainingMinutes(r), ParentLectureID: r.ParentLectureID,
-				Reason: fmt.Sprintf("지난번 %d%%까지 본 강의입니다. 멈춘 위치에서 이어서 끝내면 흐름이 끊기지 않습니다.", r.Percent)})
+				Reason: fmt.Sprintf(inLocale(in.Locale, "지난번 %d%%까지 본 강의입니다. 멈춘 위치에서 이어서 끝내면 흐름이 끊기지 않습니다.",
+					"You read %d%% of this lecture last time. Finish it from where you stopped to keep the flow."), r.Percent)})
 		}
 	}
 	for _, g := range in.Goals {
@@ -217,7 +220,8 @@ func BuildToday(in TodayInput) TodayResult {
 		next := StartingPoint(g.Path, in.Edges, states)
 		if c, ok := b.learnable(next); ok {
 			b.add(c, Recommendation{Kind: RecGoalPath, GoalID: g.ID,
-				Reason: fmt.Sprintf("목표 '%s'로 가는 경로에서 아직 배우지 않은 가장 앞선 선행 개념입니다.", g.Title)})
+				Reason: fmt.Sprintf(inLocale(in.Locale, "목표 '%s'로 가는 경로에서 아직 배우지 않은 가장 앞선 선행 개념입니다.",
+					"The earliest prerequisite you have not learned on the path to your goal '%s'."), g.Title)})
 		}
 	}
 	for _, r := range in.Requests {
@@ -271,9 +275,11 @@ func (b *todayBuilder) addRequest(r RequestInput) {
 		if !ok {
 			continue
 		}
-		reason := fmt.Sprintf("학습 요청 '%s'에 답하는 개념입니다.", r.Query)
+		loc := b.in.Locale
+		reason := fmt.Sprintf(inLocale(loc, "학습 요청 '%s'에 답하는 개념입니다.", "This concept answers your study request '%s'."), r.Query)
 		if next != target {
-			reason = fmt.Sprintf("학습 요청 '%s'을(를) 이해하려면 먼저 필요한 선행 개념입니다.", r.Query)
+			reason = fmt.Sprintf(inLocale(loc, "학습 요청 '%s'을(를) 이해하려면 먼저 필요한 선행 개념입니다.",
+				"A prerequisite you need first to understand your study request '%s'."), r.Query)
 		}
 		b.add(c, Recommendation{Kind: RecStudyRequest, StudyRequestID: r.ID, Reason: reason})
 		return

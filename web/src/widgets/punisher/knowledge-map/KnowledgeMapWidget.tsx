@@ -10,6 +10,8 @@ import { useWideLayout } from "@/src/shared/lib/useWideLayout";
 import { ConceptDetailSheet } from "./ui/ConceptDetailSheet";
 import { CHAPTER_OPTION_PREFIX, MapControls } from "./ui/MapControls";
 import { chapterView } from "./lib/chapterView";
+import { messages } from "./i18n";
+import { useT } from "@/src/shared/i18n";
 
 const NEW_CHAPTER_PATH = "/chapters/new";
 import { CoverageList, FrontierList, MapLegendSheet, PendingRequestList } from "./ui/MapPanels";
@@ -33,6 +35,7 @@ const DEFAULT_AREA = "all";
  * 그래프는 항상 전체를 한 번 받아(약 170개) 영역은 클라이언트에서 거른다 — 영역 요약(학습·요청 수)도 함께 쓴다.
  */
 export function KnowledgeMapWidget() {
+  const t = useT(messages);
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -123,7 +126,7 @@ export function KnowledgeMapWidget() {
       );
     }
     if (nodes.length === 0) {
-      return <EmptyState compact title="표시할 개념이 없어요" description="다른 영역이나 목표를 골라 보세요." />;
+      return <EmptyState compact title={t.emptyTitle} description={t.emptyDescription} />;
     }
     return (
       <MapCanvas
@@ -159,7 +162,7 @@ export function KnowledgeMapWidget() {
         onOpenKnown={() => setKnownOpen(true)}
       />
       {onboarding.show && <KnownOnboardingPrompt onStart={() => setKnownOpen(true)} onDismiss={onboarding.dismiss} />}
-      {goalId && <p className="text-xs text-fg-muted">목표에 필요한 선행 사슬만 보여요.</p>}
+      {goalId && <p className="text-xs text-fg-muted">{t.goalPathHint}</p>}
 
       {/* lg: 캔버스 | 18rem 목록, 상세는 오른쪽 시트. xl: 캔버스 | 22rem(2xl 26rem) 열 — 개념을 고르면 그 열이 상세 패널로 바뀐다(캔버스 폭 그대로).
           lg+: 이 줄이 남은 높이를 채우고(안내 줄이 있으면 그만큼 줄어든다), xl 오른쪽 열은 그 높이를 넘지 않고 넘치면 세로로만 스크롤한다. */}
@@ -187,7 +190,7 @@ export function KnowledgeMapWidget() {
         onSelect={onSelect}
       />
       <MapLegendSheet open={legendOpen} onClose={() => setLegendOpen(false)} />
-      <BottomSheet open={goalsOpen} onClose={() => setParams({ panel: null })} title="목표 관리" desktop="side">
+      <BottomSheet open={goalsOpen} onClose={() => setParams({ panel: null })} title={t.manageGoals} desktop="side">
         <GoalsManager onShowPath={showGoalPath} />
       </BottomSheet>
       <KnownAreasSheet open={knownOpen} onClose={() => setKnownOpen(false)} onSaved={onboarding.dismiss} />

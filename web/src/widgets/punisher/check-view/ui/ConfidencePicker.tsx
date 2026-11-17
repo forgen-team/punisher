@@ -1,11 +1,14 @@
 import { cn, focusRing } from "@/src/shared/ui/kit";
 import type { Confidence } from "@/src/shared/api/punisher";
-import { CONFIDENCE_LABELS, CONFIDENCE_ORDER } from "./constants";
+import { useLocale, useT } from "@/src/shared/i18n";
+import { CONFIDENCE_LABELS, CONFIDENCE_ORDER, messages } from "../i18n";
 
 /** 답 전에 고르는 확신도(선택) — 다시 누르면 해제. 판정은 바꾸지 않는다(v3 §3). */
 export function ConfidencePicker({ value, onChange }: { value?: Confidence; onChange: (v?: Confidence) => void }) {
+  const locale = useLocale();
+  const t = useT(messages);
   return (
-    <div role="radiogroup" aria-label="확신도" className="flex gap-1.5">
+    <div role="radiogroup" aria-label={t.confidence} className="flex gap-1.5">
       {CONFIDENCE_ORDER.map((c) => {
         const on = value === c;
         return (
@@ -21,7 +24,7 @@ export function ConfidencePicker({ value, onChange }: { value?: Confidence; onCh
               focusRing,
             )}
           >
-            {CONFIDENCE_LABELS[c]}
+            {CONFIDENCE_LABELS[locale][c]}
           </button>
         );
       })}

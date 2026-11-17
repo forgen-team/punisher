@@ -1,5 +1,7 @@
 import { AlertTriangle, BookCheck } from "lucide-react";
 import type { InquiryFollowup, LectureSection } from "@/src/shared/api/punisher";
+import { translate, type Locale } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 
 /** 후속 문답의 '내가 물은 것' — 문서 흐름(질문 → 해설)으로 읽히게 섹션 제목 아래에 둔다. */
 export function FollowupQuestion({ followup }: { followup: Pick<InquiryFollowup, "question" | "quote"> }) {
@@ -12,14 +14,15 @@ export function FollowupQuestion({ followup }: { followup: Pick<InquiryFollowup,
 }
 
 /** 근거와 해석을 나눠 보이게: 먼저 답은 추정 포함임을, 원인 사슬은 일반 원리(근거 문서), '내 환경 추정'은 추정임을 표시한다. */
-export function inquirySectionNote(section: LectureSection, followups: ReadonlyMap<string, InquiryFollowup>) {
+export function inquirySectionNote(section: LectureSection, followups: ReadonlyMap<string, InquiryFollowup>, locale: Locale) {
+  const t = translate(messages, locale);
   const followup = followups.get(section.anchor);
   if (followup) { return <FollowupQuestion followup={followup} />; }
   if (section.kind === "summary") {
     return (
       <p className="mb-3 flex items-center gap-1.5 break-keep text-xs text-fg-muted">
         <AlertTriangle className="size-3.5 shrink-0" aria-hidden="true" />
-        질문만 보고 쓴 답이에요 · 아래 &lsquo;내 환경 추정&rsquo;과 &lsquo;확인 방법&rsquo;으로 먼저 확인하세요
+        {t.summaryNote}
       </p>
     );
   }
@@ -27,7 +30,7 @@ export function inquirySectionNote(section: LectureSection, followups: ReadonlyM
     return (
       <p className="mb-3 flex items-center gap-1.5 text-xs text-fg-muted">
         <BookCheck className="size-3.5 shrink-0" aria-hidden="true" />
-        일반 원리 · 근거 문서는 섹션 끝에
+        {t.causesNote}
       </p>
     );
   }
@@ -35,7 +38,7 @@ export function inquirySectionNote(section: LectureSection, followups: ReadonlyM
     return (
       <p role="note" className="mb-3 flex gap-2 break-keep rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">
         <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-        질문만으로는 알 수 없어 내 환경을 추정한 부분이에요. 아래 &lsquo;확인 방법&rsquo;으로 맞는지 먼저 확인하세요.
+        {t.assumptionsNote}
       </p>
     );
   }

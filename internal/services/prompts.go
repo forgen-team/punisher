@@ -28,10 +28,10 @@ func (s *Service) UserPrompts(ctx context.Context, userID string) prompts.Set {
 	return prompts.NewSet(bodies)
 }
 
-// interactionVars are the {{vars}} of Q&A blocks.
-func (s *Service) interactionVars(ctx context.Context, userID, conceptID string) map[string]string {
+// interactionVars are the {{vars}} of Q&A blocks; the concept name in lang.
+func (s *Service) interactionVars(ctx context.Context, userID, conceptID, lang string) map[string]string {
 	vars := map[string]string{"example_language": s.exampleLanguageName(ctx, userID)}
-	if info, err := s.Store.ConceptInfo(ctx, userID, conceptID); err == nil {
+	if info, err := s.Store.ConceptInfo(ctx, userID, conceptID, lang); err == nil {
 		vars["concept_name"] = info.Name
 	}
 	return vars

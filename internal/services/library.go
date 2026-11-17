@@ -32,20 +32,23 @@ type LibraryReport struct {
 	Skipped   []string `json:"skipped"`
 }
 
-// GenerateLibraryAhead keeps the owner's next N (Cfg.LibraryAhead) recommended
-// lectures ready. Candidates are today's recommendations followed by the
-// frontier; done objectives are never planned. Idempotent per (objective set,
-// depth, KST day). LibraryAhead <= 0 disables ahead pre-generation.
+// GenerateLibraryAhead keeps the owner's next N recommended lectures ready:
+// Cfg.LibraryAhead during the day, Cfg.NightAhead (when larger) in the KST
+// night window, so the morning list opens without waiting. Candidates are
+// today's recommendations followed by the frontier; done objectives are never
+// planned. Idempotent per (objective set, depth, language, KST day). N <= 0
+// disables ahead pre-generation.
 func (s *Service) GenerateLibraryAhead(ctx context.Context) (LibraryReport, error) {
 	owner := s.Cfg.OwnerUserID
-	if owner == "" || s.Cfg.LibraryAhead <= 0 {
+	want, reason := s.libraryWant()
+	if owner == "" || want <= 0 {
 		return LibraryReport{}, nil
 	}
 	candidates, err := s.libraryCandidates(ctx, owner)
 	if err != nil {
 		return LibraryReport{}, err
 	}
-	return s.generateLibrary(ctx, owner, candidates, s.Cfg.LibraryAhead, "library_ahead")
+	return s.generateLibrary(ctx, owner, candidates, want, reason)
 }
 
 // PregenerateStudyStarts pre-generates the library lecture for each resolved
@@ -81,7 +84,7 @@ func (s *Service) generateLibrary(ctx context.Context, owner string, candidates 
 			return rep, err
 		}
 		plan := target.Plan
-		if _, err := s.Store.LatestLectureForTarget(ctx, learning.JobLibrary, plan.ConceptID, plan.ObjectiveKey, plan.Depth, libraryStatuses); err == nil {
+		if _, err := s.Store.LatestLectureForTarget(ctx, learning.JobLibrary, plan.ConceptID, plan.ObjectiveKey, plan.Depth, plan.Language, libraryStatuses); err == nil {
 			rep.Ready++
 			continue
 		} else if !errors.Is(err, store.ErrNotFound) {
@@ -94,7 +97,7 @@ func (s *Service) generateLibrary(ctx context.Context, owner string, candidates 
 		job, created, err := s.Store.CreateJob(ctx, store.NewJob{
 			IdempotencyKey: learning.LibraryJobKey(plan, day), Kind: learning.JobLibrary, UserID: owner,
 			ConceptID: plan.ConceptID, ObjectiveKey: plan.ObjectiveKey, Depth: plan.Depth,
-			Reason: reason, Input: input,
+			Reason: reason, Input: input, Language: plan.Language,
 		})
 		if errors.Is(err, store.ErrJobActive) || (err == nil && !created) {
 			rep.Skipped = append(rep.Skipped, plan.ObjectiveKey)
@@ -174,7 +177,7 @@ func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Tar
 
 	pc := t.LectureContext()
 	outline, err := s.complete(ctx, apiKey, llm.MessagesRequest{
-		Model: s.Cfg.LectureModel, System: t.Prompts.Text(prompts.BlockTeacherSystem, prompts.LectureVars(pc)),
+		Model: s.Cfg.LectureModel, System: prompts.WithOutputLanguage(t.Prompts.Text(prompts.BlockTeacherSystem, prompts.LectureVars(pc)), t.Plan.Language),
 		User: prompts.Outline(pc, t.Prompts), MaxTokens: 4000,
 	}, &u)
 	if err != nil {
@@ -264,5 +267,17 @@ func (s *Service) saveLecture(ctx context.Context, t Target, c lecture.Content, 
 		Depth: t.Plan.Depth, Kind: kind, Status: status, Title: c.Title, Content: content, ContentHash: hash,
 		Sources: sources, Model: model, PromptVersion: t.promptVersion(), RequestedBy: requestedBy,
 		Flagged: flagged, FlagReason: flagReason, EstimatedMinutes: c.EstimatedMinutes, GenerationJobID: jobID,
+		Language: t.Plan.Language,
 	})
+}
+
+// libraryWant is how many recommended lectures to keep ready right now and the
+// job reason recorded for them ("library_night" inside the night window).
+func (s *Service) libraryWant() (int, string) {
+	c := s.Cfg
+	if c.NightAhead > c.LibraryAhead && c.NightStartHour != c.NightEndHour &&
+		learning.InKSTHours(s.now(), c.NightStartHour, c.NightEndHour) {
+		return c.NightAhead, "library_night"
+	}
+	return c.LibraryAhead, "library_ahead"
 }

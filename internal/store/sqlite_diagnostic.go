@@ -17,8 +17,10 @@ import (
 // to store (design §5 P3). The items belong to no lecture (lecture_id NULL, so
 // lecture sets and their keys never see them); each item's concept is its
 // objective's concept. CreatedFor is the user; PromptHash is the user's
-// check.pretest hash ("" = default prompt).
+// check.pretest hash ("" = default prompt). Language is the items' language
+// (the user's locale, i18n §1.2; "" = CreatedFor's locale).
 type DiagnosticItems struct {
+	Language      string
 	PromptHash    string
 	CreatedFor    string
 	JobID         string
@@ -40,11 +42,13 @@ func (s *SQLiteStore) SaveDiagnosticItems(ctx context.Context, d DiagnosticItems
 			id := NewID()
 			res, err := c.exec(ctx, `
 				INSERT INTO check_items (id, concept_id, objective_id, purpose, format, prompt, material, rubric,
-					objective_text, objective_depth, prompt_hash, created_for, generation_job_id, model, prompt_version)
-				SELECT $12, o.concept_id, o.id, $2, $3, $4, $5, $6, o.text, o.depth, $7, NULLIF($8, ''), NULLIF($9, ''), $10, $11
+					objective_text, objective_depth, prompt_hash, created_for, generation_job_id, model, prompt_version,
+					language, objective_text_en)
+				SELECT $12, o.concept_id, o.id, $2, $3, $4, $5, $6, o.text, o.depth, $7, NULLIF($8, ''), NULLIF($9, ''), $10, $11,
+					COALESCE(NULLIF($13, ''), `+userLocaleSQL("$8")+`), o.text_en
 				FROM objectives o WHERE o.id = $1`,
 				it.ObjectiveID, it.Purpose, it.Format, it.Prompt, nonNullJSON(it.Material, "{}"), string(rubric),
-				d.PromptHash, d.CreatedFor, d.JobID, d.Model, d.PromptVersion, id)
+				d.PromptHash, d.CreatedFor, d.JobID, d.Model, d.PromptVersion, id, d.Language)
 			if err != nil {
 				return fmt.Errorf("insert diagnostic item: %w", err)
 			}
@@ -93,7 +97,8 @@ var unseenVerifyItem = `ci.objective_id = m.objective_id AND ci.purpose = 'known
 	checkItemVisible + ` AND NOT EXISTS (SELECT 1 FROM check_turns t WHERE t.user_id = $1 AND t.item_id = ci.id)`
 
 // KnownVerifyPicks returns up to limit queued objectives that have an unseen
-// known_verify item, oldest in the queue first, with that item.
+// known_verify item, oldest in the queue first, with that item — one in the
+// user's language when there is one, else another (i18n §1.3).
 // DISTINCT ON (objective_id) → ROW_NUMBER() OVER (PARTITION BY …) = 1 (item columns re-joined).
 func (s *SQLiteStore) KnownVerifyPicks(ctx context.Context, userID string, limit int) ([]ReviewPick, error) {
 	if limit <= 0 {
@@ -102,7 +107,8 @@ func (s *SQLiteStore) KnownVerifyPicks(ctx context.Context, userID string, limit
 	list, err := collect(s.c().query(ctx, `
 		SELECT `+checkItemColumns+` FROM (
 			SELECT ci.id, m.objective_id, m.updated_at AS queued_at,
-				ROW_NUMBER() OVER (PARTITION BY m.objective_id ORDER BY ci.created_at, ci.rowid) AS rn
+				ROW_NUMBER() OVER (PARTITION BY m.objective_id
+					ORDER BY (ci.language = `+userLocaleSQL("$1")+`) DESC, ci.created_at, ci.rowid) AS rn
 			FROM user_objective_mastery m`+verifyScope+`
 			JOIN check_items ci ON `+unseenVerifyItem+`
 			WHERE m.user_id = $1 AND m.verify_queued) p
@@ -155,14 +161,16 @@ type KnownVerifyTarget struct {
 }
 
 // KnownVerifyTargets lists concepts (oldest queued first) with queued
-// objectives lacking an unseen known_verify item — what the scheduler writes next.
+// objectives lacking an unseen known_verify item in the user's language — what
+// the scheduler writes next (in that language).
 // array_agg(… ORDER BY) → ordered rows grouped here (concept order = MIN(updated_at) window).
 func (s *SQLiteStore) KnownVerifyTargets(ctx context.Context, userID string, limit int) ([]KnownVerifyTarget, error) {
 	type row struct{ concept, objective string }
 	rows, err := collect(s.c().query(ctx, `
 		SELECT m.concept_id, m.objective_id
 		FROM user_objective_mastery m`+verifyScope+`
-		WHERE m.user_id = $1 AND m.verify_queued AND NOT EXISTS (SELECT 1 FROM check_items ci WHERE `+unseenVerifyItem+`)
+		WHERE m.user_id = $1 AND m.verify_queued
+		  AND NOT EXISTS (SELECT 1 FROM check_items ci WHERE `+unseenVerifyItem+` AND ci.language = `+userLocaleSQL("$1")+`)
 		ORDER BY MIN(m.updated_at) OVER (PARTITION BY m.concept_id), m.concept_id, o.depth, o.ordinal`, userID),
 		func(r rowScanner) (row, error) {
 			var x row

@@ -4,7 +4,9 @@ import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { BottomSheet, Button, ErrorState, Skeleton, Spinner, buttonVariants, type MenuItem } from "@/src/shared/ui/kit";
 import { useInquiry, useRegenerateInquiry, useRetryFollowup, useSetInquiryRead } from "@/src/entities/punisher";
 import { INQUIRY_MAX_FOLLOWUPS, describePunisherError, type Inquiry, type InquiryFollowup, type LectureSection } from "@/src/shared/api/punisher";
+import { formatDate, useLocale, useT } from "@/src/shared/i18n";
 import { InlineError } from "@/src/shared/ui/punisher";
+import { FOLLOWUP_ANNOUNCEMENTS, messages } from "./i18n";
 import { LectureAssistPlaceholder, LectureBody, LectureLayout, LectureTopBar, TocSheet, useActiveSection } from "../lecture-viewer";
 import { InquiryConcepts } from "./ui/InquiryConcepts";
 import { FollowupComposer } from "./ui/FollowupComposer";
@@ -15,36 +17,37 @@ import { FollowupQuestion, inquirySectionNote } from "./ui/sectionNote";
 const HOME = "/";
 const NO_SECTIONS: LectureSection[] = [];
 const NO_FOLLOWUPS: InquiryFollowup[] = [];
-const FOLLOWUP_ANNOUNCEMENTS = { pending: "답을 쓰는 중이에요", answered: "답이 도착했어요", failed: "답을 만들지 못했어요" } as const;
-const dateFormat = new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" });
+const ANSWERED_AT: Intl.DateTimeFormatOptions = { dateStyle: "medium", timeStyle: "short" };
 
 /**
  * 해설 상태 줄 — 항상 같은 자리·같은 높이(쓰는 중 ↔ 완료가 바뀌어도 본문이 밀리지 않음)이고, aria-busy 밖의
  * 라이브 영역이라 완료도 읽어 준다.
  */
 function StatusRow({ inquiry, hasContent, unstable }: { inquiry: Inquiry | undefined; hasContent: boolean; unstable: boolean }) {
+  const locale = useLocale();
+  const t = useT(messages);
   let content: ReactNode = <Skeleton className="w-40" />;
   if (inquiry?.status === "pending") {
     content = (
       <>
         <Spinner size="sm" label={null} />
-        {unstable && "연결이 불안정해요 · 다시 확인하는 중"}
-        {!unstable && (hasContent ? "새 해설을 쓰는 중이에요 · 끝나면 바뀌어요" : "해설을 쓰는 중이에요 · 보통 1~3분, 나가도 계속 써요")}
+        {unstable && t.unstable}
+        {!unstable && (hasContent ? t.rewriting : t.writing)}
       </>
     );
   } else if (inquiry?.status === "failed") {
     content = (
       <>
         <AlertTriangle className="size-4 shrink-0 text-warning" aria-hidden="true" />
-        해설을 만들지 못했어요
+        {t.failed}
       </>
     );
   } else if (inquiry) {
     content = (
       <>
         <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden="true" />
-        해설 완료{inquiry.answeredAt ? ` · ${dateFormat.format(new Date(inquiry.answeredAt))}` : ""}
-        {inquiry.readAt ? " · 다 봄" : ""}
+        {t.done(inquiry.answeredAt ? formatDate(new Date(inquiry.answeredAt), locale, ANSWERED_AT) : "")}
+        {inquiry.readAt ? t.readSuffix : ""}
       </>
     );
   }
@@ -61,6 +64,8 @@ function StatusRow({ inquiry, hasContent, unstable }: { inquiry: Inquiry | undef
  * 끝난 해설은 저장된 그대로 보인다('다시 만들기'에서만 새로 쓴다). 불러오는 중에도 같은 뼈대를 그려 밀림이 없다.
  */
 export function InquiryView({ inquiryId }: { inquiryId: string }) {
+  const locale = useLocale();
+  const t = useT(messages);
   const inquiry = useInquiry(inquiryId);
   const regenerate = useRegenerateInquiry();
   const setRead = useSetInquiryRead();
@@ -82,11 +87,11 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
     () => new Map(followups.flatMap((f) => (f.section?.anchor ? ([[f.section.anchor, f]] as const) : []))),
     [followups],
   );
-  const sectionNote = useCallback((section: LectureSection) => inquirySectionNote(section, followupByAnchor), [followupByAnchor]);
+  const sectionNote = useCallback((section: LectureSection) => inquirySectionNote(section, followupByAnchor, locale), [followupByAnchor, locale]);
   const unanswered = followups.filter((f) => f.status !== "answered");
   const followupBusy = unanswered.some((f) => f.status === "pending");
   const lastFollowup = followups[followups.length - 1];
-  const followupAnnouncement = lastFollowup ? FOLLOWUP_ANNOUNCEMENTS[lastFollowup.status] : "";
+  const followupAnnouncement = lastFollowup ? FOLLOWUP_ANNOUNCEMENTS[locale][lastFollowup.status] : "";
   const pickQuote = useCallback((text: string) => {
     setQuote(text);
     composerRef.current?.focus();
@@ -113,19 +118,19 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
 
   const menuItems: MenuItem[] = q
     ? [
-        { key: "read", label: read ? "목록에 다시 두기" : "다 봤어요", disabled: generating || setRead.isPending, onSelect: toggleRead },
-        { key: "regenerate", label: "다시 만들기", disabled: generating || followupBusy || regenerate.isPending, onSelect: askRegenerate },
+        { key: "read", label: read ? t.unread : t.markRead, disabled: generating || setRead.isPending, onSelect: toggleRead },
+        { key: "regenerate", label: t.regenerate, disabled: generating || followupBusy || regenerate.isPending, onSelect: askRegenerate },
       ]
     : [];
 
-  let assist: ReactNode = <LectureAssistPlaceholder>해설이 끝나면 여기에 관련 개념과 지도에 새로 제안한 개념이 보여요.</LectureAssistPlaceholder>;
+  let assist: ReactNode = <LectureAssistPlaceholder>{t.assistPending}</LectureAssistPlaceholder>;
   if (q?.concepts && q.concepts.length > 0) { assist = <InquiryConcepts concepts={q.concepts} />; }
-  else if (q && !generating) { assist = <LectureAssistPlaceholder>이 해설에는 지도와 이어진 개념이 없어요.</LectureAssistPlaceholder>; }
+  else if (q && !generating) { assist = <LectureAssistPlaceholder>{t.assistEmpty}</LectureAssistPlaceholder>; }
 
   return (
     <div className="flex w-full flex-col">
       <LectureTopBar
-        title={q?.content?.title || q?.question || "질문 해설"}
+        title={q?.content?.title || q?.question || t.title}
         backHref={HOME}
         onOpenToc={hasContent ? () => setTocOpen(true) : undefined}
         menuItems={menuItems}
@@ -136,9 +141,9 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
         <p role="status" aria-live="polite" className="sr-only">{followupAnnouncement}</p>
         {q && !generating && q.error && hasContent && (
           <p role="alert" className="mt-3 flex flex-wrap items-center gap-2 break-keep rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">
-            다시 만들기에 실패해 이전 해설을 보여 드려요.
+            {t.regenerateFailed}
             <Button size="sm" variant="ghost" onClick={runRegenerate} loading={regenerate.isPending}>
-              다시 시도
+              {t.retry}
             </Button>
           </p>
         )}
@@ -159,22 +164,22 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
             </div>
           )}
           {unanswered.map((f) => (
-            <section key={f.id} aria-label="이어서 물은 질문" className="mt-10">
-              <p className="mb-3 border-b border-line pb-2 text-xs font-medium text-fg-muted">이어서 묻기</p>
+            <section key={f.id} aria-label={t.followupRegion} className="mt-10">
+              <p className="mb-3 border-b border-line pb-2 text-xs font-medium text-fg-muted">{t.followupHeading}</p>
               <FollowupQuestion followup={f} />
               {f.status === "pending" ? (
                 <div className="flex flex-col gap-3">
                   <p className="flex items-center gap-2 text-sm text-fg-secondary">
                     <Spinner size="sm" label={null} />
-                    답을 쓰는 중이에요 · 보통 1분 안팎
+                    {t.followupWriting}
                   </p>
                   <Skeleton lines={3} />
                 </div>
               ) : (
                 <div className="flex flex-wrap items-center gap-2 text-sm text-warning">
-                  답을 만들지 못했어요.
+                  {t.followupFailed}
                   <Button size="sm" variant="secondary" loading={retryFollowup.isPending} onClick={() => retryFollowup.mutate(f.id)}>
-                    다시 시도
+                    {t.retry}
                   </Button>
                 </div>
               )}
@@ -201,7 +206,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
           {q && !hasContent && !generating && (
             <div className="mt-6">
               <ErrorState
-                message="해설을 만들지 못했어요. 잠시 뒤 다시 만들어 보세요."
+                message={t.noContent}
                 onRetry={runRegenerate}
                 retrying={regenerate.isPending}
               />
@@ -218,7 +223,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
         <div className="mt-10 flex flex-wrap items-center gap-2 border-t border-line pt-4">
           {hasContent && (
             <Button onClick={toggleRead} loading={setRead.isPending} disabled={generating} variant={read ? "secondary" : "primary"}>
-              {read ? "목록에 다시 두기" : "다 봤어요"}
+              {read ? t.unread : t.markRead}
             </Button>
           )}
           {hasContent && (
@@ -227,16 +232,16 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
               onClick={askRegenerate}
               loading={regenerate.isPending}
               disabled={generating || followupBusy}
-              title={followupBusy ? "이어서 묻기 답을 쓰는 중에는 다시 만들 수 없어요" : undefined}
+              title={followupBusy ? t.regenerateBusy : undefined}
             >
-              다시 만들기
+              {t.regenerate}
             </Button>
           )}
           <Link href={HOME} className={buttonVariants({ variant: "ghost" })}>
-            학습 홈으로
+            {t.home}
           </Link>
         </div>
-        {read && hasContent && <p className="mt-2 text-xs text-fg-muted">학습 홈 목록에서 빠졌어요. 지도의 관련 개념과 기록에는 남아요.</p>}
+        {read && hasContent && <p className="mt-2 text-xs text-fg-muted">{t.readNotice}</p>}
         <div aria-live="polite" className="empty:hidden">
           <InlineError error={regenerate.error ?? setRead.error ?? retryFollowup.error ?? (q ? inquiry.error : null)} />
         </div>
@@ -245,24 +250,24 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
       <BottomSheet
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        title="새 해설로 다시 만들까요?"
-        description="같은 질문으로 새로 써요(1~3분)"
+        title={t.confirmTitle}
+        description={t.confirmDescription}
         footer={
           <>
             <Button variant="ghost" onClick={() => setConfirmOpen(false)}>
-              취소
+              {t.cancel}
             </Button>
             <Button onClick={runRegenerate} loading={regenerate.isPending}>
-              다시 만들기
+              {t.regenerate}
             </Button>
           </>
         }
       >
         <ul className="list-disc space-y-1 break-keep pl-5 text-sm text-fg-secondary">
-          <li>새 해설이 완성되면 지금 해설을 대신해요. 그동안은 지금 해설을 그대로 볼 수 있어요.</li>
-          <li>이어서 물은 내용은 그대로 남아요.</li>
-          <li>만들기에 실패하면 지금 해설이 남아요.</li>
-          <li>생성 사용량이 한 번 더 들어요.</li>
+          <li>{t.confirmReplace}</li>
+          <li>{t.confirmFollowups}</li>
+          <li>{t.confirmFailure}</li>
+          <li>{t.confirmUsage}</li>
         </ul>
       </BottomSheet>
     </div>

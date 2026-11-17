@@ -317,6 +317,8 @@ export interface Lecture {
   sources: DocumentLink[] | null;
   flagged: boolean;
   flagReason?: string;
+  /** flagReason 의 사유 code(서버 internal/i18n) — 있으면 화면 언어로 옮겨 보인다 */
+  flagReasonCodes?: string[];
   /** 검수 상태(v2.2) — 없으면 예전 응답(flagged·status 로 판단) */
   reviewState?: LectureReviewState;
   /** 생성에 쓴 프롬프트 버전 — 내 프롬프트를 썼으면 '+u:<해시8>' 가 붙는다 */

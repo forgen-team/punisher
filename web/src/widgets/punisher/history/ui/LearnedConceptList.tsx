@@ -4,9 +4,12 @@ import { useMemo } from "react";
 import { EmptyState, ErrorState, List, ListRow, ListSkeleton } from "@/src/shared/ui/kit";
 import { ConceptStateBadge, areaLabel, useConcepts } from "@/src/entities/punisher";
 import { describePunisherError } from "@/src/shared/api/punisher";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 
 /** 완료·이미 앎 개념 (최근 갱신순). 행당 상태 배지 1개. */
 export function LearnedConceptList() {
+  const t = useT(messages);
   const concepts = useConcepts();
   const learned = useMemo(
     () =>
@@ -20,7 +23,7 @@ export function LearnedConceptList() {
     return <ErrorState message={describePunisherError(concepts.error)} onRetry={() => concepts.refetch()} />;
   }
   if (learned.length === 0) {
-    return <EmptyState title="아직 완료하거나 이미 앎으로 표시한 개념이 없어요" description="지도에서 이미 아는 개념을 표시할 수 있어요." />;
+    return <EmptyState title={t.noLearned} description={t.noLearnedDescription} />;
   }
   // 넓은 화면(xl)은 두 열 — 짧은 행이 화면 끝까지 늘어나지 않게.
   return (
@@ -32,7 +35,7 @@ export function LearnedConceptList() {
           linkAs={Link}
           titleLines={1}
           title={c.name}
-          meta={`${areaLabel(c.area)} · 깊이 ${c.depth}`}
+          meta={t.areaDepth(areaLabel(c.area), c.depth)}
           trailing={<ConceptStateBadge state={c.userState} />}
         />
       ))}

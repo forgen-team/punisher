@@ -2,7 +2,9 @@
 import { Check } from "lucide-react";
 import { EmptyState, Skeleton, cn, focusRing } from "@/src/shared/ui/kit";
 import type { ChapterSuggestion } from "@/src/shared/api/punisher";
-import { MAX_PICKS, SUGGESTION_KIND_LABELS } from "./constants";
+import { useT } from "@/src/shared/i18n";
+import { MAX_PICKS } from "./constants";
+import { SUGGESTION_KIND_LABELS, messages } from "../i18n";
 
 interface SuggestionCardsProps {
   suggestions: ChapterSuggestion[];
@@ -12,9 +14,11 @@ interface SuggestionCardsProps {
 
 /** 자동 제안 카드(여러 개 고를 수 있음) — 카드마다 왜 추천하는지 한 줄. */
 export function SuggestionCards({ suggestions, selected, onToggle }: SuggestionCardsProps) {
+  const t = useT(messages);
+  const kindLabels = useT(SUGGESTION_KIND_LABELS);
   const full = selected.size >= MAX_PICKS;
   if (suggestions.length === 0) {
-    return <EmptyState compact title="지금은 추천할 주제가 없어요" description="아래에 공부하고 싶은 걸 직접 적어 주세요." />;
+    return <EmptyState compact title={t.suggestionsEmptyTitle} description={t.suggestionsEmptyDescription} />;
   }
   return (
     <ul role="list" className="grid gap-2 fold:grid-cols-2">
@@ -45,7 +49,7 @@ export function SuggestionCards({ suggestions, selected, onToggle }: SuggestionC
                 {on && <Check className="size-3.5" />}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-xs font-medium text-fg-muted">{SUGGESTION_KIND_LABELS[s.kind] ?? s.kind}</span>
+                <span className="block text-xs font-medium text-fg-muted">{kindLabels[s.kind] ?? s.kind}</span>
                 <span className="block text-base font-semibold text-fg">{s.title}</span>
                 <span className="mt-0.5 block break-keep text-sm text-fg-secondary">{s.reason}</span>
               </span>

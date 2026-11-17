@@ -89,7 +89,7 @@ func TestChapterApplyAndUserIsolation(t *testing.T) {
 	if inA[alpha] != chapterID || inA[gamma] != chapterID || inA[proposedID] != chapterID {
 		t.Fatalf("user A map missing chapter concepts: alpha=%q gamma=%q promoted=%q", inA[alpha], inA[gamma], inA[proposedID])
 	}
-	if info, err := s.ConceptInfo(ctx, userA, alpha); err != nil || len(info.Objectives) != 1 {
+	if info, err := s.ConceptInfo(ctx, userA, alpha, "ko"); err != nil || len(info.Objectives) != 1 {
 		t.Fatalf("concept info A: %+v %v", info, err)
 	}
 	edgesA, err := s.PrerequisiteEdges(ctx, userA)
@@ -115,12 +115,12 @@ func TestChapterApplyAndUserIsolation(t *testing.T) {
 	if _, err := s.GetConceptDetail(ctx, userB, alpha); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("detail for B = %v", err)
 	}
-	if _, err := s.ConceptInfo(ctx, userB, alpha); !errors.Is(err, ErrNotFound) {
+	if _, err := s.ConceptInfo(ctx, userB, alpha, "ko"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("info for B = %v", err)
 	}
 	knownB, _ := s.KnownConceptIDs(ctx, userB)
 	aliasB, _ := s.AliasIndex(ctx, userB)
-	catalogB, _ := s.ConceptCatalog(ctx, userB)
+	catalogB, _ := s.ConceptCatalog(ctx, userB, "ko")
 	todayB, _ := s.LoadToday(ctx, userB, time.Now())
 	edgesB, _ := s.PrerequisiteEdges(ctx, userB)
 	graphB, _ := s.LoadGraph(ctx, userB)

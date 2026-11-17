@@ -8,14 +8,18 @@ import { inquiryHref, lectureHref } from "@/src/features/punisher/instant-start"
 import { describePunisherError, type CompletedArea, type CompletedItem } from "@/src/shared/api/punisher";
 import { DeeperGroup } from "@/src/shared/ui/punisher";
 import { LoadMore } from "./LoadMore";
+import { useLocale, useT } from "@/src/shared/i18n";
 import { historyDay } from "../lib/historyDate";
+import { messages } from "../i18n";
 
 const DEBOUNCE_MS = 300;
 /** 전체 보기에서 처음부터 펼쳐 두는 분야 수(접힌 분야는 펼칠 때 불러온다). */
 const OPEN_BY_DEFAULT = 2;
 
 function CompletedRow({ item }: { item: CompletedItem }) {
-  const date = historyDay(item.lastActivityAt);
+  const locale = useLocale();
+  const t = useT(messages);
+  const date = historyDay(item.lastActivityAt, locale);
   if (item.kind === "inquiry") {
     return (
       <ListRow
@@ -23,7 +27,7 @@ function CompletedRow({ item }: { item: CompletedItem }) {
         linkAs={Link}
         leading={<InquiryStatusIcon status="answered" />}
         title={item.title}
-        meta={["질문 해설", item.followupCount ? `이어서 ${item.followupCount}번` : "", date].filter(Boolean).join(" · ")}
+        meta={[t.inquiry, item.followupCount ? t.followups(item.followupCount) : "", date].filter(Boolean).join(" · ")}
       />
     );
   }
@@ -32,7 +36,7 @@ function CompletedRow({ item }: { item: CompletedItem }) {
       href={lectureHref(item.id)}
       linkAs={Link}
       title={item.title || item.conceptName}
-      meta={[item.conceptName && item.conceptName !== item.title ? item.conceptName : "", item.lectureKind === "instant" ? "즉석" : "라이브러리", date].filter(Boolean).join(" · ")}
+      meta={[item.conceptName && item.conceptName !== item.title ? item.conceptName : "", item.lectureKind === "instant" ? t.instant : t.library, date].filter(Boolean).join(" · ")}
     />
   );
 }
@@ -65,6 +69,7 @@ function AreaItems({ area, q, twoColumns }: { area: string; q: string; twoColumn
 }
 
 function AreaSection({ area, q, defaultOpen, single }: { area: CompletedArea; q: string; defaultOpen: boolean; single: boolean }) {
+  const t = useT(messages);
   const [open, setOpen] = useState(defaultOpen);
   const expanded = single || open;
   return (
@@ -79,7 +84,7 @@ function AreaSection({ area, q, defaultOpen, single }: { area: CompletedArea; q:
         >
           {!single && <ChevronRight className={cn("size-4 shrink-0 text-fg-muted transition-transform", expanded && "rotate-90")} aria-hidden="true" />}
           <span className="min-w-0 flex-1 break-keep text-sm font-semibold text-fg">{areaLabel(area.area)}</span>
-          <span className="shrink-0 text-xs tabular-nums text-fg-muted">{area.count}개</span>
+          <span className="shrink-0 text-xs tabular-nums text-fg-muted">{t.areaCount(area.count)}</span>
         </button>
       </h2>
       {expanded && (
@@ -96,6 +101,7 @@ function AreaSection({ area, q, defaultOpen, single }: { area: CompletedArea; q:
  * 전체 보기는 분야별 접기/펼치기, 넓은 화면(xl)은 분야 두 열, 분야 하나를 고르면 전체 폭에 목록 두 열.
  */
 export function CompletedByArea() {
+  const t = useT(messages);
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -134,9 +140,9 @@ export function CompletedByArea() {
     body = <ErrorState message={describePunisherError(areas.error)} onRetry={() => areas.refetch()} retrying={areas.isRefetching} />;
   } else if (shown.length === 0) {
     body = urlQuery || selected ? (
-      <EmptyState title="찾는 기록이 없어요" description={selected ? "다른 말로 찾거나 '전체'로 바꿔 보세요." : "다른 말로 찾아 보세요."} />
+      <EmptyState title={t.noMatchTitle} description={selected ? t.noMatchInArea : t.noMatch} />
     ) : (
-      <EmptyState title="아직 완료한 기록이 없어요" description="강의를 끝까지 읽거나 질문 해설을 받으면 여기에 쌓여요." />
+      <EmptyState title={t.emptyTitle} description={t.emptyDescription} />
     );
   } else {
     body = (
@@ -152,12 +158,12 @@ export function CompletedByArea() {
     <div className="flex flex-col gap-4">
       <div role="search" className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden="true" />
-        <Input aria-label="완료 기록 찾기" value={text} onChange={(event) => changeText(event.target.value)} placeholder="제목이나 개념 이름으로 찾기" className="pl-9" />
+        <Input aria-label={t.searchLabel} value={text} onChange={(event) => changeText(event.target.value)} placeholder={t.searchPlaceholder} className="pl-9" />
       </div>
       {/* 칩 줄은 불러오는 중에도, 결과가 없어도 자리를 지켜 아래가 밀리지 않는다. */}
-      <div role="group" aria-label="분야" aria-busy={areas.isLoading} className="-mx-4 flex min-h-11 gap-2 overflow-x-auto px-4 py-1.5 fold:mx-0 fold:flex-wrap fold:px-0">
+      <div role="group" aria-label={t.areas} aria-busy={areas.isLoading} className="-mx-4 flex min-h-11 gap-2 overflow-x-auto px-4 py-1.5 fold:mx-0 fold:flex-wrap fold:px-0">
         <Chip selected={!selected} onClick={() => setParam({ area: "" })}>
-          전체{areas.isLoading ? "" : ` ${total}`}
+          {t.all}{areas.isLoading ? "" : ` ${total}`}
         </Chip>
         {list.map((a) => (
           <Chip key={a.area} selected={selected === a.area} onClick={() => setParam({ area: selected === a.area ? "" : a.area })}>

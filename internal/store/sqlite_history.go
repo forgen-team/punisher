@@ -56,7 +56,7 @@ func (s *SQLiteStore) ListMyQuestions(ctx context.Context, userID, conceptID str
 	items, err := collect(s.c().query(ctx, `
 		SELECT q.id, COALESCE(q.lecture_id, ''), COALESCE(q.concept_id, l.concept_id, ''), q.anchor, q.kind,
 			q.question, q.answer, q.status, q.model, q.error, q.linked_concept_ids, q.proposed_concepts,
-			q.created_at, q.answered_at, COALESCE(l.title, ''), COALESCE(c.name, '')
+			q.created_at, q.answered_at, COALESCE(l.title, ''), COALESCE(`+locName("c", userLocaleSQL("$1"))+`, '')
 		FROM lecture_questions q
 		LEFT JOIN lectures l ON l.id = q.lecture_id
 		LEFT JOIN concepts c ON c.id = COALESCE(q.concept_id, l.concept_id)
@@ -101,7 +101,7 @@ func (s *SQLiteStore) ListMyLectures(ctx context.Context, userID, status string,
 		sortAt time.Time
 	}
 	items, err := collect(s.c().query(ctx, `
-		SELECT l.id, l.concept_id, c.name, l.title, l.depth, l.kind, l.estimated_minutes,
+		SELECT l.id, l.concept_id, `+locName("c", userLocaleSQL("$1"))+`, l.title, l.depth, l.kind, l.estimated_minutes,
 			p.percent, p.started_at, p.last_seen_at, p.completed_at, `+parentLectureSQL("l.id")+`, `+sortCol+`,
 			CASE WHEN l.minutes_estimated THEN NULL ELSE l.content END
 		FROM user_lecture_progress p
@@ -137,7 +137,8 @@ func (s *SQLiteStore) ListMyLectures(ctx context.Context, userID, status string,
 
 // ListConceptLectures returns the published lectures of a concept the caller may
 // read (library, or the caller's own instant lectures) with the caller's progress.
-// Only the newest version per (objective set, depth) is returned.
+// Only the newest version per (objective set, depth) is returned, in the
+// user's language when there is one, else in another (i18n §9).
 func (s *SQLiteStore) ListConceptLectures(ctx context.Context, userID, conceptID string) ([]models.ConceptLecture, error) {
 	var exists bool
 	if err := s.c().row(ctx, `SELECT EXISTS (SELECT 1 FROM concepts c WHERE c.id = $1 AND `+visibleTo("c", "$2")+`)`, conceptID, userID).Scan(&exists); err != nil {
@@ -156,7 +157,8 @@ func (s *SQLiteStore) ListConceptLectures(ctx context.Context, userID, conceptID
 				CASE WHEN l.minutes_estimated THEN NULL ELSE l.content END AS legacy,
 				ROW_NUMBER() OVER (
 					PARTITION BY l.objective_key, l.depth
-					ORDER BY (l.kind = 'library') DESC, l.version DESC, l.created_at DESC
+					ORDER BY (l.language = `+userLocaleSQL("$2")+`) DESC, (l.kind = 'library') DESC,
+						l.version DESC, l.created_at DESC
 				) AS rn
 			FROM lectures l
 			LEFT JOIN user_lecture_progress p ON p.lecture_id = l.id AND p.user_id = $2

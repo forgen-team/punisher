@@ -17,8 +17,10 @@ type ConceptFilter struct {
 	Status string
 }
 
-const conceptColumns = `
-	c.id, c.name, c.area, c.depth, c.summary, c.practical_cases, c.doc_links,
+// conceptColumns: names in the locale of user $1.
+var conceptColumns = `
+	c.id, ` + locName("c", userLocaleSQL("$1")) + `, c.area, c.depth, ` + locSummary("c", userLocaleSQL("$1")) + `,
+	` + locCases("c", userLocaleSQL("$1")) + `, c.doc_links,
 	c.status, c.origin, COALESCE(c.curriculum_version, ''), c.updated_at,
 	(SELECT COUNT(*) FROM objectives o WHERE o.concept_id = c.id AND o.status = 'active'),
 	COALESCE(s.state, 'not_started'), COALESCE(c.chapter_id, '')`
@@ -82,7 +84,7 @@ func (s *SQLiteStore) GetConceptDetail(ctx context.Context, userID, conceptID st
 
 func (s *SQLiteStore) conceptObjectives(ctx context.Context, userID, conceptID string) ([]models.Objective, error) {
 	objectives, err := collect(s.c().query(ctx, `
-		SELECT o.id, o.text, o.depth, o.ordinal, COALESCE(us.state, 'not_started')
+		SELECT o.id, `+locObjective("o", userLocaleSQL("$1"))+`, o.depth, o.ordinal, COALESCE(us.state, 'not_started')
 		FROM objectives o
 		LEFT JOIN user_objective_states us
 		       ON us.objective_id = o.id AND us.depth = o.depth AND us.user_id = $1
@@ -107,7 +109,7 @@ func (s *SQLiteStore) fillNeighbours(ctx context.Context, userID string, d *mode
 	rows, err := collect(s.c().query(ctx, `
 		SELECT e.kind,
 		       CASE WHEN e.to_id = $2 THEN 'in' ELSE 'out' END AS direction,
-		       n.id, n.name, n.area, COALESCE(s.state, 'not_started')
+		       n.id, `+locName("n", userLocaleSQL("$1"))+`, n.area, COALESCE(s.state, 'not_started')
 		FROM concept_edges e
 		JOIN concepts n ON n.id = CASE WHEN e.to_id = $2 THEN e.from_id ELSE e.to_id END
 		LEFT JOIN user_concept_states s ON s.concept_id = n.id AND s.user_id = $1

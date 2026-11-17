@@ -45,7 +45,8 @@ type settingsBody struct {
 	PretestEnabled  *bool   `json:"pretestEnabled"`
 	LabOS           *string `json:"labOs"`
 	// AdaptiveIntervals false resets every objective's ease (interval scale) to the ladder.
-	AdaptiveIntervals *bool `json:"adaptiveIntervals"`
+	AdaptiveIntervals *bool   `json:"adaptiveIntervals"`
+	Locale            *string `json:"locale"`
 }
 
 var dailyMinuteOptions = map[int]bool{15: true, 30: true, 45: true, 60: true}
@@ -59,6 +60,7 @@ const (
 	ErrorInvalidIntervals     ErrorCode = "INVALID_INTERVALS"
 	ErrorInvalidReviewMinutes ErrorCode = "INVALID_REVIEW_MINUTES"
 	ErrorInvalidLabOS         ErrorCode = "INVALID_LAB_OS"
+	ErrorInvalidLocale        ErrorCode = "INVALID_LOCALE"
 	ErrorSettingsRequired     ErrorCode = "SETTINGS_REQUIRED"
 )
 
@@ -73,6 +75,13 @@ func settingsPatch(body settingsBody) (store.LearningSettingsPatch, *settingsErr
 	p := store.LearningSettingsPatch{DailyMinutes: body.DailyMinutes, MasteryTarget: body.MasteryTarget,
 		ReviewIntervals: body.ReviewIntervals, ReviewMinutes: body.ReviewMinutes, PretestEnabled: body.PretestEnabled,
 		AdaptiveIntervals: body.AdaptiveIntervals}
+	if body.Locale != nil {
+		l := strings.ToLower(strings.TrimSpace(*body.Locale))
+		if !learning.ValidLocale(l) {
+			return p, &settingsError{ErrorInvalidLocale, "locale must be ko|en"}
+		}
+		p.Locale = &l
+	}
 	if body.LabOS != nil {
 		os := strings.ToLower(strings.TrimSpace(*body.LabOS))
 		if !learning.ValidLabOS(os) {
@@ -104,7 +113,7 @@ func settingsPatch(body settingsBody) (store.LearningSettingsPatch, *settingsErr
 	case body.ReviewMinutes != nil && !learning.ValidReviewMinutes(*body.ReviewMinutes):
 		return p, &settingsError{ErrorInvalidReviewMinutes, "reviewMinutes must be 0~30"}
 	case p.ExampleLanguage == nil && p.DailyMinutes == nil && p.MasteryTarget == nil && p.ReviewIntervals == nil &&
-		p.ReviewMinutes == nil && p.ReviewGrader == nil && p.PretestEnabled == nil && p.LabOS == nil && p.AdaptiveIntervals == nil:
+		p.ReviewMinutes == nil && p.ReviewGrader == nil && p.PretestEnabled == nil && p.LabOS == nil && p.AdaptiveIntervals == nil && p.Locale == nil:
 		return p, &settingsError{ErrorSettingsRequired, "at least one setting is required"}
 	}
 	return p, nil

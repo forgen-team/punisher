@@ -17,23 +17,23 @@ const AreaOther = "other"
 // '더 깊게'로 본 강의는 원 강의의 분야에 넣어 원 강의 바로 아래에 묶인다. $1 = user.
 var completedItemsSQL = `
 	WITH items AS (
-		SELECT 'lecture' AS kind, l.id AS id, l.title AS title, l.concept_id AS concept_id, c.name AS concept_name,
+		SELECT 'lecture' AS kind, l.id AS id, l.title AS title, l.concept_id AS concept_id, ` + locName("c", userLocaleSQL("$1")) + ` AS concept_name,
 			COALESCE((SELECT pc.area FROM lecture_links k
 				JOIN lectures pl ON pl.id = k.parent_lecture_id JOIN concepts pc ON pc.id = pl.concept_id
 				WHERE k.user_id = $1 AND ` + linkedChildSQL + ` = l.id ORDER BY k.created_at DESC LIMIT 1), c.area) AS area,
 			l.depth AS depth, l.kind AS lecture_kind, ` + parentLectureSQL("l.id") + ` AS parent_id, 0 AS followups,
-			p.last_seen_at AS activity_at, l.title || ' ' || c.name AS search
+			p.last_seen_at AS activity_at, l.title || ' ' || c.name || ' ' || c.name_en AS search
 		FROM user_lecture_progress p
 		JOIN lectures l ON l.id = p.lecture_id AND (l.kind = 'library' OR l.requested_by = p.user_id)
 		JOIN concepts c ON c.id = l.concept_id
 		WHERE p.user_id = $1 AND p.completed_at IS NOT NULL
 		UNION ALL
-		SELECT 'inquiry', i.id, COALESCE(NULLIF(json_extract(i.content, '$.title'), ''), i.question), COALESCE(c.id, ''), COALESCE(c.name, ''),
+		SELECT 'inquiry', i.id, COALESCE(NULLIF(json_extract(i.content, '$.title'), ''), i.question), COALESCE(c.id, ''), COALESCE(` + locName("c", userLocaleSQL("$1")) + `, ''),
 			COALESCE(c.area, '` + AreaOther + `'), 0, '', '',
 			(SELECT COUNT(*) FROM inquiry_followups f WHERE f.inquiry_id = i.id),
 			MAX(i.answered_at, COALESCE((SELECT MAX(f.answered_at) FROM inquiry_followups f WHERE f.inquiry_id = i.id), i.answered_at)),
 			i.question || ' ' || COALESCE(json_extract(i.content, '$.title'), '') || ' ' || COALESCE(
-				(SELECT group_concat(n.name, ' ') FROM concepts n WHERE n.id IN (
+				(SELECT group_concat(n.name || ' ' || n.name_en, ' ') FROM concepts n WHERE n.id IN (
 					SELECT value FROM json_each(i.concept_ids) UNION SELECT value FROM json_each(i.proposed_concept_ids))), '')
 		FROM inquiries i
 		LEFT JOIN concepts c ON c.id = COALESCE(json_extract(i.concept_ids, '$[0]'), json_extract(i.proposed_concept_ids, '$[0]'))

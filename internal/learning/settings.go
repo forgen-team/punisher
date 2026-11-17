@@ -97,3 +97,22 @@ const (
 
 // ValidLabOS reports a known lab environment.
 func ValidLabOS(os string) bool { return os == LabOSMacOS || os == LabOSLinux || os == LabOSNone }
+
+// Locales (user_learning_settings.locale, i18n §1): the screen and generation language.
+const (
+	LocaleKO = "ko"
+	LocaleEN = "en"
+	// DefaultLocale: witems is Korean (the standalone app starts from the OS locale).
+	DefaultLocale = LocaleKO
+)
+
+// ValidLocale reports a known locale.
+func ValidLocale(l string) bool { return l == LocaleKO || l == LocaleEN }
+
+// NormalizeLocale maps unknown or empty values to the default.
+func NormalizeLocale(l string) string {
+	if ValidLocale(l) {
+		return l
+	}
+	return DefaultLocale
+}

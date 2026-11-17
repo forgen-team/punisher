@@ -33,6 +33,13 @@ func Load(fsys fs.FS) (*Seed, error) {
 		}
 		concepts = append(concepts, file.Concepts...)
 	}
+	overlay, err := loadOverlay(fsys)
+	if err != nil {
+		return nil, err
+	}
+	if err := applyOverlay(concepts, overlay); err != nil {
+		return nil, err
+	}
 	return Build(concepts)
 }
 
@@ -88,6 +95,9 @@ func normalizeConcept(c *Concept) {
 	c.ID = strings.TrimSpace(c.ID)
 	c.Name = strings.TrimSpace(c.Name)
 	c.Summary = strings.TrimSpace(c.Summary)
+	if c.PracticalCasesEn != nil && len(c.PracticalCasesEn) != len(c.PracticalCases) {
+		c.PracticalCasesEn = nil
+	}
 	for i := range c.Objectives {
 		c.Objectives[i].Text = strings.TrimSpace(c.Objectives[i].Text)
 		if c.Objectives[i].Depth == 0 {
@@ -129,7 +139,7 @@ func buildAliases(concepts []Concept) []Alias {
 	seen := make(map[string]struct{})
 	var out []Alias
 	for _, c := range concepts {
-		for _, raw := range append([]string{c.Name}, c.Aliases...) {
+		for _, raw := range c.aliasNames() {
 			key := NormalizeAlias(raw)
 			if _, ok := seen[key]; ok {
 				continue

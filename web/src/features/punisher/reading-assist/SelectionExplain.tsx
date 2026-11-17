@@ -8,13 +8,16 @@ import { SELECTION_MAX_CHARS, SELECTION_MIN_CHARS } from "@/src/shared/api/punis
 import { InlineError, ReadingOverlay } from "@/src/shared/ui/punisher";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 import { useTextSelection, type TextSelectionSnapshot } from "./useTextSelection";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 
 const BUTTON_GAP = 10;
 
 function ExplanationBody({ pending, text, error }: { pending: boolean; text?: string; error: unknown }) {
+  const t = useT(messages);
   if (pending) {
     return (
-      <div aria-busy="true" aria-label="설명을 만드는 중">
+      <div aria-busy="true" aria-label={t.explaining}>
         <Skeleton lines={4} />
       </div>
     );
@@ -35,6 +38,7 @@ interface SelectionExplainProps {
  * 모바일은 OS 선택 메뉴가 위에 뜨므로 버튼을 선택 아래에 둔다.
  */
 export function SelectionExplain({ lectureId, containerRef }: SelectionExplainProps) {
+  const t = useT(messages);
   const coarse = useMediaQuery("(pointer: coarse)");
   const [target, setTarget] = useState<TextSelectionSnapshot | null>(null);
   const selection = useTextSelection(containerRef, target === null);
@@ -67,7 +71,7 @@ export function SelectionExplain({ lectureId, containerRef }: SelectionExplainPr
               onPointerDown={(event) => event.preventDefault()}
               onClick={() => run(selection)}
               disabled={tooLong}
-              title={tooLong ? `${SELECTION_MAX_CHARS}자 이하로 골라 주세요` : undefined}
+              title={tooLong ? t.maxChars(SELECTION_MAX_CHARS) : undefined}
               className={cn(
                 "inline-flex h-10 items-center gap-1.5 rounded-full border border-line bg-canvas-elevated px-3.5 text-sm font-medium",
                 "text-fg shadow-overlay hover:bg-canvas-hover disabled:opacity-60",
@@ -75,7 +79,7 @@ export function SelectionExplain({ lectureId, containerRef }: SelectionExplainPr
               )}
             >
               <Sparkles className="size-4 text-accent-text" aria-hidden="true" />
-              {tooLong ? `너무 길어요(최대 ${SELECTION_MAX_CHARS}자)` : "이 부분 설명"}
+              {tooLong ? t.tooLong(SELECTION_MAX_CHARS) : t.explainThis}
             </button>
           </div>,
           document.body,
@@ -84,12 +88,12 @@ export function SelectionExplain({ lectureId, containerRef }: SelectionExplainPr
         open={target !== null}
         onClose={() => setTarget(null)}
         anchor={target?.rect ?? null}
-        title="이 부분 설명"
-        description={explain.data?.sectionTitle ? `섹션: ${explain.data.sectionTitle}` : "고른 구절을 이 강의 맥락으로 풀어 드려요"}
+        title={t.explainThis}
+        description={explain.data?.sectionTitle ? t.section(explain.data.sectionTitle) : t.explainDescription}
         footer={
           explain.isError && target ? (
             <Button size="sm" variant="secondary" onClick={() => run(target)}>
-              다시 시도
+              {t.retry}
             </Button>
           ) : undefined
         }

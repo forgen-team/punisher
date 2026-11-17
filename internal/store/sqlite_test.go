@@ -51,7 +51,7 @@ func firstConcept(t *testing.T, s *SQLiteStore) models.ConceptInfo {
 	}
 	for _, c := range list {
 		if c.ObjectiveCount > 0 {
-			info, err := s.ConceptInfo(ctx, testUser, c.ID)
+			info, err := s.ConceptInfo(ctx, testUser, c.ID, "ko")
 			if err != nil {
 				t.Fatalf("concept info: %v", err)
 			}
@@ -183,10 +183,10 @@ func TestConceptDetailStateAndResolve(t *testing.T) {
 	if err != nil || idx[alias.Alias] != alias.ConceptID {
 		t.Fatalf("alias index = %v", err)
 	}
-	if _, err := s.ConceptCatalog(ctx, testUser); err != nil {
+	if _, err := s.ConceptCatalog(ctx, testUser, "ko"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.RelatedConcepts(ctx, testUser, c.ID); err != nil {
+	if _, err := s.RelatedConcepts(ctx, testUser, c.ID, "ko"); err != nil {
 		t.Fatal(err)
 	}
 	known, err := s.KnownConceptIDs(ctx, testUser)
@@ -209,14 +209,14 @@ func TestLectureVersionsCoveringAndComplete(t *testing.T) {
 		t.Fatalf("lecture round trip: %+v", v1)
 	}
 
-	got, err := s.PublishedLectureCovering(ctx, testUser, c.ID, v1.Depth, v1.ObjectiveIDs)
+	got, err := s.PublishedLectureCovering(ctx, testUser, c.ID, v1.Depth, v1.ObjectiveIDs, "ko", LangExact)
 	if err != nil || got.ID != v2.ID {
 		t.Fatalf("covering = %v %v, want v2", got.ID, err)
 	}
-	if _, err := s.PublishedLectureCovering(ctx, testUser, c.ID, v1.Depth, []string{"nope#1"}); !errors.Is(err, ErrNotFound) {
+	if _, err := s.PublishedLectureCovering(ctx, testUser, c.ID, v1.Depth, []string{"nope#1"}, "ko", LangExact); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("covering missing objective = %v", err)
 	}
-	latest, err := s.LatestLectureForTarget(ctx, "library", c.ID, v1.ObjectiveKey, v1.Depth, []string{"published"})
+	latest, err := s.LatestLectureForTarget(ctx, "library", c.ID, v1.ObjectiveKey, v1.Depth, "ko", []string{"published"})
 	if err != nil || latest.ID != v2.ID {
 		t.Fatalf("latest = %v %v", latest.ID, err)
 	}

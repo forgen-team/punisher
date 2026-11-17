@@ -102,7 +102,7 @@ func (s *SQLiteStore) LectureLinks(ctx context.Context, userID, lectureID string
 func (s *SQLiteStore) linkedLectures(ctx context.Context, q string, userID, lectureID string) ([]models.LinkedLecture, error) {
 	out, err := collect(s.c().query(ctx, `
 		WITH linked AS (`+q+`)
-		SELECT l.id, l.concept_id, c.name, l.title, l.kind, l.status, l.created_at, x.created_at, x.anchor,
+		SELECT l.id, l.concept_id, `+locName("c", userLocaleSQL("$1"))+`, l.title, l.kind, l.status, l.created_at, x.created_at, x.anchor,
 			COALESCE(p.percent, 0), p.completed_at, x.kind, l.prompt_version
 		FROM linked x
 		JOIN lectures l ON l.id = x.child AND (l.kind = 'library' OR l.requested_by = $1)

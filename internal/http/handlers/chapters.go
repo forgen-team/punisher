@@ -13,7 +13,8 @@ import (
 // ErrorChapterInvalid: the model's chapter design failed validation twice.
 const ErrorChapterInvalid ErrorCode = "CHAPTER_INVALID"
 
-const chapterQuestion = "다음엔 어떤 걸 공부해 보고 싶어요?"
+// ErrorDraftApplied: the chapter draft was already opened.
+const ErrorDraftApplied ErrorCode = "DRAFT_APPLIED"
 
 // ChapterSuggestions handles GET /v1/chapters/suggestions.
 func (h *LearnHandler) ChapterSuggestions(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +30,8 @@ func (h *LearnHandler) ChapterSuggestions(w http.ResponseWriter, r *http.Request
 	if list == nil {
 		list = []learning.Suggestion{}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"question": chapterQuestion, "suggestions": list})
+	question := inLocale(h.localeOf(r, userID), "다음엔 어떤 걸 공부해 보고 싶어요?", "What would you like to study next?")
+	writeJSON(w, http.StatusOK, map[string]any{"question": question, "suggestions": list})
 }
 
 // CreateChapterDraft handles POST /v1/chapters/drafts {suggestionIds, freeText} —
@@ -94,13 +96,13 @@ func writeChapterError(w http.ResponseWriter, r *http.Request, op string, err er
 	switch {
 	case errors.As(err, &design):
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"error": map[string]any{
-			"code": ErrorChapterInvalid, "message": "챕터 설계가 검증을 통과하지 못했습니다. 주제를 조금 더 구체적으로 적어 다시 시도해 주세요.",
+			"code": ErrorChapterInvalid, "message": "the chapter design failed validation; describe the topic more specifically and try again",
 			"problems": design.Problems,
 		}})
 	case errors.Is(err, services.ErrInvalidChapterRequest):
 		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, err.Error())
 	case errors.Is(err, store.ErrDraftApplied):
-		writeError(w, r, http.StatusConflict, ErrorConflict, "이미 연 챕터입니다")
+		writeError(w, r, http.StatusConflict, ErrorDraftApplied, "this chapter is already open")
 	default:
 		writeServiceError(w, r, op, err)
 	}

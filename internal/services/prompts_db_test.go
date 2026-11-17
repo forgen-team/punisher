@@ -11,6 +11,7 @@ import (
 	seedfiles "github.com/forgen-team/punisher/curriculum"
 	"github.com/forgen-team/punisher/internal/curriculum"
 	"github.com/forgen-team/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/models"
 	"github.com/forgen-team/punisher/internal/prompts"
 	"github.com/forgen-team/punisher/internal/store"
 	"github.com/forgen-team/punisher/migrations"
@@ -214,13 +215,13 @@ func TestStandaloneLibraryCheckItemsUseOwnerPrompts(t *testing.T) {
 	s, user := dbService(t)
 	s.Cfg.LibraryUsesUserPrompts = true
 	ctx := context.Background()
-	if k := s.checkItemKey(ctx, user, "lib-lecture"); k.PromptHash != "" || k.CreatedFor != "" {
+	if k := s.checkItemKey(ctx, user, models.Lecture{ID: "lib-lecture"}); k.PromptHash != "" || k.CreatedFor != "" {
 		t.Fatalf("default block must keep the shared key: %+v", k)
 	}
 	if _, err := s.Store.SavePromptOverride(ctx, user, prompts.BlockCheckItems, "단독판 출제 원칙", "save"); err != nil {
 		t.Fatal(err)
 	}
-	k := s.checkItemKey(ctx, user, "lib-lecture")
+	k := s.checkItemKey(ctx, user, models.Lecture{ID: "lib-lecture"})
 	if k.PromptHash == "" || k.CreatedFor != user || k.PromptHash != s.UserPrompts(ctx, user).Hash(prompts.BlockCheckItems) {
 		t.Fatalf("edited block must key the set to the owner: %+v", k)
 	}

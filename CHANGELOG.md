@@ -1,5 +1,22 @@
 # 바뀐 점
 
+## v0.9.0 (2026-11-17)
+
+한국어·영어 두 언어를 지원해요. 실행하면 DB 가 자동으로 업그레이드됩니다(마이그레이션 017, 기존 데이터는 모두 한국어로 남아요).
+
+- **언어 / Language**: 설정 > 학습 맨 위에서 한국어·English 를 골라요. 화면 문구가 새로고침 없이 바뀌고, 지도·추천·기록의 개념 이름·요약·학습 목표도 그 언어로 보여요(커리큘럼 168개·용어 사전 영어판 포함).
+- 새로 만드는 강의·확인 문항·튜터 답·연습 평·실습 읽기·용어 설명·종합 문제가 고른 언어로 나와요. 이미 만든 강의와 그 강의에 묶인 작업(검수·확인·재채점)은 강의의 언어를 따르고, 같은 개념이라도 언어가 다르면 다른 강의예요. 숙달·진도는 언어와 무관해요.
+- 처음 켤 때 언어: OS 언어(`LC_ALL`·`LC_MESSAGES`·`LANG`, 없으면 macOS 시스템 언어)가 한국어면 한국어, 아니면 영어. `PUNISHER_LOCALE=ko|en` 으로 정할 수 있어요. 이전 버전에서 설정을 저장한 적이 있으면 한국어로 이어져요.
+- 마지막 언어를 기억해 다음 실행의 첫 화면부터 그 언어로 그려요.
+- 맛보기 강의는 사용자 언어와 같은 것만 넣어요. 영어 맛보기 강의 3편(데이터 표현·관계형 모델·네트워크 계층)을 새로 넣었어요.
+- 버튼·알림·테마 선택 같은 공용 부품 문구와 터미널 안내(시작·종료·내보내기·가져오기)도 언어를 따라요. 터미널 안내는 OS 언어를 따라요.
+
+**그 밖에**
+- 오늘의 추천에서 '○○ 확인하기' 행(체크 아이콘)과 강의 행(책 아이콘)을 구분하고, 확인 화면 제목을 "확인하기 · 강의 제목"으로 바꿨어요. 강의를 눌렀는데 문항이 나와 헷갈리던 문제예요.
+- **새벽에 추천 강의 미리 만들기**: 앱이 켜져 있으면 새벽 2~6시(한국 시간)에 추천 강의를 3편까지 미리 만들어 둬요. 낮에는 지금처럼 1편. `PUNISHER_NIGHT_AHEAD`(0이면 끔)·`PUNISHER_NIGHT_START_HOUR`·`PUNISHER_NIGHT_END_HOUR` 로 바꿀 수 있어요.
+
+English: Punisher now speaks English and Korean. Pick "언어 / Language" at the top of Settings → Learning: the UI switches without a reload, map, recommendations and history show concept names, summaries and objectives in that language (English curriculum and glossary included), and new lectures, check questions, tutor replies, exercise comments, lab readings, term glosses and synthesis problems are written in it. Existing lectures keep their language. Shared UI pieces (buttons, toasts, theme picker) follow the language too, terminal messages follow the OS language, and three English sample lectures ship with the app. The first start follows the OS locale (Korean if it is Korean, English otherwise); `PUNISHER_LOCALE=ko|en` overrides it. The database upgrades automatically (migration 017). Also new: check rows on Today are marked with a checklist icon (lectures with a book), and while the app is running it prepares up to three recommended lectures between 02:00 and 06:00 KST (`PUNISHER_NIGHT_AHEAD`, `PUNISHER_NIGHT_START_HOUR`, `PUNISHER_NIGHT_END_HOUR`).
+
 ## v0.8.1 (2026-11-16)
 
 - 강의를 만드는 중에 '직접 해 보기'·실습 결과를 보내도 평이 바로 와요(짧은 호출 줄을 써서 긴 생성에 밀리지 않음).

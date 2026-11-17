@@ -19,7 +19,7 @@ func (s *SQLiteStore) ListCheckHistory(ctx context.Context, userID, kind string,
 		return nil, "", err
 	}
 	items, err := collect(s.c().query(ctx, `
-		SELECT cs.id, cs.kind, cs.grader, cs.status, COALESCE(cs.concept_id, ''), COALESCE(c.name, ''),
+		SELECT cs.id, cs.kind, cs.grader, cs.status, COALESCE(cs.concept_id, ''), COALESCE(`+locName("c", userLocaleSQL("$1"))+`, ''),
 			COALESCE(cs.lecture_id, ''), COALESCE(l.title, ''), cs.session_key,
 			json_array_length(cs.item_ids), COALESCE(json_array_length(cs.result, '$.items'), 0),
 			(SELECT COUNT(*) FROM json_each(cs.result, '$.items') e

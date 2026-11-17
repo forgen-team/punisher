@@ -88,7 +88,7 @@ func (s *Service) loadCheckLecture(ctx context.Context, userID, lectureID string
 	if err != nil {
 		return checkLecture{}, err
 	}
-	info, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID)
+	info, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID, learning.NormalizeLocale(lec.Language))
 	if err != nil {
 		return checkLecture{}, err
 	}
@@ -142,8 +142,9 @@ func (s *Service) checkKey(ctx context.Context, userID string) (string, error) {
 	return s.Keys.RequestKey(ctx, userID)
 }
 
-func (s *Service) checkItemKey(ctx context.Context, userID, lectureID string) store.CheckItemKey {
-	k := store.CheckItemKey{LectureID: lectureID, Purpose: check.PurposeCheck}
+// checkItemKey is the item set key of a lecture: its items are in the lecture's language (i18n §1.1).
+func (s *Service) checkItemKey(ctx context.Context, userID string, lec models.Lecture) store.CheckItemKey {
+	k := store.CheckItemKey{LectureID: lec.ID, Purpose: check.PurposeCheck, Language: learning.NormalizeLocale(lec.Language)}
 	if h := s.UserPrompts(ctx, userID).Hash(prompts.BlockCheckItems); h != "" {
 		k.PromptHash, k.CreatedFor = h, userID
 	}
@@ -189,7 +190,7 @@ func (s *Service) StartCheck(ctx context.Context, userID, kind, lectureID string
 // prepareCheck activates the session with the cached set, or starts the set's
 // single generation (a generation already running for the key is awaited).
 func (s *Service) prepareCheck(ctx context.Context, apiKey, userID, sessionID string, cl checkLecture) error {
-	key := s.checkItemKey(ctx, userID, cl.lec.ID)
+	key := s.checkItemKey(ctx, userID, cl.lec)
 	items, err := s.Store.ActiveCheckItems(ctx, userID, key)
 	if err != nil {
 		return err
@@ -263,7 +264,7 @@ func (s *Service) attachReadyItems(ctx context.Context, userID string, st checkS
 	if err != nil {
 		return st, err
 	}
-	items, err := s.Store.ActiveCheckItems(ctx, userID, s.checkItemKey(ctx, userID, cl.lec.ID))
+	items, err := s.Store.ActiveCheckItems(ctx, userID, s.checkItemKey(ctx, userID, cl.lec))
 	if err != nil {
 		return st, err
 	}

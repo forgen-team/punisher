@@ -56,17 +56,23 @@ func applySeed(ctx context.Context, c conn, seed *curriculum.Seed) error {
 		if err != nil {
 			return fmt.Errorf("marshal doc links for %s: %w", cc.ID, err)
 		}
+		casesEn, err := json.Marshal(nonNil(cc.PracticalCasesEn))
+		if err != nil {
+			return fmt.Errorf("marshal English practical cases for %s: %w", cc.ID, err)
+		}
 		conceptIDs = append(conceptIDs, cc.ID)
 		if _, err := c.exec(ctx, `
 			INSERT INTO concepts (id, name, area, depth, summary, practical_cases, doc_links,
-			                      status, origin, curriculum_version)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'seed', $8)
+			                      status, origin, curriculum_version, name_en, summary_en, practical_cases_en)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'seed', $8, $9, $10, $11)
 			ON CONFLICT (id) DO UPDATE SET
 				name = excluded.name, area = excluded.area, depth = excluded.depth,
 				summary = excluded.summary, practical_cases = excluded.practical_cases,
 				doc_links = excluded.doc_links, status = 'active', origin = 'seed',
-				curriculum_version = excluded.curriculum_version, updated_at = NOW()`,
-			cc.ID, cc.Name, cc.Area, cc.Depth, cc.Summary, string(cases), string(links), seed.Version); err != nil {
+				curriculum_version = excluded.curriculum_version, name_en = excluded.name_en,
+				summary_en = excluded.summary_en, practical_cases_en = excluded.practical_cases_en, updated_at = NOW()`,
+			cc.ID, cc.Name, cc.Area, cc.Depth, cc.Summary, string(cases), string(links), seed.Version,
+			cc.NameEn, cc.SummaryEn, string(casesEn)); err != nil {
 			return fmt.Errorf("upsert concept %s: %w", cc.ID, err)
 		}
 
@@ -74,12 +80,12 @@ func applySeed(ctx context.Context, c conn, seed *curriculum.Seed) error {
 			id := curriculum.ObjectiveID(cc.ID, i+1)
 			objectiveIDs = append(objectiveIDs, id)
 			if _, err := c.exec(ctx, `
-				INSERT INTO objectives (id, concept_id, text, depth, ordinal, status)
-				VALUES ($1, $2, $3, $4, $5, 'active')
+				INSERT INTO objectives (id, concept_id, text, depth, ordinal, status, text_en)
+				VALUES ($1, $2, $3, $4, $5, 'active', $6)
 				ON CONFLICT (id) DO UPDATE SET
 					text = excluded.text, depth = excluded.depth, ordinal = excluded.ordinal,
-					status = 'active', updated_at = NOW()`,
-				id, cc.ID, o.Text, o.Depth, i+1); err != nil {
+					status = 'active', text_en = excluded.text_en, updated_at = NOW()`,
+				id, cc.ID, o.Text, o.Depth, i+1, o.TextEn); err != nil {
 				return fmt.Errorf("upsert objective %s: %w", id, err)
 			}
 		}

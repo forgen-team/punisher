@@ -3,6 +3,8 @@ import { useEffect, useId, useState } from "react";
 import { Skeleton } from "@/src/shared/ui/kit";
 import { useResolvedTheme } from "@/src/entities/punisher";
 import { CodeBlock } from "./CodeBlock";
+import { useT } from "@/src/shared/i18n";
+import { blockMessages } from "../../i18n";
 
 let renderQueue: Promise<unknown> = Promise.resolve();
 
@@ -48,6 +50,7 @@ function lightThemeVariables(): Record<string, string> {
 
 /** Mermaid diagram rendered client-side (mermaid lazy-loaded, theme-aware). */
 export function MermaidBlock({ source, title }: { source: string; title?: string }) {
+  const t = useT(blockMessages);
   const theme = useResolvedTheme();
   const rawId = useId();
   const [svg, setSvg] = useState<string | null>(null);
@@ -91,7 +94,7 @@ export function MermaidBlock({ source, title }: { source: string; title?: string
   if (failed) {
     return (
       <div>
-        <p className="text-xs text-warning">도식을 그리지 못해 원문을 표시합니다.</p>
+        <p className="text-xs text-warning">{t.diagramFailed}</p>
         <CodeBlock code={source} lang="mermaid" />
       </div>
     );
@@ -100,7 +103,7 @@ export function MermaidBlock({ source, title }: { source: string; title?: string
   return (
     <figure
       role="img"
-      aria-label={title ?? "도식"}
+      aria-label={title ?? t.diagram}
       className="my-4 flex justify-center overflow-x-auto rounded-md border border-line bg-canvas-elevated p-3"
     >
       {svg ? (

@@ -2,14 +2,18 @@
 import { ErrorState, ListSkeleton, Section } from "@/src/shared/ui/kit";
 import { describeCheckError, useMasteryMetrics } from "@/src/entities/punisher";
 import { metricRows } from "../lib/checkHistory";
-import { METRIC_GRADER_LABELS, METRIC_GRADER_ORDER } from "./constants";
+import { METRIC_GRADER_LABELS, messages } from "../i18n";
+import { METRIC_GRADER_ORDER } from "./constants";
+import { useLocale, useT } from "@/src/shared/i18n";
 
 /** 기억 유지 지표 — 간격별 · 채점 주체별 첫 시도 정답률(최근 n주). 시도 없는 칸은 '—'. */
 export function RetentionMetrics() {
+  const locale = useLocale();
+  const t = useT(messages);
   const metrics = useMasteryMetrics();
   const weeks = metrics.data?.weeks;
   return (
-    <Section title="기억 유지 지표" description={weeks ? `최근 ${weeks}주` : undefined}>
+    <Section title={t.retention} description={weeks ? t.recentWeeks(weeks) : undefined}>
       {renderBody()}
     </Section>
   );
@@ -24,10 +28,10 @@ export function RetentionMetrics() {
       <table className="w-full max-w-xl table-fixed border-collapse text-sm">
         <thead>
           <tr className="border-b border-line text-left text-xs text-fg-muted">
-            <th scope="col" className="py-2 pr-3 font-medium">간격</th>
+            <th scope="col" className="py-2 pr-3 font-medium">{t.interval}</th>
             {METRIC_GRADER_ORDER.map((g) => (
               <th key={g} scope="col" className="py-2 pr-3 font-medium">
-                {METRIC_GRADER_LABELS[g]}
+                {METRIC_GRADER_LABELS[locale][g]}
               </th>
             ))}
           </tr>
@@ -36,7 +40,7 @@ export function RetentionMetrics() {
           {rows.map((row) => (
             <tr key={row.intervalDays} className="border-b border-line last:border-b-0">
               <th scope="row" className="py-2 pr-3 text-left font-normal text-fg-secondary">
-                {row.intervalDays}일
+                {t.intervalDays(row.intervalDays)}
               </th>
               {METRIC_GRADER_ORDER.map((g) => {
                 const cell = row.cells[g];

@@ -5,39 +5,43 @@ import { LearningSettingsForm } from "@/src/features/punisher/learning-settings"
 import { useAppStatus } from "@/src/shared/api/status";
 import { PUNISHER_API_BASE } from "@/src/shared/api/punisher";
 import { BRAND_LINE, PunisherLogo } from "@/src/shared/ui/brand";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "./i18n";
+import { messages as statusMessages, statusText } from "@/src/widgets/claude-status";
 
-/** 설정: 예시 코드 언어 · 화면 테마 · Claude Code 연결 상태 · 데이터 위치. */
+/** 설정: 언어 · 예시 코드 언어 · 화면 테마 · Claude Code 연결 상태 · 데이터 위치. */
 export function SettingsPage() {
+  const t = useT(messages);
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
-      <PageHeader title="설정" />
-      <Section title="학습">
+      <PageHeader title={t.settings} />
+      <Section title={t.sectionLearning}>
         <LearningSettingsForm />
       </Section>
-      <Section title="고급">
+      <Section title={t.sectionAdvanced}>
         <List>
           <ListRow
             href="/settings/prompts"
             linkAs={Link}
             leading={<ScrollText />}
-            title="강의 프롬프트"
-            meta="강의를 만드는 지시문을 단계별로 보고 고쳐요"
+            title={t.prompts}
+            meta={t.promptsMeta}
           />
           <ListRow
             href={`${PUNISHER_API_BASE}/export`}
             leading={<Download />}
-            title="데이터 내보내기"
-            meta="강의·진도·기록을 파일 하나로 받아요"
+            title={t.export}
+            meta={t.exportMeta}
           />
         </List>
       </Section>
-      <Section title="화면">
+      <Section title={t.sectionScreen}>
         <ThemeSelect className="w-fit" />
       </Section>
-      <Section title="Claude Code 연결">
+      <Section title={t.sectionClaude}>
         <ClaudeStatusPanel />
       </Section>
-      <Section title="정보">
+      <Section title={t.sectionAbout}>
         <p className="flex items-center gap-2 text-sm text-fg-secondary">
           <PunisherLogo size={20} />
           <span>
@@ -54,10 +58,13 @@ export function SettingsPage() {
 }
 
 function ClaudeStatusPanel() {
+  const t = useT(messages);
+  const ts = useT(statusMessages);
   const status = useAppStatus();
   if (status.isLoading) { return <Skeleton variant="block" className="h-20" />; }
-  if (!status.data) { return <p className="text-sm text-danger">상태를 불러오지 못했어요.</p>; }
-  const { claude, message, dataDir, appVersion } = status.data;
+  if (!status.data) { return <p className="text-sm text-danger">{t.statusLoadFailed}</p>; }
+  const { claude, dataDir, appVersion } = status.data;
+  const { message } = statusText(ts, claude.code, status.data.message);
   const ok = !claude.code;
 
   return (
@@ -69,21 +76,19 @@ function ClaudeStatusPanel() {
           <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />
         )}
         <span className="font-medium text-fg">
-          {ok ? "연결됨 — 강의 생성·질문에 내 Claude Code 계정을 사용해요." : message}
+          {ok ? t.connected : message}
         </span>
       </p>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-fg-secondary">
         <dt>Claude Code</dt>
-        <dd className="text-fg">{claude.installed ? claude.version || "설치됨" : "설치되지 않음"}</dd>
-        <dt>로그인</dt>
-        <dd className="text-fg">{claude.loggedIn === null ? "확인 불가(구버전)" : claude.loggedIn ? "됨" : "안 됨"}</dd>
-        <dt>진행 중 생성</dt>
-        <dd className="text-fg">
-          {claude.active}개{claude.queued > 0 ? ` · 대기 ${claude.queued}개` : ""}
-        </dd>
-        <dt>데이터 위치</dt>
+        <dd className="text-fg">{claude.installed ? claude.version || t.installed : t.notInstalled}</dd>
+        <dt>{t.login}</dt>
+        <dd className="text-fg">{claude.loggedIn === null ? t.loginUnknown : claude.loggedIn ? t.loggedIn : t.loggedOut}</dd>
+        <dt>{t.activeJobs}</dt>
+        <dd className="text-fg">{t.activeCount(claude.active, claude.queued)}</dd>
+        <dt>{t.dataDir}</dt>
         <dd className="break-all font-mono text-xs text-fg">{dataDir}</dd>
-        <dt>Punisher 버전</dt>
+        <dt>{t.version}</dt>
         <dd className="text-fg">{appVersion}</dd>
       </dl>
     </div>

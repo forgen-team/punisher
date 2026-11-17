@@ -32,7 +32,7 @@ func followupMarkup(link, slug string) string {
 
 func threeConcepts(t *testing.T, s *Service, user string) (a, b, c string) {
 	t.Helper()
-	catalog, err := s.Store.ConceptCatalog(context.Background(), user)
+	catalog, err := s.Store.ConceptCatalog(context.Background(), user, "ko")
 	if err != nil || len(catalog) < 3 {
 		t.Fatalf("catalog: %d %v", len(catalog), err)
 	}

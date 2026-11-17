@@ -4,10 +4,13 @@ import { Button, Field, FieldInput } from "@/src/shared/ui/kit";
 import { useCreateGoal } from "@/src/entities/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { ConceptCombobox } from "../concept-combobox";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 
 /** 새 목표: 이름 + 목표 개념(복수). */
 export function GoalForm() {
   const create = useCreateGoal();
+  const t = useT(messages);
   const [title, setTitle] = useState("");
   const [targets, setTargets] = useState<string[]>([]);
 
@@ -27,15 +30,15 @@ export function GoalForm() {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
-      <Field label="목표 이름">
+      <Field label={t.goalName}>
         <FieldInput
           value={title}
           maxLength={200}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="예: Pod 장애 이해"
+          placeholder={t.goalNamePlaceholder}
         />
       </Field>
-      <ConceptCombobox label="목표 개념" value={targets} onChange={setTargets} />
+      <ConceptCombobox label={t.targetConcepts} value={targets} onChange={setTargets} />
       <Button
         type="submit"
         variant="secondary"
@@ -43,7 +46,7 @@ export function GoalForm() {
         disabled={!title.trim() || targets.length === 0}
         className="self-start"
       >
-        목표 추가
+        {t.addGoal}
       </Button>
       <div aria-live="polite">
         <InlineError error={create.error} />

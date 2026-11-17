@@ -39,6 +39,7 @@ func (s *Service) Today(ctx context.Context, userID string, limit int) (learning
 		return learning.TodayResult{}, err
 	}
 	in := todayInput(data, limit)
+	in.Locale = st.Locale
 	in.Review = learning.ReviewInput{Counts: data.Review, ReviewMinutes: st.ReviewMinutes, Grader: s.reviewGrader(userID, st)}
 	res := learning.BuildToday(in)
 	// 이미 만든 강의가 있는 추천은 그 강의의 계산 시간을 보인다(없으면 기본값) — 세션 합계와 같은 기준.
@@ -65,7 +66,7 @@ func (s *Service) recommendedLectureMinutes(ctx context.Context, userID string, 
 			}
 			continue
 		}
-		lec, err := s.Store.PublishedLectureCovering(ctx, userID, item.ConceptID, plan.Depth, plan.ObjectiveIDs)
+		lec, err := s.Store.PublishedLectureCovering(ctx, userID, item.ConceptID, plan.Depth, plan.ObjectiveIDs, plan.Language, store.LangPrefer)
 		if err != nil {
 			if !errors.Is(err, store.ErrNotFound) {
 				logf("today minutes lecture %s: %v", item.ConceptID, err)

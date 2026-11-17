@@ -2,7 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChartData } from "../../lib/blockData";
 import { barRect, formatTick, formatValue, layoutChart, linePath } from "../../lib/chartScale";
-import { BLOCK_LABELS } from "./constants";
+import { useT } from "@/src/shared/i18n";
+import { blockMessages } from "../../i18n";
 
 // 색은 토큰만 쓴다. 색만으로 구분하지 않도록 선 모양(점선 패턴)도 시리즈마다 다르게 둔다.
 const SERIES_COLORS = [
@@ -57,10 +58,11 @@ function Legend({ data }: { data: ChartData }) {
 
 /** 스크린 리더용 대체 표(시각적으로 숨김). 표는 내용 폭 아래로 줄지 않으므로 sr-only 는 감싼 div 에 둔다. */
 function ChartTable({ data }: { data: ChartData }) {
+  const t = useT(blockMessages);
   return (
     <div className="sr-only">
       <table>
-        <caption>{data.title || BLOCK_LABELS.chart}</caption>
+        <caption>{data.title || t.chart}</caption>
         <thead>
           <tr>
             <th scope="col">{data.x.label}</th>

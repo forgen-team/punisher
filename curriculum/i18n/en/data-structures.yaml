@@ -1,0 +1,176 @@
+# English overlay for ../../data-structures.yaml — same concept ids and objective order.
+# Objectives stay keyed by their Korean ordinal; only display/prompt text comes from here.
+area: data-structures
+title: Data Structures and Algorithms
+concepts:
+  ds.complexity:
+    name: Time and Space Complexity
+    summary: Complexity describes how cost grows as the input gets larger. It explains why code that was fast on small data suddenly slows down as the data grows.
+    objectives:
+      - Explain how O(1), O(log n), O(n), O(n log n), and O(n²) grow differently as data size increases.
+      - Explain how nested loops and lookups inside loops increase complexity.
+      - Explain cases where constant factors and actual data size matter more than Big-O.
+    practical_cases:
+      - A deduplication routine that was fast on 1,000 items takes several seconds on 100,000 items.
+  ds.array:
+    name: Array
+    summary: An array stores elements of the same size in contiguous memory, so any element can be reached directly by its index. A dynamic array grows by copying its contents into a larger space when it runs out of room.
+    objectives:
+      - Explain why index access is O(1), based on how memory is laid out.
+      - Explain why inserting or deleting in the middle is expensive.
+      - Explain how a dynamic array copies its elements when it grows its capacity, and the benefit of reserving capacity in advance.
+    practical_cases:
+      - Reducing reallocations by setting capacity up front before appending to a Go slice.
+  ds.linked-list:
+    name: Linked List
+    summary: A linked list is a structure in which each node points to the next node. Insertion and deletion are cheap, but random access and cache efficiency are poor. In practice it is used for specific purposes such as LRU caches.
+    objectives:
+      - Compare the access and insertion costs of arrays and linked lists.
+      - Explain cases where a linked list is slower in practice even though it looks better in theory.
+    practical_cases:
+      - Implementing an LRU cache with a hash map and a doubly linked list.
+  ds.hash-table:
+    name: Hash Table
+    summary: A hash table uses a hash function to place keys into buckets, giving O(1) lookups on average. Before using one, you should understand collisions, rehashing costs, and the fact that it has no ordering.
+    objectives:
+      - Explain how hash functions, buckets, and collision handling work.
+      - Explain average-case O(1), the worst case, and the cost of rehashing.
+      - Explain when to replace a list search with a hash lookup to reduce complexity.
+    practical_cases:
+      - Comparing two lists with hash lookups instead of a nested loop, improving the cost from O(n²) to O(n).
+  ds.stack:
+    name: Stack
+    summary: A stack is a structure where the last item pushed is the first one popped. It suits problems that require returning to the most recent state, such as function calls, undo, and bracket matching.
+    objectives:
+      - Explain LIFO behavior and the push and pop operations.
+      - Explain how the call stack handles function calls and recursion, and explain stack overflow.
+      - Explain why undo functionality maps naturally onto a stack.
+    practical_cases:
+      - Rewriting a tree traversal that causes a stack overflow through deep recursion as an iterative loop.
+  ds.queue:
+    name: Queue
+    summary: A queue processes items in the order they arrive. It is the basic structure behind job queues, request buffers, and breadth-first search.
+    objectives:
+      - Explain FIFO behavior and the enqueue and dequeue operations.
+      - Explain how queue length relates to latency in a job queue.
+      - Compare, using examples, why stacks and queues use different orderings.
+    practical_cases:
+      - Interpreting a situation where a queue grows without limit because items arrive faster than they are processed.
+  ds.ring-buffer:
+    name: Deques and Ring Buffers
+    summary: A ring buffer uses a fixed-size array in a circular way to implement a queue without memory allocation. It is used for log buffers and for keeping the most recent N items.
+    objectives:
+      - Explain how a ring buffer manages its head and tail indexes.
+      - Explain the difference between overwrite and reject policies when the buffer is full.
+    practical_cases:
+      - A metrics buffer that keeps only the latencies of the most recent 1,000 requests.
+  ds.tree:
+    name: Tree
+    summary: A tree represents a hierarchy through parent-child relationships. It models the structure of screens and data, such as file systems, the DOM, org charts, and categories.
+    objectives:
+      - Explain terms such as root, node, leaf, and depth, and the properties of trees.
+      - Explain the differences between pre-order, post-order, and level-order traversal and what each is used for.
+      - Explain the pros and cons of different ways to store hierarchical data in a database, such as parent references.
+    practical_cases:
+      - Expanding a category tree recursively to render it on screen.
+  ds.binary-search-tree:
+    name: Binary Search Tree
+    summary: A binary search tree keeps smaller values on the left and larger values on the right, so it stays in sorted order. When it loses balance, it becomes as slow as a linked list.
+    objectives:
+      - Explain why the cost of search and insertion is proportional to the tree's height.
+      - Explain how sorted input skews the tree to one side.
+    practical_cases:
+      - Choosing a sorted tree instead of a hash map for data that needs range queries.
+  ds.balanced-tree:
+    name: Balanced Tree
+    summary: A balanced tree uses rotations during insertion and deletion to keep its height at O(log n). The sorted maps in language standard libraries use this structure.
+    objectives:
+      - Explain how keeping the tree balanced guarantees worst-case performance.
+      - Explain how to choose between a sorted map (such as TreeMap) and a hash map.
+    practical_cases:
+      - Keeping time-ordered events sorted while running range queries over them.
+  ds.b-tree:
+    name: B-Tree
+    summary: A B-Tree is a balanced tree that stores many keys in each node to keep its height low, which suits access in units of disk pages. Most database indexes use this structure.
+    objectives:
+      - Explain why storing more keys per node reduces the number of disk accesses.
+      - Explain how linked leaf nodes in a B+Tree speed up range queries.
+      - Estimate the cost of an index lookup from the tree's height.
+    practical_cases:
+      - Explaining why an index lookup takes only a few page reads, even on a table with 100 million rows.
+  ds.heap-priority-queue:
+    name: Heaps and Priority Queues
+    summary: A heap is a structure that removes the smallest (or largest) value in O(log n). It is used for schedulers, timers, and finding the top K items.
+    objectives:
+      - Explain why heap insertion and deletion are O(log n).
+      - Explain the advantage of solving top-K problems with a heap instead of sorting.
+      - Explain the starvation problem that can occur when scheduling jobs with a priority queue.
+    practical_cases:
+      - An aggregation that selects only the 100 highest scores out of millions of records.
+  ds.graph:
+    name: Graph
+    summary: A graph represents relationships with nodes and edges. Service dependencies, task ordering, social connections, and this learning map itself are all graphs.
+    objectives:
+      - Distinguish directed, undirected, and weighted graphs, and DAGs.
+      - Explain the pros and cons of adjacency list and adjacency matrix representations.
+      - Explain how to model task dependencies as a graph.
+    practical_cases:
+      - Drawing microservice call relationships as a graph to find circular dependencies.
+  ds.graph-traversal:
+    name: Graph Traversal (BFS and DFS)
+    summary: BFS uses a queue to visit the nearest nodes first, while DFS uses a stack (or recursion) to go deep first. Shortest paths, connectivity checks, and cycle detection are all built on these two methods.
+    objectives:
+      - Explain how BFS and DFS work by relating them to queues and stacks.
+      - Explain why BFS is used to find shortest paths in unweighted graphs.
+      - Explain what goes wrong in a cyclic graph when visited nodes are not marked.
+    practical_cases:
+      - Calculating every permission a user holds through inherited permission groups.
+  ds.topological-sort:
+    name: Topological Sort
+    summary: A topological sort finds an order for a DAG that respects every dependency between nodes. It is used to decide build order, migration order, and the execution order of job pipelines.
+    objectives:
+      - Explain the in-degree-based topological sort process.
+      - Explain why a topological sort is impossible when the graph has a cycle, and how to detect the cycle.
+    practical_cases:
+      - A monorepo tool that decides package build order from a dependency graph.
+  ds.sorting:
+    name: Sorting
+    summary: Comparison sorts cannot do better than O(n log n), and whether a sort is stable decides the result when sorting by multiple criteria. In practice, knowing each algorithm's characteristics and choosing the right one matters more than implementing it yourself.
+    objectives:
+      - Explain the O(n log n) limit of comparison sorting and the characteristics of the common algorithms.
+      - Explain situations that require a stable sort.
+      - Explain the concept of external sorting for data that cannot all fit in memory.
+    practical_cases:
+      - Sorting by date and then sorting by status breaks the date order.
+  ds.binary-search:
+    name: Binary Search
+    summary: Binary search finds an item in sorted data in O(log n) by halving the search range at each step. Boundary-condition mistakes are common. It is also used to search over a range of possible answers.
+    objectives:
+      - Explain why binary search requires sorted data and why it costs O(log n).
+      - Explain how to handle lower bound and upper bound boundaries.
+    practical_cases:
+      - How git bisect finds the commit that introduced a bug.
+  ds.trie:
+    name: Trie
+    summary: A trie stores strings as paths of individual characters, which makes prefix search fast. It is used for autocomplete and routing tables.
+    objectives:
+      - Explain the structure of a trie and the cost of a prefix search.
+      - Explain why HTTP routers use tree structures for path matching.
+    practical_cases:
+      - Quickly finding autocomplete suggestions for a search box by prefix.
+  ds.bloom-filter:
+    name: Bloom Filter
+    summary: A Bloom filter uses little memory to tell that an item is "definitely not present." It allows false positives when it answers "possibly present." It is used to filter out expensive lookups before they run.
+    objectives:
+      - Explain how it works using multiple hash functions and a bit array.
+      - Explain why it can return false positives but never returns false negatives.
+    practical_cases:
+      - A crawler that checks whether it has already seen a URL among hundreds of millions of URLs, using only a few MB of memory.
+  ds.amortized-analysis:
+    name: Amortized Analysis
+    summary: An operation is called amortized O(1) when its average cost across all operations is low, even if a few of them are expensive. Dynamic array append and hash table rehashing are typical examples.
+    objectives:
+      - Explain why dynamic array append is amortized O(1).
+      - Explain how the latency of individual requests can spike even when the average cost is low.
+    practical_cases:
+      - p99 latency spikes at the moment a large map is rehashed.

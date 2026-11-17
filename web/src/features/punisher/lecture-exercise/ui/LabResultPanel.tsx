@@ -4,10 +4,12 @@ import { describePunisherError, LAB_MAX_OUTPUT_BYTES } from "@/src/shared/api/pu
 import { blockContentHash } from "../lib/contentHash";
 import { findAttempt, useExerciseContext } from "../model/ExerciseContext";
 import { AttemptFeedback } from "./AttemptFeedback";
-import { EXERCISE_LABELS } from "./constants";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 
 /** 실습 결과 붙여 넣기 → 튜터가 읽어 준다. 붙여 넣은 출력은 지울 수 있다. */
 export function LabResultPanel({ anchor, text: labText }: { anchor: string; text: string }) {
+  const t = useT(messages);
   const ctx = useExerciseContext();
   const [output, setOutput] = useState("");
   if (!ctx || !anchor || ctx.labOs === "none") { return null; }
@@ -20,12 +22,12 @@ export function LabResultPanel({ anchor, text: labText }: { anchor: string; text
     return (
       <div className="mt-2">
         <pre className="max-h-48 overflow-auto whitespace-pre rounded-sm bg-canvas-subtle px-2 py-1.5 text-xs text-fg-secondary">
-          <span className="sr-only">{EXERCISE_LABELS.labOutput}: </span>
+          <span className="sr-only">{t.labOutput}: </span>
           {attempt.answer}
         </pre>
         <AttemptFeedback attempt={attempt} />
         <Button size="sm" variant="ghost" className="mt-1" onClick={() => ctx.remove(attempt.id)}>
-          {EXERCISE_LABELS.labClear}
+          {t.labClear}
         </Button>
       </div>
     );
@@ -34,8 +36,8 @@ export function LabResultPanel({ anchor, text: labText }: { anchor: string; text
   return (
     <div className="mt-2 flex flex-col gap-2">
       <Textarea
-        aria-label={EXERCISE_LABELS.labOutput}
-        placeholder={EXERCISE_LABELS.labPlaceholder}
+        aria-label={t.labOutput}
+        placeholder={t.labPlaceholder}
         rows={3}
         value={output}
         onChange={(event) => setOutput(event.target.value)}
@@ -49,9 +51,9 @@ export function LabResultPanel({ anchor, text: labText }: { anchor: string; text
           disabled={!output.trim() || busy}
           onClick={() => void ctx.submit({ anchor, contentHash: hash, answer: output }).catch(() => undefined)}
         >
-          {EXERCISE_LABELS.labSubmit}
+          {t.labSubmit}
         </Button>
-        {tooLong && <span className="text-xs text-fg-muted">앞 8KB만 읽어요</span>}
+        {tooLong && <span className="text-xs text-fg-muted">{t.labTooLong}</span>}
       </div>
       {error != null && <p role="alert" className="text-sm text-danger">{describePunisherError(error)}</p>}
     </div>

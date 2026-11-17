@@ -1,6 +1,8 @@
 
 import * as React from "react";
 import { cn } from "../lib/utils";
+import { useT } from "@/src/shared/i18n";
+import { kitMessages } from "../lib/messages";
 import { IconButton } from "./button";
 
 export interface MenuItem {
@@ -38,7 +40,9 @@ function MoreIcon() {
  * Menu — 오버플로("⋯") 메뉴. role=menu/menuitem, ↑↓/Home/End, Esc 닫기 후 트리거로 포커스 복귀.
  * 행 안의 보조 동작은 여기에 모은다(행당 노출 버튼 최소화).
  */
-export function Menu({ items, label = "더 보기", align = "end", icon, className }: MenuProps) {
+export function Menu({ items, label, align = "end", icon, className }: MenuProps) {
+  const t = useT(kitMessages);
+  const triggerLabel = label ?? t.more;
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
@@ -104,7 +108,7 @@ export function Menu({ items, label = "더 보기", align = "end", icon, classNa
     <div ref={rootRef} className={cn("relative inline-flex", className)}>
       <IconButton
         ref={triggerRef}
-        aria-label={label}
+        aria-label={triggerLabel}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
@@ -117,7 +121,7 @@ export function Menu({ items, label = "더 보기", align = "end", icon, classNa
         <div
           id={menuId}
           role="menu"
-          aria-label={label}
+          aria-label={triggerLabel}
           className={cn(
             "absolute top-full z-panel mt-1 min-w-[180px] overflow-hidden rounded-lg border border-line p-1",
             "bg-canvas-elevated shadow-overlay animate-fade-in motion-reduce:animate-none",

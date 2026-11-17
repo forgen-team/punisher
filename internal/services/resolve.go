@@ -136,7 +136,8 @@ func (s *Service) Resolve(ctx context.Context, userID, query string, keyFn func(
 }
 
 func (s *Service) resolveWithLLM(ctx context.Context, userID, apiKey string, res *Resolution) error {
-	catalog, err := s.Store.ConceptCatalog(ctx, userID)
+	lang := s.Store.LocaleFor(ctx, userID) // 제안 개념은 사용자 언어로 지도에 오른다(i18n §1.2)
+	catalog, err := s.Store.ConceptCatalog(ctx, userID, lang)
 	if err != nil {
 		return err
 	}
@@ -148,7 +149,7 @@ func (s *Service) resolveWithLLM(ctx context.Context, userID, apiKey string, res
 	}
 	var u usage
 	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{
-		Model: s.Cfg.FastModel, System: s.UserPrompts(ctx, userID).Text(prompts.BlockResolveSystem, nil),
+		Model: s.Cfg.FastModel, System: prompts.WithOutputLanguage(s.UserPrompts(ctx, userID).Text(prompts.BlockResolveSystem, nil), lang),
 		User: prompts.Resolve(res.Query, candidates, curriculum.Areas), MaxTokens: 1500, Timeout: 60 * time.Second,
 	}, &u)
 	if err == nil {
@@ -185,7 +186,7 @@ func (s *Service) fillPath(ctx context.Context, userID string, res *Resolution) 
 // GoalPath returns the prerequisite chain to target with user states and the
 // starting point.
 func (s *Service) GoalPath(ctx context.Context, userID, target string) ([]models.PathStep, string, error) {
-	catalog, err := s.Store.ConceptCatalog(ctx, userID)
+	catalog, err := s.Store.ConceptCatalog(ctx, userID, s.Store.LocaleFor(ctx, userID))
 	if err != nil {
 		return nil, "", err
 	}

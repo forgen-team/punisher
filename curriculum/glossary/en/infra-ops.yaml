@@ -1,0 +1,116 @@
+# English overlay for ../infra-ops.yaml — same ids.
+area: infra-ops
+concepts:
+  infra.backup-and-dr: Disaster recovery means setting the acceptable data loss (RPO) and the target recovery time (RTO), then preparing the procedures. Only a restore drill shows whether a backup actually works. Configs, secrets and encryption keys must be in scope too.
+  infra.ci-cd: 'CI runs builds and tests automatically on every code change. CD deploys verified artifacts through a consistent process. Don''t rebuild for each environment: promote one image from staging to production to prevent version-mismatch incidents.'
+  infra.config-and-secrets: Settings and secrets stay out of the image and are injected at runtime from ConfigMaps and Secrets as env vars or files, so one image serves multiple environments. Env var values change only on Pod restart, and Secrets are only encoded by default.
+  infra.container: A container is a process that runs on the host kernel, isolated by namespaces and cgroups. Packaging the app and its runtime as an image narrows the gap between dev machines and servers. When the main process exits, the container stops too.
+  infra.container-image: A container image is a read-only package of filesystem layers and run configuration. A tag can be repointed to a different image. To run the same version on every server, pin it by digest, the hash of its contents.
+  infra.container-isolation: Container isolation uses namespaces to limit what a process can see and cgroups to limit how much it can use. Runtimes like containerd and runc set this up. Because the kernel is shared, one setting such as privileged mode can expose the host.
+  infra.container-resource-limits: Resource limits use cgroups to cap the memory and CPU a container can use. Going over the memory limit makes the kernel kill the process, which leaves exit code 137. Hitting the CPU limit doesn't kill it; responses just slow down.
+  infra.deployment: A Deployment declares a Pod template and a replica count and keeps that count through a ReplicaSet. Delete a bad Pod and a new one from the same template appears right away. Changing the template gradually rolls Pods over to a new ReplicaSet.
+  infra.deployment-strategies: A deployment strategy is how a new version is exposed to users. Blue-green switches between two environments at once, and canary tests on part of the traffic first. Feature flags separate deploy from release, so you can turn off just the faulty feature.
+  infra.distributed-tracing: Distributed tracing records the spans of one request as it passes through services and links them into a single trace. When an API is slow, it shows which call in which service took the time. It also shows whether sequential calls are the bottleneck.
+  infra.dockerfile: A Dockerfile is a recipe that builds an image by layering file copies and commands on a base image. Instruction order decides layer cache reuse, which affects build speed. Multi-stage builds leave out build tools, shrinking image size and attack surface.
+  infra.incident-response: 'Incident response is an organized process: assess impact, mitigate, analyze the cause, prevent recurrence. Blameless postmortems record the timeline and cause. Runbooks of checks and actions for each symptom cut response time next time.'
+  infra.infrastructure-as-code: Infrastructure as code declares servers, networks, databases and other infrastructure in code and applies it with plan and apply. Changes become reviewable, traceable and reproducible. Manual console edits cause drift between code and actual state.
+  infra.k8s-resources: Requests are what the scheduler reserves when placing a Pod on a node. Limits are caps a container can't exceed. Over the memory limit means OOMKilled; at the CPU limit, throttling. Their mix (QoS class) also affects eviction order under node memory pressure.
+  infra.k8s-service-networking: A Service gives the Pods its label selector picks a stable name and virtual IP, and sends traffic only to ready Pods. Ingress routes external HTTP requests to Services by host and path. A single selector typo can leave no target Pods and cause 503s.
+  infra.kubernetes: Kubernetes is a container orchestrator whose controllers keep actual state matching the desired state you declare. It automates placement, restarts, scaling and service wiring across nodes. If a node dies, controller-managed Pods are recreated on other nodes.
+  infra.kubernetes-architecture: Kubernetes consists of a control plane (API server, etcd, scheduler, controller manager) plus a kubelet on each node. kubectl requests go through the API server and are stored in etcd. If the control plane stops, Pods that are already running keep running.
+  infra.metrics: Metrics are numeric time series such as request count, error rate and latency. Averages hide slow requests. So dashboards show p95/p99 percentiles plus rate, errors and duration (RED) to track trends and spot anomalies.
+  infra.observability: Observability is how well you can infer a system's internal state from external signals like logs, metrics and traces. In an incident, metrics show when and how widely, traces show the slow segment, logs show the exact error. You can answer questions you didn't plan for.
+  infra.pod: 'A Pod is the smallest unit Kubernetes schedules: one or more containers that share network and volumes. Pods are disposable, and a recreated Pod gets a new IP and new local files. State you need to keep belongs in external storage or volumes.'
+  infra.pod-lifecycle: 'The Pod lifecycle has phases (Pending, Running, Succeeded, Failed) and per-container states (Waiting, Running, Terminated). When told a Pod died, check these and the reason first: is it waiting to schedule, an image problem, or a restart loop?'
+  infra.probes: Probes are periodic kubelet checks on a container. A failed liveness probe means a restart, a failed readiness probe means no traffic, and startup holds other checks until startup ends. A liveness probe that checks a DB can restart every Pod over one DB delay.
+  infra.reading-failure-state: 'Reading failure state means lining up three sources in time order to narrow down causes: the Pod''s current status, events showing what the cluster did, and app logs. A FailedScheduling event with no logs points to a resource shortage, not an app bug.'
+  infra.recovery-vs-root-cause: Recovery is mitigation that restores service, like a restart or rollback. Root-cause fixing stops the same failure from coming back. Restarts can erase evidence such as memory state and logs, so save evidence first and pick the metrics to check after changes.
+  infra.restart-policy-crashloop: The restart policy decides whether kubelet reruns a container that has exited. Repeated failures get growing restart delays and show as CrashLoopBackOff. Restarts hide the symptoms, so look for the cause in the previous container's logs and last exit code.
+  infra.rolling-update: A rolling update scales down old Pods as new ones become ready, replacing them without downtime. If readiness probes and SIGTERM handling don't line up, 502s can occur during a deploy. If problems arise, roll back to the previous ReplicaSet.
+  infra.slo-alerting: An SLI measures user experience, like success rate or latency; an SLO is its target; an SLA is an external contract. Alerting on SLO breaches and error budget burn rate, not cause metrics like CPU, fires mainly when users are affected and cuts alert fatigue.
+  infra.structured-logging: Structured logging writes logs as key-value records such as JSON instead of sentences. You can search and aggregate by field. Logging a request ID lets you follow one request's logs across multiple services.
+terms:
+  g.container-registry:
+    name: Container registry
+    gloss: A container registry is a server that stores and distributes images. You push built images there, and each server or node pulls and runs them. Without access rights, the pull fails and the container can't run.
+  g.image-digest:
+    name: Image digest
+    gloss: A digest is a hash computed from an image's contents; the same contents always give the same value. Unlike a tag, it can't be repointed to another image. It's used to pin the exact version deployed to production.
+  g.base-image:
+    name: Base image
+    gloss: A base image is the starting image set with FROM in a Dockerfile. Your choice determines image size and which tools are included. The number of security vulnerabilities also varies a lot depending on the base image.
+  g.entrypoint-cmd:
+    name: ENTRYPOINT and CMD
+    gloss: ENTRYPOINT and CMD are Dockerfile instructions that set the command run when a container starts. In shell form, the shell becomes PID 1 and the app may not receive SIGTERM. So exec form, written as a JSON array, is recommended.
+  g.dockerignore:
+    name: .dockerignore
+    gloss: .dockerignore lists files to leave out of the build context when building an image. Excluding node_modules, .git and .env speeds up builds. It also keeps secrets from ending up in the image.
+  g.docker-compose:
+    name: Docker Compose
+    gloss: Docker Compose declares the images, ports, volumes and networks of multiple containers in one YAML file and runs them together. It's often used to start an app, DB and cache locally. It's also used for single-server deploys.
+  g.pid-1:
+    name: PID 1
+    gloss: PID 1 is the first process started in a container; when it exits, the container exits too. It must handle termination signals and clean up child processes. Wrapping it in a shell script easily breaks shutdown handling.
+  g.graceful-shutdown:
+    name: Graceful shutdown
+    gloss: Graceful shutdown means that on a termination signal, the app refuses new requests, finishes in-flight ones, closes connections and exits. Without it, in-flight requests can be cut off during deploys or when scaling down Pods.
+  g.prestop-hook:
+    name: preStop hook
+    gloss: A preStop hook is a command Kubernetes runs just before sending SIGTERM to a container. A short sleep here gives the Pod time to leave the Service's targets. It's used to reduce 502s during rolling updates.
+  g.cpu-throttling:
+    name: CPU throttling
+    gloss: CPU throttling happens when a container uses up its allotted CPU time and is paused until the next period. The process doesn't die, but latency spikes. It can drive up tail latency even when average CPU usage looks low.
+  g.privileged-container:
+    name: Privileged container
+    gloss: A privileged container runs with access to host devices and most kernel capabilities allowed. If it's compromised, the host can be taken over too. Don't use one unless it's truly needed.
+  g.reconciliation-loop:
+    name: Reconciliation loop
+    gloss: A reconciliation loop is a controller continually comparing declared desired state with actual state and closing the gap. That's why hand edits to resources owned by a higher-level controller revert. So make changes in the declaration itself.
+  g.manifest:
+    name: Manifest
+    gloss: A manifest is a YAML or JSON file that describes the desired state of a Kubernetes resource. You apply it to the cluster with kubectl apply. Keeping manifests in Git lets you review and revert deployment changes.
+  g.label-selector:
+    name: Labels and selectors
+    gloss: Labels are key-value tags attached to resources; selectors are rules that pick resources by label. Services and Deployments use them to find the Pods they manage. If labels don't match, traffic doesn't reach the Pods.
+  g.endpoints:
+    name: Endpoints
+    gloss: Endpoints are the list of ready Pod IPs and ports that a Service actually sends traffic to. If a Service doesn't respond and this list is empty, suspect a selector mismatch or failing readiness checks.
+  g.sidecar:
+    name: Sidecar
+    gloss: A sidecar is a container that runs beside the main app container in the same Pod and handles side tasks such as log collection or proxying. Because it shares network and volumes, it adds features without changing app code.
+  g.init-container:
+    name: Init container
+    gloss: Init containers run in order before the app containers and must all complete successfully. They handle setup work or wait for dependent services. If one fails, the Pod stays in Init and the app doesn't start.
+  g.volume:
+    name: Volume
+    gloss: A volume is storage outside the container filesystem, so data survives container restarts. A PersistentVolume treats storage that persists regardless of Pod lifetime as a cluster resource. Data that must outlive Pod replacement goes here.
+  g.statefulset:
+    name: StatefulSet
+    gloss: A StatefulSet is a controller that gives each Pod a fixed name and its own volume. It's used for workloads such as databases or message brokers, where each instance must keep its identity and data.
+  g.daemonset:
+    name: DaemonSet
+    gloss: A DaemonSet is a controller that runs one Pod on every node, or on each node that matches given criteria. It's used to deploy programs that need one copy per node, such as log collectors or monitoring agents.
+  g.job-cronjob:
+    name: Job and CronJob
+    gloss: A Job runs a finite task in Pods, retries on failure and tracks completion; a CronJob creates Jobs on a schedule. They're used to run batch aggregation or periodic cleanup in the cluster instead of server cron.
+  g.hpa:
+    name: HPA
+    gloss: HPA automatically increases or decreases the number of Pods based on metrics such as CPU utilization. CPU utilization is calculated against requests, so requests that don't match real usage make scaling late or excessive.
+  g.eviction:
+    name: Eviction
+    gloss: Eviction is kubelet forcibly removing some Pods when a node runs low on memory or disk. Pods can disappear as Evicted even when the app is fine. When that happens, check the requests settings and node headroom together.
+  g.helm:
+    name: Helm
+    gloss: Helm packages Kubernetes manifests into charts and installs or upgrades them per environment by changing only the values. It's used to install DBs or monitoring tools from public charts and to template your own app deploys.
+  g.metric-types:
+    name: Counter, gauge, histogram
+    gloss: 'These are metric types: a counter only increases, a gauge is a current value that rises and falls, a histogram counts values into buckets. Request count is a counter and memory usage a gauge; latency percentiles come from histograms.'
+  g.trace-sampling:
+    name: Trace sampling
+    gloss: Sampling stores traces for only some requests rather than all of them. It cuts storage cost but can miss rare error requests. So it's paired with rules that keep errors and slow requests first.
+  g.config-drift:
+    name: Configuration drift
+    gloss: Configuration drift is when actual infrastructure state no longer matches what code declares, mostly from settings changed directly in a console or on a server. These get overwritten on the next apply or keep you from rebuilding the environment.
+  g.mttr:
+    name: MTTR
+    gloss: MTTR is the average time from when an incident starts until service is recovered. Splitting it into detection, diagnosis and remediation shows where the time went. It's also used to measure the effect of better alerts and runbooks.

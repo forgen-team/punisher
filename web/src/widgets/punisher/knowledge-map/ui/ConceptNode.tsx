@@ -10,6 +10,8 @@ import {
   type MapNodeState,
 } from "@/src/entities/punisher";
 import { NODE_HEIGHT, nodeWidth } from "../lib/elkLayout";
+import { messages } from "../i18n";
+import { useT } from "@/src/shared/i18n";
 
 export interface ConceptNodeData extends Record<string, unknown> {
   name: string;
@@ -35,6 +37,7 @@ export type ConceptFlowNode = Node<ConceptNodeData, "concept">;
 function ConceptNodeImpl({ id, data }: NodeProps<ConceptFlowNode>) {
   const style = MAP_STATE_STYLES[data.displayState];
   const recommended = data.displayState === "recommended";
+  const t = useT(messages);
   return (
     <>
       <Handle type="target" position={Position.Left} className="!size-1.5 !border-0 !bg-line-strong" />
@@ -42,7 +45,7 @@ function ConceptNodeImpl({ id, data }: NodeProps<ConceptFlowNode>) {
         type="button"
         onClick={() => data.onSelect(id)}
         aria-pressed={data.selected}
-        aria-label={`${data.name}, ${MAP_STATE_LABELS[data.displayState]}${recommended ? `, 열리는 개념 ${data.unlocks}개` : ""}${data.requested > 0 ? ", 학습 요청됨" : ""}${data.proposed ? ", 제안 개념" : ""}${data.inquiries > 0 ? `, 내 질문 ${data.inquiries}개` : ""}${data.mastered ? ", 숙달" : ""}`}
+        aria-label={`${data.name}, ${MAP_STATE_LABELS[data.displayState]}${recommended ? t.nodeUnlocks(data.unlocks) : ""}${data.requested > 0 ? t.nodeRequested : ""}${data.proposed ? t.nodeProposed : ""}${data.inquiries > 0 ? t.nodeInquiries(data.inquiries) : ""}${data.mastered ? t.nodeMastered : ""}`}
         style={{
           width: nodeWidth(data.depth),
           height: NODE_HEIGHT,
@@ -65,11 +68,11 @@ function ConceptNodeImpl({ id, data }: NodeProps<ConceptFlowNode>) {
         </span>
         <span className="flex w-full items-center gap-1 text-xs text-fg-secondary">
           {data.requested > 0 && (
-            <span className="shrink-0 rounded-sm bg-accent-solid px-1 font-semibold text-accent-on">요청됨</span>
+            <span className="shrink-0 rounded-sm bg-accent-solid px-1 font-semibold text-accent-on">{t.requestedBadge}</span>
           )}
           <span className="min-w-0 truncate">
-            {data.proposed ? "제안 개념" : MAP_STATE_LABELS[data.displayState]}
-            {recommended && data.unlocks > 0 && ` · +${data.unlocks}개 열림`}
+            {data.proposed ? t.proposed : MAP_STATE_LABELS[data.displayState]}
+            {recommended && data.unlocks > 0 && t.nodeUnlocksShort(data.unlocks)}
           </span>
           {data.inquiries > 0 && (
             <span aria-hidden="true" className="ml-auto inline-flex shrink-0 items-center gap-0.5 rounded-sm bg-accent-subtle px-1 font-medium text-accent-text">

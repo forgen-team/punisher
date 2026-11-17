@@ -4,7 +4,8 @@ import { forwardRef, useState } from "react";
 import { Button, Section, buttonVariants } from "@/src/shared/ui/kit";
 import { useBatchMarkKnown } from "@/src/features/punisher/known-onboarding";
 import type { PlacementResult as Placement } from "@/src/shared/api/punisher";
-import { PLACEMENT_LABELS } from "./constants";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 
 export function chapterMapHref(chapterId: string): string {
   return `/map?chapter=${encodeURIComponent(chapterId)}`;
@@ -12,6 +13,7 @@ export function chapterMapHref(chapterId: string): string {
 
 /** 배치 진단 결과 — 맞힌 개념을 이미 앎 후보로 보이고, 고른 것만 확정하면 '이미 앎'으로 표시한다. */
 export const PlacementResult = forwardRef<HTMLElement, { placement: Placement }>(function PlacementResult({ placement }, ref) {
+  const t = useT(messages);
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(placement.candidates.map((c) => c.conceptId)));
   const { run, running, progress } = useBatchMarkKnown({ queueVerify: false });
   const [done, setDone] = useState(false);
@@ -31,9 +33,9 @@ export const PlacementResult = forwardRef<HTMLElement, { placement: Placement }>
   }
 
   return (
-    <Section ref={ref} tabIndex={-1} title={PLACEMENT_LABELS.candidates} className="mt-4 scroll-mt-28 border-b border-line pb-4 outline-none">
+    <Section ref={ref} tabIndex={-1} title={t.placementCandidates} className="mt-4 scroll-mt-28 border-b border-line pb-4 outline-none">
       {placement.candidates.length === 0 ? (
-        <p className="py-3 text-sm text-fg-secondary">{PLACEMENT_LABELS.none}</p>
+        <p className="py-3 text-sm text-fg-secondary">{t.placementNone}</p>
       ) : (
         <ul className="flex flex-col divide-y divide-line">
           {placement.candidates.map((c) => (
@@ -55,18 +57,18 @@ export const PlacementResult = forwardRef<HTMLElement, { placement: Placement }>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {placement.candidates.length > 0 && (
           <Button onClick={confirm} loading={running} disabled={done || picked.size === 0}>
-            {done ? PLACEMENT_LABELS.confirmed : PLACEMENT_LABELS.confirm}
+            {done ? t.placementConfirmed : t.placementConfirm}
           </Button>
         )}
         {placement.chapterId && (
           <Link href={chapterMapHref(placement.chapterId)} className={buttonVariants({ variant: "secondary" })}>
-            {PLACEMENT_LABELS.map}
+            {t.placementMap}
           </Link>
         )}
       </div>
       {failed > 0 && (
         <p role="alert" className="mt-2 text-sm text-danger">
-          {PLACEMENT_LABELS.failed(failed)}
+          {t.placementFailed(failed)}
         </p>
       )}
     </Section>

@@ -1,9 +1,11 @@
 import { Link } from "@/src/shared/lib/router";
 import { PlayCircle } from "lucide-react";
 import { Button, List, ListRow, Menu, cn } from "@/src/shared/ui/kit";
-import { READ_THROUGH_LABEL, groupByParent, isReadThrough, lectureHref } from "@/src/entities/punisher";
+import { groupByParent, isReadThrough, lectureHref, readThroughLabel } from "@/src/entities/punisher";
 import type { Recommendation } from "@/src/shared/api/punisher";
+import { useLocale, useT } from "@/src/shared/i18n";
 import { DeeperGroup } from "@/src/shared/ui/punisher";
+import { messages } from "./i18n";
 import { resumePosition } from "./resumeProgress";
 import type { DismissedLecture } from "./useResumeDismiss";
 
@@ -22,11 +24,13 @@ interface ResumeRowProps {
 
 /** 이어보기 행: 개념 이름 / 강의 제목 / 읽던 부분 · 진행률 · 남은 시간. 누르면 저장된 위치로 이동. */
 function ResumeRow({ item, onDismiss, dismissing }: ResumeRowProps) {
+  const locale = useLocale();
+  const t = useT(messages);
   if (!item.lectureId) { return null; }
   const percent = Math.min(100, Math.max(0, item.percent ?? 0));
   const title = item.conceptName || item.title;
   const subtitle = item.title && item.title !== item.conceptName ? item.title : "";
-  const position = resumePosition(item.anchor);
+  const position = resumePosition(item.anchor, locale);
   return (
     <ListRow
       href={`${lectureHref(item.lectureId)}${item.anchor ? `#pa-${item.anchor}` : ""}`}
@@ -39,13 +43,13 @@ function ResumeRow({ item, onDismiss, dismissing }: ResumeRowProps) {
         <>
           {subtitle && <span className="block whitespace-normal break-keep text-fg-secondary">{subtitle}</span>}
           {position && `${position} · `}
-          {isReadThrough(percent, false) ? READ_THROUGH_LABEL : `${percent}% 읽음 · 약 ${item.estimatedMinutes}분 남음`}
+          {isReadThrough(percent, false) ? readThroughLabel(locale) : t.progress(percent, item.estimatedMinutes)}
         </>
       }
       trailing={
         <Menu
-          label={`${title} 강의 메뉴`}
-          items={[{ key: "dismiss", label: "이어보기에서 제거", disabled: dismissing, onSelect: () => onDismiss({ lectureId: item.lectureId as string, label: title }) }]}
+          label={t.menu(title)}
+          items={[{ key: "dismiss", label: t.dismiss, disabled: dismissing, onSelect: () => onDismiss({ lectureId: item.lectureId as string, label: title }) }]}
         />
       }
     />
@@ -65,6 +69,7 @@ interface ResumeListProps {
 
 /** 읽다 만 강의 전부. "더 깊게" 본 강의는 원 강의 아래로 묶고, 많으면 앞의 5묶음만 먼저 보여 준다. */
 export function ResumeList({ items, columns = false, dismissing, onDismiss, expanded, onExpandedChange }: ResumeListProps) {
+  const t = useT(messages);
   const groups = groupByParent(items, resumeKey, (it) => it.parentLectureId);
   const visible = expanded ? groups : groups.slice(0, INITIAL_GROUPS);
   const hidden = groups.slice(INITIAL_GROUPS).reduce((sum, group) => sum + 1 + group.children.length, 0);
@@ -96,7 +101,7 @@ export function ResumeList({ items, columns = false, dismissing, onDismiss, expa
       {hidden > 0 && (
         <div className="mt-2 flex justify-center">
           <Button variant="ghost" size="sm" onClick={() => onExpandedChange(!expanded)}>
-            {expanded ? "접기" : `모두 보기 (${hidden}개 더)`}
+            {expanded ? t.collapse : t.showAll(hidden)}
           </Button>
         </div>
       )}

@@ -1,0 +1,36 @@
+import { defineMessages } from "@/src/shared/i18n";
+
+export const messages = defineMessages({
+  ko: {
+    altExplanation: "다른 방식의 재설명",
+    altFailed: "재설명 생성에 실패했습니다.",
+    howWasIt: "이 강의는 어땠나요?",
+    feedbackGroup: "강의 피드백",
+    recorded: "피드백을 기록했습니다. 다음 강의 생성에 반영됩니다.",
+    applyToPrompt: "이 피드백을 프롬프트에 반영",
+    altStartFailed: (error: string) => `재설명을 시작하지 못했습니다: ${error}`,
+    objectivesCompleted: (n: number) => `목표 ${n}개를 완료했습니다. 개념 상태:`,
+    markedKnown: "이 개념을 이미 앎으로 표시했습니다.",
+    wrapup: "강의 마무리",
+    complete: "완료",
+    completed: "완료함",
+    known: "이미 앎",
+    knownDone: "이미 앎으로 표시됨",
+  },
+  en: {
+    altExplanation: "Explained another way",
+    altFailed: "Couldn't generate a new explanation.",
+    howWasIt: "How was this lecture?",
+    feedbackGroup: "Lecture feedback",
+    recorded: "Feedback saved. It will shape the next lectures you generate.",
+    applyToPrompt: "Apply this feedback to the prompt",
+    altStartFailed: (error: string) => `Couldn't start a new explanation: ${error}`,
+    objectivesCompleted: (n: number) => `Completed ${n === 1 ? "1 objective" : `${n} objectives`}. Concept status:`,
+    markedKnown: "Marked this concept as already known.",
+    wrapup: "Wrap-up",
+    complete: "Complete",
+    completed: "Completed",
+    known: "I already know this",
+    knownDone: "Marked as known",
+  },
+});

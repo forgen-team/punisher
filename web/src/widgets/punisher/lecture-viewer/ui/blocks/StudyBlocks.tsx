@@ -6,7 +6,8 @@ import { ExercisePanel, LabResultPanel, parseLab } from "@/src/features/punisher
 import { CodeBlock } from "./CodeBlock";
 import { closeUnclosedFence } from "../../lib/fences";
 import { toInlineTermLinks } from "../../lib/inlineTerms";
-import { BLOCK_LABELS, KEYPOINT_FALLBACK_LABEL, KEYPOINT_LABELS } from "./constants";
+import { useT } from "@/src/shared/i18n";
+import { blockMessages } from "../../i18n";
 import { Reveal } from "./Reveal";
 
 function Body({ text, renderTerm }: { text?: string; renderTerm?: RenderTerm }) {
@@ -30,6 +31,7 @@ export const WARNING_BOX = "my-4 rounded-md border-l-2 border-warning bg-warning
 /** `@@keypoint kind=…` — 강조 상자(제목은 종류 라벨) */
 export function KeypointBlock({ kind, text, renderTerm }: { kind?: string; text?: string; renderTerm?: RenderTerm }) {
   const caution = kind === "caution";
+  const t = useT(blockMessages);
   const icon = KEYPOINT_ICONS[kind ?? ""] ?? Sparkles;
   return (
     <aside
@@ -37,7 +39,7 @@ export function KeypointBlock({ kind, text, renderTerm }: { kind?: string; text?
       className={caution ? WARNING_BOX : "my-4 rounded-md border-l-2 border-accent bg-canvas-subtle px-3 py-2"}
     >
       <CardTitle icon={icon} className={caution ? "text-warning" : "text-accent-text"}>
-        {KEYPOINT_LABELS[kind ?? ""] ?? KEYPOINT_FALLBACK_LABEL}
+        {t.keypoint(kind ?? "")}
       </CardTitle>
       <Body text={text} renderTerm={renderTerm} />
     </aside>
@@ -46,11 +48,12 @@ export function KeypointBlock({ kind, text, renderTerm }: { kind?: string; text?
 
 /** `@@pause` — 질문(본문과 같은 Markdown·용어 링크) + 다음 출력 블록을 접어 둔다('출력 보기') */
 export function PauseBlock({ question, output, renderTerm }: { question?: string; output?: ReactNode; renderTerm?: RenderTerm }) {
+  const t = useT(blockMessages);
   return (
     <div className="my-4 rounded-md border border-line bg-canvas-elevated px-3 py-2">
-      <CardTitle icon={NotebookPen} className="text-fg">{BLOCK_LABELS.pause}</CardTitle>
+      <CardTitle icon={NotebookPen} className="text-fg">{t.pause}</CardTitle>
       {question && <Body text={question} renderTerm={renderTerm} />}
-      {output && <Reveal label={BLOCK_LABELS.showOutput}>{output}</Reveal>}
+      {output && <Reveal label={t.showOutput}>{output}</Reveal>}
     </div>
   );
 }
@@ -58,8 +61,9 @@ export function PauseBlock({ question, output, renderTerm }: { question?: string
 /** `@@exercise` (+ 바로 다음 `@@answer`) — 문제 카드. 강의 화면에서는 답을 써야 풀이가 열리고(건너뛰기 가능)
  * 튜터 평이 뒤따른다. 미리보기에선 접힌 풀이. */
 export function ExerciseBlock({ anchor, text, answer, renderTerm }: { anchor?: string; text?: string; answer?: string; renderTerm?: RenderTerm }) {
+  const t = useT(blockMessages);
   const folded = answer !== undefined && (
-    <Reveal label={BLOCK_LABELS.showAnswer}>
+    <Reveal label={t.showAnswer}>
       <div className="border-l-2 border-line-strong pl-3">
         <Body text={answer} renderTerm={renderTerm} />
       </div>
@@ -67,7 +71,7 @@ export function ExerciseBlock({ anchor, text, answer, renderTerm }: { anchor?: s
   );
   return (
     <section className="my-4 rounded-md border border-line bg-canvas-elevated px-3 py-2">
-      <CardTitle icon={NotebookPen} className="text-fg">{BLOCK_LABELS.exercise}</CardTitle>
+      <CardTitle icon={NotebookPen} className="text-fg">{t.exercise}</CardTitle>
       <Body text={text} renderTerm={renderTerm} />
       {answer !== undefined && (
         <ExercisePanel
@@ -84,21 +88,22 @@ export function ExerciseBlock({ anchor, text, answer, renderTerm }: { anchor?: s
 
 /** `@@lab os=…` — 내 터미널에서 실행할 명령(복사) · 보는 곳 · 예상, 결과를 붙여 넣으면 튜터가 읽어 준다. */
 export function LabBlock({ anchor, text }: { anchor?: string; text?: string }) {
+  const t = useT(blockMessages);
   const lab = parseLab(text ?? "");
   return (
     <section className="my-4 rounded-md border border-line bg-canvas-elevated px-3 py-2">
-      <CardTitle icon={Terminal} className="text-fg">{BLOCK_LABELS.lab}</CardTitle>
-      <CodeBlock code={lab.command} lang="bash" label={BLOCK_LABELS.labCommand} />
+      <CardTitle icon={Terminal} className="text-fg">{t.lab}</CardTitle>
+      <CodeBlock code={lab.command} lang="bash" label={t.labCommand} />
       <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
         {lab.look && (
           <>
-            <dt className="font-medium text-fg-secondary">{BLOCK_LABELS.labLook}</dt>
+            <dt className="font-medium text-fg-secondary">{t.labLook}</dt>
             <dd className="break-keep">{lab.look}</dd>
           </>
         )}
         {lab.expect && (
           <>
-            <dt className="font-medium text-fg-secondary">{BLOCK_LABELS.labExpect}</dt>
+            <dt className="font-medium text-fg-secondary">{t.labExpect}</dt>
             <dd className="break-keep">{lab.expect}</dd>
           </>
         )}
@@ -110,9 +115,10 @@ export function LabBlock({ anchor, text }: { anchor?: string; text?: string }) {
 
 /** 짝 없는 `@@answer` — 접힌 풀이만 */
 export function AnswerBlock({ text, renderTerm }: { text?: string; renderTerm?: RenderTerm }) {
+  const t = useT(blockMessages);
   return (
     <div className="my-3">
-      <Reveal label={BLOCK_LABELS.showAnswer}>
+      <Reveal label={t.showAnswer}>
         <div className="border-l-2 border-line-strong pl-3">
           <Body text={text} renderTerm={renderTerm} />
         </div>
@@ -123,9 +129,10 @@ export function AnswerBlock({ text, renderTerm }: { text?: string; renderTerm?: 
 
 /** `@@summary` — 강의 끝 한 장 요약 카드 */
 export function SummaryBlock({ text, renderTerm }: { text?: string; renderTerm?: RenderTerm }) {
+  const t = useT(blockMessages);
   return (
-    <section aria-label={BLOCK_LABELS.summary} className="my-6 rounded-xl border border-line bg-canvas-elevated px-4 py-3 shadow-xs">
-      <CardTitle icon={ScrollText} className="text-fg">{BLOCK_LABELS.summary}</CardTitle>
+    <section aria-label={t.summary} className="my-6 rounded-xl border border-line bg-canvas-elevated px-4 py-3 shadow-xs">
+      <CardTitle icon={ScrollText} className="text-fg">{t.summary}</CardTitle>
       <Body text={text} renderTerm={renderTerm} />
     </section>
   );

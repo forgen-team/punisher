@@ -1,0 +1,109 @@
+# English overlay for ../distributed.yaml — same ids.
+area: distributed
+concepts:
+  dist.cache-invalidation: Cache invalidation removes or updates stale values left in a cache when the source data changes. If the ordering is wrong or concurrent requests overlap, the old price can keep showing even after the price was changed.
+  dist.cache-stampede: A cache stampede happens when a heavily read cache key expires and a flood of requests hits the origin DB at the same moment. It is a common cause of DB CPU spiking every time the main page cache expires.
+  dist.caching: A caching strategy keeps expensive query results in fast storage such as memory and decides when to read, write and populate it. It greatly reduces DB load and latency, but values can differ from the source, so decide how stale is acceptable.
+  dist.cap-theorem: CAP says that when a network partition cuts nodes off from each other, a system cannot keep both consistency and availability. PACELC adds a latency–consistency tradeoff even in normal operation. Both guide DB and replication choices.
+  dist.cascading-failure: A cascading failure is when one service's latency or errors exhaust its callers' threads and connections and spread to other services. For example, one slow recommendation service can freeze the entire main page.
+  dist.circuit-breaker: A circuit breaker blocks calls to a repeatedly failing dependency for a set time and fails immediately instead. It keeps the caller from exhausting resources while waiting on slow calls, and serves a fallback response meanwhile.
+  dist.clocks-and-ordering: Server clocks drift slightly, so ordering events across servers by timestamp alone can be wrong. To stop a later edit from being overwritten by an earlier one, order events with sequence numbers or logical clocks.
+  dist.consensus: A consensus algorithm lets multiple nodes agree on one value or order despite some failures, usually by getting majority agreement. Systems like etcd, which stores Kubernetes state, use it to elect a leader and replicate data.
+  dist.consistency-models: A consistency model defines which point-in-time value a read sees when there are multiple replicas. It sets how much user-visible inconsistency is acceptable, such as your comment not appearing when you refresh right after posting.
+  dist.delivery-semantics: Delivery semantics define whether a message is delivered at most once, at least once, or exactly once. Most systems guarantee at least once, so consumers must handle receiving the same message twice.
+  dist.distributed-lock: A distributed lock ensures that only one of several server instances performs a given task. It prevents scheduled jobs from running twice after scaling out. However, a process may keep working without knowing its lock has expired.
+  dist.idempotency: Idempotency means processing the same request multiple times gives the same result as processing it once. It is the key safeguard against duplicate payments and records when users double-click pay or the network retries.
+  dist.message-queue: A message queue is intermediate storage where producers put messages that consumers take and process later. It decouples slow work like sending email from the API response and absorbs traffic spikes.
+  dist.outbox-pattern: A transactional outbox writes business data and outgoing events to an outbox table in one DB transaction; a separate process reads the table and publishes them. It prevents the dual-write problem of a saved order whose event is lost.
+  dist.partial-failure: 'In a distributed system, processes cooperate by exchanging messages over a network, so partial failures occur: some parts fail, or you can''t tell if they did. A timed-out external API call may already be processed, so design in retries and status checks.'
+  dist.rate-limiting: Rate limiting caps how many requests each client or key can make per unit of time. It stops one user from monopolizing resources and keeps servers from overloading. It is also used to pace calls within an external API's quota.
+  dist.saga: The saga pattern splits a multi-service operation into per-service local transactions run in sequence. If a step fails, compensating actions undo earlier steps, such as canceling a payment when reserving stock fails.
+  dist.sharding: Sharding and partitioning split data across nodes or partitions by a key, scaling capacity and throughput beyond what one DB can handle. A poor shard key concentrates load on certain nodes and makes cross-shard queries expensive.
+terms:
+  g.ack:
+    name: ACK (acknowledgement)
+    gloss: An ACK is the signal a consumer sends the broker to say it has processed a message. The broker does not redeliver acknowledged messages. If the consumer dies after processing but before acking, the message is delivered again.
+  g.dlq:
+    name: Dead-letter queue (DLQ)
+    gloss: A DLQ is a separate queue for messages that still fail after repeated retries. It isolates a failing message so it doesn't block the whole queue, and lets you reprocess it after finding the cause.
+  g.consumer-lag:
+    name: Consumer lag
+    gloss: Consumer lag is the number of messages queued but not yet consumed, or the delay they represent. Steadily rising lag means consumers can't keep up, so it is a key metric for catching problems like delayed notifications early.
+  g.offset:
+    name: Offset
+    gloss: An offset is a position number in a log-based broker like Kafka that marks how far a consumer has read. Committing before processing can lose messages on failure; committing after can process the same message twice.
+  g.consumer-group:
+    name: Consumer group
+    gloss: A consumer group is a set of consumers that share the work of one topic. Within a group, each message goes to only one consumer, so it is the unit to think in when adding instances to raise throughput.
+  g.topic:
+    name: Topic
+    gloss: A topic is a named channel that holds messages of one kind. Producers publish to topics and consumers subscribe to them. Splitting topics by event type, such as order created or payment completed, is common.
+  g.producer-consumer:
+    name: Producer and consumer
+    gloss: A producer puts messages into a queue and a consumer takes them out to process. Neither needs to know the other's speed or whether it is alive, so if a consumer goes down briefly, messages wait in the queue.
+  g.pub-sub:
+    name: Pub/Sub
+    gloss: Pub/Sub is a messaging model where several subscribers each receive the messages a publisher sends. It lets shipping, notification and analytics services each handle the same order event.
+  g.write-back:
+    name: Write-back
+    gloss: Write-back is a caching approach that applies writes to the cache first and writes them to the source store later in batches. Writes get faster, but data can be lost if the cache dies before it is persisted.
+  g.cache-eviction:
+    name: Cache eviction
+    gloss: Cache eviction is the policy for choosing which entries to drop when the cache is full. LRU drops the least recently used entry. If the policy and capacity are a poor fit, needed keys get pushed out often and the hit ratio falls.
+  g.cache-hit-ratio:
+    name: Cache hit ratio
+    gloss: Cache hit ratio is the share of lookups answered directly from the cache. With a low hit ratio, most requests still reach the source despite the cache, so it is the first metric to check when judging a cache's value.
+  g.single-flight:
+    name: Single flight
+    gloss: Single flight lets only one of several concurrent requests for the same key query the source, while the rest share its result. It is a standard way to stop a flood of requests to the source when a cache entry expires.
+  g.hot-key:
+    name: Hot key
+    gloss: A hot key is a key accessed far more often than others. Load piles onto the node or shard holding it, creating a bottleneck even when overall capacity remains. It must be considered when designing shard keys and caches.
+  g.bulkhead:
+    name: Bulkhead
+    gloss: A bulkhead separates resources such as thread pools and connection pools per dependency so that exhaustion in one doesn't spread to others. It keeps one slow dependency from stalling the whole service.
+  g.load-shedding:
+    name: Load shedding
+    gloss: Load shedding rejects requests beyond processing capacity early so that already-accepted requests complete normally. Failing some requests fast prevents a full outage better than accepting all of them and slowing everything down.
+  g.lww:
+    name: LWW (last write wins)
+    gloss: LWW resolves conflicting writes to the same data by keeping the one with the latest timestamp. It is simple, but if server clocks are skewed, an edit actually made later can be lost.
+  g.vector-clock:
+    name: Vector clock
+    gloss: A vector clock is a logical clock that tracks the ordering of events using a set of per-node counters. It can tell whether one write came first or both happened concurrently without knowing of each other, so it is used to detect conflicts.
+  g.two-phase-commit:
+    name: 2PC (two-phase commit)
+    gloss: 2PC is a distributed transaction protocol in which a coordinator confirms every participant is ready, then has them all commit. It provides atomicity, but a coordinator failure can leave participants waiting on held locks, so sagas often replace it across services.
+  g.sliding-window:
+    name: Sliding window
+    gloss: A sliding window rate limit counts requests in the trailing time period from the current moment. With a fixed window, bursts just before and after a boundary can let through almost twice the limit; a sliding window reduces this.
+  g.retry-after:
+    name: Retry-After
+    gloss: Retry-After is an HTTP response header telling the client how long to wait before retrying. It is sent with 429 or 503 responses, and clients that honor it avoid pointless retry storms right after being limited.
+  g.cdc:
+    name: CDC (change data capture)
+    gloss: CDC reads a database's change log and streams row inserts, updates and deletes as events. It is used to publish outbox table changes as messages or to keep caches and search indexes in sync with the source.
+  g.split-brain:
+    name: Split brain
+    gloss: Split brain is when a network partition splits a cluster in two and each side considers itself the leader and accepts writes. Data diverges, so it is prevented with a quorum that lets only the side with majority agreement accept writes.
+  g.heartbeat:
+    name: Heartbeat
+    gloss: A heartbeat is a signal a node sends periodically to show it is alive. If it stops for a set time, the node is treated as failed and a new leader is elected or work moves to another node. It cannot perfectly tell a slow node from a dead one.
+  g.linearizability:
+    name: Linearizability
+    gloss: 'Linearizability is a strong consistency guarantee: even with replicas, the system behaves as if there were only one copy of the data. A read that starts after a write completes sees that value or a newer one. It is required where correctness is essential, such as stock deduction or locks.'
+  g.read-your-writes:
+    name: Read-your-writes
+    gloss: Read-your-writes guarantees that a user's later reads always see the data that user just wrote. It is needed to avoid stale values from read replicas right after editing a profile or posting a comment.
+  g.network-partition:
+    name: Network partition
+    gloss: A network partition is when nodes are alive but the links between them fail, so they cannot reach each other. The system must then choose between blocking writes to keep consistency or accepting them to stay available.
+  g.rebalancing:
+    name: Rebalancing
+    gloss: Rebalancing redistributes ownership of data and partitions when nodes or consumers join or leave. It involves data movement or paused consumption, so it causes latency spikes during deploys or scaling.
+  g.graceful-degradation:
+    name: Graceful degradation
+    gloss: Graceful degradation keeps core features running when some dependencies fail, turning off or simplifying only secondary features. For example, if recommendations fail, show an empty slot or a default list while payments keep working.
+  g.deduplication:
+    name: Deduplication
+    gloss: Deduplication records the IDs of processed messages or requests and skips any that arrive again with the same ID. It is the most common way to make consumers idempotent under at-least-once delivery.

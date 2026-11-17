@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"github.com/forgen-team/punisher/internal/i18n"
 	"strings"
 	"testing"
 
@@ -84,7 +85,7 @@ func TestBackfillReviewPassAndFlag(t *testing.T) {
 	if passed.ReviewState != models.ReviewPassed || passed.Flagged || passed.FlagReason != "" || !passed.Reviewed {
 		t.Fatalf("passed = %s flagged=%v reason=%q", passed.ReviewState, passed.Flagged, passed.FlagReason)
 	}
-	if flagged.ReviewState != models.ReviewFlagged || !flagged.Flagged || flagged.FlagReason != reviewReasons["factual_error"] {
+	if flagged.ReviewState != models.ReviewFlagged || !flagged.Flagged || flagged.FlagReason != i18n.ReasonKo(i18n.ReviewReasonCode("factual_error")) {
 		t.Fatalf("flagged = %s reason=%q", flagged.ReviewState, flagged.FlagReason)
 	}
 	if last := passed.Reviews[len(passed.Reviews)-1]; last.Reviewer != ReviewerBackfill || last.Verdict != "pass" {

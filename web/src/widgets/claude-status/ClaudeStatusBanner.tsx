@@ -1,16 +1,20 @@
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/src/shared/ui/kit";
 import { useAppStatus } from "@/src/shared/api/status";
+import { useT } from "@/src/shared/i18n";
+import { messages, statusText } from "./i18n";
 
 /**
  * Claude Code(로컬 claude CLI)를 쓸 수 없을 때만 보이는 안내 배너.
- * 미설치 · 미로그인 · 사용 한도 각각 고치는 방법을 한국어로 보여 준다.
+ * 미설치 · 미로그인 · 사용 한도 각각 고치는 방법을 화면 언어로 보여 준다.
  * 이미 만든 강의·지도·기록은 Claude 없이도 계속 볼 수 있다.
  */
 export function ClaudeStatusBanner() {
+  const t = useT(messages);
   const status = useAppStatus();
   const data = status.data;
   if (!data || !data.claude.code) { return null; }
+  const text = statusText(t, data.claude.code, data.message, data.steps);
   const blocking = data.claude.code !== "claude_rate_limited";
 
   return (
@@ -25,10 +29,10 @@ export function ClaudeStatusBanner() {
       <div className="flex items-start gap-2">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <p className="font-medium">{data.message}</p>
-          {data.steps && data.steps.length > 0 && (
+          <p className="font-medium">{text.message}</p>
+          {text.steps.length > 0 && (
             <ol className="list-decimal space-y-1 pl-5 text-fg-secondary">
-              {data.steps.map((step) => (
+              {text.steps.map((step) => (
                 <li key={step}>
                   <StepText text={step} />
                 </li>
@@ -36,7 +40,7 @@ export function ClaudeStatusBanner() {
             </ol>
           )}
           {blocking && (
-            <p className="text-xs text-fg-muted">이미 만든 강의 · 지도 · 기록은 그대로 볼 수 있어요. 새 강의 만들기와 질문만 잠시 안 돼요.</p>
+            <p className="text-xs text-fg-muted">{t.readOnlyNote}</p>
           )}
         </div>
         <Button
@@ -44,10 +48,10 @@ export function ClaudeStatusBanner() {
           size="sm"
           onClick={() => void status.refetch()}
           disabled={status.isFetching}
-          aria-label="다시 확인"
+          aria-label={t.recheck}
         >
           <RefreshCw className={status.isFetching ? "h-4 w-4 animate-spin" : "h-4 w-4"} aria-hidden="true" />
-          <span className="hidden sm:inline">다시 확인</span>
+          <span className="hidden sm:inline">{t.recheck}</span>
         </Button>
       </div>
     </section>

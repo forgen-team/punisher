@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import type { LectureSection } from "@/src/shared/api/punisher";
 import { SectionToc } from "./SectionToc";
 import { TocRail } from "./TocRail";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 
 const STICKY_TOP = "sticky top-[calc(var(--app-header-offset)+4rem)] shrink-0 self-start pt-4";
 // 펼친 열은 화면 높이 안에서 따로 스크롤. 접은 목차는 펼침 패널이 열 밖으로 나가야 해서 overflow 를 두지 않는다.
@@ -26,13 +28,14 @@ interface LectureLayoutProps {
  * 목차가 없을 때(생성 시작 직후)도 열 자리는 그대로 둬서 섹션이 생길 때 본문이 옆으로 밀리지 않게 한다.
  */
 export function LectureLayout({ sections, totalMinutes, activeAnchor, assist, children }: LectureLayoutProps) {
+  const t = useT(messages);
   const hasToc = sections.length > 0;
   return (
     <div className="flex gap-6 2xl:gap-8">
-      <aside aria-label="목차" className={`${STICKY_TOP} z-panel hidden w-10 lg:block 2xl:hidden`}>
+      <aside aria-label={t.toc} className={`${STICKY_TOP} z-panel hidden w-10 lg:block 2xl:hidden`}>
         {hasToc && <TocRail sections={sections} totalMinutes={totalMinutes} activeAnchor={activeAnchor} />}
       </aside>
-      <aside aria-label="목차" className={`${STICKY} hidden w-56 2xl:block`}>
+      <aside aria-label={t.toc} className={`${STICKY} hidden w-56 2xl:block`}>
         {hasToc && <SectionToc sections={sections} totalMinutes={totalMinutes} activeAnchor={activeAnchor} />}
       </aside>
       <article className="mx-auto w-full min-w-0 max-w-2xl pb-16">{children}</article>

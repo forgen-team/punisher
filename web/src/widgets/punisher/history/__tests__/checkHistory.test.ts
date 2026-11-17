@@ -31,23 +31,24 @@ describe("metricRows", () => {
 
 describe("history rows", () => {
   it("titles checks with concept · lecture and reviews by kind", () => {
-    expect(historyTitle(session())).toBe("확인 · 페이지 캐시 · 읽기 경로");
-    expect(historyTitle(session({ lectureTitle: "페이지 캐시" }))).toBe("확인 · 페이지 캐시");
-    expect(historyTitle(session({ kind: "review", conceptName: undefined, lectureTitle: undefined }))).toBe("복습");
-    expect(historyTitle(session({ kind: "known_verify", lectureTitle: undefined }))).toBe("이미 앎 확인 · 페이지 캐시");
+    expect(historyTitle(session(), "ko")).toBe("확인 · 페이지 캐시 · 읽기 경로");
+    expect(historyTitle(session({ kind: "review", conceptName: undefined, lectureTitle: undefined }), "en")).toBe("Review");
+    expect(historyTitle(session({ lectureTitle: "페이지 캐시" }), "ko")).toBe("확인 · 페이지 캐시");
+    expect(historyTitle(session({ kind: "review", conceptName: undefined, lectureTitle: undefined }), "ko")).toBe("복습");
+    expect(historyTitle(session({ kind: "known_verify", lectureTitle: undefined }), "ko")).toBe("이미 앎 확인 · 페이지 캐시");
   });
 
   it("shows date, n/N, unaided count and an unfinished status", () => {
-    expect(historyMeta(session({ kind: "review", reviewDay: "2026-11-12", doneCount: 1, status: "abandoned" }))).toBe(
+    expect(historyMeta(session({ kind: "review", reviewDay: "2026-11-12", doneCount: 1, status: "abandoned" }), "ko")).toBe(
       "2026. 11. 12 · 1/3 · 혼자 맞힘 2 · 그만둠",
     );
-    expect(historyMeta(session())).toMatch(/ · 3\/3 · 혼자 맞힘 2$/);
+    expect(historyMeta(session(), "ko")).toMatch(/ · 3\/3 · 혼자 맞힘 2$/);
   });
 });
 
 describe("resolvedMeta", () => {
   it("shows the concept and the KST day it was fixed", () => {
-    expect(resolvedMeta({ conceptName: "페이지 캐시", resolvedAt: "2026-11-12T16:30:00Z" })).toBe("페이지 캐시 · 2026. 11. 13");
-    expect(resolvedMeta({ conceptName: "페이지 캐시", resolvedAt: null })).toBe("페이지 캐시");
+    expect(resolvedMeta({ conceptName: "페이지 캐시", resolvedAt: "2026-11-12T16:30:00Z" }, "ko")).toBe("페이지 캐시 · 2026. 11. 13");
+    expect(resolvedMeta({ conceptName: "페이지 캐시", resolvedAt: null }, "ko")).toBe("페이지 캐시");
   });
 });

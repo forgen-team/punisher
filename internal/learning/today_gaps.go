@@ -41,8 +41,10 @@ func (b *todayBuilder) addEssentialGaps() {
 			}
 			if round < len(byArea[a]) {
 				c := byArea[a][round]
-				b.add(c, Recommendation{Kind: RecEssentialGap, Reason: fmt.Sprintf(
-					"상대적으로 덜 다룬 %s 영역의 공백을 채우는 필수 기본기입니다. 선행 개념을 모두 갖췄습니다.", curriculum.AreaTitle(c.Area))})
+				b.add(c, Recommendation{Kind: RecEssentialGap, Reason: fmt.Sprintf(inLocale(b.in.Locale,
+					"상대적으로 덜 다룬 %s 영역의 공백을 채우는 필수 기본기입니다. 선행 개념을 모두 갖췄습니다.",
+					"An essential basic that fills the gap in %s, an area you have covered less. You have all its prerequisites."),
+					curriculum.AreaTitleIn(c.Area, b.in.Locale))})
 				added = true
 			}
 		}
@@ -62,8 +64,9 @@ func (b *todayBuilder) addNewGoal() {
 		if !ok || c.Depth < 2 || c.Proposed {
 			continue
 		}
-		b.add(c, Recommendation{Kind: RecNewGoal, Reason: fmt.Sprintf(
-			"새 목표로 삼으면 %d개 개념이 이어서 열리는 심화 주제입니다. 기본기는 갖췄습니다.", f.Unlocks)})
+		b.add(c, Recommendation{Kind: RecNewGoal, Reason: fmt.Sprintf(inLocale(b.in.Locale,
+			"새 목표로 삼으면 %d개 개념이 이어서 열리는 심화 주제입니다. 기본기는 갖췄습니다.",
+			"An advanced topic that unlocks %d more concepts as a new goal. You have the basics."), f.Unlocks)})
 		return
 	}
 }

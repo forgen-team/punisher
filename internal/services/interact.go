@@ -19,11 +19,13 @@ import (
 
 // Gloss returns the cached short gloss of a concept, generating it with the
 // fast model on a cache miss. cached reports whether no LLM call was made.
-// The shared cache holds default-prompt glosses only; a user who edited the
-// gloss block gets a private cache keyed by the block hash.
+// The shared cache holds default-prompt Korean glosses only; a user who edited
+// the gloss block, or reads in English, gets a private cache keyed by the block
+// hash plus the language (userGlossKey, i18n §9).
 func (s *Service) Gloss(ctx context.Context, userID, conceptID string) (gloss string, cached bool, err error) {
-	if glossary.IsTermID(conceptID) { // 기본 용어: 사전에만 있다(생성하지 않음).
-		t, ok := s.Glossary.Term(conceptID)
+	lang := s.Store.LocaleFor(ctx, userID) // 팝오버는 화면(사용자) 언어(i18n §9)
+	if glossary.IsTermID(conceptID) {      // 기본 용어: 사전에만 있다(생성하지 않음).
+		t, ok := s.Glossary.TermIn(conceptID, lang)
 		if !ok {
 			return "", false, store.ErrNotFound
 		}
@@ -31,11 +33,12 @@ func (s *Service) Gloss(ctx context.Context, userID, conceptID string) (gloss st
 	}
 	set := s.UserPrompts(ctx, userID)
 	custom := set.Overridden(prompts.BlockGlossSystem)
-	if shipped := s.Glossary.ConceptGloss(conceptID); shipped != "" && !custom {
+	if shipped := s.Glossary.ConceptGlossIn(conceptID, lang); shipped != "" && !custom {
 		return shipped, true, nil // 사전 설명이 있으면 늘 같은 설명(프롬프트를 고친 사용자만 따로 만든다).
 	}
-	hash := set.Hash(prompts.BlockGlossSystem)
-	if custom {
+	private := custom || lang == learning.LocaleEN
+	hash := userGlossKey(set.Hash(prompts.BlockGlossSystem), lang)
+	if private {
 		gloss, err = s.Store.UserGloss(ctx, userID, conceptID, hash)
 	} else {
 		gloss, err = s.Store.GetGloss(ctx, conceptID)
@@ -43,7 +46,7 @@ func (s *Service) Gloss(ctx context.Context, userID, conceptID string) (gloss st
 	if err != nil || gloss != "" {
 		return gloss, gloss != "", err
 	}
-	concept, err := s.Store.ConceptInfo(ctx, userID, conceptID)
+	concept, err := s.Store.ConceptInfo(ctx, userID, conceptID, lang)
 	if err != nil {
 		return "", false, err
 	}
@@ -59,7 +62,7 @@ func (s *Service) Gloss(ctx context.Context, userID, conceptID string) (gloss st
 	}
 	var u usage
 	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{
-		Model: s.Cfg.FastModel, System: set.Text(prompts.BlockGlossSystem, map[string]string{"concept_name": concept.Name}),
+		Model: s.Cfg.FastModel, System: prompts.WithOutputLanguage(set.Text(prompts.BlockGlossSystem, map[string]string{"concept_name": concept.Name}), lang),
 		User: prompts.Gloss(concept.Name, concept.Area, concept.Summary), MaxTokens: 400, Timeout: 30 * time.Second,
 		Priority: llm.ShortUnlessBackground(ctx),
 	}, &u)
@@ -68,7 +71,7 @@ func (s *Service) Gloss(ctx context.Context, userID, conceptID string) (gloss st
 		return "", false, err
 	}
 	gloss = strings.TrimSpace(text)
-	if custom {
+	if private {
 		err = s.Store.SaveUserGloss(ctx, userID, conceptID, hash, gloss, u.model)
 	} else {
 		err = s.Store.SaveGloss(ctx, conceptID, gloss, u.model)
@@ -77,6 +80,19 @@ func (s *Service) Gloss(ctx context.Context, userID, conceptID string) (gloss st
 		return "", false, err
 	}
 	return gloss, false, nil
+}
+
+// userGlossKey is the user_term_glosses.prompt_hash of a gloss: the gloss block
+// hash ("" = default prompt) for Korean (keys made before i18n), and
+// "<hash>|en" — "default|en" for the default prompt — for English.
+func userGlossKey(hash, lang string) string {
+	if learning.NormalizeLocale(lang) == learning.LocaleKO {
+		return hash
+	}
+	if hash == "" {
+		hash = "default"
+	}
+	return hash + learning.LanguageSuffix(lang)
 }
 
 // qaOutput is the Q&A / alt-explanation JSON.
@@ -99,7 +115,7 @@ func (s *Service) Ask(ctx context.Context, userID string, lec models.Lecture, an
 	if err != nil {
 		return s.Store.FailQuestion(ctx, q.ID, "", err.Error())
 	}
-	return s.answer(ctx, userID, q, qc.known, prompts.Question(qc.prompt, question))
+	return s.answer(ctx, userID, q, qc, prompts.Question(qc.prompt, question))
 }
 
 // RequestAltExplanation creates an alt_explanation entry and answers it in
@@ -114,7 +130,7 @@ func (s *Service) RequestAltExplanation(ctx context.Context, userID string, lec 
 	}
 	q, err := s.Store.CreateQuestion(ctx, userID, models.Question{
 		LectureID: lec.ID, ConceptID: lec.ConceptID, Anchor: anchor, Kind: "alt_explanation",
-		Question: strings.TrimSpace("다른 방식으로 다시 설명해 주세요. " + comment),
+		Question: strings.TrimSpace(altExplanationRequest(lec.Language) + comment),
 	})
 	if err != nil {
 		return q, err
@@ -131,14 +147,14 @@ func (s *Service) RequestAltExplanation(ctx context.Context, userID string, lec 
 				logf("alt explanation %s: fail after panic: %v", q.ID, ferr)
 			}
 		})
-		if _, err := s.answerWithKey(bg, userID, apiKey, q, qc.known, prompts.AltExplanation(qc.prompt, comment)); err != nil {
+		if _, err := s.answerWithKey(bg, userID, apiKey, q, qc, prompts.AltExplanation(qc.prompt, comment)); err != nil {
 			logf("alt explanation %s: %v", q.ID, err)
 		}
 	}()
 	return q, nil
 }
 
-func (s *Service) answer(ctx context.Context, userID string, q models.Question, known map[string]bool, prompt string) (models.Question, error) {
+func (s *Service) answer(ctx context.Context, userID string, q models.Question, qc qaCtx, prompt string) (models.Question, error) {
 	if err := s.CheckBudget(ctx, userID, false); err != nil {
 		return s.Store.FailQuestion(ctx, q.ID, "", err.Error())
 	}
@@ -146,13 +162,14 @@ func (s *Service) answer(ctx context.Context, userID string, q models.Question, 
 	if err != nil {
 		return s.Store.FailQuestion(ctx, q.ID, "", err.Error())
 	}
-	return s.answerWithKey(ctx, userID, apiKey, q, known, prompt)
+	return s.answerWithKey(ctx, userID, apiKey, q, qc, prompt)
 }
 
-func (s *Service) answerWithKey(ctx context.Context, userID, apiKey string, q models.Question, known map[string]bool, prompt string) (models.Question, error) {
+func (s *Service) answerWithKey(ctx context.Context, userID, apiKey string, q models.Question, qc qaCtx, prompt string) (models.Question, error) {
 	var u usage
+	system := s.UserPrompts(ctx, userID).Text(prompts.BlockQASystem, s.interactionVars(ctx, userID, q.ConceptID, qc.lang))
 	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{
-		Model: s.Cfg.LectureModel, System: s.UserPrompts(ctx, userID).Text(prompts.BlockQASystem, s.interactionVars(ctx, userID, q.ConceptID)),
+		Model: s.Cfg.LectureModel, System: prompts.WithOutputLanguage(system, qc.lang),
 		User: prompt, MaxTokens: 3000, Timeout: 2 * time.Minute, Priority: llm.ShortUnlessBackground(ctx),
 	}, &u)
 	var out qaOutput
@@ -168,7 +185,7 @@ func (s *Service) answerWithKey(ctx context.Context, userID, apiKey string, q mo
 	}
 	linked := []string{}
 	for _, id := range out.LinkedConceptIDs {
-		if known[id] {
+		if qc.known[id] {
 			linked = append(linked, id)
 		}
 	}
@@ -179,6 +196,7 @@ func (s *Service) answerWithKey(ctx context.Context, userID, apiKey string, q mo
 type qaCtx struct {
 	prompt prompts.QAContext
 	known  map[string]bool
+	lang   string // the lecture's language: answers follow it (i18n §1.1)
 }
 
 func (s *Service) qaContext(ctx context.Context, userID string, lec models.Lecture, anchor string, withHistory bool) (qaCtx, error) {
@@ -192,10 +210,11 @@ func (s *Service) qaContext(ctx context.Context, userID string, lec models.Lectu
 		SectionTitle: section.Title, SectionText: RenderSection(section),
 		ExampleLanguage: s.exampleLanguageName(ctx, userID),
 	}
-	if info, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID); err == nil {
+	lang := learning.NormalizeLocale(lec.Language)
+	if info, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID, lang); err == nil {
 		pc.ConceptName = info.Name
 	}
-	related, err := s.Store.RelatedConcepts(ctx, userID, lec.ConceptID)
+	related, err := s.Store.RelatedConcepts(ctx, userID, lec.ConceptID, lang)
 	if err != nil {
 		return qaCtx{}, err
 	}
@@ -227,7 +246,7 @@ func (s *Service) qaContext(ctx context.Context, userID string, lec models.Lectu
 			pc.History = pc.History[len(pc.History)-5:]
 		}
 	}
-	return qaCtx{prompt: pc, known: known}, nil
+	return qaCtx{prompt: pc, known: known, lang: lang}, nil
 }
 
 // SectionForAnchor finds the section of a section/block anchor
@@ -279,4 +298,12 @@ var sectionBlockLabels = map[string]string{
 	lecture.BlockTrace: "손계산 표", lecture.BlockChart: "차트", lecture.BlockDiff: "전후 비교",
 	lecture.BlockKeypoint: "핵심", lecture.BlockPause: "예측 질문", lecture.BlockExercise: "직접 해 보기",
 	lecture.BlockAnswer: "풀이", lecture.BlockSummary: "한 장 요약",
+}
+
+// altExplanationRequest is the stored question text of '다른 방식으로 설명' in the lecture's language.
+func altExplanationRequest(lang string) string {
+	if learning.NormalizeLocale(lang) == learning.LocaleEN {
+		return "Please explain this another way. "
+	}
+	return "다른 방식으로 다시 설명해 주세요. "
 }

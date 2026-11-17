@@ -5,7 +5,9 @@ import { ErrorState, ListSkeleton, useIsSplitLayout } from "@/src/shared/ui/kit"
 import { usePrompts } from "@/src/entities/punisher";
 import { PromptBlockEditor, PromptBlockList } from "@/src/features/punisher/prompt-edit";
 import { describePunisherError, type FeedbackHints } from "@/src/shared/api/punisher";
+import { useT } from "@/src/shared/i18n";
 import { editorOutOfView } from "./lib/editorScroll";
+import { messages } from "./i18n";
 
 /**
  * 학습 설정 > 강의 프롬프트. 모바일: 단계별 목록 → 블록 상세(뒤로가기는 셸 상단 바 하나 — 상세는 기록에 쌓아 연다).
@@ -13,6 +15,7 @@ import { editorOutOfView } from "./lib/editorScroll";
  * URL 상태: ?block=<id>&from=<피드백 종류>(강의 피드백에서 온 제안 문구를 초안에 붙여 연다 — 저장은 사용자가).
  */
 export function PromptSettingsWidget() {
+  const t = useT(messages);
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -54,7 +57,7 @@ export function PromptSettingsWidget() {
   }
   return (
     <div className="grid gap-6 fold:grid-cols-[17rem_minmax(0,1fr)]">
-      <nav aria-label="프롬프트 블록" className="fold:sticky fold:top-[calc(var(--app-header-offset)+1rem)] fold:self-start">
+      <nav aria-label={t.blocksNav} className="fold:sticky fold:top-[calc(var(--app-header-offset)+1rem)] fold:self-start">
         <PromptBlockList blocks={blocks} selectedId={selected?.id ?? null} onSelect={select} />
       </nav>
       <div ref={editorRef} className="min-w-0 scroll-mt-[calc(var(--app-header-offset)+1rem)]">

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/forgen-team/punisher/internal/i18n"
 	"strings"
 
 	"github.com/forgen-team/punisher/internal/learning"
@@ -20,7 +21,7 @@ import (
 const BackfillReviewsPerTick = 2
 
 // reasonUnreviewable flags a lecture whose concept is gone (it cannot be reviewed).
-const reasonUnreviewable = "강의의 개념을 찾을 수 없어 검수하지 못했어요"
+var reasonUnreviewable = i18n.ReasonKo(i18n.ReasonUnreviewable)
 
 // ReviewerBackfill marks lecture_reviews rows written by the backfill review.
 const ReviewerBackfill = "backfill"
@@ -83,7 +84,7 @@ func (s *Service) backfillOne(ctx context.Context, apiKey, owner string, lec mod
 	if userID == "" {
 		userID = owner
 	}
-	t, err := s.TargetForLecture(ctx, userID, lec)
+	t, err := s.TargetForLecture(ctx, userID, lec, "")
 	if errors.Is(err, store.ErrNotFound) { // 개념이 지도에서 빠진 강의: 대기열을 막지 않도록 기록하고 표시한다.
 		return false, s.recordBackfill(ctx, lec.ID, ReviewOutcome{Verdict: "fail", Summary: reasonUnreviewable}, "", reasonUnreviewable)
 	}
@@ -101,14 +102,14 @@ func (s *Service) backfillOne(ctx context.Context, apiKey, owner string, lec mod
 	}
 	var u usage
 	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel,
-		System: set.Text(prompts.BlockReviewerSystem, prompts.LectureVars(pc)),
+		System: prompts.WithOutputLanguage(set.Text(prompts.BlockReviewerSystem, prompts.LectureVars(pc)), t.Plan.Language),
 		User:   build(pc, lecture.RenderMarkup(c), set), MaxTokens: 4000, Timeout: reviewTimeout}, &u)
 	s.recordUsage(context.WithoutCancel(ctx), owner, "lecture_review", lec.ConceptID, u, err)
 	if err != nil {
 		return false, err
 	}
 	outcome := ParseReview(text)
-	reason := strings.Join(userReasons(Attempt{Review: outcome, Reviewed: true}), "; ")
+	reason := strings.Join(userReasons(Attempt{Review: outcome, Reviewed: true}), i18n.FlagReasonSeparator)
 	return !outcome.Blocking(), s.recordBackfill(ctx, lec.ID, outcome, u.model, reason)
 }
 

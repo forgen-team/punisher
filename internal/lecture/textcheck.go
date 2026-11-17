@@ -13,7 +13,9 @@ import (
 const mermaidProseRun = 2
 
 var (
-	hangulRe        = regexp.MustCompile(`[\p{Hangul}]`)
+	hangulRe = regexp.MustCompile(`[\p{Hangul}]`)
+	// englishProseRe: an English sentence (four+ words ending in . ! ? or :), i18n §3.
+	englishProseRe  = regexp.MustCompile(`^[A-Za-z][^>\[\]{}|]*?\b[A-Za-z]+\s+[A-Za-z]+\s+[A-Za-z]+\s+[A-Za-z]+[^\[\]{}|]*[.!?:]$`)
 	mdHeadingRe     = regexp.MustCompile(`^#{1,6}\s`)
 	mermaidSyntaxRe = regexp.MustCompile(`-->|---|==>|-\.->|->>|-->>|--x|:::|^\s*(flowchart|graph|sequenceDiagram|stateDiagram|classDiagram|erDiagram|gantt|pie|journey|participant|actor|subgraph|end|classDef|class|style|linkStyle|click|note|loop|alt|else|opt|par|rect|autonumber|activate|deactivate|state|direction|section|title|%%)\b|^\s*[\w.-]+\s*[\[\(\{>]`)
 )
@@ -35,7 +37,7 @@ func MermaidSwallowedProse(src string) string {
 			afterBlank, run = true, 0
 			continue
 		}
-		if afterBlank && hangulRe.MatchString(t) && !mermaidSyntaxRe.MatchString(t) {
+		if afterBlank && (hangulRe.MatchString(t) || englishProseRe.MatchString(t)) && !mermaidSyntaxRe.MatchString(t) {
 			run++
 			if run >= mermaidProseRun {
 				return "prose paragraph " + clipLine(t)

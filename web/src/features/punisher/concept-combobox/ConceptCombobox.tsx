@@ -4,6 +4,8 @@ import { X } from "lucide-react";
 import { Input, cn } from "@/src/shared/ui/kit";
 import { areaLabel, useConcepts } from "@/src/entities/punisher";
 import type { Concept } from "@/src/shared/api/punisher";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 
 const MAX_OPTIONS = 30;
 
@@ -21,6 +23,7 @@ interface ConceptComboboxProps {
 
 /** Searchable multi-select of concepts (ARIA combobox, ArrowUp/Down/Enter/Escape). */
 export function ConceptCombobox({ label, value, onChange, max = 10 }: ConceptComboboxProps) {
+  const t = useT(messages);
   const inputId = useId();
   const listId = useId();
   const { data: concepts = [], isLoading } = useConcepts();
@@ -86,13 +89,13 @@ export function ConceptCombobox({ label, value, onChange, max = 10 }: ConceptCom
         {label} <span className="text-xs font-normal text-fg-muted">({value.length}/{max})</span>
       </label>
       {value.length > 0 && (
-        <ul className="flex flex-wrap gap-1.5" aria-label="선택한 개념">
+        <ul className="flex flex-wrap gap-1.5" aria-label={t.selected}>
           {value.map((id) => (
             <li key={id} className="inline-flex h-8 items-center gap-1 rounded-full bg-accent-subtle pl-3 pr-1 text-sm text-accent-text">
               {byId.get(id)?.name ?? id}
               <button
                 type="button"
-                aria-label={`${byId.get(id)?.name ?? id} 제거`}
+                aria-label={t.remove(byId.get(id)?.name ?? id)}
                 onClick={() => onChange(value.filter((v) => v !== id))}
                 className="inline-flex size-6 items-center justify-center rounded-full hover:bg-canvas-hover"
               >
@@ -111,7 +114,7 @@ export function ConceptCombobox({ label, value, onChange, max = 10 }: ConceptCom
         aria-activedescendant={activeId}
         disabled={full}
         value={text}
-        placeholder={full ? "최대 개수를 골랐어요" : isLoading ? "개념 불러오는 중…" : "개념 이름 또는 ID 검색"}
+        placeholder={full ? t.full : isLoading ? t.loading : t.search}
         onChange={(event) => {
           setText(event.target.value);
           setOpen(true);
@@ -125,7 +128,7 @@ export function ConceptCombobox({ label, value, onChange, max = 10 }: ConceptCom
         <ul
           id={listId}
           role="listbox"
-          aria-label={`${label} 후보`}
+          aria-label={t.options(label)}
           className="absolute left-0 right-0 top-full z-panel mt-1 max-h-64 overflow-y-auto rounded-md border border-line bg-canvas-elevated py-1 shadow-overlay"
         >
           {options.map((c, index) => (

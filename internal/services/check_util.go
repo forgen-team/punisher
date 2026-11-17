@@ -131,11 +131,11 @@ func (s *Service) reviewSchedule(ctx context.Context, userID string) ([]int, boo
 	return st.ReviewIntervals, st.AdaptiveIntervals
 }
 
-func (s *Service) objectiveText(ctx context.Context, userID, conceptID, objectiveID string) string {
+func (s *Service) objectiveText(ctx context.Context, userID, conceptID, objectiveID, lang string) string {
 	if objectiveID == "" {
 		return ""
 	}
-	info, err := s.Store.ConceptInfo(ctx, userID, conceptID)
+	info, err := s.Store.ConceptInfo(ctx, userID, conceptID, lang)
 	if err != nil {
 		logf("objective text %s: %v", objectiveID, err)
 		return ""

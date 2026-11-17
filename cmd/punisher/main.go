@@ -53,10 +53,10 @@ func main() {
 		os.Exit(runBackup(os.Args[1], os.Args[2:]))
 	}
 	cfg := config.Load()
-	showVersion := flag.Bool("version", false, "버전을 출력하고 종료")
-	flag.IntVar(&cfg.Port, "port", cfg.Port, "포트 (0 = 4710, 사용 중이면 빈 포트)")
-	flag.StringVar(&cfg.DataDir, "data-dir", cfg.DataDir, "데이터 폴더 (punisher.db 위치)")
-	noBrowser := flag.Bool("no-browser", false, "시작할 때 브라우저를 열지 않음")
+	showVersion := flag.Bool("version", false, tr("버전을 출력하고 종료", "print the version and exit"))
+	flag.IntVar(&cfg.Port, "port", cfg.Port, tr("포트 (0 = 4710, 사용 중이면 빈 포트)", "port (0 = 4710, or a free port if taken)"))
+	flag.StringVar(&cfg.DataDir, "data-dir", cfg.DataDir, tr("데이터 폴더 (punisher.db 위치)", "data folder (where punisher.db lives)"))
+	noBrowser := flag.Bool("no-browser", false, tr("시작할 때 브라우저를 열지 않음", "do not open the browser on start"))
 	flag.Usage = func() {
 		flag.CommandLine.SetOutput(os.Stderr)
 		flag.PrintDefaults()
@@ -90,7 +90,7 @@ func runPhone(args []string) int {
 		return 2
 	}
 	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
-		fmt.Fprintln(os.Stderr, "폰 연결은 macOS와 Linux에서만 쓸 수 있어요.")
+		fmt.Fprintln(os.Stderr, tr("폰 연결은 macOS와 Linux에서만 쓸 수 있어요.", "Phone access is available on macOS and Linux only."))
 		return 1
 	}
 	m, err := newPhoneManager()
@@ -117,24 +117,25 @@ func runPhone(args []string) int {
 func newPhoneManager() (*phone.Manager, error) {
 	exe, err := os.Executable()
 	if err != nil {
-		return nil, fmt.Errorf("실행 파일 위치를 찾지 못했어요: %w", err)
+		return nil, fmt.Errorf(tr("실행 파일 위치를 찾지 못했어요: %w", "could not find the executable: %w"), err)
 	}
 	if exe, err = filepath.EvalSymlinks(exe); err != nil {
-		return nil, fmt.Errorf("실행 파일 위치를 찾지 못했어요: %w", err)
+		return nil, fmt.Errorf(tr("실행 파일 위치를 찾지 못했어요: %w", "could not find the executable: %w"), err)
 	}
 	if strings.Contains(exe, "/go-build") {
-		return nil, errors.New("go run 으로는 켤 수 없어요. 설치한 punisher 로 실행해 주세요.")
+		return nil, errors.New(tr("go run 으로는 켤 수 없어요. 설치한 punisher 로 실행해 주세요.", "this cannot be enabled from go run; run the installed punisher instead"))
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, fmt.Errorf("홈 폴더를 찾지 못했어요: %w", err)
+		return nil, fmt.Errorf(tr("홈 폴더를 찾지 못했어요: %w", "could not find the home folder: %w"), err)
 	}
 	cfg := config.Load()
 	// launchd starts with a minimal environment; keep what finding claude needs
 	// and this user's Punisher settings.
 	var env []string
 	for _, kv := range os.Environ() {
-		if strings.HasPrefix(kv, "PATH=") || strings.HasPrefix(kv, "LANG=") || strings.HasPrefix(kv, "PUNISHER_") {
+		if strings.HasPrefix(kv, "PATH=") || strings.HasPrefix(kv, "LANG=") || strings.HasPrefix(kv, "LC_ALL=") ||
+			strings.HasPrefix(kv, "LC_MESSAGES=") || strings.HasPrefix(kv, "PUNISHER_") {
 			env = append(env, kv)
 		}
 	}
@@ -146,7 +147,7 @@ func newPhoneManager() (*phone.Manager, error) {
 func loadPhoneAccess(dataDir string) phone.Access {
 	access, err := phone.LoadAccess(dataDir)
 	if err != nil {
-		log.Printf("폰 연결 설정을 무시합니다: %v", err)
+		log.Printf(tr("폰 연결 설정을 무시합니다: %v", "ignoring the phone access setting: %v"), err)
 		return phone.Access{}
 	}
 	return access
@@ -158,7 +159,7 @@ func run(cfg config.Config) error {
 		return err
 	}
 	if existing != "" {
-		fmt.Printf("Punisher가 이미 실행 중입니다: %s\n", existing)
+		fmt.Printf(tr("Punisher가 이미 실행 중입니다: %s\n", "Punisher is already running: %s\n"), existing)
 		if cfg.OpenBrowser {
 			openBrowser(existing)
 		}
@@ -181,6 +182,8 @@ func run(cfg config.Config) error {
 		return err
 	}
 	defer st.Close()
+	// 설정을 저장한 적 없는 사용자의 언어는 OS 로캘(PUNISHER_LOCALE 로 덮어쓰기)을 따른다.
+	store.SetDefaultLocale(cfg.Locale)
 	if err := st.Migrate(ctx, migrations.Files); err != nil {
 		return fmt.Errorf("migrations: %w", err)
 	}
@@ -219,6 +222,9 @@ func run(cfg config.Config) error {
 			DailyLectureLimit: cfg.DailyLectureLimit,
 			DailyTokenLimit:   cfg.DailyTokenLimit,
 			LibraryAhead:      cfg.LibraryAhead,
+			NightAhead:        cfg.NightAhead,
+			NightStartHour:    cfg.NightStartHour,
+			NightEndHour:      cfg.NightEndHour,
 			StudyPregenerate:  cfg.StudyPregenerate,
 			LectureMaxTokens:  cfg.LectureMaxTokens,
 			// 단독판은 사용자가 한 명이라 라이브러리(추천 미리 만들기) 강의도 그 사람의 프롬프트를 따른다.
@@ -253,7 +259,7 @@ func run(cfg config.Config) error {
 	go func() { serveErr <- srv.Serve(ln) }()
 
 	reportClaude(ctx, claude)
-	fmt.Printf("\nPunisher 실행 중: %s\n데이터: %s\n종료하려면 이 창에서 Ctrl+C 를 누르세요.\n\n", url, dbPath)
+	fmt.Printf(tr("\nPunisher 실행 중: %s\n데이터: %s\n종료하려면 이 창에서 Ctrl+C 를 누르세요.\n\n", "\nPunisher is running: %s\nData: %s\nPress Ctrl+C in this window to quit.\n\n"), url, dbPath)
 	if cfg.OpenBrowser {
 		openBrowser(url)
 	}
@@ -267,7 +273,7 @@ func run(cfg config.Config) error {
 			return fmt.Errorf("server: %w", err)
 		}
 	}
-	fmt.Println("종료합니다...")
+	fmt.Println(tr("종료합니다...", "Shutting down..."))
 	stopScheduler()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -295,7 +301,7 @@ func listen(port int) (net.Listener, string, error) {
 		return nil, url, nil
 	}
 	if explicit {
-		return nil, "", fmt.Errorf("포트 %d 를 사용할 수 없습니다: %w", port, err)
+		return nil, "", fmt.Errorf(tr("포트 %d 를 사용할 수 없습니다: %w", "port %d is not available: %w"), port, err)
 	}
 	ln, err = net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -323,11 +329,11 @@ func reportClaude(ctx context.Context, c *claudecli.Client) {
 	st := c.Status(ctx)
 	switch st.Code {
 	case claudecli.CodeCLIMissing:
-		fmt.Println("[주의] " + services.MsgClaudeMissing)
+		fmt.Println(tr("[주의] "+services.MsgClaudeMissing, "[warning] Claude Code (the claude command) was not found. Install Claude Code, run `claude` once in a terminal to sign in, then try again."))
 	case claudecli.CodeNotLoggedIn:
-		fmt.Println("[주의] " + services.MsgClaudeLoggedOut)
+		fmt.Println(tr("[주의] "+services.MsgClaudeLoggedOut, "[warning] Claude Code is not signed in. Run `claude` in a terminal and sign in (/login), then try again."))
 	default:
-		fmt.Printf("Claude Code 연결됨 (%s)\n", st.Version)
+		fmt.Printf(tr("Claude Code 연결됨 (%s)\n", "Claude Code connected (%s)\n"), st.Version)
 	}
 }
 
@@ -342,7 +348,7 @@ func openBrowser(url string) {
 		cmd = exec.Command("xdg-open", url)
 	}
 	if err := cmd.Start(); err != nil {
-		log.Printf("브라우저를 열지 못했습니다(%v). 직접 %s 를 여세요.", err, url)
+		log.Printf(tr("브라우저를 열지 못했습니다(%v). 직접 %s 를 여세요.", "Could not open the browser (%v). Open %s yourself."), err, url)
 		return
 	}
 	go func() { _ = cmd.Wait() }()

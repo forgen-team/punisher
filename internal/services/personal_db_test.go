@@ -100,7 +100,7 @@ func TestWeakConceptsMoveOutOfLearned(t *testing.T) {
 	}
 	s.Cfg.LibraryUsesUserPrompts = false
 
-	ic, _, err := s.inquiryContext(ctx, user, "왜 느려요?")
+	ic, _, err := s.inquiryContext(ctx, user, "왜 느려요?", "ko")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestMisconceptionAcknowledgeAndResolve(t *testing.T) {
 	if err != nil || !strings.Contains(prompts.Question(qa.prompt, "왜요?"), wrong) {
 		t.Fatalf("Q&A prompt carries the misconception (%v)", err)
 	}
-	ic, _, err := s.inquiryContext(ctx, user, "왜 느려요?")
+	ic, _, err := s.inquiryContext(ctx, user, "왜 느려요?", "ko")
 	if err != nil || !strings.Contains(prompts.Inquiry(ic), wrong) {
 		t.Fatalf("question explanation prompt carries the misconception (%v)", err)
 	}

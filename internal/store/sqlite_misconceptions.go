@@ -10,7 +10,9 @@ import (
 	"github.com/forgen-team/punisher/internal/models"
 )
 
-const misconceptionColumns = `m.id, m.concept_id, COALESCE(c.name, ''), COALESCE(m.objective_id, ''), COALESCE(o.text, ''),
+// misconceptionColumns: names in the locale of user $1.
+var misconceptionColumns = `m.id, m.concept_id, COALESCE(` + locName("c", userLocaleSQL("$1")) + `, ''), COALESCE(m.objective_id, ''),
+	COALESCE(` + locObjective("o", userLocaleSQL("$1")) + `, ''),
 	m.text, COALESCE(m.turn_id, ''), m.status, m.created_at, m.resolved_at`
 
 const misconceptionFrom = ` FROM user_misconceptions m

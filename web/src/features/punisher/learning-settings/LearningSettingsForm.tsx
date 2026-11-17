@@ -3,19 +3,22 @@ import { describeSettingsError, useLearningSettings, useSaveLearningSettings } f
 import { describePunisherError, type ExampleLanguage, type LabOS, type LearningSettingsPatch } from "@/src/shared/api/punisher";
 import { ReviewSettingsFields } from "./ReviewSettingsFields";
 import type { SettingsField } from "./reviewSettings";
+import { DEFAULT_LOCALE, LOCALES, isLocale, useT } from "@/src/shared/i18n";
+import { LANGUAGE_LABEL, LAB_OS_LABELS, LOCALE_NAMES, messages } from "./i18n";
 
 const DAILY_MINUTE_OPTIONS = [15, 30, 45, 60] as const;
 const LAB_OS_OPTIONS: readonly LabOS[] = ["macos", "linux", "none"];
-const LAB_OS_LABELS: Record<LabOS, string> = { macos: "macOS", linux: "Linux", none: "쓰지 않음" };
 
 /**
- * 학습 설정 — 예시 코드 언어 · 하루 학습량 · 숙달 기준 · 복습 간격 · 하루 복습 시간 · 복습 채점 방식 · 예측 질문.
+ * 학습 설정 — 언어 · 예시 코드 언어 · 하루 학습량 · 숙달 기준 · 복습 간격 · 하루 복습 시간 · 복습 채점 방식 · 예측 질문.
  * 바꾸면 그 필드만 바로 저장된다(PUT /me/settings 부분 업데이트). 예시 언어는 이후 생성되는 강의·질문 답변·
  * "이 부분 설명"에 적용된다(이미 만든 강의는 다시 만들지 않는다). 저장 오류는 그 필드 옆에(400 은 code 별 안내).
  */
 export function LearningSettingsForm() {
   const settings = useLearningSettings();
   const save = useSaveLearningSettings();
+  const t = useT(messages);
+  const labOsLabels = useT(LAB_OS_LABELS);
 
   if (settings.isLoading) { return <ListSkeleton rows={6} />; }
   if (settings.error || !settings.data) {
@@ -42,9 +45,22 @@ export function LearningSettingsForm() {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-4">
+        <Field label={LANGUAGE_LABEL} error={fieldError("locale")}>
+          <Select
+            value={shown.locale ?? DEFAULT_LOCALE}
+            disabled={save.isPending}
+            onChange={(event) => { if (isLocale(event.target.value)) { saveField({ locale: event.target.value }); } }}
+          >
+            {LOCALES.map((l) => (
+              <option key={l} value={l}>
+                {LOCALE_NAMES[l]}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <Field
-          label="예시 코드 언어"
-          hint="강의·질문 답변·'이 부분 설명'의 코드 예시를 이 언어로 써요. 셸 명령·SQL·설정 파일은 원래 형식 그대로예요. 이미 만든 강의는 바뀌지 않아요."
+          label={t.exampleLanguage}
+          hint={t.exampleLanguageHint}
           error={fieldError("exampleLanguage")}
         >
           <Select value={current} disabled={save.isPending} onChange={(event) => saveField({ exampleLanguage: event.target.value as ExampleLanguage })}>
@@ -56,29 +72,29 @@ export function LearningSettingsForm() {
           </Select>
         </Field>
         <Field
-          label="하루 학습량"
-          hint="남은 강의가 이 속도로 2주 치보다 적어지면 오늘 화면에서 '다음 챕터 고르기'를 띄워요."
+          label={t.dailyMinutes}
+          hint={t.dailyMinutesHint}
           error={fieldError("dailyMinutes")}
         >
           <Select value={String(daily)} disabled={save.isPending} onChange={(event) => saveField({ dailyMinutes: Number(event.target.value) })}>
             {DAILY_MINUTE_OPTIONS.map((m) => (
               <option key={m} value={m}>
-                하루 {m}분
+                {t.dailyOption(m)}
               </option>
             ))}
           </Select>
         </Field>
         <ReviewSettingsFields settings={shown} saving={save.isPending} onSave={saveField} fieldError={fieldError} />
-        <Field label="실습 환경" error={fieldError("labOs")}>
+        <Field label={t.labOs} error={fieldError("labOs")}>
           <Select value={shown.labOs ?? "macos"} disabled={save.isPending} onChange={(event) => saveField({ labOs: event.target.value as LabOS })}>
             {LAB_OS_OPTIONS.map((os) => (
               <option key={os} value={os}>
-                {LAB_OS_LABELS[os]}
+                {labOsLabels[os]}
               </option>
             ))}
           </Select>
         </Field>
-        <Field label="강의 전 예측 질문" error={fieldError("pretestEnabled")}>
+        <Field label={t.pretest} error={fieldError("pretestEnabled")}>
           <Switch
             checked={shown.pretestEnabled ?? true}
             disabled={save.isPending}
@@ -88,8 +104,8 @@ export function LearningSettingsForm() {
       </div>
       <p aria-live="polite" className="flex min-h-5 items-center gap-1.5 text-xs text-fg-muted">
         {save.isPending && <Spinner size="sm" label={null} />}
-        {save.isPending && "저장 중…"}
-        {!save.isPending && save.isSuccess && "저장했어요."}
+        {save.isPending && t.saving}
+        {!save.isPending && save.isSuccess && t.saved}
       </p>
     </div>
   );

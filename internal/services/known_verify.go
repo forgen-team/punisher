@@ -40,12 +40,13 @@ func (s *Service) PregenerateKnownVerify(ctx context.Context) (VariantReport, er
 	if err != nil {
 		return rep, err
 	}
+	lang := s.Store.LocaleFor(ctx, owner)
 	for _, t := range targets {
 		apiKey, err := s.checkKey(ctx, owner)
 		if err != nil {
 			return rep, err
 		}
-		key := "known_verify:" + owner + ":" + t.ConceptID + ":" + learning.KSTDay(s.now())
+		key := "known_verify:" + owner + ":" + t.ConceptID + ":" + learning.KSTDay(s.now()) + learning.LanguageSuffix(lang)
 		job, created, err := s.Store.CreateJob(ctx, store.NewJob{IdempotencyKey: key, Kind: "check_items", UserID: owner,
 			ConceptID: t.ConceptID, ObjectiveKey: key, Reason: "known verify"})
 		if err != nil {
@@ -58,7 +59,7 @@ func (s *Service) PregenerateKnownVerify(ctx context.Context) (VariantReport, er
 		if err := s.Store.StartJob(ctx, job.ID); err != nil {
 			return rep, err
 		}
-		if err := s.runKnownVerifyItems(ctx, apiKey, owner, t, job.ID); err != nil {
+		if err := s.runKnownVerifyItems(ctx, apiKey, owner, lang, t, job.ID); err != nil {
 			rep.Failed++
 			logf("known verify items %s: %v", t.ConceptID, err)
 			if errors.Is(err, llm.ErrGenerationUnavailable) || errors.Is(err, llm.ErrRateLimited) {
@@ -71,7 +72,7 @@ func (s *Service) PregenerateKnownVerify(ctx context.Context) (VariantReport, er
 	return rep, nil
 }
 
-func (s *Service) runKnownVerifyItems(ctx context.Context, apiKey, userID string, t store.KnownVerifyTarget, jobID string) error {
+func (s *Service) runKnownVerifyItems(ctx context.Context, apiKey, userID, lang string, t store.KnownVerifyTarget, jobID string) error {
 	objectives, err := s.diagnosticObjectives(ctx, userID, t.ConceptID, t.ObjectiveIDs)
 	if err != nil {
 		if ferr := s.Store.FinishJob(ctx, jobID, usage{}.outcome("failed", "", err, "")); ferr != nil {
@@ -83,11 +84,11 @@ func (s *Service) runKnownVerifyItems(ctx context.Context, apiKey, userID string
 	dc := prompts.DiagnosticContext{Purpose: check.PurposeKnownVerify, Objectives: objectives}
 	vc := check.DiagnosticContext{Purpose: check.PurposeKnownVerify, ObjectiveIDs: diagnosticPlan{objectives: objectives}.objectiveIDs()}
 	items, u, tries, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.diagnosticModel(check.PurposeKnownVerify), attempts: checkAttempts,
-		priority: llm.PriorityBackground, system: set.Text(prompts.BlockCheckPretest, s.interactionVars(ctx, userID, t.ConceptID))},
+		priority: llm.PriorityBackground, system: set.Text(prompts.BlockCheckPretest, s.interactionVars(ctx, userID, t.ConceptID, lang)), language: lang},
 		func(revisions []string) string { dc.Revisions = revisions; return prompts.Diagnostic(dc) },
 		func(set check.ItemSet) []string { return check.ValidateDiagnostic(set, vc) })
 	if err == nil {
-		_, err = s.Store.SaveDiagnosticItems(ctx, store.DiagnosticItems{PromptHash: set.Hash(prompts.BlockCheckPretest), CreatedFor: userID,
+		_, err = s.Store.SaveDiagnosticItems(ctx, store.DiagnosticItems{Language: lang, PromptHash: set.Hash(prompts.BlockCheckPretest), CreatedFor: userID,
 			JobID: jobID, Model: u.model, PromptVersion: diagnosticPromptVersion(set), Items: check.NormalizeDiagnostic(items)})
 	}
 	s.finishItemsJob(ctx, "known verify "+t.ConceptID, jobID, u, tries, err)

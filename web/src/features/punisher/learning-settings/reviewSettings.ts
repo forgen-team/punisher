@@ -1,4 +1,6 @@
 import { REVIEW_INTERVALS_MAX, REVIEW_MINUTES_MAX, type LearningSettingsPatch } from "@/src/shared/api/punisher";
+import { translate } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 
 export type SettingsField = keyof LearningSettingsPatch;
 
@@ -12,11 +14,12 @@ export const REVIEW_MINUTE_OPTIONS = Array.from({ length: REVIEW_MINUTES_MAX / 5
 export function parseIntervals(text: string): { days: number[] } | { error: string } {
   const parts = text.split(/[\s,]+/).filter(Boolean);
   const days = parts.map(Number);
+  const t = translate(messages);
   if (days.length === 0 || days.length > REVIEW_INTERVALS_MAX) {
-    return { error: `간격은 1~${REVIEW_INTERVALS_MAX}개로 적어 주세요.` };
+    return { error: t.intervalsCount(REVIEW_INTERVALS_MAX) };
   }
-  if (days.some((d) => !Number.isInteger(d) || d <= 0)) { return { error: "간격은 1 이상의 정수(일)로 적어 주세요." }; }
-  if (days.some((d, index) => index > 0 && d <= days[index - 1])) { return { error: "간격은 점점 커져야 해요." }; }
+  if (days.some((d) => !Number.isInteger(d) || d <= 0)) { return { error: t.intervalsInteger }; }
+  if (days.some((d, index) => index > 0 && d <= days[index - 1])) { return { error: t.intervalsIncreasing }; }
   return { days };
 }
 

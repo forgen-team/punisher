@@ -1,5 +1,7 @@
 import * as React from "react";
 import { cn } from "../lib/utils";
+import { useT } from "@/src/shared/i18n";
+import { kitMessages } from "../lib/messages";
 import { Button } from "./button";
 
 export interface EmptyStateProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
@@ -44,18 +46,19 @@ export interface ErrorStateProps extends React.HTMLAttributes<HTMLDivElement> {
 
 /** ErrorState — 실패 안내 + 다시 시도. role="alert"로 낭독된다. */
 export function ErrorState({
-  message = "불러오지 못했어요.", onRetry, retrying = false, compact = false, className, ...props
+  message, onRetry, retrying = false, compact = false, className, ...props
 }: ErrorStateProps) {
+  const t = useT(kitMessages);
   return (
     <div
       role="alert"
       className={cn("flex flex-col items-center px-4 text-center", compact ? "py-8" : "py-16", className)}
       {...props}
     >
-      <p className="text-sm font-medium text-fg">{message}</p>
+      <p className="text-sm font-medium text-fg">{message ?? t.loadFailed}</p>
       {onRetry ? (
         <Button variant="secondary" size="sm" className="mt-3" onClick={onRetry} loading={retrying}>
-          다시 시도
+          {t.retry}
         </Button>
       ) : null}
     </div>

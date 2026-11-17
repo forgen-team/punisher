@@ -1,0 +1,201 @@
+# English overlay for ../../network-web.yaml — same concept ids and objective order.
+# Objectives stay keyed by their Korean ordinal; only display/prompt text comes from here.
+area: network-web
+title: Networking and the Web
+concepts:
+  net.network-layers:
+    name: Network Layer Models
+    summary: Network communication is built as a stack of physical, link, IP, transport and application layers, and each layer does its own job. If you think about a failure layer by layer, you narrow down where the cause can be.
+    objectives:
+      - Explain the role of each of the four TCP/IP layers and name their main protocols
+      - Explain how encapsulation turns an HTTP request into packets
+      - Break a connection failure down into hypotheses by layer
+    practical_cases:
+      - Deciding which layer to suspect first when ping works but HTTP requests fail
+  net.ip-and-routing:
+    name: IP Addresses and Routing
+    summary: An IP address identifies where a host is, and routing decides the path a packet takes to its destination. CIDR and subnets are the basic vocabulary of cloud network configuration.
+    objectives:
+      - Interpret IPv4 addresses and CIDR notation (e.g., 10.0.0.0/16)
+      - Explain the difference between private and public IP addresses
+      - Explain the role of the routing table and the default gateway
+    practical_cases:
+      - VPC peering that fails because subnet ranges overlap
+  net.nat-and-ports:
+    name: NAT and Ports
+    summary: Ports tell apart the communication endpoints within a single host, and NAT translates private addresses into public ones. Container port mapping works on the same principle.
+    objectives:
+      - Explain how an IP and port combination (socket address) identifies a connection
+      - Explain how NAT translates addresses and why connecting from outside to inside is difficult
+      - Explain container port mapping (host port → container port)
+    practical_cases:
+      - A service that can't be reached from outside because of a wrong Docker port mapping
+  net.dns:
+    name: DNS
+    summary: DNS is a distributed lookup system that translates domain names into IP addresses. Because of caching and TTLs, changes do not take effect immediately.
+    objectives:
+      - Explain the lookup process through recursive resolvers and authoritative servers
+      - Explain what A, AAAA, CNAME and MX records are used for
+      - Explain why caching and TTLs delay DNS changes
+      - Check lookup results and TTLs with dig
+    practical_cases:
+      - After a domain moves to a new server, some users still connect to the old server
+  net.tcp:
+    name: TCP
+    summary: TCP provides a reliable byte stream through ordering, retransmission and flow control. The cost is a round trip to set up each connection and delays from congestion control.
+    objectives:
+      - Explain how TCP provides reliability through ordering, retransmission and flow control
+      - Explain that TCP is a byte stream that does not preserve message boundaries
+      - Explain how packet loss shows up as latency
+    practical_cases:
+      - Why requests slow down instead of failing when the network is unstable
+  net.tcp-connection-states:
+    name: TCP Connection Setup and Teardown States
+    summary: A TCP connection starts with a three-way handshake and ends with a FIN exchange, and states are left behind along the way. Piled-up TIME_WAIT or CLOSE_WAIT connections are a sign of connection-management problems.
+    objectives:
+      - Explain the three-way handshake and the connection teardown process
+      - Explain why TIME_WAIT exists and when large numbers of TIME_WAIT connections build up
+      - Explain why piled-up CLOSE_WAIT connections mean the application is not closing its connections
+    practical_cases:
+      - Finding the cause on a server where ss shows thousands of CLOSE_WAIT connections
+  net.udp:
+    name: UDP
+    summary: UDP sends datagrams without setting up a connection or retransmitting. It is fast, but the application has to handle loss and ordering itself. DNS and QUIC run on top of UDP.
+    objectives:
+      - Compare what TCP and UDP guarantee
+      - Explain the use cases UDP suits (DNS, real-time media, QUIC)
+    practical_cases:
+      - An environment where a firewall blocks UDP, so only DNS lookups fail
+  net.tls:
+    name: TLS
+    summary: TLS checks the peer's identity with the server certificate and agrees on keys to encrypt the traffic. Certificate chains, expired certificates and domain mismatches are the most common causes of failures.
+    objectives:
+      - Explain what certificate verification and key agreement do in the TLS handshake
+      - Explain how certificate chains relate to trusted root certificates
+      - Tell apart errors from expired certificates, SAN mismatches and missing intermediate certificates
+    practical_cases:
+      - Browsers work, but server-to-server calls get certificate errors (missing intermediate certificate)
+  net.http:
+    name: HTTP
+    summary: HTTP is a stateless protocol that exchanges resources through request and response messages. The semantics of methods (safe, idempotent) and headers determine how caching and retries behave.
+    objectives:
+      - Explain the message structure of request line, headers and body
+      - Tell apart the meanings of GET, POST, PUT, PATCH and DELETE and whether each is safe and idempotent
+      - Explain what it means for HTTP to be stateless and how state is maintained
+    practical_cases:
+      - An incident where a crawler deleted data because GET requests changed data
+  net.http-status-codes:
+    name: HTTP Status Codes
+    summary: Status codes classify the result of a request. 502, 503 and 504 in particular are clues to which part of the path failed.
+    objectives:
+      - Explain what the 2xx, 3xx, 4xx and 5xx classes mean
+      - Explain whether 502, 503 and 504 point to a problem in the proxy or in the backend
+      - Explain the difference between 401 and 403, and between 400 and 422
+    practical_cases:
+      - Suspecting that a backend process has died after seeing an nginx 502 response
+  net.http2-http3:
+    name: HTTP/2 and HTTP/3
+    summary: HTTP/2 multiplexes many requests over one connection. HTTP/3 runs over QUIC (UDP) and reduces TCP head-of-line blocking.
+    objectives:
+      - Explain how HTTP/1.1's per-connection request limit differs from HTTP/2 multiplexing
+      - Explain TCP head-of-line blocking and how QUIC reduces it
+    practical_cases:
+      - Load piling up unevenly behind an L4 load balancer because gRPC runs over HTTP/2
+  net.request-path:
+    name: The Request Path from DNS to HTTP
+    summary: A single request goes through DNS lookup, TCP connection, TLS handshake and HTTP request/response in turn. Diagnosis starts with measuring which of these phases failed or was slow.
+    objectives:
+      - Explain in order the phases a request passes through (DNS, TCP, TLS, HTTP, server processing)
+      - Find the slow phase using curl's per-phase timing
+      - Match failures in each phase to the error messages they produce
+    practical_cases:
+      - Telling apart DNS failures, refused connections, timeouts and 5xx errors when a request fails
+  net.timeouts:
+    name: Timeouts
+    summary: Without timeouts, one slow dependency can tie up all resources. Distinguish connect, read and overall timeouts, and divide the time budget across the whole call chain.
+    objectives:
+      - Explain the differences between connect timeouts, read timeouts and an overall deadline
+      - Explain how threads and connections run out when there are no timeouts
+      - Explain why each downstream timeout in a call chain must be shorter than the upstream one
+    practical_cases:
+      - An outage where one slow external API froze responses from the entire server
+  net.retry-and-backoff:
+    name: Retries and Backoff
+    summary: Retrying can recover from transient failures, but blind retries amplify load and cause duplicate processing. You need exponential backoff, jitter and a clear split between errors that can and cannot be retried.
+    objectives:
+      - Tell apart errors that are safe to retry from errors that are not
+      - Explain how exponential backoff and jitter prevent floods of simultaneous retries
+      - Explain how retrying non-idempotent requests creates duplicates
+    practical_cases:
+      - Right after an outage is fixed, every client retries at once and causes another outage
+  net.reverse-proxy:
+    name: Proxies and Reverse Proxies
+    summary: A reverse proxy receives client requests first and forwards them to backends, handling TLS termination, routing and buffering. Information about the original client is passed on in headers.
+    objectives:
+      - Explain the difference between forward proxies and reverse proxies
+      - Explain how a reverse proxy handles TLS termination, path-based routing and upload size limits
+      - Explain the trust issues in using X-Forwarded-For to get the real client IP
+    practical_cases:
+      - Only large file uploads fail with 413 because of nginx client_max_body_size
+  net.load-balancer:
+    name: Load Balancers
+    summary: A load balancer spreads requests across multiple instances and takes unhealthy targets out of rotation. L4 and L7 load balancers differ in what information they can see and in the unit they distribute.
+    objectives:
+      - Explain the difference between L4 and L7 load balancing
+      - Explain the characteristics of distribution methods such as round robin and least connections
+      - Explain how health checks and connection draining reduce errors during deployments
+    practical_cases:
+      - Some requests fail with 502 during a deployment because they go to instances that are shutting down
+  net.keepalive-connection-reuse:
+    name: Connection Reuse and Keep-Alive
+    summary: To avoid the cost of setting up connections, HTTP clients keep them in a pool and reuse them. If the client's idle timeout doesn't match the server's, requests sent on a connection that has already closed fail.
+    objectives:
+      - Explain why connection reuse reduces latency
+      - Explain the errors caused by mismatched idle timeouts between the client and the server or proxy
+      - Explain the problems caused by creating a new HTTP client for every request
+    practical_cases:
+      - A case where intermittent "connection reset by peer" errors turned out to come from reused idle connections
+  net.cookie-and-session:
+    name: Cookies and Sessions
+    summary: Because HTTP is stateless, sessions are maintained by passing an identifier back and forth in cookies. The Secure, HttpOnly and SameSite attributes have a large effect on security.
+    objectives:
+      - Explain how the Set-Cookie and Cookie headers maintain state
+      - Explain what the Domain, Path, Secure, HttpOnly and SameSite attributes mean
+      - Explain why a server-side session store is needed and what problems it causes when scaling out
+    practical_cases:
+      - A cookie Domain setting that stops logins from being shared across subdomains
+  net.cors:
+    name: CORS
+    summary: Browsers use the same-origin policy to block reading responses to cross-origin requests, and servers use CORS headers to say what is allowed. CORS does not apply to server-to-server calls.
+    objectives:
+      - Explain what an origin is and how the same-origin policy works
+      - Explain when a preflight request is sent and which response headers it needs
+      - Explain why a wildcard origin is not allowed for requests that include credentials
+    practical_cases:
+      - Everything works locally, but after deployment CORS errors appear in the browser console
+  net.realtime-push:
+    name: WebSocket and SSE
+    summary: For a server to send data to the client without a new request, you use long polling, SSE or WebSocket. Proxy timeout and buffering settings affect whether these connections stay open.
+    objectives:
+      - Compare long polling, SSE and WebSocket by data direction and characteristics
+      - Explain why proxy buffering and idle timeouts cut off streaming responses
+    practical_cases:
+      - SSE events arrive late and all at once because of nginx buffering
+  net.http-caching-cdn:
+    name: HTTP Caching and CDNs
+    summary: Browsers and CDNs reuse responses based on Cache-Control and validation headers. Wrong cache settings lead to stale pages or leaked personal information.
+    objectives:
+      - Explain the differences between the Cache-Control directives max-age, no-cache, no-store and private
+      - Explain how ETag and conditional requests (304) work
+      - Explain the risks of storing per-user responses in a CDN cache
+    practical_cases:
+      - Fixing a caching problem where users still get an old JS bundle after a deployment by adding hashes to file names
+  net.rest-api-design:
+    name: REST API Design
+    summary: A REST-style API represents resources as URLs, actions as HTTP methods and results as status codes. A consistent error format and good pagination matter a lot for usability.
+    objectives:
+      - Explain the principles of resource-oriented URLs and how to choose methods
+      - Explain how to keep error response formats consistent and choose status codes
+      - Explain how to design pagination and filters for list APIs
+    practical_cases:
+      - An API that returns every error as 200 with a flag in the body, so monitoring cannot catch failures

@@ -1,0 +1,173 @@
+# English overlay for ../../security-design.yaml — same concept ids and objective order.
+# Objectives stay keyed by their Korean ordinal; only display/prompt text comes from here.
+area: security-design
+title: Security and Design
+concepts:
+  sec.cryptography-basics:
+    name: Cryptography Basics
+    summary: A hash is an irreversible fingerprint, symmetric encryption locks and unlocks data with the same key, and public-key cryptography is used for signatures and key exchange. Use vetted libraries instead of implementing these yourself.
+    objectives:
+      - Distinguish the uses of hashing, symmetric encryption, public-key encryption and digital signatures
+      - Explain the difference between encoding (Base64) and encryption
+      - Explain why you should not implement cryptographic algorithms yourself
+    practical_cases:
+      - Passwords exposed because a Base64-encoded value was mistaken for an encrypted one
+  sec.password-hashing:
+    name: Password Storage
+    summary: Store passwords with a slow hash (bcrypt, argon2) and a salt so they cannot be decrypted. A fast hash such as SHA-256 alone is vulnerable to brute-force attacks.
+    objectives:
+      - Explain why passwords are stored as hashes rather than encrypted
+      - Explain how salts and slow hashes defend against brute-force and rainbow table attacks
+    practical_cases:
+      - An incident where passwords stored as single SHA-1 hashes were recovered en masse after a leak
+  sec.authentication:
+    name: Authentication
+    summary: Authentication is the process of verifying who the requester is. After login, a session or token carries that fact along with every request.
+    objectives:
+      - Explain the difference between authentication and authorization
+      - Explain how a session cookie keeps the user's identity after login
+      - Explain why brute-force defenses (rate limiting, MFA) are needed
+    practical_cases:
+      - A login API with no attempt limit that was hit by a credential brute-force attack
+  sec.authorization:
+    name: Authorization and Permission Models
+    summary: Authorization decides what an authenticated user can do with a specific resource. If the server does not check resource ownership on every request, users can access other people's data.
+    objectives:
+      - Explain the structure of permission models such as RBAC
+      - Explain the IDOR vulnerability, where changing only an ID exposes someone else's data, and how to defend against it
+      - Explain why permission checks must happen on the server, not in the UI
+    practical_cases:
+      - A vulnerability where changing only the order number in the URL showed other people's orders
+  sec.session-vs-token:
+    name: Session-Based vs Token-Based Authentication
+    summary: Server-side sessions are easy to invalidate immediately, while self-contained tokens can be verified without a server lookup but are hard to revoke. Where they are stored (cookies or web storage) changes exposure to XSS and CSRF.
+    objectives:
+      - Explain how server-side sessions and self-contained tokens differ in verification and revocation
+      - Explain why access tokens and refresh tokens are separated
+      - Explain the different risks of storing tokens in localStorage versus HttpOnly cookies
+    practical_cases:
+      - A departed employee's account was disabled, but already-issued tokens stayed valid until they expired
+  sec.jwt:
+    name: JWT
+    summary: A JWT is a set of signed JSON claims. Anyone can read its contents; only the signature prevents forgery. Skipping algorithm pinning, expiry or audience validation makes it dangerous.
+    objectives:
+      - Explain the header, payload and signature structure and how the signature is verified
+      - Explain that JWT payloads are not encrypted and what information should not go in them
+      - Explain why exp, aud and iss validation and algorithm pinning are needed
+    practical_cases:
+      - A vulnerability where the JWT was only decoded, without signature verification, and its user ID was trusted
+  sec.oauth-oidc:
+    name: OAuth 2.0 and OpenID Connect
+    summary: OAuth 2.0 is a delegated authorization protocol, and OIDC adds identity verification on top of it. Social login is made secure by the Authorization Code flow with state and PKCE checks.
+    objectives:
+      - Explain each step of the Authorization Code flow
+      - Explain the difference between OAuth (authorization) and OIDC (authentication)
+      - Explain the attacks that state, PKCE and redirect URI validation prevent
+    practical_cases:
+      - A configuration with loosely allowed redirect URIs that let authorization codes be stolen
+  sec.secrets-management:
+    name: Secrets Management
+    summary: Secrets such as API keys and DB passwords are kept out of code and images and injected from a separate store or the environment, with a rotation procedure prepared on the assumption they will leak.
+    objectives:
+      - Explain how secrets leak through code, images, logs and history
+      - Explain the differences between environment variables, secret stores and encrypted storage
+      - Explain the rotation procedure after a leak and how to assess the blast radius
+    practical_cases:
+      - An incident where a cloud key committed to a public repository was abused within minutes
+  sec.trust-boundary:
+    name: Trust Boundaries
+    summary: A trust boundary is where the trust level of data or requests changes. Every input crossing a boundary must be validated, and being on the internal network does not mean it is automatically trusted.
+    objectives:
+      - Mark trust boundaries on a system diagram and identify the data crossing them
+      - Explain why values sent by the client (price, permissions, user ID) must not be trusted
+      - Explain when calls between internal services also need authentication
+    practical_cases:
+      - An incident where the payment amount was taken directly from the client request, allowing payment with a tampered amount
+  sec.injection:
+    name: Injection and Input Validation
+    summary: Injection happens when input is interpreted as part of code or a query. The fundamental fix is parameter binding instead of string concatenation.
+    objectives:
+      - Explain how SQL injection arises from building query strings
+      - Explain how parameter binding separates data from code
+      - Explain how to prevent command injection when running shell commands
+    practical_cases:
+      - A vulnerability where the sort column name was taken from the request and inserted directly into the query (fixed with an allowlist)
+  sec.xss:
+    name: XSS
+    summary: XSS is a vulnerability where an attacker's script runs in another user's browser. It is prevented with escaping suited to the output context and with CSP.
+    objectives:
+      - Explain the differences between stored, reflected and DOM-based XSS
+      - Explain why context-specific output escaping and HTML sanitization are needed
+      - Explain how XSS arises in features that render Markdown or HTML
+    practical_cases:
+      - A page that rendered external RSS body HTML as-is, allowing scripts to run
+  sec.csrf:
+    name: CSRF
+    summary: CSRF is an attack that uses the cookies a browser attaches automatically to make the user send unwanted requests. It is prevented with SameSite cookies and CSRF tokens.
+    objectives:
+      - Explain how automatic cookie sending makes CSRF possible
+      - Explain the roles of the SameSite attribute, CSRF tokens and Origin checks
+      - Explain why handling state changes with GET is dangerous
+    practical_cases:
+      - A vulnerability where a single image tag on an external page changed a logged-in user's settings
+  sec.ssrf:
+    name: SSRF
+    summary: SSRF is an attack that makes the server request a user-supplied URL on its behalf to reach the internal network or cloud metadata. It arises in features such as URL previews and feed fetching.
+    objectives:
+      - Explain why features where the server fetches a user-supplied URL are exposed to SSRF
+      - Explain blocking internal IPs and metadata addresses, and bypasses via redirects and DNS rebinding
+    practical_cases:
+      - A vulnerability where the RSS feed URL registration feature could be used to call an internal admin API
+  sec.least-privilege:
+    name: Principle of Least Privilege
+    summary: Give each user, service and process only the minimum permissions it needs. If a compromise occurs, the damage is limited to those permissions.
+    objectives:
+      - Explain how to apply least privilege to service accounts, DB accounts and container users
+      - Explain why shared admin accounts widen the scope of incidents
+    practical_cases:
+      - Giving each service its own DB role so a compromise of one service does not spread to other databases
+  sec.tls-certificates:
+    name: Certificates and PKI
+    summary: A certificate is a public-key document signed by a CA after it verifies domain ownership. Without automatic renewal and expiry monitoring, an expiry outage will inevitably happen sooner or later.
+    objectives:
+      - Explain CA signing and how a certificate chain is validated
+      - Explain the ACME (Let's Encrypt) automatic issuance and renewal flow
+      - Explain certificate expiry monitoring and how to respond to renewal failures
+    practical_cases:
+      - An outage where the auto-renewal cron job failed silently and the certificate expired over the weekend
+  sec.module-boundaries:
+    name: Module Boundaries and Responsibilities
+    summary: Split modules so each groups responsibilities that change for only one reason (cohesion) and knows nothing of other modules' internals (low coupling). How far a change spreads is the measure of design quality.
+    objectives:
+      - Explain cohesion and coupling in terms of how far changes spread
+      - Identify the causes of structures where changing one feature spreads across many files or services
+      - Explain how to separate a public interface from internal implementation
+    practical_cases:
+      - Code where order logic is scattered across controllers, views and batch jobs, so every policy change introduces bugs
+  sec.dependency-direction:
+    name: Dependency Direction and Layers
+    summary: Set dependency direction so stable core rules do not depend on volatile implementation details (DB, external APIs). Circular dependencies make separation and testing harder.
+    objectives:
+      - Explain how dependency direction affects change impact and testability
+      - Explain how to push external dependencies outside the boundary using interfaces
+      - Explain how to detect and break circular dependencies
+    practical_cases:
+      - Code where domain logic depended directly on a specific LLM SDK's types, making it hard to switch providers
+  sec.api-contracts:
+    name: API Contracts and Versioning
+    summary: An API is a contract between services, so changes must stay backward compatible or be split into versions. Adding fields is generally safe; removing fields or changing their meaning is risky.
+    objectives:
+      - Distinguish backward-compatible changes from breaking changes
+      - Explain versioning approaches (URL, header) and the deprecation process
+      - Explain the tolerant reader principle, where clients ignore fields they do not recognize
+    practical_cases:
+      - An incident where renaming a response field broke all older versions of the mobile app at once after deployment
+  sec.supply-chain:
+    name: Software Supply Chain Security
+    summary: The libraries, images and build tools you use can become attack vectors. Version pinning, vulnerability scanning and provenance verification reduce the risk.
+    objectives:
+      - Explain what lockfiles and version pinning mean for reproducibility and security
+      - Explain how to assess dependency vulnerability scan results by impact
+      - Explain the concept of build artifact provenance verification (SLSA levels)
+    practical_cases:
+      - An incident where installing a malicious package with a similar name leaked tokens from the build server

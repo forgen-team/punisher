@@ -38,12 +38,13 @@ func (s *Service) PregenerateReviewVariants(ctx context.Context) (VariantReport,
 	if err != nil {
 		return rep, err
 	}
+	lang := s.Store.LocaleFor(ctx, owner)
 	for _, t := range targets {
 		apiKey, err := s.checkKey(ctx, owner)
 		if err != nil {
 			return rep, err
 		}
-		key := "check_variant:" + owner + ":" + t.ObjectiveID + ":" + learning.KSTDay(now)
+		key := "check_variant:" + owner + ":" + t.ObjectiveID + ":" + learning.KSTDay(now) + learning.LanguageSuffix(lang)
 		job, created, err := s.Store.CreateJob(ctx, store.NewJob{IdempotencyKey: key, Kind: "check_items", UserID: owner,
 			ConceptID: t.ConceptID, ObjectiveKey: key, Reason: "review variant"})
 		if err != nil {
@@ -56,7 +57,7 @@ func (s *Service) PregenerateReviewVariants(ctx context.Context) (VariantReport,
 		if err := s.Store.StartJob(ctx, job.ID); err != nil {
 			return rep, err
 		}
-		if err := s.runReviewVariant(ctx, apiKey, owner, t, job.ID); err != nil {
+		if err := s.runReviewVariant(ctx, apiKey, owner, lang, t, job.ID); err != nil {
 			rep.Failed++
 			logf("review variant %s: %v", t.ObjectiveID, err)
 			if errors.Is(err, llm.ErrGenerationUnavailable) || errors.Is(err, llm.ErrRateLimited) {
@@ -71,8 +72,9 @@ func (s *Service) PregenerateReviewVariants(ctx context.Context) (VariantReport,
 
 // runReviewVariant writes one review item for the target's objective from its
 // lecture with the check.items prompt and validation, records the tokens on
-// the job (kind check_items) and stores the item. Failure stores nothing.
-func (s *Service) runReviewVariant(ctx context.Context, apiKey, userID string, t store.VariantTarget, jobID string) error {
+// the job (kind check_items) and stores the item. Failure stores nothing. The
+// variant is in the user's language lang even when the lecture is not (i18n §9).
+func (s *Service) runReviewVariant(ctx context.Context, apiKey, userID, lang string, t store.VariantTarget, jobID string) error {
 	cl, err := s.loadCheckLecture(ctx, userID, t.LectureID)
 	if err == nil {
 		err = narrowToObjective(&cl, t.ObjectiveID)
@@ -85,15 +87,15 @@ func (s *Service) runReviewVariant(ctx context.Context, apiKey, userID string, t
 	}
 	set := s.UserPrompts(ctx, userID)
 	ic, sc := checkItemsContext(cl)
-	system := set.Text(prompts.BlockCheckItems, s.interactionVars(ctx, userID, cl.info.ID))
+	system := set.Text(prompts.BlockCheckItems, s.interactionVars(ctx, userID, cl.info.ID, learning.NormalizeLocale(cl.lec.Language)))
 	seen := map[string][]string{t.ObjectiveID: t.Seen}
 	items, u, tries, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.Cfg.LectureModel, attempts: checkAttempts,
-		priority: llm.PriorityBackground, system: system},
+		priority: llm.PriorityBackground, system: system, language: lang},
 		func(revisions []string) string { ic.Revisions = revisions; return prompts.CheckVariants(ic, seen) },
 		func(set check.ItemSet) []string { return check.ValidateVariants(set, sc, []string{t.ObjectiveID}) })
 	if err == nil {
-		key := s.checkItemKey(ctx, userID, cl.lec.ID)
-		key.Purpose = check.PurposeReview
+		key := s.checkItemKey(ctx, userID, cl.lec)
+		key.Purpose, key.Language = check.PurposeReview, lang
 		_, err = s.Store.SaveVariantItems(ctx, key, cl.info.ID, jobID, u.model, checkPromptVersion(set),
 			check.NormalizeItems(items, cl.objectiveIDs()))
 	}

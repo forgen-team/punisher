@@ -77,8 +77,10 @@ type LearningSettings struct {
 	// LabOS: the reader's lab environment (macos | linux | none).
 	LabOS string `json:"labOs"`
 	// AdaptiveIntervals: per-objective interval scale (ease) on.
-	AdaptiveIntervals bool       `json:"adaptiveIntervals"`
-	UpdatedAt         *time.Time `json:"updatedAt,omitempty"`
+	AdaptiveIntervals bool `json:"adaptiveIntervals"`
+	// Locale: screen and generation language (ko|en).
+	Locale    string     `json:"locale"`
+	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
 }
 
 // CompletedItem is one entry of the "completed by area" history: a completed

@@ -1,5 +1,6 @@
 /** 학습 UX 확장 타입 — 학습 설정 · 선택 구절 설명 · 지도 위 학습 요청 (punisher-server 003). */
 import type { ReviewGrader } from "./reviewTypes";
+import type { Locale } from "@/src/shared/i18n";
 
 export type ExampleLanguage = "typescript" | "javascript" | "go" | "java" | "kotlin" | "python";
 
@@ -20,6 +21,8 @@ export interface LearningSettings {
   labOs: LabOS;
   /** 목표마다 복습 간격을 조절(v3 §7) */
   adaptiveIntervals: boolean;
+  /** 화면·생성 언어 */
+  locale: Locale;
   updatedAt?: string;
 }
 

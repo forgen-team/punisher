@@ -1,0 +1,110 @@
+# English overlay for ../computer-architecture.yaml — same ids.
+area: computer-architecture
+concepts:
+  arch.cache-coherence-false-sharing: Cache coherence is the hardware protocol that keeps cores' caches consistent about the same memory location. Distinct variables on one cache line cause repeated cross-core invalidation, called false sharing, which can make per-thread counters slower.
+  arch.cache-locality: Locality is the tendency to reuse recently accessed data or nearby addresses soon. Access patterns with locality hit the cache well, so array traversal beats linked-list traversal for the same algorithm, and data layout alone can speed up aggregation.
+  arch.cpu-cache: A CPU cache is a small, fast memory between the CPU and RAM that fetches data in cache-line units. With frequent cache misses, the CPU can spend much of its time waiting on memory even when utilization looks high.
+  arch.cpu-instruction-execution: A CPU repeatedly fetches instructions from memory, decodes them, and executes them. Knowing registers, clocks, and how instructions are processed helps explain why instance types with the same core count deliver different throughput.
+  arch.data-representation: Data representation is the rules for encoding integers, characters, and real numbers as fixed-width bit strings. Knowing type widths and encodings explains ID column overflow and Korean text truncated by byte-based length limits.
+  arch.dma: DMA lets devices exchange data directly with memory without going through the CPU. It underpins zero-copy transfers that cut CPU copying, which explains why enabling sendfile for static file serving lowers CPU usage.
+  arch.endianness-alignment: Endianness is the byte order of multi-byte values in memory or on the network; alignment is the rule for which address boundaries values sit on. A byte-order mismatch corrupts values when parsing binary protocols, and struct padding increases memory size.
+  arch.floating-point: Floating point stores real numbers as approximations split into a mantissa and an exponent, standardized by IEEE 754. Because 0.1 + 0.2 is not exactly 0.3, monetary calculations should use integer or decimal types.
+  arch.io-devices-interrupts: An interrupt is a signal a device such as a disk or network card sends to tell the CPU that work is done. Processes waiting on I/O don't use the CPU, so this model matters when diagnosing a server with low CPU usage but slow responses.
+  arch.latency-numbers: Latency intuition is an internalized sense of how many orders of magnitude separate cache, memory, disk, and network access. It is a yardstick for spotting slow designs, such as remote calls inside loops, during code review.
+  arch.memory-hierarchy: The memory hierarchy runs from registers to cache, RAM, and disk; each lower level is larger and cheaper but slower. It explains why disk I/O becomes the bottleneck the moment data no longer fits in memory.
+  arch.memory-ordering: Memory ordering and visibility govern when and in what order one thread's writes become visible to other threads. Because CPUs and compilers can reorder operations, signaling with a flag without synchronization can leave a loop that never exits.
+  arch.multicore: Multicore means multiple cores in one CPU truly running different tasks at the same time. Shared data and serial sections keep performance from scaling with core count, which matters when predicting the gain from adding vCPUs.
+  arch.numa: NUMA is a design in multi-socket servers where each CPU has near and far memory with different access costs. It is a candidate cause when DB or JVM latency becomes erratic after moving to a large, many-core server.
+  arch.pipeline-branch-prediction: Pipelining overlaps instruction stages to raise throughput; branch prediction guesses a conditional's outcome to keep execution going. When predictions are frequently wrong, the cost of discarding speculatively executed work adds up, so whether the data is sorted alone can change the same loop's speed.
+  arch.storage-devices: SSDs and HDDs are persistent storage devices; HDDs must move a head, making random access especially slow, while SSDs access data electronically. For DB performance, distinguish IOPS, throughput, and latency, and check cloud volume IOPS limits too.
+terms:
+  g.twos-complement:
+    name: Two's complement
+    gloss: Two's complement represents a negative number by inverting all bits and adding 1; most CPUs store signed integers this way. Overflow, where adding 1 to the maximum value wraps to a negative, comes directly from this representation.
+  g.utf-8:
+    name: UTF-8
+    gloss: UTF-8 is a variable-length encoding that stores Unicode characters in 1 to 4 bytes. English letters take 1 byte and Korean usually 3, so results differ depending on whether a length limit counts bytes or characters.
+  g.isa:
+    name: Instruction Set Architecture (ISA)
+    gloss: An ISA defines the kinds and formats of machine instructions a CPU understands; x86 and ARM are the main examples. Container images and binaries must be built per ISA, so moving to ARM instances can cause image compatibility issues.
+  g.vcpu:
+    name: vCPU
+    gloss: A vCPU is the logical CPU unit a cloud or virtual machine exposes to the guest. It often maps to a single hyperthread and doesn't match a physical core's performance, so factor this in when sizing instances.
+  g.ipc:
+    name: IPC (Instructions Per Cycle)
+    gloss: IPC is a metric for the average number of instructions a CPU completes per clock cycle. Low IPC can mean the CPU spends much time waiting on cache misses or branch mispredictions even if it looks busy.
+  g.simd:
+    name: SIMD
+    gloss: SIMD is a CPU feature that applies the same operation to multiple data elements with a single instruction. It works best on data laid out contiguously in memory and often explains performance gaps between compression, hashing, and JSON parsing libraries.
+  g.cache-hit:
+    name: Cache hit
+    gloss: A cache hit is when the requested data is already in the cache, so there is no trip to a slower lower level. Even a small drop in hit ratio sharply raises average access time, making it a key metric in performance analysis.
+  g.memory-stall:
+    name: Memory stall
+    gloss: A memory stall is when the CPU cannot make progress on instructions until needed data arrives from memory. The OS counts this time as CPU busy, so 100% utilization does not necessarily mean heavy computation.
+  g.prefetch:
+    name: Prefetching
+    gloss: Prefetching loads data likely to be needed soon into the cache ahead of time. It works well for regular patterns like sequential access and has little effect on random access that chases pointers.
+  g.tlb:
+    name: TLB
+    gloss: The TLB is an on-CPU cache that stores virtual-to-physical address translations. Scattered access across large memory increases TLB misses and slows things down, which is why large databases consider huge page settings.
+  g.mmu:
+    name: MMU
+    gloss: The MMU is the hardware that translates the virtual addresses programs use into physical memory addresses. It is what isolates memory per process and catches invalid address accesses as segmentation faults.
+  g.soa:
+    name: SoA and AoS
+    gloss: AoS stores whole objects in one array, while SoA keeps a separate array for each field. When aggregating specific fields, SoA reads only the needed values contiguously, greatly improving cache efficiency.
+  g.amdahls-law:
+    name: Amdahl's law
+    gloss: Amdahl's law states that the fraction of work that cannot be parallelized limits the overall speedup. It explains why adding cores or instances does not raise throughput proportionally.
+  g.data-race:
+    name: Data race
+    gloss: A data race occurs when two threads access the same memory without synchronization and at least one access is a write. Language memory models guarantee no particular result, so detect and remove races with tools such as Go's -race.
+  g.reordering:
+    name: Instruction reordering
+    gloss: Instruction reordering is a compiler or CPU optimization that changes the order of memory reads and writes when the result appears unchanged. It is invisible in a single thread, but other threads may observe an order different from the code.
+  g.happens-before:
+    name: Happens-before
+    gloss: Happens-before is an ordering relation guaranteeing that one operation's results are visible to another. Lock release/acquire and channel send/receive create it, and it is the basis for judging concurrent code correctness.
+  g.spectre:
+    name: Spectre and Meltdown
+    gloss: Spectre and Meltdown are a family of CPU vulnerabilities that use traces speculative execution leaves in the cache to read unauthorized memory. OS and firmware patches mitigate them but can reduce performance for syscall-heavy workloads.
+  g.iowait:
+    name: iowait
+    gloss: iowait is the share of time the CPU is idle while disk I/O is outstanding. A high value can suggest a disk bottleneck, but it reads low when the CPU is busy, so don't judge by this value alone.
+  g.sendfile:
+    name: sendfile
+    gloss: sendfile is a system call that sends file contents straight to a socket inside the kernel without copying them to user space. Web servers such as nginx use it to cut copies and CPU usage when serving static files.
+  g.seek-time:
+    name: Seek time
+    gloss: Seek time is how long an HDD head takes to physically move to the track holding the data. It accumulates with more random access, which is why random I/O on HDDs is much slower than sequential I/O.
+  g.sequential-random-io:
+    name: Sequential vs. random I/O
+    gloss: Sequential I/O reads and writes consecutive locations in order, while random I/O accesses scattered locations. Many designs, such as append-only logs and WAL, rely on sequential writes because devices favor sequential access.
+  g.throughput:
+    name: Throughput
+    gloss: 'Throughput is the amount of data that can be moved per unit of time. It is a different metric from IOPS or latency: large file backups are bound by throughput, while small random queries are bound by IOPS and latency.'
+  g.write-amplification:
+    name: Write amplification
+    gloss: Write amplification is when storage physically records more data than the application wrote. SSDs write in pages but erase in blocks, so garbage collection relocates valid data, slowing writes and shortening device lifespan.
+  g.nvme:
+    name: NVMe
+    gloss: NVMe is a storage interface specification designed to attach SSDs directly to the PCIe bus. Its deeper command queues than SATA favor parallel I/O, and it is common in cloud local instance storage.
+  g.burst-credit:
+    name: Burst credits
+    gloss: Burst credits let some cloud disks or instances briefly exceed baseline performance using credits saved up over time. When credits run out, performance drops to baseline, causing incidents where a normally healthy DB suddenly slows down.
+  g.rtt:
+    name: RTT (Round-Trip Time)
+    gloss: RTT is the time for a request to reach the other side and the response to come back. Multiplying RTT by the number of round trips a request makes estimates its minimum latency, which helps decide whether to batch remote calls.
+  g.decimal:
+    name: Decimal
+    gloss: Decimal is a type that stores numbers as base-10 digits, representing values like 0.1 exactly. It is slower than floating point but used where accuracy matters, such as money and tax calculations; in databases, numeric columns correspond to it.
+  g.cpu-affinity:
+    name: CPU affinity
+    gloss: CPU affinity binds a process or thread to run only on specific cores. On NUMA servers, pinning work to the CPUs and memory of the same node reduces remote memory access and can lower latency variance.
+  g.network-byte-order:
+    name: Network byte order
+    gloss: Network byte order is the convention that Internet protocol headers send multi-byte values in big-endian. Little-endian CPUs must convert before sending and after receiving; skipping this makes port numbers or length fields read wrong.
+  g.padding:
+    name: Padding
+    gloss: Padding is empty bytes the compiler inserts between or after struct fields to align them to boundaries. Reordering fields alone can shrink a struct, and padding is also used to separate cache lines and prevent false sharing.

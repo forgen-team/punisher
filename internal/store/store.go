@@ -26,11 +26,11 @@ type Store interface {
 	LoadGraph(ctx context.Context, userID string) (*models.GraphData, error)
 	LoadMapExtras(ctx context.Context, userID string, data *models.GraphData) error
 	ResolveConcepts(ctx context.Context, userID, normalizedQuery string) ([]string, error)
-	ConceptInfo(ctx context.Context, userID, conceptID string) (models.ConceptInfo, error)
+	ConceptInfo(ctx context.Context, userID, conceptID, lang string) (models.ConceptInfo, error)
 	DoneSet(ctx context.Context, userID, conceptID string) (learning.DoneSet, error)
-	ConceptCatalog(ctx context.Context, userID string) ([]ConceptRef, error)
-	RelatedConcepts(ctx context.Context, userID, conceptID string) ([]ConceptRef, error)
-	PrerequisitesOf(ctx context.Context, userID, conceptID string) ([]ConceptRef, error)
+	ConceptCatalog(ctx context.Context, userID, lang string) ([]ConceptRef, error)
+	RelatedConcepts(ctx context.Context, userID, conceptID, lang string) ([]ConceptRef, error)
+	PrerequisitesOf(ctx context.Context, userID, conceptID, lang string) ([]ConceptRef, error)
 	KnownConceptIDs(ctx context.Context, userID string) (map[string]bool, error)
 	ProposeConcept(ctx context.Context, userID string, p models.ProposedConcept) (string, error)
 	GetGloss(ctx context.Context, conceptID string) (string, error)
@@ -52,6 +52,7 @@ type Store interface {
 	SaveLearningSettings(ctx context.Context, userID, lang string, daily int) (models.LearningSettings, error)
 	UpdateLearningSettings(ctx context.Context, userID string, p LearningSettingsPatch) (models.LearningSettings, error)
 	ExampleLanguageFor(ctx context.Context, userID string) string
+	LocaleFor(ctx context.Context, userID string) string
 
 	// lectures
 	InsertLecture(ctx context.Context, l NewLecture) (models.Lecture, error)
@@ -60,8 +61,8 @@ type Store interface {
 	LecturesToReview(ctx context.Context, limit int) ([]models.Lecture, error)
 	SetLectureReviewOutcome(ctx context.Context, lectureID string, passed bool, reason string) error
 	InsertReview(ctx context.Context, lectureID string, r models.LectureReview) error
-	LatestLectureForTarget(ctx context.Context, kind, conceptID, objectiveKey string, depth int, statuses []string) (models.Lecture, error)
-	PublishedLectureCovering(ctx context.Context, userID, conceptID string, depth int, objectiveIDs []string) (models.Lecture, error)
+	LatestLectureForTarget(ctx context.Context, kind, conceptID, objectiveKey string, depth int, language string, statuses []string) (models.Lecture, error)
+	PublishedLectureCovering(ctx context.Context, userID, conceptID string, depth int, objectiveIDs []string, language string, mode LangMode) (models.Lecture, error)
 	GetLecture(ctx context.Context, userID, lectureID string) (models.Lecture, error)
 
 	// history
@@ -71,7 +72,7 @@ type Store interface {
 
 	// generation jobs
 	CreateJob(ctx context.Context, j NewJob) (models.GenerationJob, bool, error)
-	ActiveJobForTarget(ctx context.Context, objectiveKey string, depth int) (models.GenerationJob, error)
+	ActiveJobForTarget(ctx context.Context, objectiveKey string, depth int, language string) (models.GenerationJob, error)
 	GetJob(ctx context.Context, userID, jobID string) (models.GenerationJob, error)
 	StartJob(ctx context.Context, jobID string) error
 	FinishJob(ctx context.Context, jobID string, o JobOutcome) error

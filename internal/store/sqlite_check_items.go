@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/forgen-team/punisher/internal/check"
+	"github.com/forgen-team/punisher/internal/learning"
 	"github.com/forgen-team/punisher/internal/models"
 )
 
@@ -24,31 +25,42 @@ type CheckItem struct {
 	Material    json.RawMessage
 	Rubric      check.Rubric
 	Status      string
+	// Language: ko|en — the lecture's for a lecture set, the creator's locale otherwise (i18n §1).
+	Language string
 }
 
 // CheckItemKey is the cache key of a lecture's item set (design §4.1):
 // the default prompt is shared (PromptHash "", CreatedFor ""), an edited
-// check.items block makes the set the user's own.
+// check.items block makes the set the user's own. Language is the items'
+// language: the lecture's for its set, the user's for review variants (i18n §9);
+// "" = the lecture's.
 type CheckItemKey struct {
 	LectureID  string
 	Purpose    string
 	PromptHash string
 	CreatedFor string
+	Language   string
 }
 
-// JobKey is the generation_jobs idempotency key of the set.
+// JobKey is the generation_jobs idempotency key of the set (ko keeps the
+// pre-i18n key, other languages get a "|<lang>" suffix).
 func (k CheckItemKey) JobKey() string {
-	return "check_items:" + k.LectureID + ":" + k.Purpose + ":" + k.PromptHash + ":" + k.CreatedFor
+	return "check_items:" + k.LectureID + ":" + k.Purpose + ":" + k.PromptHash + ":" + k.CreatedFor + learning.LanguageSuffix(k.Language)
+}
+
+// keyLanguageSQL is the item language of a key: the given one, else the lecture's, else ko.
+func keyLanguageSQL(langParam, lectureParam string) string {
+	return `COALESCE(NULLIF(` + langParam + `, ''), (SELECT kl.language FROM lectures kl WHERE kl.id = ` + lectureParam + `), 'ko')`
 }
 
 const checkItemColumns = `ci.id, ci.concept_id, COALESCE(ci.objective_id, ''), COALESCE(ci.lecture_id, ''),
-	ci.purpose, ci.format, ci.prompt, ci.material, ci.rubric, ci.status`
+	ci.purpose, ci.format, ci.prompt, ci.material, ci.rubric, ci.status, ci.language`
 
 func scanCheckItem(row rowScanner) (CheckItem, error) {
 	var it CheckItem
 	var rubric json.RawMessage
 	err := row.Scan(&it.ID, &it.ConceptID, &it.ObjectiveID, &it.LectureID, &it.Purpose, &it.Format,
-		&it.Prompt, rawJSON(&it.Material), rawJSON(&rubric), &it.Status)
+		&it.Prompt, rawJSON(&it.Material), rawJSON(&rubric), &it.Status, &it.Language)
 	if err != nil {
 		return it, err
 	}
@@ -65,13 +77,14 @@ var checkItemVisible = `EXISTS (SELECT 1 FROM concepts c WHERE c.id = ci.concept
 	AND (ci.lecture_id IS NULL OR EXISTS (SELECT 1 FROM lectures l WHERE l.id = ci.lecture_id AND (l.kind = 'library' OR l.requested_by = $1)))
 	AND (ci.prompt_hash = '' OR ci.created_for = $1)`
 
-// ActiveCheckItems returns the active items of a lecture set visible to the user.
+// ActiveCheckItems returns the active items of a lecture set visible to the user, in the key's language.
 // Both purposes come back when key.Purpose is "check" (review items are the set's variants).
 func (s *SQLiteStore) ActiveCheckItems(ctx context.Context, userID string, key CheckItemKey) ([]CheckItem, error) {
 	list, err := collect(s.c().query(ctx, `SELECT `+checkItemColumns+` FROM check_items ci
 		WHERE ci.lecture_id = $2 AND ci.prompt_hash = $3 AND COALESCE(ci.created_for, '') = $4
+		  AND ci.language = `+keyLanguageSQL("$5", "$2")+`
 		  AND ci.status = 'active' AND `+checkItemVisible+`
-		ORDER BY ci.created_at, ci.rowid`, userID, key.LectureID, key.PromptHash, key.CreatedFor), scanCheckItem)
+		ORDER BY ci.created_at, ci.rowid`, userID, key.LectureID, key.PromptHash, key.CreatedFor, key.Language), scanCheckItem)
 	if err != nil {
 		return nil, fmt.Errorf("active check items: %w", err)
 	}
@@ -98,14 +111,16 @@ func checkItemsByID(ctx context.Context, c conn, userID string, ids []string) ([
 }
 
 // SaveCheckItems stores a validated set in one transaction: the key's previous
-// active items are retired, the new ones record their objective's current
-// text/depth, and review items point to their objective's check item (variant_of).
+// active items (same language) are retired, the new ones record their
+// objective's current text/depth, and review items point to their objective's
+// check item (variant_of).
 func (s *SQLiteStore) SaveCheckItems(ctx context.Context, key CheckItemKey, conceptID, jobID, model, promptVersion string, items []check.Item) ([]CheckItem, error) {
 	out := make([]CheckItem, 0, len(items))
 	err := s.tx(ctx, func(c conn) error {
 		if _, err := c.exec(ctx, `UPDATE check_items SET status = 'retired'
-			WHERE lecture_id = $1 AND prompt_hash = $2 AND COALESCE(created_for, '') = $3 AND status = 'active'`,
-			key.LectureID, key.PromptHash, key.CreatedFor); err != nil {
+			WHERE lecture_id = $1 AND prompt_hash = $2 AND COALESCE(created_for, '') = $3 AND status = 'active'
+			  AND language = `+keyLanguageSQL("$4", "$1"),
+			key.LectureID, key.PromptHash, key.CreatedFor, key.Language); err != nil {
 			return fmt.Errorf("retire previous check items: %w", err)
 		}
 		checkOf := map[string]string{}
@@ -140,12 +155,14 @@ func insertCheckItem(ctx context.Context, c conn, key CheckItemKey, conceptID, j
 	id := NewID()
 	if _, err := c.exec(ctx, `
 		INSERT INTO check_items (id, concept_id, objective_id, lecture_id, purpose, format, prompt, material, rubric,
-			variant_of, objective_text, objective_depth, prompt_hash, created_for, generation_job_id, model, prompt_version)
+			variant_of, objective_text, objective_depth, prompt_hash, created_for, generation_job_id, model, prompt_version,
+			language, objective_text_en)
 		SELECT $15, $1, NULLIF($2, ''), $3, $4, $5, $6, $7, $8, NULLIF($9, ''),
 			COALESCE((SELECT text FROM objectives WHERE id = $2), ''), COALESCE((SELECT depth FROM objectives WHERE id = $2), 0),
-			$10, NULLIF($11, ''), NULLIF($12, ''), $13, $14`,
+			$10, NULLIF($11, ''), NULLIF($12, ''), $13, $14, `+keyLanguageSQL("$16", "$3")+`,
+			COALESCE((SELECT text_en FROM objectives WHERE id = $2), '')`,
 		conceptID, it.ObjectiveID, key.LectureID, it.Purpose, it.Format, it.Prompt, nonNullJSON(it.Material, "{}"), string(rubric),
-		variantOf, key.PromptHash, key.CreatedFor, jobID, model, version, id); err != nil {
+		variantOf, key.PromptHash, key.CreatedFor, jobID, model, version, id, key.Language); err != nil {
 		return CheckItem{}, fmt.Errorf("insert check item: %w", err)
 	}
 	saved, err := scanCheckItem(c.row(ctx, `SELECT `+checkItemColumns+` FROM check_items ci WHERE ci.id = $1`, id))

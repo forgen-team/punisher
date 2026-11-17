@@ -121,7 +121,8 @@ type ReviewPick struct {
 
 // ReviewItems picks one item per objective (design §5 P2): an item of the
 // objective (check, review or known_verify purpose) the user has never been asked, else the
-// one asked longest ago (Reused). Objectives without a visible item are absent.
+// one asked longest ago (Reused) — items in the user's language first, other
+// languages only when it has none (i18n §1.3). Objectives without a visible item are absent.
 // DISTINCT ON (objective_id) … ORDER BY → ROW_NUMBER() OVER (PARTITION BY …) = 1.
 func (s *SQLiteStore) ReviewItems(ctx context.Context, userID string, objectiveIDs []string) (map[string]ReviewPick, error) {
 	out := map[string]ReviewPick{}
@@ -133,7 +134,8 @@ func (s *SQLiteStore) ReviewItems(ctx context.Context, userID string, objectiveI
 		FROM (
 			SELECT ci.id, seen.at IS NOT NULL AS seen,
 				ROW_NUMBER() OVER (PARTITION BY ci.objective_id
-					ORDER BY seen.at ASC NULLS FIRST, (ci.purpose = 'review') DESC, ci.created_at, ci.id) AS rn
+					ORDER BY (ci.language = `+userLocaleSQL("$1")+`) DESC, seen.at ASC NULLS FIRST,
+						(ci.purpose = 'review') DESC, ci.created_at, ci.id) AS rn
 			FROM check_items ci
 			LEFT JOIN (SELECT t.item_id, MAX(t.created_at) AS at FROM check_turns t WHERE t.user_id = $1 GROUP BY t.item_id) seen
 				ON seen.item_id = ci.id

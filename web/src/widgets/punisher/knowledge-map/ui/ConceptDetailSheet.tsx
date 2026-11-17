@@ -5,6 +5,7 @@ import { Check, Circle, Lock, X } from "lucide-react";
 import { BottomSheet, Button, ErrorState, IconButton, List, ListRow, ListSkeleton, Section } from "@/src/shared/ui/kit";
 import {
   MasteryDots,
+  STUDY_REQUEST_SOURCE_LABELS,
   USER_STATE_LABELS,
   UncheckedObjectives,
   areaLabel,
@@ -18,6 +19,8 @@ import { describePunisherError, type ConceptLink, type InstantResponse, type Map
 import { InlineError } from "@/src/shared/ui/punisher";
 import { ConceptLecturesSection } from "./ConceptLecturesSection";
 import { ConceptQuestionsSection } from "./ConceptQuestionsSection";
+import { messages } from "../i18n";
+import { useT } from "@/src/shared/i18n";
 
 function LinkGroup({ title, links, onSelect }: { title: string; links: ConceptLink[]; onSelect: (id: string) => void }) {
   if (links.length === 0) { return null; }
@@ -37,11 +40,12 @@ function LinkGroup({ title, links, onSelect }: { title: string; links: ConceptLi
 
 function NotesGroup({ conceptId }: { conceptId: string }) {
   const notes = useNotes({ conceptId });
+  const t = useT(messages);
   const items = notes.data ?? [];
   return (
-    <Section title="내 메모" headingLevel={3}>
+    <Section title={t.notes} headingLevel={3}>
       {items.length === 0 ? (
-        <p className="text-xs text-fg-muted">메모가 없어요.</p>
+        <p className="text-xs text-fg-muted">{t.notesEmpty}</p>
       ) : (
         <List>
           {items.map((n) =>
@@ -75,6 +79,7 @@ interface ConceptDetailSheetProps {
 /** 개념 상세: 모바일 하단 시트 / 데스크톱 오른쪽 시트 / 넓은 화면(xl) 캔버스 옆 고정 패널 (design §3.6 노드 클릭 → 개념 카드). */
 export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect, variant = "sheet" }: ConceptDetailSheetProps) {
   const titleId = useId();
+  const t = useT(messages);
   const detail = useConceptDetail(conceptId ?? undefined);
   const mastery = useMastery(conceptId ?? undefined);
   const knownChoice = useKnownChoice();
@@ -103,17 +108,17 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
   const c = detail.data;
   const learned = c?.userState === "known" || c?.userState === "completed";
   const description = c
-    ? `${areaLabel(c.area)} · 깊이 ${c.depth} · ${USER_STATE_LABELS[c.userState] ?? c.userState}${c.locked ? " · 잠김(선행 미완)" : ""}`
+    ? `${areaLabel(c.area)} · ${t.depth(c.depth)} · ${USER_STATE_LABELS[c.userState] ?? c.userState}${c.locked ? t.lockedSuffix : ""}`
     : undefined;
 
   const title = c?.name ?? conceptId ?? "";
   const conceptActions = c ? (
     <>
       <Button variant="secondary" disabled={learned || known.isSuccess} loading={known.isPending} onClick={() => knownChoice.ask(c.id)}>
-        {known.isSuccess ? "이미 앎으로 표시됨" : "이미 앎"}
+        {known.isSuccess ? t.knownDone : t.known}
       </Button>
       <Button loading={isPending} onClick={() => start(c.id)}>
-        강의 시작
+        {t.startLecture}
       </Button>
     </>
   ) : null;
@@ -134,25 +139,25 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
           {c.locked && (
             <p className="flex items-center gap-1.5 text-sm text-fg-secondary">
               <Lock className="size-4" aria-hidden="true" />
-              선행 개념을 먼저 마치거나 이미 앎으로 표시하면 열려요.
+              {t.lockedHint}
             </p>
           )}
           {requests.length > 0 && (
             <div className="rounded-md bg-accent-subtle px-3 py-2 text-sm">
-              <p className="font-semibold text-accent-text">학습 요청됨</p>
+              <p className="font-semibold text-accent-text">{t.requestsTitle}</p>
               <ul className="mt-1 list-disc pl-5 text-fg">
                 {requests.map((r) => (
                   <li key={r.id}>
                     {r.query}
-                    <span className="text-xs text-fg-muted"> · {r.source === "rss" ? "RSS" : "직접 입력"}</span>
+                    <span className="text-xs text-fg-muted"> · {STUDY_REQUEST_SOURCE_LABELS[r.source] ?? r.source}</span>
                   </li>
                 ))}
               </ul>
-              <p className="mt-1 text-xs text-fg-secondary">아래 &lsquo;강의 시작&rsquo;으로 바로 시작할 수 있어요.</p>
+              <p className="mt-1 text-xs text-fg-secondary">{t.requestsHint}</p>
             </div>
           )}
           {c.summary && <p className="text-sm text-fg-secondary">{c.summary}</p>}
-          <Section title="학습 목표" headingLevel={3}>
+          <Section title={t.objectives} headingLevel={3}>
             <UncheckedObjectives count={mastery.data?.uncheckedCount} />
             <ul role="list" className="flex flex-col gap-1.5 text-sm">
               {c.objectives.map((o) => {
@@ -166,8 +171,8 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
                       <Circle className="mt-0.5 size-4 shrink-0 text-fg-muted" aria-hidden="true" />
                     )}
                     <span className="min-w-0 flex-1 text-fg">
-                      <span className="sr-only">{done ? "완료: " : "미완료: "}</span>
-                      {o.text} <span className="text-xs text-fg-muted">(깊이 {o.depth})</span>
+                      <span className="sr-only">{done ? t.objectiveDone : t.objectiveTodo}</span>
+                      {o.text} <span className="text-xs text-fg-muted">{t.objectiveDepth(o.depth)}</span>
                     </span>
                     {m && <MasteryDots level={m.level} lastGrader={m.lastGrader} className="mt-1" />}
                   </li>
@@ -175,9 +180,9 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
               })}
             </ul>
           </Section>
-          <LinkGroup title="선행 개념" links={c.prerequisites} onSelect={onSelect} />
-          <LinkGroup title="이 개념이 여는 개념" links={c.dependents} onSelect={onSelect} />
-          <LinkGroup title="관련 개념" links={c.related} onSelect={onSelect} />
+          <LinkGroup title={t.prerequisites} links={c.prerequisites} onSelect={onSelect} />
+          <LinkGroup title={t.dependents} links={c.dependents} onSelect={onSelect} />
+          <LinkGroup title={t.related} links={c.related} onSelect={onSelect} />
           <ConceptLecturesSection conceptId={c.id} />
           <ConceptQuestionsSection conceptId={c.id} />
           <NotesGroup conceptId={c.id} />
@@ -195,7 +200,7 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
             <h2 id={titleId} className="break-keep text-lg font-semibold text-fg">{title}</h2>
             {description && <p className="mt-0.5 text-xs text-fg-muted">{description}</p>}
           </div>
-          <IconButton aria-label="개념 상세 닫기" onClick={onClose} className="-mr-2 -mt-1">
+          <IconButton aria-label={t.closeDetail} onClick={onClose} className="-mr-2 -mt-1">
             <X aria-hidden="true" />
           </IconButton>
         </header>

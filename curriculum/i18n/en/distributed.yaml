@@ -1,0 +1,163 @@
+# English overlay for ../../distributed.yaml — same concept ids and objective order.
+# Objectives stay keyed by their Korean ordinal; only display/prompt text comes from here.
+area: distributed
+title: Distributed Systems
+concepts:
+  dist.partial-failure:
+    name: Distributed Systems and Partial Failure
+    summary: When multiple processes cooperate over a network, some of them can fail while others keep running, and sometimes you cannot even tell whether a failure happened. A timeout does not tell you whether the other side processed the request.
+    objectives:
+      - Explain the fundamental differences between local and remote calls (latency, failure, uncertainty)
+      - Explain why the other side may have already processed a request even though it timed out
+      - Identify the points where a design must assume partial failure
+    practical_cases:
+      - A payment API call timed out, but the payment had actually been approved
+  dist.idempotency:
+    name: Idempotency
+    summary: Idempotency means that sending the same request several times gives the same result as sending it once. Retries and duplicate messages are unavoidable, so it is the key tool for preventing duplicate payments.
+    objectives:
+      - Explain how a retry button can lead to a duplicate payment
+      - Explain how idempotency keys and unique constraints prevent duplicate processing
+      - Explain the scope in which idempotency keys are stored and when they expire, and how to handle identical requests that arrive at the same time
+    practical_cases:
+      - Adding an Idempotency-Key header to payment requests so each payment is approved only once, even when the network retries
+      - Using a DB unique key to make a scheduler idempotent after it regenerated the same report on every restart
+  dist.message-queue:
+    name: Message Queues
+    summary: A message queue decouples producers and consumers in time, which absorbs load and enables asynchronous processing. Consumer lag and the handling of failed messages are central to operating one.
+    objectives:
+      - Explain what you gain and what you lose by using a queue instead of a synchronous call
+      - Explain the relationship between consumer lag and throughput
+      - Explain why failed messages are isolated by routing them to a DLQ
+    practical_cases:
+      - Moving email sending to a queue to reduce sign-up API latency
+  dist.delivery-semantics:
+    name: Message Delivery Guarantees
+    summary: Most messaging systems guarantee at-least-once delivery, so consumers must tolerate duplicates. Exactly-once comes from making the processing outcome idempotent, not from delivery itself.
+    objectives:
+      - Explain the differences between at-most-once, at-least-once, and exactly-once
+      - Explain how duplicates occur when a consumer dies after processing a message but before acking it
+      - Explain how to make consumers idempotent so they absorb duplicates
+    practical_cases:
+      - The same order notification was sent twice after a consumer restart
+  dist.outbox-pattern:
+    name: Transactional Outbox
+    summary: If you save to the DB and publish a message as separate steps, only one of them may succeed. Instead, write to an outbox table in the same transaction and let a separate process publish the messages.
+    objectives:
+      - Explain the dual-write problem between DB writes and message publishing
+      - Explain how an outbox table and a relay provide atomicity
+    practical_cases:
+      - An incident where an order was saved but its order-created event was never published, so the shipment was missed
+  dist.caching:
+    name: Caching Strategies
+    summary: A cache stores expensive results closer to where they are needed to reduce latency and load, but the cached data can differ from the source. The design question is what can be wrong, and for how long.
+    objectives:
+      - Explain how the cache-aside and write-through patterns work
+      - Explain how cache hit ratio and TTL affect both effectiveness and consistency
+      - Explain the structural risk that a cache failure causes a sudden spike in load on the source
+    practical_cases:
+      - Adding a cache to product detail lookups, which cut DB load by 90%
+  dist.cache-invalidation:
+    name: Cache Invalidation
+    summary: The hardest part of caching is deciding when and how to discard cached data after the source changes. The key issues are the order of deletes and updates, and races in which concurrent requests write stale values back into the cache.
+    objectives:
+      - Compare TTL expiration, explicit deletion, and event-driven invalidation
+      - Explain the race conditions that leave a stale value in the cache, depending on the order of the update and the cache delete
+    practical_cases:
+      - Some users kept seeing the old price after the price was changed
+  dist.cache-stampede:
+    name: Cache Stampede
+    summary: When a popular key expires, many requests query the source at the same moment and overwhelm it. Single flight, early refresh, and spreading out TTLs prevent this.
+    objectives:
+      - Explain how the expiration of a popular key leads to a surge in load on the source
+      - Explain how single flight, locks, early refresh, and TTL jitter mitigate the problem
+    practical_cases:
+      - DB CPU spiking to 100% every time the main page cache expires
+  dist.consistency-models:
+    name: Consistency Models
+    summary: Strong consistency ensures every read sees the latest write but is expensive, while eventual consistency allows values to differ for a while. You must decide which inconsistencies the user experience can accept.
+    objectives:
+      - Explain the difference between strong consistency and eventual consistency with examples
+      - Identify screens that need session guarantees such as read-your-writes
+    practical_cases:
+      - After a user posts a comment and refreshes the page, the comment disappears and then shows up again
+  dist.cap-theorem:
+    name: CAP and PACELC
+    summary: During a network partition, a system must give up either consistency or availability, and even in normal operation it must choose between latency and consistency. These ideas serve as a shared vocabulary for choosing systems.
+    objectives:
+      - Explain the choice between consistency and availability during a network partition
+      - Explain what PACELC adds by including the latency vs. consistency choice during normal operation
+      - Explain common misconceptions when CAP is used to justify technology choices
+    practical_cases:
+      - Deciding whether to block or allow writes during a partition in a DB replicated across regions
+  dist.consensus:
+    name: Consensus Algorithms
+    summary: For multiple nodes to agree on a single value or ordering, they need consensus based on a majority (quorum). Coordination systems such as etcd and ZooKeeper provide this.
+    objectives:
+      - Explain how quorums and majority voting prevent two leaders during a partition
+      - Explain Raft's leader election and log replication at a conceptual level
+      - Explain why consensus clusters use an odd number of nodes
+    practical_cases:
+      - The Kubernetes control plane cannot accept writes because a majority of etcd nodes are down
+  dist.distributed-lock:
+    name: Distributed Locks
+    summary: A distributed lock is needed so that only one of several instances runs a task, but a process that does not know it has lost the lock may keep writing. Leases and fencing tokens close this gap.
+    objectives:
+      - Explain the difference between a single-instance lock and a distributed lock
+      - Explain how GC pauses or network delays let work continue after a lock has expired
+      - Explain when DB unique constraints or advisory locks offer a simpler solution
+    practical_cases:
+      - Three servers ran the same scheduled job at the same time, so a notification was sent three times
+  dist.clocks-and-ordering:
+    name: Time and Event Ordering
+    summary: Server clocks differ slightly, so ordering events by timestamp can give the wrong order. When order matters, use sequences or logical clocks.
+    objectives:
+      - Explain when clock skew and NTP corrections make timestamp comparisons unreliable
+      - Explain situations where last-write-wins (LWW) loses data
+      - Explain how to establish order with logical clocks or DB sequences
+    practical_cases:
+      - Because of a clock difference between two servers, a later edit was overwritten by an earlier one
+  dist.cascading-failure:
+    name: Cascading Failures
+    summary: Latency in one service exhausts its callers' resources, retries amplify the load, and the failure spreads. Timeouts, bulkheads, and load shedding stop the spread.
+    objectives:
+      - Explain how a slow dependency exhausts a caller's threads and connections
+      - Explain how retries multiply at each layer until load explodes
+      - Explain the roles of bulkheads and load shedding
+    practical_cases:
+      - An incident where one slow recommendation service froze the entire main page
+  dist.circuit-breaker:
+    name: Circuit Breaker
+    summary: A circuit breaker temporarily blocks calls to a dependency that keeps failing, so callers fail fast and the dependency gets time to recover. Design what to show while calls are blocked (the fallback) together with it.
+    objectives:
+      - Explain the transitions between the closed, open, and half-open states
+      - Explain why failing fast protects the caller's resources
+      - Explain what a fallback response should show users and what it should not hide from them
+    practical_cases:
+      - Falling back to the last known value when an external exchange-rate API fails, and showing on screen what time that value is from
+  dist.rate-limiting:
+    name: Rate Limiting
+    summary: Rate limiting caps the number of requests per unit of time to protect resources and share them fairly. The core topics are algorithms such as the token bucket and sharing counters in a distributed environment.
+    objectives:
+      - Compare the fixed window, sliding window, and token bucket algorithms
+      - Explain how to share limits across multiple instances and what it costs
+      - Explain how to inform clients with a 429 response and Retry-After
+    practical_cases:
+      - A batch job that throttles its calls to stay within an external LLM API's tokens-per-minute limit
+  dist.saga:
+    name: Saga Pattern
+    summary: Work that spans multiple services cannot be wrapped in a single DB transaction. Instead, each step runs a local transaction, and compensating actions on failure restore consistency.
+    objectives:
+      - Explain why sagas are used instead of distributed transactions
+      - Explain how to design compensating transactions and the problem of exposing intermediate states
+    practical_cases:
+      - A flow that cancels the payment when the payment succeeds but reserving inventory fails
+  dist.sharding:
+    name: Sharding and Partitioning
+    summary: Sharding splits data by key across multiple nodes or partitions to increase capacity and throughput. The choice of shard key determines hotspots and the cost of cross-shard queries.
+    objectives:
+      - Explain the difference between range-based and hash-based partitioning
+      - Explain how the choice of shard key affects hotspots and cross-shard queries
+      - Explain how consistent hashing reduces data movement when nodes are added
+    practical_cases:
+      - Using the date as the shard key put all of today's data on a single node

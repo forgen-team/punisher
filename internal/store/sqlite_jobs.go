@@ -10,22 +10,23 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/forgen-team/punisher/internal/learning"
 	"github.com/forgen-team/punisher/internal/models"
 )
 
 // ErrJobActive means another pending/running job already targets the same
-// (objective_key, depth) — concurrent generation is blocked.
+// (objective_key, depth, language) — concurrent generation is blocked.
 var ErrJobActive = errors.New("a generation job for this target is already active")
 
 const jobColumns = `id, idempotency_key, kind, COALESCE(user_id, ''), COALESCE(concept_id, ''),
 	objective_key, COALESCE(depth, 0), status, reason, error, attempts, COALESCE(lecture_id, ''),
-	model, input_tokens, output_tokens, input, started_at, finished_at, created_at`
+	model, input_tokens, output_tokens, input, started_at, finished_at, created_at, language`
 
 func scanJob(row rowScanner) (models.GenerationJob, error) {
 	var j models.GenerationJob
 	err := row.Scan(&j.ID, &j.IdempotencyKey, &j.Kind, &j.UserID, &j.ConceptID, &j.ObjectiveKey, &j.Depth,
 		&j.Status, &j.Reason, &j.Error, &j.Attempts, &j.LectureID, &j.Model, &j.InputTokens, &j.OutputTokens,
-		rawJSON(&j.Input), nts(&j.StartedAt), nts(&j.FinishedAt), ts(&j.CreatedAt))
+		rawJSON(&j.Input), nts(&j.StartedAt), nts(&j.FinishedAt), ts(&j.CreatedAt), &j.Language)
 	return j, err
 }
 
@@ -39,6 +40,8 @@ type NewJob struct {
 	Depth          int
 	Reason         string
 	Input          json.RawMessage
+	// Language: the lecture language of a library/instant job (ko|en); "" = ko.
+	Language string
 }
 
 // CreateJob inserts a pending job. When the idempotency key already exists the
@@ -53,18 +56,19 @@ func (s *SQLiteStore) CreateJob(ctx context.Context, j NewJob) (models.Generatio
 		depth = j.Depth
 	}
 	job, err := scanJob(s.c().row(ctx, `
-		INSERT INTO generation_jobs (id, idempotency_key, kind, user_id, concept_id, objective_key, depth, reason, input)
-		VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8, $9)
+		INSERT INTO generation_jobs (id, idempotency_key, kind, user_id, concept_id, objective_key, depth, reason, input, language)
+		VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (idempotency_key) DO NOTHING
 		RETURNING `+jobColumns,
-		NewID(), j.IdempotencyKey, j.Kind, j.UserID, conceptID, j.ObjectiveKey, depth, j.Reason, nonNullJSON(j.Input, "{}")))
+		NewID(), j.IdempotencyKey, j.Kind, j.UserID, conceptID, j.ObjectiveKey, depth, j.Reason, nonNullJSON(j.Input, "{}"),
+		learning.NormalizeLocale(j.Language)))
 	if err == nil {
 		return job, true, nil
 	}
 	if isUniqueViolation(err) {
 		// The only other unique constraint is the partial index
 		// generation_jobs_one_active_target (one active job per target).
-		active, aerr := s.ActiveJobForTarget(ctx, j.ObjectiveKey, j.Depth)
+		active, aerr := s.ActiveJobForTarget(ctx, j.ObjectiveKey, j.Depth, j.Language)
 		if aerr != nil {
 			return models.GenerationJob{}, false, ErrJobActive
 		}
@@ -81,12 +85,12 @@ func (s *SQLiteStore) CreateJob(ctx context.Context, j NewJob) (models.Generatio
 	return existing, false, nil
 }
 
-// ActiveJobForTarget returns the pending/running lecture job for a target.
-func (s *SQLiteStore) ActiveJobForTarget(ctx context.Context, objectiveKey string, depth int) (models.GenerationJob, error) {
+// ActiveJobForTarget returns the pending/running lecture job for a target in a language.
+func (s *SQLiteStore) ActiveJobForTarget(ctx context.Context, objectiveKey string, depth int, language string) (models.GenerationJob, error) {
 	j, err := scanJob(s.c().row(ctx, `
 		SELECT `+jobColumns+` FROM generation_jobs
-		WHERE objective_key = $1 AND depth = $2 AND status IN ('pending', 'running') AND kind IN ('library', 'instant')
-		LIMIT 1`, objectiveKey, depth))
+		WHERE objective_key = $1 AND depth = $2 AND language = $3 AND status IN ('pending', 'running') AND kind IN ('library', 'instant')
+		LIMIT 1`, objectiveKey, depth, learning.NormalizeLocale(language)))
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.GenerationJob{}, ErrNotFound
 	}

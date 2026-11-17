@@ -277,8 +277,8 @@ func validateLab(path string, b Block, add func(string, string, ...any)) {
 			add(path, "@@lab command rejected: %v — use one read-only command from the allowed tools, no pipes/redirects/;", err)
 		}
 	}
-	if !strings.Contains(b.Text, "예상:") {
-		add(path, "@@lab needs an \"예상:\" line (what the output looks like)")
+	if !strings.Contains(b.Text, "예상:") && !strings.Contains(b.Text, "Expect:") {
+		add(path, "@@lab needs an \"예상:\" (or \"Expect:\") line (what the output looks like)")
 	}
 }
 

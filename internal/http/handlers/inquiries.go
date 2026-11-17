@@ -11,12 +11,23 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// 409 codes of inquiries (translated by the web).
+const (
+	ErrorInquiryBusy     ErrorCode = "INQUIRY_BUSY"
+	ErrorFollowupLimit   ErrorCode = "FOLLOWUP_LIMIT"
+	ErrorInquiryNotReady ErrorCode = "INQUIRY_NOT_READY"
+)
+
 func writeInquiryError(w http.ResponseWriter, r *http.Request, op string, err error) {
 	switch {
 	case errors.Is(err, services.ErrInvalidInquiry):
 		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, err.Error())
-	case errors.Is(err, services.ErrInquiryBusy), errors.Is(err, services.ErrFollowupLimit), errors.Is(err, services.ErrInquiryNotReady):
-		writeError(w, r, http.StatusConflict, ErrorConflict, err.Error())
+	case errors.Is(err, services.ErrInquiryBusy):
+		writeError(w, r, http.StatusConflict, ErrorInquiryBusy, err.Error())
+	case errors.Is(err, services.ErrFollowupLimit):
+		writeError(w, r, http.StatusConflict, ErrorFollowupLimit, err.Error())
+	case errors.Is(err, services.ErrInquiryNotReady):
+		writeError(w, r, http.StatusConflict, ErrorInquiryNotReady, err.Error())
 	default:
 		writeServiceError(w, r, op, err)
 	}

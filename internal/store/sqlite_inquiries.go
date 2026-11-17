@@ -271,7 +271,7 @@ func (s *SQLiteStore) InquiryConcepts(ctx context.Context, userID string, ids []
 		return []models.ConceptLink{}, nil
 	}
 	list, err := collect(s.c().query(ctx, `
-		SELECT c.id, c.name, c.area, CASE WHEN c.status = 'proposed' THEN 'proposed' ELSE 'related' END,
+		SELECT c.id, `+locName("c", userLocaleSQL("$1"))+`, c.area, CASE WHEN c.status = 'proposed' THEN 'proposed' ELSE 'related' END,
 			COALESCE(st.state, 'not_started')
 		FROM json_each($2) want
 		JOIN concepts c ON c.id = want.value

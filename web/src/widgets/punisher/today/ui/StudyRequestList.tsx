@@ -10,6 +10,8 @@ import {
   useStudyRequests,
 } from "@/src/entities/punisher";
 import { describePunisherError, type StudyRequest } from "@/src/shared/api/punisher";
+import { translate, useT } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 
 /** 요청한 주제 자체(첫 해석 개념) — '시작'은 여기로 간다. */
 function topicConcept(req: StudyRequest): string {
@@ -33,22 +35,24 @@ function phaseOf(req: StudyRequest): ResolvePhase {
 
 /** 서버 오류 문자열을 사용자 문장으로 — 내부 코드는 그대로 보이지 않게 한다. */
 function failureText(error?: string): string {
-  if (!error) {return "개념을 찾지 못했어요.";}
-  if (error.includes("no matching concept")) {return "지도에 맞는 개념이 없어요. 문구를 바꿔 다시 요청해 보세요.";}
-  if (/budget|daily/i.test(error)) {return "오늘 생성 한도에 걸렸어요. 잠시 뒤 다시 시도해 주세요.";}
-  return "개념을 찾는 중 문제가 생겼어요. 다시 시도해 주세요.";
+  const t = translate(messages);
+  if (!error) {return t.requestNotFound;}
+  if (error.includes("no matching concept")) {return t.requestNoMatch;}
+  if (/budget|daily/i.test(error)) {return t.requestBudget;}
+  return t.requestFailed;
 }
 
 function metaOf(req: StudyRequest, phase: ResolvePhase, names: ReadonlyMap<string, string>): string {
+  const t = translate(messages);
   const source = STUDY_REQUEST_SOURCE_LABELS[req.source] ?? req.source;
   let status = req.learned ? "" : (STUDY_REQUEST_STATUS_LABELS[req.status] ?? req.status);
   if (phase === "ready" && !req.learned) {
     const topic = names.get(topicConcept(req));
     const prereq = names.get(prerequisiteConcept(req));
-    if (topic) {status = prereq ? `${topic} · 선행 개념: ${prereq}` : topic;}
+    if (topic) {status = prereq ? t.requestTopicWithPrereq(topic, prereq) : topic;}
   }
-  if (phase === "searching") {status = "개념 찾는 중 · 보통 1분 안에 끝나요";}
-  if (phase === "queued") {status = "곧 개념 찾기를 시작해요";}
+  if (phase === "searching") {status = t.requestSearching;}
+  if (phase === "queued") {status = t.requestQueued;}
   if (phase === "failed") {status = failureText(req.resolveError);}
   return [source, status].filter(Boolean).join(" · ");
 }
@@ -69,6 +73,7 @@ export function splitStudyRequests(list: readonly StudyRequest[]): { active: Stu
  * 요청한 주제 개념의 강의를 다 보면 아래 접힌 '완료 N'으로 옮긴다.
  */
 export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
+  const t = useT(messages);
   const { data, isLoading, error, refetch, isRefetching } = useStudyRequests(50);
   const retry = useRetryStudyRequest();
   const dismiss = useDismissStudyRequest();
@@ -92,7 +97,7 @@ export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
     dismiss.mutate({ id: req.id, dismissed: true });
   };
   const menu = (req: StudyRequest) => (
-    <Menu label={`${req.query} 동작`} items={[{ key: "dismiss", label: "목록에서 빼기", onSelect: () => remove(req) }]} />
+    <Menu label={t.requestActions(req.query)} items={[{ key: "dismiss", label: t.requestDismiss, onSelect: () => remove(req) }]} />
   );
 
   function renderActive(req: StudyRequest) {
@@ -101,11 +106,11 @@ export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
     const phase = phaseOf(req);
     let action: ReactNode = null;
     if (phase === "searching" || phase === "queued") {
-      action = <Spinner size="sm" label="개념 찾는 중" />;
+      action = <Spinner size="sm" label={t.requestFinding} />;
     } else if (phase === "failed") {
       action = (
         <Button size="sm" variant="secondary" loading={retry.isPending && retry.variables === req.id} onClick={() => retry.mutate(req.id)}>
-          다시 시도
+          {t.requestRetry}
         </Button>
       );
     } else if (conceptId) {
@@ -113,11 +118,11 @@ export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
         <>
           {prereqId ? (
             <Button size="sm" variant="ghost" disabled={starting} onClick={() => onStart(prereqId, req.query)}>
-              기초부터
+              {t.requestFromBasics}
             </Button>
           ) : null}
           <Button size="sm" variant="secondary" disabled={starting} onClick={() => onStart(conceptId, req.query)}>
-            시작
+            {t.requestStart}
           </Button>
         </>
       );
@@ -141,13 +146,13 @@ export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
   return (
     <div className="space-y-2">
       {active.length === 0 ? (
-        <EmptyState compact title="진행 중인 학습 요청이 없어요" description="공부하고 싶은 주제를 위에 적어 두면 개념을 찾아 강의를 미리 만들어 둬요." />
+        <EmptyState compact title={t.requestEmptyTitle} description={t.requestEmptyDescription} />
       ) : (
         <List>{active.map((req) => renderActive(req))}</List>
       )}
       {lastDismissed && (
         <p role="status" className="flex items-center gap-2 text-sm text-fg-secondary">
-          목록에서 뺐어요 · {lastDismissed.query}
+          {t.requestDismissed(lastDismissed.query)}
           <Button
             size="sm"
             variant="ghost"
@@ -156,15 +161,15 @@ export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
               setLastDismissed(null);
             }}
           >
-            되돌리기
+            {t.requestUndo}
           </Button>
         </p>
       )}
       {done.length > 0 && (
         <details className="group">
           <summary className="flex min-h-touch cursor-pointer list-none items-center justify-between text-sm font-medium text-fg-secondary">
-            완료 {done.length}
-            <span className="text-xs font-normal text-fg-muted">요청한 주제를 다 배운 요청 · 펼치기</span>
+            {t.requestDone(done.length)}
+            <span className="text-xs font-normal text-fg-muted">{t.requestDoneHint}</span>
           </summary>
           <List>
             {done.map((req) => (
@@ -175,7 +180,7 @@ export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
                 meta={metaOf(req, "ready", names)}
                 trailing={
                   <span className="flex items-center gap-1">
-                    <Badge tone="success">학습함</Badge>
+                    <Badge tone="success">{t.requestLearned}</Badge>
                     {menu(req)}
                   </span>
                 }

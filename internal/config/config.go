@@ -23,6 +23,8 @@ type Config struct {
 	CurriculumDir string
 	// OpenBrowser opens the UI in the default browser after start.
 	OpenBrowser bool
+	// Locale (ko|en) of a user who never saved settings: PUNISHER_LOCALE, else the OS locale (DefaultLocale).
+	Locale string
 
 	// Generation via the local claude CLI.
 	ClaudeBin         string // "" = auto-detect
@@ -33,6 +35,9 @@ type Config struct {
 	DailyTokenLimit   int // 0 = off
 	DailyCallLimit    int // 0 = off
 	LibraryAhead      int
+	NightAhead        int
+	NightStartHour    int
+	NightEndHour      int
 	StudyPregenerate  bool
 	LectureMaxTokens  int
 	SchedulerEnabled  bool
@@ -59,6 +64,7 @@ func Load() Config {
 		DataDir:       readEnv("PUNISHER_DATA_DIR", DefaultDataDir()),
 		CurriculumDir: strings.TrimSpace(os.Getenv("PUNISHER_CURRICULUM_DIR")),
 		OpenBrowser:   readEnv("PUNISHER_OPEN_BROWSER", "true") != "false",
+		Locale:        DefaultLocale(),
 
 		ClaudeBin:         strings.TrimSpace(os.Getenv("PUNISHER_CLAUDE_BIN")),
 		LectureModel:      lectureModel,
@@ -68,6 +74,9 @@ func Load() Config {
 		DailyTokenLimit:   readInt("PUNISHER_DAILY_TOKEN_LIMIT", 0),
 		DailyCallLimit:    readInt("PUNISHER_DAILY_CALL_LIMIT", 0),
 		LibraryAhead:      readInt("PUNISHER_LIBRARY_AHEAD", 1),
+		NightAhead:        readInt("PUNISHER_NIGHT_AHEAD", 3),
+		NightStartHour:    readHour("PUNISHER_NIGHT_START_HOUR", 2),
+		NightEndHour:      readHour("PUNISHER_NIGHT_END_HOUR", 6),
 		StudyPregenerate:  readEnv("PUNISHER_STUDY_PREGENERATE", "true") != "false",
 		LectureMaxTokens:  readInt("PUNISHER_LECTURE_MAX_TOKENS", 24000),
 		SchedulerEnabled:  readEnv("PUNISHER_SCHEDULER_ENABLED", "true") != "false",
@@ -141,6 +150,14 @@ func readDuration(key string, fallback time.Duration) time.Duration {
 func readEnv(key, fallback string) string {
 	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
 		return value
+	}
+	return fallback
+}
+
+// readHour reads a KST hour of day (0–23); anything else falls back.
+func readHour(key string, fallback int) int {
+	if h := readInt(key, fallback); h <= 23 {
+		return h
 	}
 	return fallback
 }

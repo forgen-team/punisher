@@ -1,0 +1,226 @@
+# English overlay for ../../os.yaml — same concept ids and objective order.
+# Objectives stay keyed by their Korean ordinal; only display/prompt text comes from here.
+area: os
+title: Operating Systems
+concepts:
+  os.kernel-and-syscall:
+    name: Kernel and System Calls
+    summary: Applications do not access hardware directly; they ask the kernel to do work through system calls. File access, networking and process creation all cross this boundary.
+    objectives:
+      - Explain why execution is split into user mode and kernel mode
+      - Explain how calls such as read, write and open reach the kernel as system calls
+      - Read strace output to find which system calls were slow or failed
+    practical_cases:
+      - Use strace to diagnose a failed file open (EACCES vs. ENOENT) and tell a permission problem from a path problem
+  os.process:
+    name: Process
+    summary: A process is a running instance of a program, with its own address space, file descriptors and environment variables. A service on a server and an app inside a container are both, in the end, processes.
+    objectives:
+      - Explain the difference between a program and a process
+      - List the resources a process owns (address space, file descriptors, environment variables, PID) and explain what each one does
+      - Use ps and top to read process states and parent-child relationships
+    practical_cases:
+      - Use ps to confirm that a process from the previous version is still running after a deploy and holding the port
+      - Explain why two instances of the same app do not share each other's memory
+  os.exit-code-and-signals:
+    name: Exit Codes and Signals
+    summary: A process reports normal or abnormal termination through its exit code, and other processes use signals to request or force termination. An exit code of the form 128+N means the process was killed by signal N.
+    objectives:
+      - Explain what exit code 0 and non-zero values mean, and the 128 + signal number convention (e.g. 137 = SIGKILL)
+      - Explain the difference between SIGTERM and SIGKILL and why graceful shutdown is needed
+      - Determine whether to look at the exit code, the signal or the logs to find why a process terminated
+    practical_cases:
+      - Form the hypothesis of an OOM kill or a forced kill when a container exits with code 137
+      - In-flight requests get cut off during a deploy because the app does not handle SIGTERM
+  os.process-lifecycle-fork-exec:
+    name: Process Creation and Lifecycle
+    summary: On Unix-like systems, a new process is created as a copy with fork and becomes a different program with exec. If the parent does not reap a child after it exits, a zombie is left behind.
+    objectives:
+      - Explain what fork and exec each do
+      - Explain the conditions that create zombie and orphan processes, and the role of PID 1
+      - Explain why the PID 1 process in a container must handle signals and reap child processes
+    practical_cases:
+      - A shell script used as the ENTRYPOINT keeps SIGTERM from reaching the app
+  os.stdout-stderr-logs:
+    name: Standard Output, Standard Error and Logs
+    summary: A process emits logs through the stdout and stderr file descriptors, and container environments collect and display them. Logs are only what the process chose to record and do not tell the full story of why it terminated.
+    objectives:
+      - Explain that stdout and stderr are file descriptors 1 and 2, and how their buffering differs
+      - Explain where container logs come from and where they go
+      - Explain why you need other evidence when the logs are empty (forced kill, unflushed buffers)
+    practical_cases:
+      - Use kubectl logs --previous to view the last logs of a container before it restarted
+      - Interpret a case where the process was killed with SIGKILL and left no final log lines
+  os.thread:
+    name: Thread
+    summary: A thread is a flow of execution inside a process that shares the process's address space. Sharing makes threads fast, but problems arise when they touch the same data at the same time.
+    objectives:
+      - Distinguish what threads share within a process from what each has separately (stack, registers)
+      - Compare the pros and cons of multi-process and multi-threaded designs
+      - Explain how a crash in a single thread affects the whole process
+    practical_cases:
+      - Thread-per-request model in a web server and sizing its thread pool
+  os.context-switch:
+    name: Context Switch
+    summary: When the CPU switches to a different thread, it pays the cost of saving and restoring registers and state. Adding threads without limit means more time is spent switching than doing work.
+    objectives:
+      - Explain what is saved and restored during a context switch and how it affects the cache
+      - Distinguish voluntary from involuntary context switches and check them using metrics
+      - Explain why throughput can drop after increasing the number of threads
+    practical_cases:
+      - After a thread pool is grown to thousands of threads, CPU utilization is high but throughput drops
+  os.scheduling:
+    name: CPU Scheduling
+    summary: The kernel scheduler divides CPU time among runnable threads. Load average and CPU utilization measure different things.
+    objectives:
+      - Explain scheduling in terms of the run queue and time slices
+      - Explain the difference between load average and CPU utilization
+      - Explain how latency shows up in a process under CPU throttling
+    practical_cases:
+      - Suspect I/O wait when CPU utilization is low but load average is high
+  os.race-condition:
+    name: Race Condition
+    summary: When two or more flows of execution read and write shared data at the same time, the result depends on execution order. Race conditions are hard to reproduce and often appear only under high load.
+    objectives:
+      - Explain step by step how another flow can interleave within a read-modify-write sequence
+      - Explain why race conditions are hard to reproduce in tests
+      - Compare the main ways to eliminate or protect shared state
+    practical_cases:
+      - A view counter increments less than expected under concurrent requests
+      - Stock deduction produces negative inventory
+  os.mutex-and-lock:
+    name: Mutexes and Locks
+    summary: A lock prevents race conditions by letting only one flow enter a critical section at a time. The trade-off is the cost of waiting and contention.
+    objectives:
+      - Explain the relationship between a critical section and a mutex
+      - Explain how mutexes, semaphores and read-write locks differ in purpose
+      - Explain how lock contention shows up as latency and how to narrow lock scope
+    practical_cases:
+      - A server whose throughput does not grow with more cores because of a single global lock
+  os.deadlock:
+    name: Deadlock
+    summary: A deadlock is a state where each party waits for a resource another holds, so none can proceed. Acquiring locks in a consistent order is the most practical prevention.
+    objectives:
+      - Explain the four conditions for deadlock
+      - Explain how to prevent deadlock with a consistent lock acquisition order and timeouts
+      - Identify a deadlock in a thread dump
+    practical_cases:
+      - Two account transfers acquire locks in opposite order and both hang
+  os.atomic-and-cas:
+    name: Atomic Operations and CAS
+    summary: Atomic instructions provided by the CPU let you safely update a shared value without a lock. They work well for simple counters but do not suit complex invariants.
+    objectives:
+      - Explain how a value is updated with a CAS loop
+      - Explain when atomic operations beat locks and what their limits are (such as the ABA problem)
+    practical_cases:
+      - Replace a request counter with an atomic integer to eliminate lock contention
+  os.virtual-memory:
+    name: Virtual Memory
+    summary: Each process sees its own virtual address space, which the kernel and the MMU map onto physical memory pages. That is why there are several different numbers describing memory usage.
+    objectives:
+      - Explain the relationship between virtual addresses, physical addresses and page tables
+      - Explain when page faults occur and what they cost
+      - Explain how swap affects performance and why swap should be handled carefully on servers
+    practical_cases:
+      - Why a process's virtual memory size is tens of GB while its actual usage is small
+  os.memory-metrics:
+    name: Reading Memory Usage Metrics
+    summary: VSZ, RSS, working set and page cache each count different things. You need to know which number is used for limits and OOM decisions to interpret them correctly.
+    objectives:
+      - Explain the differences between VSZ, RSS and shared memory
+      - Explain the relationship between the container memory metric (working set) and the page cache
+      - Explain how to tell a leak from cache when a memory usage graph keeps rising
+    practical_cases:
+      - Explain why memory usage on a dashboard differs from RSS in top
+  os.memory-oom:
+    name: Out of Memory and the OOM Killer
+    summary: When memory runs out, the kernel (or cgroup) picks a process and kills it with SIGKILL. The app logs show no trace; the clues are in the kernel log and exit code 137.
+    objectives:
+      - Explain the difference between a system-wide OOM and an OOM caused by exceeding a cgroup memory limit
+      - Explain why an OOM kill shows up as exit code 137 with no logs
+      - Find evidence of OOM in dmesg, kernel logs and container status
+      - Explain the criteria for choosing between raising the memory limit and reducing usage
+    practical_cases:
+      - Verify the OOM hypothesis for a container that restarts right after the same job every hour
+      - A batch job that loads a large dataset into memory at once is killed by OOM
+  os.cgroups:
+    name: cgroups
+    summary: cgroups are a kernel feature that limits and measures CPU, memory and I/O usage for groups of processes. Container resource limits are implemented with them.
+    objectives:
+      - Explain how a cgroup limits CPU and memory
+      - Explain how a CPU limit (quota) results in throttling
+      - Explain how exceeding a memory limit leads to an OOM kill
+    practical_cases:
+      - A service whose response latency spikes periodically because of its CPU limit
+  os.namespaces:
+    name: Namespaces
+    summary: Namespaces separate what a process sees, such as PIDs, network, mounts and hostname. This is why a container looks like an independent machine.
+    objectives:
+      - Explain what PID, network and mount namespaces each isolate
+      - Explain why PID 1 inside a container has a different PID on the host
+    practical_cases:
+      - Why localhost inside a container is not the host's localhost
+  os.file-system:
+    name: File System
+    summary: A file system builds files and a directory structure on top of disk blocks. You cannot create files when inodes run out, not only when disk space does.
+    objectives:
+      - Explain the relationship between files, directories, inodes and mounts
+      - Explain why disk space is not reclaimed when a deleted file is still open
+      - Interpret cases where df and du report different results
+    practical_cases:
+      - Disk usage does not go down after deleting log files
+  os.file-descriptor:
+    name: File Descriptor
+    summary: Files, sockets and pipes a process opens are all handled through integer file descriptors. If they are not closed, the process hits its limit and cannot accept new connections.
+    objectives:
+      - Explain how file descriptors let files, sockets and pipes be handled in a uniform way
+      - Explain the causes of the "Too many open files" error and how it relates to ulimit
+      - Check open resources with lsof or /proc/PID/fd
+    practical_cases:
+      - A Go server leaks socket FDs because it does not close HTTP response bodies
+  os.page-cache:
+    name: Page Cache
+    summary: The kernel caches disk contents in memory to speed up reads and writes. So low free memory may not be a problem, and a successful write does not mean the data is on disk.
+    objectives:
+      - Explain how the page cache improves read performance
+      - Explain the difference between write and fsync, and the risk of data loss on failure
+      - Read memory metrics so that cache is distinguished from memory in use
+    practical_cases:
+      - Explain why a server with almost zero free memory can be healthy
+  os.socket:
+    name: Socket
+    summary: A socket lets you handle an endpoint of network communication as a file descriptor. A server accepts connections with listen and accept, and a client connects with connect.
+    objectives:
+      - Explain the roles and order of listen, accept and connect
+      - Explain the "address already in use" error and the rules for port binding
+      - Explain the difference between binding to 0.0.0.0 and to 127.0.0.1
+    practical_cases:
+      - A container binds only to 127.0.0.1, so it cannot be reached from outside
+  os.io-models:
+    name: Blocking and Non-blocking I/O and I/O Multiplexing
+    summary: Blocking I/O makes a thread wait, while non-blocking I/O with multiplexing such as epoll lets one thread handle many connections. This is the foundation of servers that handle many concurrent connections.
+    objectives:
+      - Explain the difference between blocking and non-blocking I/O
+      - Explain how epoll lets a small number of threads handle many connections
+      - Explain that synchronous vs. asynchronous and blocking vs. non-blocking are separate axes
+    practical_cases:
+      - Running out of memory when trying to handle 10,000 connections with 10,000 threads
+  os.event-loop:
+    name: Event Loop
+    summary: An event loop is a single-threaded design that receives I/O events and runs callbacks one after another. A single CPU-bound task that blocks the loop delays every request.
+    objectives:
+      - Explain how an event loop runs on top of I/O multiplexing
+      - Explain why blocking the event loop spreads into latency for everything
+      - Explain the criteria for offloading CPU work to workers
+    practical_cases:
+      - In a Node.js server, parsing a large JSON payload makes p99 latency spike for all requests
+  os.gc-memory-management:
+    name: Garbage Collection
+    summary: GC automatically reclaims heap memory that is no longer used, but it costs CPU time and pauses. Reducing allocations comes before tuning the GC.
+    objectives:
+      - Explain the difference between stack allocation and heap allocation
+      - Explain how GC pauses and CPU usage affect latency
+      - Explain the relationship between GC frequency and memory limits (e.g. Go's GOGC and GOMEMLIMIT)
+      - Explain how to find the source of GC pressure with an allocation profile
+    practical_cases:
+      - A server whose response latency spikes when traffic surges because GC runs frequently

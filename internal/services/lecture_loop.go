@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/forgen-team/punisher/internal/i18n"
 	"github.com/forgen-team/punisher/internal/lecture"
 	"github.com/forgen-team/punisher/internal/llm"
 	"github.com/forgen-team/punisher/internal/prompts"
@@ -31,7 +32,8 @@ const (
 func (s *Service) lectureLoop(apiKey string, t Target, outlineJSON string, u *usage) LoopFuncs {
 	pc := t.LectureContext()
 	vars := prompts.LectureVars(pc)
-	teacher := t.Prompts.Text(prompts.BlockTeacherSystem, vars)
+	lang := t.Plan.Language // 강의와 그 검수·재검·판정은 강의 언어(i18n §1.1)
+	teacher := prompts.WithOutputLanguage(t.Prompts.Text(prompts.BlockTeacherSystem, vars), lang)
 	maxTokens := s.Cfg.LectureMaxTokens
 	if maxTokens <= 0 {
 		maxTokens = defaultMaxTokens
@@ -48,7 +50,7 @@ func (s *Service) lectureLoop(apiKey string, t Target, outlineJSON string, u *us
 		},
 		Review: func(ctx context.Context, markup string) (ReviewOutcome, error) {
 			text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel,
-				System: t.Prompts.Text(prompts.BlockReviewerSystem, vars),
+				System: prompts.WithOutputLanguage(t.Prompts.Text(prompts.BlockReviewerSystem, vars), lang),
 				User:   prompts.Review(pc, markup, t.Prompts), MaxTokens: 4000, Timeout: reviewTimeout}, u)
 			if err != nil {
 				return ReviewOutcome{}, err
@@ -57,7 +59,7 @@ func (s *Service) lectureLoop(apiKey string, t Target, outlineJSON string, u *us
 		},
 		Recheck: func(ctx context.Context, in RecheckInput) (RecheckOutcome, error) {
 			text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel,
-				System: t.Prompts.Text(prompts.BlockReviewerSystem, vars),
+				System: prompts.WithOutputLanguage(t.Prompts.Text(prompts.BlockReviewerSystem, vars), lang),
 				User:   prompts.Recheck(pc, in.Findings, in.Changed, t.Prompts), MaxTokens: 3000, Timeout: reviewTimeout}, u)
 			if err != nil {
 				return RecheckOutcome{}, err
@@ -67,7 +69,7 @@ func (s *Service) lectureLoop(apiKey string, t Target, outlineJSON string, u *us
 		Adjudicate: func(ctx context.Context, in AdjudicationInput) (AdjudicationResult, error) {
 			var lu usage
 			text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel,
-				System: t.Prompts.Text(prompts.BlockAdjudicator, vars),
+				System: prompts.WithOutputLanguage(t.Prompts.Text(prompts.BlockAdjudicator, vars), lang),
 				User: prompts.Adjudication(pc, prompts.AdjudicationCase{Kind: in.Issue.Kind, Section: in.Issue.Section,
 					Quote: in.Issue.Quote, Message: in.Issue.Message, ReaderImpact: in.Issue.ReaderImpact, Blocks: in.Blocks}),
 				MaxTokens: 800, Timeout: adjudicateTimeout, Priority: llm.ShortUnlessBackground(ctx)}, &lu)
@@ -107,29 +109,17 @@ func (s *Service) completeDraft(ctx context.Context, apiKey string, req llm.Mess
 // maxUserReasons bounds the failure summary shown to the learner.
 const maxUserReasons = 3
 
-// reviewReasons are the learner-facing summaries of review findings by kind.
-var reviewReasons = map[string]string{
-	"factual_error":     "사실과 다르거나 확인이 필요한 설명이 있었어요",
-	"structure":         "핵심 정의나 논지 등 강의 구성에 문제가 있었어요",
-	"pedagogy":          "손계산·예측·연습 같은 학습 활동이 부족했어요",
-	"omission":          "학습 목표 일부를 충분히 다루지 못했어요",
-	"assumed_knowledge": "설명 없이 쓰인 용어가 있었어요",
-	"overclaim":         "근거 없이 단정한 문장이 있었어요",
-	"source":            "근거 문서가 공식 문서가 아니었어요",
-	"terminology":       "용어 정의가 일관되지 않았어요",
-	"typo":              "실행되지 않는 코드나 오타가 있었어요",
-}
-
-const (
-	reasonFormat    = "강의 형식을 지키지 못했어요"
-	reasonTruncated = "강의가 길어져 끝까지 쓰지 못했어요"
-	reasonVolume    = "분량이 기준에 맞지 않았어요"
-	reasonBlocks    = "정의·손계산·예측·연습·요약 구성이 기준에 못 미쳤어요"
-	reasonLeak      = "생성 과정의 문구나 잘못된 링크가 남아 있었어요"
-	reasonReview    = "검수 기준을 통과하지 못했어요"
-	reasonTimeout   = "강의를 쓰는 데 시간이 너무 오래 걸렸어요"
+// Learner-facing reason texts (stored Korean; codes in internal/i18n, which the web translates).
+var (
+	reasonFormat    = i18n.ReasonKo(i18n.ReasonFormat)
+	reasonTruncated = i18n.ReasonKo(i18n.ReasonTruncated)
+	reasonVolume    = i18n.ReasonKo(i18n.ReasonVolume)
+	reasonBlocks    = i18n.ReasonKo(i18n.ReasonBlocks)
+	reasonLeak      = i18n.ReasonKo(i18n.ReasonLeak)
+	reasonTimeout   = i18n.ReasonKo(i18n.ReasonTimeout)
+	reasonReview    = i18n.ReasonKo(i18n.ReasonReview)
 	// ReasonGenerationError replaces raw LLM / storage errors in the stream.
-	ReasonGenerationError = "강의를 만드는 중 오류가 났어요. 잠시 후 다시 만들어 주세요"
+	ReasonGenerationError = i18n.ReasonKo(i18n.ReasonGenerationError)
 )
 
 // userReasons summarizes why an attempt did not pass, in short Korean lines
@@ -159,11 +149,7 @@ func userReasons(a Attempt) []string {
 	for _, sev := range []string{"critical", "major", "minor", ""} {
 		for _, i := range a.Review.Issues {
 			if i.Severity == sev && i.IsBlocking() {
-				if r, ok := reviewReasons[i.Kind]; ok {
-					add(r)
-				} else {
-					add(reasonReview)
-				}
+				add(i18n.ReasonKo(i18n.ReviewReasonCode(i.Kind)))
 			}
 		}
 	}

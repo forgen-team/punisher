@@ -41,7 +41,8 @@ func (s *Service) SuggestChapters(ctx context.Context, userID string) ([]learnin
 	if err != nil {
 		return nil, err
 	}
-	in := learning.SuggestionInput{Proposed: proposed, Deepen: deepen, NewAreas: learning.DefaultNewAreas, Covered: covered}
+	in := learning.SuggestionInput{Proposed: proposed, Deepen: deepen, NewAreas: learning.DefaultNewAreas, Covered: covered,
+		Locale: s.Store.LocaleFor(ctx, userID)}
 	if s.Signals != nil {
 		sig, err := s.Signals.LearningSignals(ctx, userID)
 		if err != nil {
@@ -106,7 +107,8 @@ func (s *Service) CreateChapterDraft(ctx context.Context, userID string, req Cha
 	if err != nil {
 		return ChapterDraftResult{}, err
 	}
-	pc, cctx, err := s.chapterPromptContext(ctx, userID, req)
+	lang := s.Store.LocaleFor(ctx, userID) // 새 챕터는 사용자 언어(i18n §1.2)
+	pc, cctx, err := s.chapterPromptContext(ctx, userID, req, lang)
 	if err != nil {
 		return ChapterDraftResult{}, err
 	}
@@ -124,7 +126,7 @@ func (s *Service) CreateChapterDraft(ctx context.Context, userID string, req Cha
 		pc.Revisions = problems
 		var text string
 		text, err = s.complete(ctx, apiKey, llm.MessagesRequest{
-			Model: s.Cfg.LectureModel, System: prompts.SystemChapter, User: prompts.Chapter(pc),
+			Model: s.Cfg.LectureModel, System: prompts.WithOutputLanguage(prompts.SystemChapter, lang), User: prompts.Chapter(pc),
 			MaxTokens: 8000, Timeout: 4 * time.Minute, Priority: llm.PriorityInteractive,
 		}, &u)
 		if err != nil {
@@ -154,7 +156,7 @@ func (s *Service) CreateChapterDraft(ctx context.Context, userID string, req Cha
 	return ChapterDraftResult{DraftID: id, Draft: draft}, nil
 }
 
-func (s *Service) chapterPromptContext(ctx context.Context, userID string, req ChapterRequest) (prompts.ChapterContext, chapter.Context, error) {
+func (s *Service) chapterPromptContext(ctx context.Context, userID string, req ChapterRequest, lang string) (prompts.ChapterContext, chapter.Context, error) {
 	pc := prompts.ChapterContext{FreeText: req.FreeText, Areas: curriculum.Areas}
 	if len(req.SuggestionIDs) > 0 {
 		suggestions, err := s.SuggestChapters(ctx, userID)
@@ -179,7 +181,7 @@ func (s *Service) chapterPromptContext(ctx context.Context, userID string, req C
 		return pc, cctx, err
 	}
 	cctx.Areas = curriculum.Areas
-	catalog, err := s.Store.ConceptCatalog(ctx, userID)
+	catalog, err := s.Store.ConceptCatalog(ctx, userID, lang)
 	if err != nil {
 		return pc, cctx, err
 	}

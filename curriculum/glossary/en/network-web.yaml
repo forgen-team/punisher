@@ -1,0 +1,110 @@
+# English overlay for ../network-web.yaml — same ids.
+area: network-web
+concepts:
+  net.cookie-and-session: A cookie is a small piece of data the server sets with Set-Cookie, and the browser sends it automatically with later requests. A session uses it as an identifier so the server can keep user state. Cookie attributes control login sharing and security.
+  net.cors: CORS lets a server use response headers to allow the browser to read responses to cross-origin requests. Only browsers enforce it, so server-to-server calls are unaffected. It often breaks after deployment when the frontend domain changes.
+  net.dns: DNS is a distributed lookup system that turns domain names into records such as IP addresses. Results are cached at several levels for the TTL, so after a server move some users may keep reaching the old address for a while.
+  net.http: 'HTTP is a stateless protocol for exchanging resources: a client sends a request and a server returns a response. Method safety and idempotency, along with headers, determine how caching, retries and crawlers behave.'
+  net.http-caching-cdn: HTTP caching lets browsers or intermediate servers store and reuse responses as the response headers direct. A CDN is a network of cache servers near users. Misconfiguration can show old pages after a deploy or expose personal responses to others.
+  net.http-status-codes: 'Status codes classify the result of an HTTP response as a three-digit number: 2xx is success, 4xx a client error, 5xx a server error. 502, 503 and 504 are clues to which segment, proxy or backend, failed.'
+  net.http2-http3: HTTP/2 introduced multiplexing, which carries many concurrent requests over one TCP connection. HTTP/3 runs on QUIC over UDP. They differ in connection count and packet-loss impact, which changes load balancer and performance behavior.
+  net.ip-and-routing: An IP address identifies a host's location on a network, and routing picks the next hop a packet takes toward its destination. Cloud VPC, subnet and peering settings are all expressed as CIDR ranges and route tables.
+  net.keepalive-connection-reuse: Keep-alive keeps an established TCP connection open and reuses it for later requests. It saves handshake cost, but a client that reuses an idle connection the server has already closed gets intermittent connection reset errors.
+  net.load-balancer: A load balancer spreads requests across server instances and removes targets that fail health checks. L4 balances per connection, L7 per HTTP request. It is directly tied to 502 errors during deployments.
+  net.nat-and-ports: A port is a number that identifies the communicating process within a host. NAT translates private addresses and ports into public ones. This explains Docker port mapping and why internal servers can't be reached from outside.
+  net.network-layers: 'A framework that splits network communication into layers by role: physical, link, IP, transport and application. Each layer uses the one below and serves the one above. Guessing which layer failed narrows down an outage quickly.'
+  net.realtime-push: WebSocket provides a persistent two-way connection. SSE provides a one-way event stream from server to client. Both are used for real-time notifications and progress updates, and proxy buffering or idle timeouts can make them drop or lag.
+  net.request-path: 'The full path one request takes: DNS lookup, TCP connection, TLS handshake, HTTP request and response, then server processing. To diagnose a slow or failed request, first measure which stage took the time.'
+  net.rest-api-design: REST API design expresses resources as URLs, actions as HTTP methods and results as status codes. Consistent error formats and status codes let clients and monitoring tell failures apart correctly.
+  net.retry-and-backoff: Retrying resends a request that failed temporarily. Backoff makes the gap between retries progressively longer. Simultaneous retries without jitter flood a just-recovered service and cause another outage, and non-idempotent requests may run twice.
+  net.reverse-proxy: A reverse proxy sits in front of servers, receives client requests and forwards them to backends. It handles TLS termination, path routing and upload size limits, and passes the original client IP in headers like X-Forwarded-For.
+  net.tcp: TCP is a transport protocol that provides a reliable byte stream through ordering, retransmission and flow control. Most HTTP and DB connections run on TCP, and packet loss often shows up as latency rather than errors.
+  net.tcp-connection-states: The states a TCP connection passes through as it opens with a handshake and closes with a FIN exchange. Many TIME_WAIT or CLOSE_WAIT sockets on a server signal that connections are opened too often or the app isn't closing them.
+  net.timeouts: A timeout sets the maximum time to wait for a connection or response before giving up. Without timeouts, one slow external API can tie up every thread and connection and bring the whole server to a halt.
+  net.tls: TLS is the protocol behind HTTPS. It verifies the server with a certificate and agrees on keys to encrypt traffic. Expired certificates, domain mismatches and missing intermediate certificates often cause server-to-server calls to fail.
+  net.udp: UDP is a transport protocol that sends datagrams right away, with no connection setup or retransmission. It is light and fast, but the application must handle loss and ordering. DNS and QUIC run on UDP.
+terms:
+  g.packet:
+    name: Packet
+    gloss: A packet is a unit of data sent over a network, made of a header and the actual data. An HTTP request is split into one or more packets as it moves down the layers, and packet loss causes retransmission and latency.
+  g.icmp:
+    name: ICMP
+    gloss: ICMP carries network error and diagnostic information, such as destination unreachable. ping uses it to check whether a host responds and how long the round trip takes. A working ping doesn't mean a given port or HTTP works.
+  g.traceroute:
+    name: traceroute
+    gloss: traceroute is a diagnostic tool that lists, in order, the intermediate routers a packet passes through on the way to its destination. Use it to find where latency jumps or responses stop, and narrow down network path problems.
+  g.default-gateway:
+    name: Default gateway
+    gloss: The default gateway is the router that gets a packet when no route in the routing table matches. All off-subnet traffic without its own route goes through it, so if it is misconfigured, internal traffic works but external access fails.
+  g.vpc:
+    name: VPC
+    gloss: A VPC is a logically isolated private network in the cloud, with address ranges, subnets and routing that you define. The subnet that servers and databases sit in decides how exposed they are and whether services can reach each other.
+  g.mtu:
+    name: MTU
+    gloss: MTU is the largest packet a link can carry at once. If tunnels or VPNs shrink the path MTU and path MTU discovery is blocked, small requests may succeed while only large responses stall.
+  g.firewall:
+    name: Firewall
+    gloss: A firewall is a device or software that allows or blocks traffic based on address, port and protocol rules. Check it early when the server process is healthy but outside connections are refused or time out.
+  g.security-group:
+    name: Security group
+    gloss: A security group is a set of virtual firewall rules for a cloud instance that define which inbound and outbound traffic it allows. If a port isn't opened, connection attempts often get no reply and end in a timeout.
+  g.ephemeral-port:
+    name: Ephemeral port
+    gloss: An ephemeral port is the source port the OS picks automatically when a client opens a connection. Opening many short-lived connections, combined with TIME_WAIT, can use up ephemeral ports so that new connections fail.
+  g.localhost:
+    name: localhost
+    gloss: localhost is the loopback address that points to the host itself. A server bound only to it can be reached only from the same host. A container server listening only on 127.0.0.1 can't be reached from outside, even with port mapping.
+  g.dns-resolver:
+    name: Resolver
+    gloss: A resolver is a server that looks up names for the client by querying several DNS servers, and caches the results. Depending on which resolver you use, the same domain can return results from different points in time.
+  g.hosts-file:
+    name: hosts file
+    gloss: The hosts file is a local file that maps domains to IP addresses directly, and it is usually checked before DNS. A forgotten test entry can make that one machine connect to the wrong server.
+  g.dig:
+    name: dig
+    gloss: dig is a command-line tool that queries DNS records directly and shows the response and the remaining TTL. Use it to check whether a domain change has taken effect, or what value a specific DNS server returns.
+  g.syn:
+    name: SYN
+    gloss: SYN is the flag that asks to open a TCP connection, and the server answers with SYN-ACK. If a SYN gets no reply, the connection times out. Suspect a firewall block or an overloaded server.
+  g.rst:
+    name: RST
+    gloss: RST is the flag that ends a TCP connection immediately, without the normal close sequence. It can happen when data is sent on an already-closed connection or a process dies suddenly. Applications see it as a connection reset error.
+  g.connection-refused:
+    name: Connection refused
+    gloss: Connection refused means the target host was reached but no process is listening on the port, so the connection is rejected at once. A timeout waits with no reply. A refusal often means the server isn't running or the port is wrong.
+  g.congestion-control:
+    name: Congestion control
+    gloss: Congestion control is the TCP mechanism that adjusts how much data is sent at once based on network conditions. New connections start small and ramp up, so without connection reuse, large responses transfer more slowly.
+  g.hol-blocking:
+    name: Head-of-line blocking
+    gloss: Head-of-line blocking happens when one delayed piece of data makes everything queued behind it wait. When many streams share one TCP connection, as in HTTP/2, one lost packet stalls them all. HTTP/3 reduces this with QUIC.
+  g.curl:
+    name: curl
+    gloss: 'curl is a command-line tool for sending HTTP requests and inspecting responses. Verbose output shows headers and the TLS exchange. Its output format option measures time per stage: DNS, connect, TLS and time to first byte.'
+  g.ss:
+    name: ss
+    gloss: ss is a Linux command-line tool that lists open sockets and TCP connection states. It shows which ports are listening and how many connections are ESTABLISHED, TIME_WAIT or CLOSE_WAIT, which helps find connection leaks.
+  g.tcpdump:
+    name: tcpdump
+    gloss: tcpdump captures and displays the packets passing through a network interface. Use it to check the actual packets for handshake failures, RSTs and retransmissions that application logs don't show.
+  g.sni:
+    name: SNI
+    gloss: SNI is a TLS extension that lets the client tell the server, early in the handshake, which domain it wants. Servers hosting many domains on one IP use it to pick the right certificate. Without it, a default certificate may cause a mismatch.
+  g.san:
+    name: SAN
+    gloss: SAN is the certificate field that lists the domain names the certificate is valid for. If the hostname you connect to isn't listed, you get a domain mismatch error even with a valid certificate. This often comes up when adding wildcards or subdomains.
+  g.upstream:
+    name: Upstream
+    gloss: Upstream is the backend server that a proxy or CDN forwards requests to and gets the actual response from. Upstream messages in nginx error logs often mean the backend connection failed or the response was slow.
+  g.connection-draining:
+    name: Connection draining
+    gloss: Connection draining first removes a server that is shutting down from load balancing, then waits for in-flight requests to finish before taking it down. Without it, deploys or scale-ins can cut off active requests and cause errors such as 502.
+  g.sticky-session:
+    name: Sticky session
+    gloss: A sticky session is a load balancer setting that keeps sending a client's requests to the same server. It is used when sessions are kept in server memory, but sessions are lost if that server goes down, and load may not spread evenly.
+  g.vary:
+    name: Vary header
+    gloss: Vary is a response header that tells caches which request headers the response depends on. If responses differ by language or compression and Vary is missing, a CDN may give a user a response meant for someone else.
+  g.chunked:
+    name: Chunked transfer encoding
+    gloss: Chunked transfer is an HTTP/1.1 method of sending a response body in pieces without stating its total length up front. It is used for streaming responses, but if a proxy in between buffers them, the chunks build up and arrive all at once.

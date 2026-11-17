@@ -9,6 +9,7 @@ import (
 	"github.com/forgen-team/punisher/internal/check"
 	"github.com/forgen-team/punisher/internal/llm"
 	"github.com/forgen-team/punisher/internal/llmjson"
+	"github.com/forgen-team/punisher/internal/prompts"
 	"github.com/forgen-team/punisher/internal/store"
 )
 
@@ -19,6 +20,8 @@ type itemSetCall struct {
 	attempts int
 	priority llm.Priority
 	system   string
+	// language: the items' language (ko|en, i18n §1) — for the output language rule of the prompt.
+	language string
 }
 
 // writeItemSet runs an item generation (check.items or check.pretest system
@@ -30,7 +33,7 @@ func (s *Service) writeItemSet(ctx context.Context, apiKey string, call itemSetC
 	var tries []store.AttemptRecord
 	var problems []string
 	for n := 1; n <= call.attempts; n++ {
-		text, gerr := s.complete(ctx, apiKey, llm.MessagesRequest{Model: call.model, System: call.system,
+		text, gerr := s.complete(ctx, apiKey, llm.MessagesRequest{Model: call.model, System: prompts.WithOutputLanguage(call.system, call.language),
 			User: user(problems), MaxTokens: 8000, Timeout: 5 * time.Minute, Priority: call.priority}, &u)
 		if gerr != nil {
 			tries = append(tries, store.AttemptRecord{Attempt: n, Result: "llm_error", Message: gerr.Error()})

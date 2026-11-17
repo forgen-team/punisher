@@ -10,6 +10,8 @@ import {
   type ObjectiveMastery,
   type Prediction,
 } from "@/src/shared/api/punisher";
+import { translate, type Locale } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 
 /** 세션의 문항 순서(itemIds)대로 정렬한 문항. */
 export function orderedItems(detail: CheckDetail): CheckItem[] {
@@ -41,10 +43,10 @@ export function sessionLectureSummary(detail: CheckDetail): string | undefined {
 }
 
 /** 상단 진행 글자 "문항 n/N"(확인·복습·진단 모두 같다). 문항이 없으면 "". */
-export function progressLabel(detail: CheckDetail): string {
+export function progressLabel(detail: CheckDetail, locale: Locale): string {
   const { index, total } = progressOf(detail);
   if (total === 0) { return ""; }
-  return `문항 ${index}/${total}`;
+  return translate(messages, locale).itemProgress(index, total);
 }
 
 /** 상단 바 제목 — 모든 세션이 "제목 · 문항 n/N" 한 형식(진행이 없으면 제목만). */

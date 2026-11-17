@@ -1,5 +1,7 @@
 import { usePathname, useRouter } from "@/src/shared/lib/router";
 import { PageHeader, SegmentedTabs } from "@/src/shared/ui/kit";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 
 type LearnSegment = "lectures" | "map" | "history";
 
@@ -8,11 +10,7 @@ const HREFS: Record<LearnSegment, string> = {
   map: "/map",
   history: "/history",
 };
-const ITEMS = [
-  { value: "lectures", label: "강의" },
-  { value: "map", label: "지도" },
-  { value: "history", label: "기록" },
-] as const;
+const SEGMENTS = ["lectures", "map", "history"] as const;
 
 function segmentOf(pathname: string): LearnSegment | null {
   if (pathname === "/" || pathname === "") { return "lectures"; }
@@ -29,15 +27,16 @@ export function LearnNav() {
   const pathname = usePathname();
   const router = useRouter();
   const segment = segmentOf(pathname);
+  const t = useT(messages);
   if (!segment) { return null; }
 
   return (
     <div className="shrink-0">
       {/* 단독판 셸 상단 바는 화면 제목을 보이지 않으므로 md 이상에서 여기 둔다(witems 는 lg — docs/SYNC.md). */}
-      <PageHeader title="학습" className="hidden pb-2 md:flex" />
+      <PageHeader title={t.title} className="hidden pb-2 md:flex" />
       <SegmentedTabs
-        aria-label="학습 보기"
-        items={ITEMS}
+        aria-label={t.tabsLabel}
+        items={SEGMENTS.map((value) => ({ value, label: t[value] }))}
         value={segment}
         onChange={(next) => router.push(HREFS[next])}
         fill

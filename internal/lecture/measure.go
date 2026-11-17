@@ -18,6 +18,31 @@ type Measure struct {
 	Exercises int
 	Pauses    int
 	TraceRows int
+	// Hangul / Latin letters of the prose: the lecture language (Language).
+	HangulLetters int
+	LatinLetters  int
+}
+
+// Language is "ko" when the prose is mostly Hangul, "en" when it is mostly
+// Latin letters ("ko" when there is no prose: the old default).
+func (m Measure) Language() string {
+	if m.LatinLetters > 2*m.HangulLetters && m.LatinLetters > 0 {
+		return "en"
+	}
+	return "ko"
+}
+
+// addProse counts prose text: visible characters and letter scripts.
+func (m *Measure) addProse(text string) {
+	m.ProseChars += visibleChars(text)
+	for _, r := range text {
+		switch {
+		case unicode.Is(unicode.Hangul, r):
+			m.HangulLetters++
+		case r < unicode.MaxASCII && unicode.IsLetter(r):
+			m.LatinLetters++
+		}
+	}
 }
 
 // MeasureContent counts c (mermaid sources and source lists are not read as text).
@@ -36,31 +61,33 @@ func (m *Measure) add(b Block) {
 	case BlockCode, BlockLog:
 		m.CodeChars += visibleChars(b.Text)
 	case BlockTerm, BlockPause:
-		m.ProseChars += visibleChars(b.Text)
+		m.addProse(b.Text)
 		if b.Type == BlockPause {
 			m.Pauses++
 		}
 	case BlockTrace:
 		var d TraceData
 		if json.Unmarshal(b.Data, &d) == nil {
-			m.ProseChars += visibleChars(d.Caption) + visibleChars(d.Note)
+			m.addProse(d.Caption)
+			m.addProse(d.Note)
 			m.TraceRows += len(d.Rows)
 		}
 	case BlockChart:
 		var d ChartData
 		if json.Unmarshal(b.Data, &d) == nil {
-			m.ProseChars += visibleChars(d.Title) + visibleChars(d.Note)
+			m.addProse(d.Title)
+			m.addProse(d.Note)
 		}
 	case BlockDiff:
 		var d DiffData
 		if json.Unmarshal(b.Data, &d) == nil {
 			m.CodeChars += visibleChars(d.Before) + visibleChars(d.After)
-			m.ProseChars += visibleChars(d.Note)
+			m.addProse(d.Note)
 		}
 	default:
 		if markdownBodied[b.Type] {
 			prose, code := splitFenced(b.Text)
-			m.ProseChars += visibleChars(prose)
+			m.addProse(prose)
 			m.CodeChars += visibleChars(code)
 			if b.Type == BlockExercise {
 				m.Exercises++

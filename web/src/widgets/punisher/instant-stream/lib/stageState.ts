@@ -1,8 +1,13 @@
 /**
  * 즉석 강의 생성 단계(v2.2 §2.1) — SSE 이벤트 → 화면 상태.
- * 새 계약: `stage` 이벤트 {"type":"stage","stage":"writing|checking|reviewing|rewriting|published|failed","attempt","maxAttempts","lectureId"?,"reasons"?}.
+ * 새 계약: `stage` 이벤트 {"type":"stage","stage":"writing|checking|reviewing|rewriting|published|failed","attempt","maxAttempts","lectureId"?,"reasons"?,"reasonCodes"?}.
+ * reasonCodes 가 모두 아는 code 면 화면 언어로 옮긴 문구를, 아니면 서버 문구(reasons)를 쓴다.
  * 예전 서버 이벤트(status·delta·done·error)도 같은 상태로 바꾼다(본문 delta 는 보이지 않으므로 버린다).
  */
+import { translate, type Locale } from "@/src/shared/i18n";
+import { translateReasonCodes } from "@/src/shared/api/punisher";
+import { messages } from "../i18n";
+
 export type GenStage = "connecting" | "writing" | "checking" | "reviewing" | "rewriting" | "published" | "failed";
 
 export interface StageState {
@@ -30,6 +35,11 @@ function strings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string" && v.length > 0) : [];
 }
 
+function reasonsOf(data: Payload): string[] {
+  const translated = translateReasonCodes(data.reasonCodes);
+  return translated.length > 0 ? translated : strings(data.reasons);
+}
+
 function positive(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
 }
@@ -43,7 +53,7 @@ function fromStage(prev: StageState, data: Payload): StageState {
   if (!STAGES.has(stage)) { return prev; }
   const maxAttempts = positive(data.maxAttempts, prev.maxAttempts);
   const attempt = stage === "rewriting" ? positive(data.attempt, prev.attempt + 1) : positive(data.attempt, prev.attempt);
-  const reasons = strings(data.reasons);
+  const reasons = reasonsOf(data);
   if (stage === "published") {
     const lectureId = typeof data.lectureId === "string" && data.lectureId ? data.lectureId : undefined;
     return lectureId ? { ...prev, stage, attempt, maxAttempts, lectureId } : failed(prev, []);
@@ -74,30 +84,31 @@ export function reduceStage(prev: StageState, event: StreamEventName, data: Payl
     case "done":
       return typeof data.lectureId === "string" && data.lectureId
         ? { ...prev, stage: "published", lectureId: data.lectureId }
-        : failed(prev, ["강의가 저장되지 않았습니다."]);
+        : failed(prev, [translate(messages).notSaved]);
     case "error":
-      return failed(prev, strings(data.reasons).length > 0 ? strings(data.reasons) : strings(data.message || data.code || "강의 생성에 실패했습니다."));
+      return failed(prev, strings(data.reasons).length > 0 ? strings(data.reasons) : strings(data.message || data.code || translate(messages).generateFailed));
     default:
       return prev;
   }
 }
 
 /** 단계 이름(화면 표시). 고치는 중은 회차를 붙인다. */
-export function stageLabel(state: StageState): string {
+export function stageLabel(state: StageState, locale: Locale): string {
+  const t = translate(messages, locale);
   switch (state.stage) {
     case "connecting":
-      return "연결 중";
+      return t.connecting;
     case "writing":
-      return "작성 중";
+      return t.writing;
     case "checking":
     case "reviewing":
-      return "검수 중";
+      return t.reviewing;
     case "rewriting":
-      return `고치는 중 ${Math.max(1, state.attempt)}/${state.maxAttempts}`;
+      return t.rewriting(Math.max(1, state.attempt), state.maxAttempts);
     case "published":
-      return "발행";
+      return t.published;
     case "failed":
-      return "실패";
+      return t.failed;
   }
 }
 

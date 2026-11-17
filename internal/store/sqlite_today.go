@@ -33,13 +33,22 @@ type GoalTargets struct {
 	Targets []string
 }
 
+// resumeInUserLanguage: the user ($1) is also reading a lecture of the same
+// target (concept, objectives, depth) in their language — 이어보기 shows that
+// one instead of the other-language lecture (i18n §1.3).
+var resumeInUserLanguage = `SELECT 1 FROM user_lecture_progress p2 JOIN lectures l2 ON l2.id = p2.lecture_id
+	WHERE p2.user_id = $1 AND p2.completed_at IS NULL AND p2.dismissed_at IS NULL AND p2.percent < 100
+	  AND l2.concept_id = l.concept_id AND l2.objective_key = l.objective_key AND l2.depth = l.depth
+	  AND l2.language = ` + userLocaleSQL("$1")
+
 // LoadToday loads concepts with pending-objective flags, prerequisite edges,
 // in-progress lectures, resolved study requests, active goals and the review queue counts.
 func (s *SQLiteStore) LoadToday(ctx context.Context, userID string, now time.Time) (*TodayData, error) {
 	d := &TodayData{Concepts: map[string]learning.TodayConcept{}}
 
 	concepts, err := collect(s.c().query(ctx, `
-		SELECT c.id, c.name, c.area, c.depth, c.summary, COALESCE(json_extract(c.practical_cases, '$[0]'), ''),
+		SELECT c.id, `+locName("c", userLocaleSQL("$1"))+`, c.area, c.depth, `+locSummary("c", userLocaleSQL("$1"))+`,
+		       COALESCE(json_extract(`+locCases("c", userLocaleSQL("$1"))+`, '$[0]'), ''),
 		       COALESCE(st.state, 'not_started'), c.status = 'proposed', c.owner_user_id IS NOT NULL,
 		       (
 		         SELECT COUNT(DISTINCT o.depth) FROM objectives o
@@ -74,6 +83,7 @@ func (s *SQLiteStore) LoadToday(ctx context.Context, userID string, now time.Tim
 		FROM user_lecture_progress p
 		JOIN lectures l ON l.id = p.lecture_id
 		WHERE p.user_id = $1 AND p.completed_at IS NULL AND p.dismissed_at IS NULL AND p.percent < 100
+		  AND NOT (l.language <> `+userLocaleSQL("$1")+` AND EXISTS (`+resumeInUserLanguage+`))
 		ORDER BY p.last_seen_at DESC LIMIT 200`, userID), func(row rowScanner) (learning.ResumeItem, error) {
 		var r learning.ResumeItem
 		var legacy json.RawMessage // 기존 강의(섹션 분 합계)만 본문을 읽어 조회 때 계산한다.

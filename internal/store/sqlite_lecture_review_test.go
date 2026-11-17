@@ -87,9 +87,6 @@ func TestUpgradeFromV013(t *testing.T) {
 		testUser, objectiveID).Scan(&box, &mark); err != nil || mark != "" || box != 2 {
 		t.Fatalf("mastery after 014 = box %d mark %q (%v)", box, mark, err)
 	}
-	if m, created, err := s.AcknowledgeMisconception(ctx, testUser, turnID); err != nil || !created || m.Text != "항상 디스크에서 읽는다" {
-		t.Fatalf("old turn acknowledged after 014 = %+v %v (%v)", m, created, err)
-	}
 	if _, err := s.ReopenObjective(ctx, testUser, objectiveID); err != nil {
 		t.Fatal(err)
 	}
@@ -107,6 +104,11 @@ func TestUpgradeFromV013(t *testing.T) {
 	}
 	if !indexExists(t, s, "lecture_reviews_pass_idx") {
 		t.Fatal("015 index missing")
+	}
+	// Today's misconception read names the concept in the user's locale (017), so
+	// the old turn is acknowledged once every migration is in.
+	if m, created, err := s.AcknowledgeMisconception(ctx, testUser, turnID); err != nil || !created || m.Text != "항상 디스크에서 읽는다" {
+		t.Fatalf("old turn acknowledged after 014 = %+v %v (%v)", m, created, err)
 	}
 	queue, err := s.LecturesToReview(ctx, 10)
 	if err != nil || len(queue) != 1 || queue[0].ID != lectureID {

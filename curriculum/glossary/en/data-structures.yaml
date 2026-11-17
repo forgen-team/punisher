@@ -1,0 +1,123 @@
+# English overlay for ../data-structures.yaml — same ids.
+area: data-structures
+concepts:
+  ds.amortized-analysis: Amortized analysis measures complexity by the average cost across a sequence of operations, even when some operations are expensive. Dynamic array append is the classic example. A low average can still hide latency spikes when a reallocation or rehash occurs.
+  ds.array: An array stores elements in contiguous memory and gives direct access by index. A dynamic array grows by moving its contents to a larger block when it runs out of space. That copying is why capacity is often reserved before bulk appends.
+  ds.b-tree: A B-Tree is a balanced tree that packs many keys into each node to keep its height low, which suits disks that read in pages. Most database indexes use it, which explains why even large tables need only a few page reads per lookup.
+  ds.balanced-tree: A balanced tree is a binary search tree that restructures itself, for example by rotations, on insert and delete to keep its height at O(log n). Red-black and AVL trees are typical. It backs sorted maps, which replace hash maps when you need ordering or range queries.
+  ds.binary-search: Binary search finds a value in sorted data in O(log n) by comparing against the middle element and halving the range each step. Its boundary conditions are easy to get wrong. The same idea finds the point where a condition flips, as git bisect does.
+  ds.binary-search-tree: A binary search tree keeps sorted order by placing smaller values to a node's left and larger values to its right. Search cost is proportional to tree height. Sorted input skews the tree to one side, making it as slow as a linked list.
+  ds.bloom-filter: A Bloom filter is a probabilistic data structure that tests set membership with a bit array and several hash functions. A no answer is certain, but a yes answer may be wrong. It uses little memory to screen out expensive database or disk lookups early.
+  ds.complexity: Complexity describes how fast running time or memory use grows as input size grows, written in notation such as Big-O. It shows ahead of time why code that ran fine on small dev data can suddenly slow down on production data.
+  ds.graph: A graph represents relationships as nodes connected by edges, which can have direction and weight. It models relationships a tree can't hold, such as service calls, task dependencies and permission inheritance, and is used to detect circular dependencies.
+  ds.graph-traversal: Graph traversal visits every node in a graph. BFS uses a queue to visit the nearest nodes first, while DFS uses a stack or recursion to follow one path to its end. Shortest paths, connectivity checks and cycle detection all build on traversal.
+  ds.hash-table: A hash table uses a hash function to decide where each key is stored, giving average O(1) lookups and inserts. It is how nested-loop comparisons get replaced with hash lookups. Depending on the implementation, order may not be guaranteed, and collisions and rehashing cost time.
+  ds.heap-priority-queue: A heap is a tree that always keeps the smallest or largest value at the top, and it is used to implement priority queues. Push and pop are O(log n), so heaps are used for timers, job schedulers and top-K aggregation.
+  ds.linked-list: In a linked list, each node holds the address of the next node. Inserts and deletes are cheap, but reaching the nth element means walking from the head. Scattered memory often makes it slower than an array, so pick it for clear-cut uses like an LRU cache.
+  ds.queue: A queue is a FIFO data structure in which the first element in is the first out. It underlies job queues, request buffers and BFS. If items arrive faster than they are processed, the queue keeps growing and response latency rises with it.
+  ds.ring-buffer: A ring buffer is a queue that joins a fixed-size array's end to its start and works by moving only head and tail indexes, with no extra allocation. A deque is a queue that adds and removes at both ends. Ring buffers often keep only the latest N logs or metrics.
+  ds.sorting: Sorting arranges data in order by a given key. Comparison sorts can't beat O(n log n) in the worst case. In practice, the important part is usually choosing a sort by whether it is stable and how much memory it uses, not writing your own.
+  ds.stack: A stack is a LIFO data structure in which the last element in is the first out. The call stack, undo features and bracket matching all work this way. It also explains why recursion that goes too deep causes a stack overflow.
+  ds.topological-sort: Topological sort arranges the nodes of a directed acyclic graph in a line that respects every precedence. It sets the build order of monorepo packages, the order of migrations and the order of pipeline stages. If the graph has a cycle, no valid order exists.
+  ds.tree: A tree is an acyclic hierarchy that branches from a single root through parent-child links. The DOM, file systems, categories and org charts are all trees. You need this concept when deciding how to expand them recursively or store them in a database.
+  ds.trie: A trie stores strings one character at a time along tree paths, so strings with a shared prefix share a path. It is used where fast prefix lookup matters, such as search autocomplete and path matching in HTTP routers.
+terms:
+  g.hash-collision:
+    name: Hash Collision
+    gloss: A hash collision occurs when different keys hash to the same bucket. The more collisions there are, the further hash table lookups slow down from O(1).
+  g.separate-chaining:
+    name: Separate Chaining
+    gloss: Separate chaining resolves collisions by linking the elements that land in the same bucket, for example in a list. When many elements pile into one bucket, lookups slow down because that list must be scanned in order.
+  g.open-addressing:
+    name: Open Addressing
+    gloss: Open addressing resolves a collision by searching the array, following a fixed rule, for another empty slot to store the element in. The fuller the table gets, the more probes it takes to find an empty slot.
+  g.load-factor:
+    name: Load Factor
+    gloss: The load factor is the number of elements stored in a hash table divided by the number of buckets. When it exceeds a threshold, collisions become frequent, so the table is grown through rehashing.
+  g.rehashing:
+    name: Rehashing
+    gloss: Rehashing grows a hash table and places every existing element at a new position. It happens rarely, but on a large map it can cause a latency spike at the moment it runs.
+  g.capacity:
+    name: Capacity
+    gloss: Capacity is the number of elements a dynamic array can hold without reallocating. It differs from length, which is the current element count. If you know how many elements will go in, setting the capacity up front reduces copying.
+  g.pointer:
+    name: Pointer
+    gloss: A pointer is a variable that holds the memory address of a value rather than the value itself. Linked lists and trees connect their nodes with pointers, so following those pointers scatters memory access.
+  g.node:
+    name: Node
+    gloss: A node is the basic unit of linked lists, trees and graphs. It holds a value along with links to other nodes. The cost of a data structure is judged by how many nodes an operation visits.
+  g.lru:
+    name: LRU
+    gloss: LRU (Least Recently Used) is a cache eviction policy that evicts the item that has gone unused the longest. It is commonly implemented with a hash map to find items and a doubly linked list to track the order of use.
+  g.recursion:
+    name: Recursion
+    gloss: Recursion is when a function calls itself on a smaller version of the problem. It fits naturally when expanding hierarchies like trees or nested comments, but every call adds to the call stack, so depth is limited.
+  g.stack-overflow:
+    name: Stack Overflow
+    gloss: A stack overflow is an error raised when function calls nest so deeply that they exceed the space allocated to the call stack. It comes from deep recursion or recursion with no base case, and is fixed with a loop and an explicit stack.
+  g.tree-traversal:
+    name: Tree Traversal
+    gloss: Tree traversal visits every node of a tree once, in a defined order. Whether parents or children are processed first decides what it suits, such as rendering a menu or adding up folder sizes.
+  g.leaf-node:
+    name: Leaf Node
+    gloss: A leaf node is a node at the end of a tree, with no children. In a B+Tree, the actual data locations sit in the leaves, which are linked to each other, and this makes range queries fast.
+  g.tree-height:
+    name: Tree Height
+    gloss: Tree height is the number of levels from the root down to the farthest leaf. Lookup cost in a search tree is proportional to its height, so keeping the height low is the key to performance.
+  g.tree-rotation:
+    name: Tree Rotation
+    gloss: A tree rotation is an operation that reshapes a tree by swapping the positions of a parent and child node while keeping the sort order intact. After inserts and deletes, balanced trees use rotations to fix any lean to one side.
+  g.sorted-map:
+    name: Sorted Map
+    gloss: A sorted map keeps its keys in sorted order and is usually implemented with a balanced tree. Its lookups are slower than a hash map's, but you use it when you need range queries or in-order iteration.
+  g.range-query:
+    name: Range Query
+    gloss: A range query finds all values within an interval rather than one specific value. Looking up orders by date range is a typical example. Hash structures can't do this efficiently, so sorted trees or B+Tree indexes are used instead.
+  g.fanout:
+    name: Fanout
+    gloss: Fanout is the number of children one tree node can have. Higher fanout makes the tree shorter, which is how a B-Tree can find a key among many with few disk reads.
+  g.page-split:
+    name: Page Split
+    gloss: A page split divides a full B-Tree node in two when a key is inserted into it. Inserting random keys makes splits more frequent, which can raise an index's write cost and size.
+  g.top-k:
+    name: Top-K
+    gloss: Top-K is the problem of picking the K highest-scoring items from a dataset. Keeping a heap of size K means you don't have to sort everything, which saves memory and time.
+  g.starvation:
+    name: Starvation
+    gloss: Starvation happens when low-priority tasks keep getting pushed behind higher-priority ones and go unprocessed indefinitely. It is mitigated by raising the priority of tasks that have waited a long time.
+  g.backpressure:
+    name: Backpressure
+    gloss: Backpressure is flow control in which a consumer that can't keep up signals the producer to slow down. Without it, a producer that outpaces its consumer keeps growing the queue, which can lead to running out of memory or to long delays.
+  g.adjacency-matrix:
+    name: Adjacency Matrix
+    gloss: An adjacency matrix represents a graph as a 2D table, sized by node count, that records whether an edge connects each pair of nodes. Checking a connection takes one lookup, but graphs with few edges waste a lot of memory.
+  g.cycle:
+    name: Cycle
+    gloss: A cycle is a path that follows edges back to the node it started from. A dependency graph with a cycle has no valid execution order, and traversing it without marking visited nodes leads to an infinite loop.
+  g.shortest-path:
+    name: Shortest Path
+    gloss: A shortest path is the lowest-cost path between two nodes. Without weights, BFS finds it. With non-negative weights, it is found with an algorithm such as Dijkstra's.
+  g.in-degree:
+    name: In-degree
+    gloss: In-degree is the number of edges coming into a node, which is the number of prerequisite tasks that node waits on. Topological sort builds its order by processing nodes with an in-degree of 0, one at a time.
+  g.external-sort:
+    name: External Sort
+    gloss: External sorting handles data too large to fit in memory by sorting it in chunks and then merging the chunks on disk. This is why databases write temporary files when sorting large results.
+  g.lower-upper-bound:
+    name: Lower Bound / Upper Bound
+    gloss: In sorted data, the lower bound is the first position whose value is at least the target, and the upper bound is the first position whose value is greater than the target. They are used to count duplicates or find range boundaries.
+  g.off-by-one:
+    name: Off-by-one Error
+    gloss: An off-by-one error sets a loop range or index boundary one step too far or one step short. It is especially common in binary search, page calculations and handling the end of an array.
+  g.false-positive:
+    name: False Positive
+    gloss: A false positive is a result that wrongly reports something as present when it is absent. A Bloom filter accepts false positives in exchange for saving memory, and its false positive rate rises as its bit array fills up.
+  g.memoization:
+    name: Memoization
+    gloss: Memoization stores the result computed for an input so the same input is never computed twice. Applied to recursion with repeated subproblems, it can bring an exponential-time computation down to polynomial time.
+  g.worst-case:
+    name: Worst Case
+    gloss: The worst case is the cost on the least favorable input, and the average case is the cost expected on typical input. Some structures, such as hash tables, are fast on average but slow in the worst case, so the two need to be kept apart.
+  g.constant-factor:
+    name: Constant Factor
+    gloss: A constant factor is a fixed-multiplier cost that Big-O notation leaves out. With small data or a different memory access pattern, an algorithm with the same or worse complexity can be faster in practice.

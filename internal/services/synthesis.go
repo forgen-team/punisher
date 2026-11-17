@@ -158,8 +158,9 @@ func (s *Service) runSynthesisItems(ctx context.Context, apiKey, userID, session
 		sc.ConceptOf[o.ID] = o.ConceptID
 		pc.Objectives = append(pc.Objectives, prompts.DiagnosticObjective{ID: o.ID, ConceptName: o.ConceptName, Text: o.Text})
 	}
+	lang := s.Store.LocaleFor(ctx, userID)
 	items, u, _, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.checkModel(), attempts: synthesisAttempts,
-		priority: llm.PriorityInteractive, system: set.Text(prompts.BlockCheckSynthesis, nil)},
+		priority: llm.PriorityInteractive, system: set.Text(prompts.BlockCheckSynthesis, nil), language: lang},
 		func(revisions []string) string { pc.Revisions = revisions; return prompts.Synthesis(pc) },
 		func(set check.ItemSet) []string { return check.ValidateSynthesis(set, sc) })
 	s.recordUsage(done, userID, "check_items", plan.conceptID, u, err)
@@ -169,7 +170,7 @@ func (s *Service) runSynthesisItems(ctx context.Context, apiKey, userID, session
 		if h := set.Hash(prompts.BlockCheckSynthesis); h != "" {
 			hash += ":" + h
 		}
-		saved, err = s.Store.SaveSynthesisItems(done, store.SynthesisItems{ConceptID: plan.conceptID, CreatedFor: userID,
+		saved, err = s.Store.SaveSynthesisItems(done, store.SynthesisItems{Language: lang, ConceptID: plan.conceptID, CreatedFor: userID,
 			PromptHash: hash, Model: u.model, PromptVersion: prompts.CheckVersion, Items: check.NormalizeSynthesis(items, plan.objectiveIDs())})
 	}
 	if err == nil {

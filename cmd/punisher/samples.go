@@ -11,13 +11,22 @@ import (
 
 	seedfiles "github.com/forgen-team/punisher/curriculum"
 	"github.com/forgen-team/punisher/internal/config"
+	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/middleware"
 	"github.com/forgen-team/punisher/internal/store"
 )
 
-// seedSamples adds the shipped sample lectures (curriculum/samples/*.json)
-// where they fit; a failure only logs (the app works without them).
+// seedSamples adds the shipped sample lectures where they fit — only those in
+// the user's language (i18n L9): curriculum/samples/*.json are Korean,
+// curriculum/samples/<lang>/*.json the other languages. A failure only logs
+// (the app works without them).
 func seedSamples(ctx context.Context, st *store.SQLiteStore) {
-	files, err := fs.Glob(seedfiles.Samples, "samples/*.json")
+	locale := st.LocaleFor(ctx, middleware.LocalUserID)
+	dir := "samples"
+	if locale != learning.LocaleKO {
+		dir = "samples/" + locale
+	}
+	files, err := fs.Glob(seedfiles.Samples, dir+"/*.json")
 	if err != nil {
 		log.Printf("samples: %v", err)
 		return
@@ -33,6 +42,9 @@ func seedSamples(ctx context.Context, st *store.SQLiteStore) {
 			log.Printf("samples %s: %v", f, err)
 			continue
 		}
+		if sm.Language == "" {
+			sm.Language = locale
+		}
 		added, err := st.SeedSample(ctx, sm)
 		if err != nil {
 			log.Printf("samples %s: %v", f, err)
@@ -44,7 +56,8 @@ func seedSamples(ctx context.Context, st *store.SQLiteStore) {
 
 // runSamples handles the development command `punisher samples dump <강의 id>...`:
 // it writes each published lecture of the data folder (PUNISHER_DATA_DIR or the
-// default) to curriculum/samples/<concept>.json in the current directory.
+// default) to curriculum/samples/<concept>.json in the current directory
+// (an English lecture to curriculum/samples/en/<concept>.json).
 func runSamples(args []string) int {
 	if len(args) < 2 || args[0] != "dump" {
 		fmt.Fprintln(os.Stderr, "usage: punisher samples dump <lecture id>...")
@@ -60,10 +73,6 @@ func runSamples(args []string) int {
 		return 1
 	}
 	defer st.Close()
-	if err := os.MkdirAll(filepath.Join("curriculum", "samples"), 0o755); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
 	for _, id := range args[1:] {
 		sm, err := st.DumpSample(context.Background(), id)
 		if err != nil {
@@ -75,7 +84,15 @@ func runSamples(args []string) int {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
-		out := filepath.Join("curriculum", "samples", sm.ConceptID+".json")
+		dir := filepath.Join("curriculum", "samples")
+		if sm.Language != learning.LocaleKO {
+			dir = filepath.Join(dir, sm.Language)
+		}
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		out := filepath.Join(dir, sm.ConceptID+".json")
 		if err := os.WriteFile(out, append(b, '\n'), 0o644); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1

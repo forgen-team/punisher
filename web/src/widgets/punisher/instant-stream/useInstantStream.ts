@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import { instantStreamUrl, punisherApi } from "@/src/shared/api/punisher";
 import { INITIAL_STAGE, reduceStage, type StageState, type StreamEventName } from "./lib/stageState";
+import { translate } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 
 const MAX_RECONNECTS = 3;
 const RECONNECT_DELAY_MS = 2000;
@@ -50,13 +52,13 @@ export function useInstantStream(jobId: string): StageState {
         const job = await punisherApi.getJob(jobId);
         if (job.status === "succeeded" && job.lectureId) { return apply("done", { lectureId: job.lectureId }); }
         if (job.status === "failed" || job.status === "skipped") {
-          return apply("error", { message: job.error || "강의 생성에 실패했습니다." });
+          return apply("error", { message: job.error || translate(messages).generateFailed });
         }
       } catch (err) {
         console.warn("punisher: job status check failed", err);
       }
       if (attempts >= MAX_RECONNECTS) {
-        apply("error", { message: "생성 작업과 연결이 끊겼습니다." });
+        apply("error", { message: translate(messages).disconnected });
         return;
       }
       retryTimer = setTimeout(connect, RECONNECT_DELAY_MS);

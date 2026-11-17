@@ -76,7 +76,7 @@ func (s *Service) StartInstant(ctx context.Context, userID string, req InstantRe
 	}
 	resp := InstantResponse{ConceptID: conceptID, Resolution: resolution}
 
-	existing, err := s.Store.PublishedLectureCovering(ctx, userID, conceptID, t.Plan.Depth, t.Plan.ObjectiveIDs)
+	existing, err := s.Store.PublishedLectureCovering(ctx, userID, conceptID, t.Plan.Depth, t.Plan.ObjectiveIDs, t.Plan.Language, store.LangExact)
 	if err == nil {
 		resp.Status, resp.LectureID = InstantExisting, existing.ID
 		s.linkDeeper(ctx, userID, req, resp)
@@ -102,7 +102,7 @@ func (s *Service) StartInstant(ctx context.Context, userID string, req InstantRe
 	job, _, err := s.Store.CreateJob(ctx, store.NewJob{
 		IdempotencyKey: fmt.Sprintf("%s:%s:%s", learning.JobInstant, target, store.RandomToken()),
 		Kind:           learning.JobInstant, UserID: userID, ConceptID: conceptID,
-		ObjectiveKey: t.Plan.ObjectiveKey, Depth: t.Plan.Depth, Reason: "instant",
+		ObjectiveKey: t.Plan.ObjectiveKey, Depth: t.Plan.Depth, Reason: "instant", Language: t.Plan.Language,
 	})
 	if errors.Is(err, store.ErrJobActive) {
 		if jobID, ok := s.Hub.ActiveJob(target); ok {

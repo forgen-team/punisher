@@ -24,16 +24,20 @@ type Lecture struct {
 	RequestedBy   string          `json:"-"`
 	Flagged       bool            `json:"flagged"`
 	FlagReason    string          `json:"flagReason"`
+	// FlagReasonCodes: codes of FlagReason for the web to translate (internal/i18n; omitted for LLM-written or legacy text).
+	FlagReasonCodes []string `json:"flagReasonCodes,omitempty"`
 	// ReviewState: unreviewed (no pass review yet) | passed | flagged (a review found problems).
 	ReviewState string `json:"reviewState"`
 	// Reviewed: a pass review exists (check items are only written for reviewed lectures).
-	Reviewed         bool             `json:"-"`
-	EstimatedMinutes int              `json:"estimatedMinutes"`
-	GenerationJobID  string           `json:"generationJobId,omitempty"`
-	CreatedAt        time.Time        `json:"createdAt"`
-	PublishedAt      *time.Time       `json:"publishedAt,omitempty"`
-	Progress         *LectureProgress `json:"progress,omitempty"`
-	Reviews          []LectureReview  `json:"reviews,omitempty"`
+	Reviewed         bool   `json:"-"`
+	EstimatedMinutes int    `json:"estimatedMinutes"`
+	GenerationJobID  string `json:"generationJobId,omitempty"`
+	// Language: ko|en — the lecture's language (i18n §1).
+	Language    string           `json:"language"`
+	CreatedAt   time.Time        `json:"createdAt"`
+	PublishedAt *time.Time       `json:"publishedAt,omitempty"`
+	Progress    *LectureProgress `json:"progress,omitempty"`
+	Reviews     []LectureReview  `json:"reviews,omitempty"`
 }
 
 // Lecture review states (quality design v2.2 §2.2).
@@ -96,6 +100,7 @@ type GenerationJob struct {
 	InputTokens    int             `json:"inputTokens"`
 	OutputTokens   int             `json:"outputTokens"`
 	Input          json.RawMessage `json:"input"`
+	Language       string          `json:"language"`
 	StartedAt      *time.Time      `json:"startedAt,omitempty"`
 	FinishedAt     *time.Time      `json:"finishedAt,omitempty"`
 	CreatedAt      time.Time       `json:"createdAt"`

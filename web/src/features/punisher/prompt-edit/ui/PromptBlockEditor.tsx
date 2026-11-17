@@ -7,7 +7,9 @@ import { describePunisherError, type PromptBlock, type PromptHistoryEntry } from
 import { useWideLayout } from "@/src/shared/lib/useWideLayout";
 import { ReadingOverlay, toOverlayAnchor, type OverlayAnchor } from "@/src/shared/ui/punisher";
 import { findUnknownVariables, withSuggestion } from "../lib/lineDiff";
-import { EDITOR_LABELS, EDITOR_TABS, type EditorTab } from "./constants";
+import { useT } from "@/src/shared/i18n";
+import { EDITOR_TABS, type EditorTab } from "./constants";
+import { messages } from "../i18n";
 import { DiffView } from "./DiffView";
 import { HistorySheet } from "./HistorySheet";
 import { PreviewView } from "./PreviewView";
@@ -24,12 +26,14 @@ interface PromptBlockEditorProps {
  */
 export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps) {
   const change = useChangePrompt();
+  const t = useT(messages);
+  const tabLabels: Record<EditorTab, string> = { edit: t.tabEdit, diff: t.tabDiff, preview: t.tabPreview };
   const [draft, setDraft] = useState(() => (suggestion ? withSuggestion(block.body, suggestion) : block.body));
   const [tabChoice, setTab] = useState<EditorTab>("edit");
   // 넓은 화면(xl)은 편집 옆에 '기본값과 비교'를 늘 펼쳐 두므로 비교 탭을 따로 두지 않는다.
   const wide = useWideLayout() === true;
   const tab: EditorTab = wide && tabChoice === "diff" ? "edit" : tabChoice;
-  const tabs = wide ? EDITOR_TABS.filter((t) => t.value !== "diff") : EDITOR_TABS;
+  const tabs = (wide ? EDITOR_TABS.filter((value) => value !== "diff") : EDITOR_TABS).map((value) => ({ value, label: tabLabels[value] }));
   const [historyOpen, setHistoryOpen] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [notice, setNotice] = useState("");
@@ -47,18 +51,18 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
   function save() {
     change.mutate(
       { kind: "save", id: block.id, body: draft },
-      { onSuccess: () => setNotice("저장했어요. 다음 생성부터 적용돼요. 이미 만든 강의는 '새 프롬프트로 다시 만들기'로 새 버전을 만들 수 있어요.") },
+      { onSuccess: () => setNotice(t.savedNotice) },
     );
   }
   function reset() {
-    change.mutate({ kind: "reset", id: block.id }, { onSuccess: () => setNotice("기본값으로 되돌렸어요. 이전 본문은 '이전 버전'에 남아 있어요.") });
+    change.mutate({ kind: "reset", id: block.id }, { onSuccess: () => setNotice(t.resetNotice) });
     setConfirmReset(false);
   }
   function restore(entry: PromptHistoryEntry) {
     change.mutate({ kind: "restore", id: block.id, historyId: entry.id }, {
       onSuccess: () => {
         setHistoryOpen(false);
-        setNotice("이전 버전으로 복원했어요.");
+        setNotice(t.restoredNotice);
       },
     });
   }
@@ -69,11 +73,11 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
         <p className="text-xs font-semibold text-accent-text">{block.stageTitle}</p>
         <h2 className="flex items-center gap-2 text-lg font-semibold text-fg">
           {block.title}
-          {block.overridden && <Badge tone="accent">수정됨</Badge>}
+          {block.overridden && <Badge tone="accent">{t.modified}</Badge>}
           <IconButton
             size="sm"
             variant="ghost"
-            aria-label={EDITOR_LABELS.appliesToTitle}
+            aria-label={t.appliesToTitle}
             aria-haspopup="dialog"
             aria-expanded={scopeAnchor !== null}
             onClick={(event) => setScopeAnchor(toOverlayAnchor(event.currentTarget.getBoundingClientRect()))}
@@ -81,8 +85,8 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
             <Info aria-hidden="true" />
           </IconButton>
         </h2>
-        <ReadingOverlay open={scopeAnchor !== null} onClose={() => setScopeAnchor(null)} anchor={scopeAnchor} title={EDITOR_LABELS.appliesToTitle}>
-          <p className="break-keep text-sm text-fg">{EDITOR_LABELS.appliesTo(block.appliesTo)}</p>
+        <ReadingOverlay open={scopeAnchor !== null} onClose={() => setScopeAnchor(null)} anchor={scopeAnchor} title={t.appliesToTitle}>
+          <p className="break-keep text-sm text-fg">{t.appliesTo(block.appliesTo)}</p>
         </ReadingOverlay>
         <p className="break-keep text-sm text-fg-secondary">{block.purpose}</p>
       </header>
@@ -94,15 +98,15 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
         </p>
       )}
 
-      <SegmentedTabs aria-label="보기" items={tabs} value={tab} onChange={setTab} fill />
+      <SegmentedTabs aria-label={t.tabsLabel} items={tabs} value={tab} onChange={setTab} fill />
 
       {tab === "edit" && (
         <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
           <div className="flex min-w-0 flex-col gap-2">
             {/* 옆 '기본값과 비교'의 안내 줄과 높이를 맞춘다(라벨만) */}
-            {wide && <p className="text-xs text-fg-muted">{EDITOR_LABELS.body}</p>}
+            {wide && <p className="text-xs text-fg-muted">{t.body}</p>}
             <Textarea
-              aria-label={`${block.title} 본문`}
+              aria-label={t.bodyLabel(block.title)}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               rows={18}
@@ -111,7 +115,7 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
             />
             {block.vars.length > 0 && (
               <p className="text-xs text-fg-muted">
-                쓸 수 있는 변수:{" "}
+                {t.variables}{" "}
                 {block.vars.map((v, index) => (
                   <span key={v.name}>
                     {index > 0 && " · "}
@@ -122,7 +126,7 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
             )}
             {unknownNames.length > 0 && (
               <p role="alert" className="text-xs text-warning">
-                이 블록이 모르는 변수는 바뀌지 않고 그대로 들어가요: {unknownNames.map((v) => `{{${v}}}`).join(", ")}
+                {t.unknownVarsEdit(unknownNames.map((v) => `{{${v}}}`).join(", "))}
               </p>
             )}
           </div>
@@ -142,30 +146,30 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
 
       <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
         <Button onClick={save} disabled={!dirty} loading={change.isPending && change.variables?.kind === "save"}>
-          저장
+          {t.save}
         </Button>
         {dirty && (
           <Button variant="ghost" onClick={() => setDraft(block.body)}>
-            편집 취소
+            {t.cancelEdit}
           </Button>
         )}
         <Button variant="ghost" onClick={() => setHistoryOpen(true)}>
           <History className="size-4" aria-hidden="true" />
-          이전 버전
+          {t.history}
         </Button>
         {block.overridden &&
           (confirmReset ? (
             <span className="flex items-center gap-1">
               <Button variant="secondary" onClick={reset} loading={change.isPending && change.variables?.kind === "reset"}>
-                기본값으로 되돌리기 확인
+                {t.confirmReset}
               </Button>
               <Button variant="ghost" onClick={() => setConfirmReset(false)}>
-                취소
+                {t.cancel}
               </Button>
             </span>
           ) : (
             <Button variant="ghost" onClick={() => setConfirmReset(true)}>
-              기본값으로 되돌리기
+              {t.reset}
             </Button>
           ))}
       </div>

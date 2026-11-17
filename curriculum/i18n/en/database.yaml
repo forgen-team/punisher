@@ -1,0 +1,194 @@
+# English overlay for ../../database.yaml — same concept ids and objective order.
+# Objectives stay keyed by their Korean ordinal; only display/prompt text comes from here.
+area: database
+title: Databases
+concepts:
+  db.relational-model:
+    name: Relational Model
+    summary: The relational model represents data as tables, rows, and columns and links them through keys. Constraints are the last line of defense that keeps application bugs from corrupting data.
+    objectives:
+      - Explain the roles of primary keys, foreign keys, and unique constraints.
+      - Model one-to-many and many-to-many relationships as tables.
+      - Explain the difference between enforcing constraints in the database and enforcing them only in application code.
+    practical_cases:
+      - Concurrent sign-ups created duplicate accounts because duplicates were checked only in code and there was no unique constraint.
+  db.sql-basics:
+    name: SQL Basics
+    summary: In SQL you declare the result you want, and the database decides how to execute it. Doing aggregation, filtering, and sorting in the database reduces the amount of data sent to the application.
+    objectives:
+      - Explain the logical processing order of a SELECT statement (FROM, WHERE, GROUP BY, HAVING, SELECT, ORDER BY).
+      - Explain how NULL behaves in comparisons and aggregates.
+      - Explain why filtering should be done in SQL rather than in the application.
+    practical_cases:
+      - An API fetches every row and filters them in code until it runs out of memory.
+  db.joins:
+    name: Joins
+    summary: A join combines rows from multiple tables by following their relationships. Depending on the join type and condition, rows can be multiplied or dropped.
+    objectives:
+      - Explain how the results of INNER JOIN and LEFT JOIN differ.
+      - Explain how a one-to-many join multiplies rows and distorts aggregates.
+      - Explain the conceptual differences among nested loop, hash, and merge joins.
+    practical_cases:
+      - A report shows inflated totals because orders were joined with order items before applying SUM.
+  db.normalization:
+    name: Normalization and Denormalization
+    summary: Normalization reduces redundancy to prevent update anomalies, while denormalization deliberately allows redundancy for read performance. Either way, the key question is who bears the cost of keeping data consistent.
+    objectives:
+      - Explain how storing duplicate data leads to update anomalies.
+      - Explain the purpose of the first, second, and third normal forms in practical terms.
+      - Explain how to keep data consistent when you choose denormalization.
+    practical_cases:
+      - Customer names copied into the orders table do not reflect later name changes.
+  db.index:
+    name: Index
+    summary: An index is a sorted auxiliary structure that narrows the range the database has to read, at the cost of extra write work and storage. Even when an index exists, it may go unused depending on the form of the condition and its selectivity.
+    objectives:
+      - Explain how an index lets the database read only part of the data instead of doing a full scan.
+      - Explain cases where adding an index does not make a query faster (low selectivity, functions applied to the column, type mismatches).
+      - Explain the costs an index adds to write performance and storage.
+    practical_cases:
+      - A query's WHERE lower(email) condition prevents the email index from being used.
+  db.composite-index:
+    name: Composite Index
+    summary: Column order matters in a composite index, and without a condition on the leading columns the index is often not used. If the index contains every column a query needs, the query can be answered without reading the table.
+    objectives:
+      - Explain why the column order of a composite index determines whether the index can be used.
+      - Choose a column order by considering equality conditions, range conditions, and sorting.
+      - Explain the benefits of a covering index (index-only scan).
+    practical_cases:
+      - An (user_id, created_at) index serves a per-user query for the latest items without a sort step.
+  db.query-plan:
+    name: Reading Query Plans
+    summary: The optimizer chooses how to execute a query based on statistics, and EXPLAIN shows that plan and its actual cost. A gap between estimated and actual row counts is a clue to why a query is slow.
+    objectives:
+      - Read the scan method, join method, and actual time from EXPLAIN ANALYZE output.
+      - Explain what a large gap between estimated and actual row counts means, and explain updating statistics.
+      - Explain the procedure for reproducing a slow query and comparing it before and after an improvement.
+    practical_cases:
+      - A query slowed down because, as the data grew, its index scan switched to a sequential scan.
+  db.n-plus-one:
+    name: N+1 Query Problem
+    summary: Fetching a list with one query and then running an extra query for each item results in N+1 round trips. It is common with ORM lazy loading.
+    objectives:
+      - Identify the code patterns that cause the N+1 problem.
+      - Explain how to reduce round trips with joins or batched IN-clause queries.
+      - Explain how to spot N+1 queries in query logs or an APM tool.
+    practical_cases:
+      - An API runs 50 author queries to render a list of 50 posts.
+  db.pagination:
+    name: Pagination
+    summary: OFFSET pagination gets slower on later pages because more rows are read and discarded, whereas keyset (cursor) pagination reads only the rows after the last key. Cursor pagination is the right fit for infinite scroll.
+    objectives:
+      - Explain why OFFSET pagination gets slower on later pages.
+      - Explain how keyset pagination works and why the sort key must be unique.
+      - Explain why OFFSET pagination produces duplicates or skipped items when new data is added.
+    practical_cases:
+      - In an infinite-scroll feed, the same item appears twice as new posts are added.
+  db.transaction:
+    name: Transactions
+    summary: A transaction groups multiple changes into a single unit that is either applied in full or rolled back in full. You need to know what the ACID properties guarantee and what they do not.
+    objectives:
+      - Explain what each ACID property guarantees.
+      - Decide where to place transaction boundaries.
+      - Explain the problems caused by calling external APIs inside a transaction.
+    practical_cases:
+      - In an incident, only one of order creation and stock deduction was applied, leaving the data inconsistent.
+  db.isolation-levels:
+    name: Isolation Levels
+    summary: An isolation level determines how much of each other's changes concurrent transactions can see. Anomalies such as lost updates can occur even at the default isolation level.
+    objectives:
+      - Explain the differences among Read Committed, Repeatable Read, and Serializable.
+      - Explain scenarios in which lost updates and write skew occur.
+      - Check the default isolation level of the database you use and what it means.
+    practical_cases:
+      - Two requests read the same balance and each deducted from it, so one of the deductions was lost.
+  db.locking:
+    name: Database Locking
+    summary: Databases serialize concurrent modifications with row and table locks. When a long transaction holds its locks for a long time, other requests queue up behind it one after another.
+    objectives:
+      - Explain how to take a pessimistic lock with SELECT FOR UPDATE.
+      - Explain how a long transaction creates a chain of lock waits.
+      - Explain how to find the cause of lock waits with pg_locks and similar tools.
+      - Explain when DDL (creating an index, adding a column) takes a table lock.
+    practical_cases:
+      - In an incident, an ALTER TABLE run in production waited for a lock and blocked every query.
+  db.deadlock:
+    name: Database Deadlocks
+    summary: When two transactions wait for each other's locks, the database detects the deadlock and fails one of them. The usual responses are a consistent lock order and retries.
+    objectives:
+      - Explain how the database detects a deadlock and aborts one of the transactions.
+      - Explain how sorting the update order reduces deadlocks.
+      - Explain the conditions under which a transaction that failed because of a deadlock can be retried safely.
+    practical_cases:
+      - A deadlock occurred because a bulk-update batch job and user requests updated rows in different orders.
+  db.mvcc:
+    name: MVCC
+    summary: MVCC keeps multiple versions of a row so that reads do not block writes. In exchange, old versions have to be cleaned up (VACUUM), and long-running transactions block that cleanup.
+    objectives:
+      - Explain how snapshots keep reads and writes from blocking each other.
+      - Explain the relationship between dead tuples, VACUUM, and table bloat.
+      - Explain why transactions left open for a long time interfere with cleanup.
+    practical_cases:
+      - A table kept growing because a transaction had been left open for hours.
+  db.optimistic-locking:
+    name: Optimistic Locking
+    summary: Optimistic locking assumes conflicts are rare and detects them at update time by comparing versions. When a conflict occurs, the operation has to be retried or confirmed by the user.
+    objectives:
+      - Explain how to detect conflicts with a version column and a conditional UPDATE.
+      - Explain the criteria for choosing between pessimistic and optimistic locking.
+    practical_cases:
+      - Two admins edit the same document at the same time, and one admin's changes overwrite the other's.
+  db.wal-and-durability:
+    name: WAL and Durability
+    summary: Before changing data files, the database first writes a record of the change (WAL) to disk so that commits can be recovered after a crash. Replication and point-in-time recovery also build on WAL.
+    objectives:
+      - Explain how a commit becomes durable through a WAL fsync.
+      - Explain how replaying WAL recovers the database after a crash.
+      - Explain situations in which WAL fills up the disk (such as replication slots).
+    practical_cases:
+      - In an incident, an unused replication slot let WAL pile up until the disk was full.
+  db.connection-pool:
+    name: Database Connection Pool
+    summary: Database connections are expensive to create and limited in number per server, so applications reuse them through a pool. A bigger pool is not automatically better; its size should match the concurrency the database can handle.
+    objectives:
+      - Explain the cost of creating connections and the database's maximum connection limit.
+      - Explain how pool exhaustion shows up as requests waiting and timing out.
+      - Calculate whether the number of instances × pool size exceeds the database's connection limit.
+    practical_cases:
+      - In an incident, autoscaling added instances and the database began returning "too many connections" errors.
+  db.replication:
+    name: Replication
+    summary: Replication sends changes from the primary database to replicas to spread read load and prepare for failures. With asynchronous replication, data you just wrote may not yet be on a replica.
+    objectives:
+      - Explain the difference between synchronous and asynchronous replication and when each can lose data.
+      - Explain how replication lag causes stale values to appear when you read right after a write.
+      - Explain what to consider during failover.
+    practical_cases:
+      - A read-after-write problem in which the screen shows the old values right after a user updates their profile.
+  db.backup-and-restore:
+    name: Database Backup and Restore
+    summary: Logical backups, physical backups, and point-in-time recovery differ in how much they can recover and how long recovery takes. A backup you have never restored cannot really be called a backup.
+    objectives:
+      - Explain the differences among logical backups (pg_dump), physical backups, and PITR.
+      - Choose a backup method based on RPO and RTO.
+      - Explain the procedure for validating backups through restore rehearsals.
+    practical_cases:
+      - Daily backups reported success, but a test restore showed that some databases were missing.
+  db.schema-migration:
+    name: Schema Migration
+    summary: Changing the schema in production requires thinking about both locking and compatibility with older code versions. Splitting the change into expand → migrate → contract phases makes zero-downtime deployments and rollbacks easier.
+    objectives:
+      - Explain how migrations are versioned and how applied migrations are recorded.
+      - Explain how to split a column rename into expand-contract steps.
+      - Explain when changes to large tables cause locking and long-running writes.
+    practical_cases:
+      - In an incident, adding a NOT NULL column during a deployment made INSERTs from servers still running the old version fail.
+  db.nosql-models:
+    name: NoSQL Data Models
+    summary: Key-value, document, and wide-column stores get their scalability by modeling data around query patterns, and they give up some join and transaction support in return. Define your query patterns first, then choose a store.
+    objectives:
+      - Compare the characteristics of key-value, document, and wide-column models.
+      - Explain how modeling around query patterns differs from relational modeling.
+      - Explain the reasons for choosing NoSQL over a relational database and what you give up.
+    practical_cases:
+      - Explain why sessions and caches go in Redis while orders go in a relational database.

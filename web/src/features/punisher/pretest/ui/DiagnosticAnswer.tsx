@@ -3,10 +3,12 @@ import { Button, Input } from "@/src/shared/ui/kit";
 import { describeCheckError, useCheckAnswer, useCheckChoice } from "@/src/entities/punisher";
 import { CHECK_MAX_ANSWER_CHARS, type CheckDetail, type CheckItem } from "@/src/shared/api/punisher";
 import { choicesOf } from "../lib/diagnostic";
-import { DIAGNOSTIC_LABELS } from "./constants";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 
 /** 진단 문항의 답 — 보기 버튼(choice) 또는 한 줄 예측 + '모르겠어요'. 고르면 바로 기록되고 다음 문항으로 간다. */
 export function DiagnosticAnswer({ detail, item }: { detail: CheckDetail; item: CheckItem }) {
+  const t = useT(messages);
   const id = detail.session.id;
   const choice = useCheckChoice(id);
   const answer = useCheckAnswer(id);
@@ -26,7 +28,7 @@ export function DiagnosticAnswer({ detail, item }: { detail: CheckDetail; item: 
   return (
     <div className="flex flex-col gap-2">
       {choices.length > 0 ? (
-        <div role="group" aria-label="보기" className="flex flex-col gap-2">
+        <div role="group" aria-label={t.choices} className="flex flex-col gap-2">
           {choices.map((label, index) => (
             <Button
               key={`${item.id}-${index}`}
@@ -46,7 +48,7 @@ export function DiagnosticAnswer({ detail, item }: { detail: CheckDetail; item: 
       ) : (
         <form onSubmit={submit} className="flex gap-2">
           <Input
-            aria-label={DIAGNOSTIC_LABELS.answer}
+            aria-label={t.answer}
             value={text}
             maxLength={CHECK_MAX_ANSWER_CHARS}
             disabled={busy}
@@ -54,7 +56,7 @@ export function DiagnosticAnswer({ detail, item }: { detail: CheckDetail; item: 
             className="min-w-0 flex-1"
           />
           <Button type="submit" disabled={!text.trim() || busy} loading={answer.isPending}>
-            {DIAGNOSTIC_LABELS.send}
+            {t.send}
           </Button>
         </form>
       )}
@@ -63,7 +65,7 @@ export function DiagnosticAnswer({ detail, item }: { detail: CheckDetail; item: 
           setPicked(null);
           choice.mutate({ dontKnow: true });
         }}>
-          {DIAGNOSTIC_LABELS.dontKnow}
+          {t.dontKnow}
         </Button>
       </div>
       {error && (

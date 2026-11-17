@@ -2,6 +2,8 @@
 import { useId, useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { cn, focusRing } from "@/src/shared/ui/kit";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 
 interface DeeperGroupProps {
   /** 원 강의 행(ListRow) */
@@ -12,6 +14,7 @@ interface DeeperGroupProps {
 
 /** 원 강의 행 + "더 깊게 본 강의 n개" 펼침. 심화 강의가 없으면 원 강의 행만. List 안에서 쓴다. */
 export function DeeperGroup({ parent, children }: DeeperGroupProps) {
+  const t = useT(messages);
   const [open, setOpen] = useState(false);
   const listId = useId();
   if (children.length === 0) { return <>{parent}</>; }
@@ -30,7 +33,7 @@ export function DeeperGroup({ parent, children }: DeeperGroupProps) {
           )}
         >
           <ChevronRight className={cn("size-3.5 transition-transform", open && "rotate-90")} aria-hidden="true" />
-          더 깊게 본 강의 {children.length}개
+          {t.deeperCount(children.length)}
         </button>
         {open && (
           <ul id={listId} role="list" className="ml-8 border-l border-line pl-3">

@@ -1,7 +1,9 @@
 
 import { useMemo } from "react";
 import { cn } from "@/src/shared/ui/kit";
+import { useT } from "@/src/shared/i18n";
 import { changedLines, lineDiff } from "../lib/lineDiff";
+import { messages } from "../i18n";
 
 const PREFIX = { same: "", add: "+", del: "−" } as const;
 
@@ -9,10 +11,11 @@ const PREFIX = { same: "", add: "+", del: "−" } as const;
 export function DiffView({ before, after }: { before: string; after: string }) {
   const diff = useMemo(() => lineDiff(before, after), [before, after]);
   const changed = changedLines(diff);
+  const t = useT(messages);
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-fg-muted">
-        {changed === 0 ? "기본값과 같아요." : `기본값과 ${changed}줄 달라요. + 내 문구 · − 기본값에서 빠진 문구`}
+        {changed === 0 ? t.diffSame : t.diffChanged(changed)}
       </p>
       {/* 같으면 본문을 한 벌 더 보이지 않는다. 줄머리(+ · −)는 따로 열에 둬 줄이 접혀도 글자 시작이 맞는다. */}
       {changed > 0 && (
@@ -28,7 +31,7 @@ export function DiffView({ before, after }: { before: string; after: string }) {
             >
               <span aria-hidden="true" className="select-none text-fg-muted">{PREFIX[line.kind]}</span>
               <span className={cn("whitespace-pre-wrap break-words", line.kind === "del" && "line-through decoration-1")}>
-                <span className="sr-only">{line.kind === "add" ? "추가: " : line.kind === "del" ? "삭제: " : ""}</span>
+                <span className="sr-only">{line.kind === "add" ? t.diffAdded : line.kind === "del" ? t.diffRemoved : ""}</span>
                 {line.text || " "}
               </span>
             </div>

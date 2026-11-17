@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { BottomSheet, Button, ErrorState, ListSkeleton, Section } from "@/src/shared/ui/kit";
 import { areaLabel, useConcepts } from "@/src/entities/punisher";
 import { PUNISHER_AREAS, describePunisherError, type Concept } from "@/src/shared/api/punisher";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 import { useBatchMarkKnown } from "./useKnownOnboarding";
 
 interface AreaGroup {
@@ -36,6 +38,7 @@ interface KnownAreasSheetProps {
 
 /** "이미 아는 영역 표시" — 영역별 깊이 1 개념을 체크해 일괄로 이미 앎 처리. */
 export function KnownAreasSheet({ open, onClose, onSaved }: KnownAreasSheetProps) {
+  const t = useT(messages);
   const concepts = useConcepts();
   const groups = useMemo(() => groupDepthOne(concepts.data ?? []), [concepts.data]);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
@@ -83,10 +86,10 @@ export function KnownAreasSheet({ open, onClose, onSaved }: KnownAreasSheetProps
   const footer = (
     <>
       <Button variant="ghost" onClick={onClose} disabled={running}>
-        나중에
+        {t.later}
       </Button>
       <Button onClick={save} loading={running} disabled={selected.size === 0}>
-        {running && progress ? `저장 중 ${progress.done}/${progress.total}` : `${selected.size}개 앎으로 저장`}
+        {running && progress ? t.saving(progress.done, progress.total) : t.saveCount(selected.size)}
       </Button>
     </>
   );
@@ -96,15 +99,15 @@ export function KnownAreasSheet({ open, onClose, onSaved }: KnownAreasSheetProps
       open={open}
       onClose={running ? () => undefined : onClose}
       dismissible={!running}
-      title="이미 아는 영역 표시"
-      description="아는 기본 개념을 체크하면 이어지는 개념의 잠금이 풀려요."
+      title={t.sheetTitle}
+      description={t.sheetDescription}
       footer={footer}
       desktop="dialog"
     >
       <div aria-live="polite" className="text-sm">
         {failedCount > 0 && !running && (
           <p role="alert" className="mb-2 text-danger">
-            {failedCount}개를 저장하지 못했어요. 남은 항목으로 다시 시도해 주세요.
+            {t.saveFailed(failedCount)}
           </p>
         )}
       </div>
@@ -127,10 +130,10 @@ export function KnownAreasSheet({ open, onClose, onSaved }: KnownAreasSheetProps
                 action={
                   pending.length > 0 ? (
                     <Button variant="ghost" size="sm" disabled={running} onClick={() => toggleArea(group, !allChecked)}>
-                      {allChecked ? "전체 해제" : "영역 전체 앎"}
+                      {allChecked ? t.clearAll : t.markArea}
                     </Button>
                   ) : (
-                    <span className="text-xs text-fg-muted">모두 표시됨</span>
+                    <span className="text-xs text-fg-muted">{t.allMarked}</span>
                   )
                 }
               >
@@ -151,7 +154,7 @@ export function KnownAreasSheet({ open, onClose, onSaved }: KnownAreasSheetProps
                             <span className="block truncate text-sm font-medium text-fg">{c.name}</span>
                             {(learned || c.summary) && (
                               <span className="block truncate text-xs text-fg-muted">
-                                {learned ? "이미 표시됨" : c.summary}
+                                {learned ? t.alreadyMarked : c.summary}
                               </span>
                             )}
                           </span>

@@ -1,0 +1,260 @@
+# English overlay for ../../infra-ops.yaml — same concept ids and objective order.
+# Objectives stay keyed by their Korean ordinal; only display/prompt text comes from here.
+area: infra-ops
+title: Infrastructure and Operations
+concepts:
+  infra.container:
+    name: Container
+    summary: A container is an ordinary process running in an isolated environment. It bundles the runtime environment into an image so the same code runs the same way anywhere.
+    objectives:
+      - Explain that a container is ultimately a process running on the host kernel
+      - Compare the isolation level and cost of virtual machines and containers
+      - Explain how containers reduce problems caused by environment differences, and what they do not address (kernel, configuration, external dependencies)
+      - Explain why a container stops when its main process exits
+    practical_cases:
+      - Fixing a "works on my dev machine, fails on the server" problem by standardizing on one container image
+      - A container that exits immediately because it starts without a foreground process
+  infra.container-image:
+    name: Container Image
+    summary: An image is an immutable package of filesystem layers and runtime configuration. Tags can change, so pin images by digest when you need reproducibility.
+    objectives:
+      - Explain image layers and how cached layers are reused
+      - Explain the difference between tags and digests, and the risk of the latest tag
+      - Explain the flow of pulling an image from a registry and running it
+    practical_cases:
+      - Servers running different versions after an image was re-pushed under the same tag
+  infra.dockerfile:
+    name: Dockerfile and Image Builds
+    summary: A Dockerfile records the steps for building an image. Layer order and multi-stage builds determine build speed, image size, and security.
+    objectives:
+      - Order instructions to make the most of the layer cache
+      - Use multi-stage builds to keep build tools out of the runtime image
+      - Explain the operational impact of a non-root user, HEALTHCHECK, and the exec form of ENTRYPOINT
+    practical_cases:
+      - Speeding up a slow build that reinstalls all dependencies whenever a single line of source changes
+  infra.container-isolation:
+    name: How Container Isolation Works
+    summary: A container runtime isolates processes by using namespaces to limit what they can see and cgroups to limit how much they can use. Containers share the kernel, so their isolation boundary is thinner than a VM's.
+    objectives:
+      - Explain what namespaces and cgroups each contribute to container isolation
+      - Explain the role of container runtimes (containerd, runc)
+      - Explain what kernel sharing means for the security boundary
+    practical_cases:
+      - The security risk of running a privileged container that can access host devices
+  infra.container-resource-limits:
+    name: Container Resource Limits
+    summary: Memory and CPU limits on a container protect its neighbors. A container that exceeds its memory limit is forcibly killed, and one that hits its CPU limit slows down.
+    objectives:
+      - Explain how exceeding the memory limit leads to an OOM kill (exit 137)
+      - Explain why a CPU limit shows up as throttling delay rather than termination
+      - Explain why you need to check whether the runtime (JVM, Node, Go) recognizes container limits
+    practical_cases:
+      - A service whose container, limited to 256MB of memory, is OOM-killed and restarted every time it collects feeds
+  infra.kubernetes:
+    name: Kubernetes
+    summary: 'Kubernetes is a container orchestrator: you declare a desired state, and controllers bring the actual state in line with it. Beyond running containers, it manages placement, restarts, scaling, and networking.'
+    objectives:
+      - Explain declarative desired state and the controller reconciliation loop
+      - Explain the roles of clusters, nodes, Pods, and containers and how they relate
+      - Explain what an orchestrator manages beyond simply running containers (restarts, placement, scaling, service discovery)
+    practical_cases:
+      - Understanding how Pods are rescheduled onto other nodes when a node dies
+  infra.kubernetes-architecture:
+    name: Kubernetes Components
+    summary: The API server, etcd, scheduler, and controller manager make up the control plane. The kubelet on each node is what actually runs the containers.
+    objectives:
+      - Explain the roles of the API server, etcd, scheduler, controller manager, and kubelet
+      - Explain how a kubectl command changes cluster state
+      - Explain how control plane failures and node failures differ in their impact on services
+    practical_cases:
+      - Explaining why existing Pods keep running during an API server outage
+  infra.pod:
+    name: Pod
+    summary: 'A Pod is the smallest unit Kubernetes schedules: a group of one or more containers that share networking and volumes. Pods are treated as disposable and replaceable.'
+    objectives:
+      - Explain the relationship between Pods and containers, and what containers in the same Pod share
+      - Explain why Pods are managed through controllers instead of being created directly
+      - Explain why a Pod's IP and local files change when it is recreated
+    practical_cases:
+      - A sidecar container collecting logs inside the same Pod
+  infra.pod-lifecycle:
+    name: Pod Lifecycle and Status
+    summary: A Pod has a phase (Pending, Running, Succeeded, Failed), and each of its containers has a state (Waiting, Running, Terminated). "The Pod died" means something entirely different depending on which of these states it is in.
+    objectives:
+      - Distinguish Pod phases from container states (Waiting, Running, Terminated) and their reasons
+      - Explain what Pending, ImagePullBackOff, CrashLoopBackOff, and OOMKilled each suggest
+      - Read the status, exit code, and reason in kubectl describe to separate observed facts from hypotheses about the cause
+    practical_cases:
+      - On receiving a "the Pod died" report, first checking whether it is Pending or restarting repeatedly
+  infra.restart-policy-crashloop:
+    name: Restart Policy and CrashLoopBackOff
+    summary: When a container exits, the kubelet restarts it according to the restart policy. If it keeps failing, the kubelet waits longer between restarts and reports CrashLoopBackOff. Restarts can hide symptoms.
+    objectives:
+      - Explain how restartPolicy (Always, OnFailure, Never) behaves
+      - Explain CrashLoopBackOff's exponential back-off and the restart count metric
+      - Narrow down the cause using the logs from just before the restart (--previous) and the last termination state
+    practical_cases:
+      - Diagnosing a Pod that keeps exiting right after startup because a config file is missing
+  infra.probes:
+    name: Liveness, Readiness, and Startup Probes
+    summary: A liveness probe decides whether to restart, a readiness probe decides whether to receive traffic, and a startup probe handles slow starts. Misconfigured probes make healthy apps restart over and over.
+    objectives:
+      - Distinguish the purpose of liveness, readiness, and startup probes and what happens when each one fails
+      - Explain why a liveness probe that checks external dependencies causes cascading restarts
+      - Compare example cases of configuration errors, process exits, and failed checks to tell restart causes apart
+      - Explain the criteria for setting a startup probe and its timing values for slow-starting apps
+    practical_cases:
+      - An outage in which a brief DB slowdown made liveness probes fail and every Pod restarted at once
+  infra.k8s-resources:
+    name: Kubernetes Resource Requests and Limits
+    summary: Requests are the reserved amount used for scheduling, and limits are a ceiling that cannot be exceeded. Exceeding a memory limit shows up as OOMKilled, and a CPU limit shows up as throttling.
+    objectives:
+      - Explain how requests and limits affect scheduling and runtime, respectively
+      - Explain how memory metrics, the memory limit, and OOMKilled terminations connect
+      - Explain QoS classes and the eviction order under node memory pressure
+    practical_cases:
+      - An outage in which a single Pod deployed without a limit used up all of a node's memory and other Pods were evicted
+  infra.reading-failure-state:
+    name: Reading Failure State
+    summary: Status tells you how things are now, events tell you what the cluster did, and logs tell you what the app said. Lining all three up on a timeline narrows down the possible causes.
+    objectives:
+      - Distinguish the question that status, events, and logs each answer
+      - Explain the procedure for lining up the three on a timeline to narrow down possible causes
+      - Explain how to decide what evidence to check instead of attributing a symptom to a specific cause
+    practical_cases:
+      - Concluding from a FailedScheduling event and the absence of logs that the problem is insufficient resources, not the app
+  infra.recovery-vs-root-cause:
+    name: Recovery vs. Root Cause Removal
+    summary: A restart restores service but does not remove the cause. After recovery, check the conditions under which the problem recurs and define what should be normal after the change so you can verify it.
+    objectives:
+      - Explain the difference between mitigation and removing the cause
+      - Explain how restarts erase evidence (memory state, logs) and how to preserve it
+      - Define the conditions to check after a change (metrics, restart count, time period)
+    practical_cases:
+      - Using a heap profile to remove the cause of a memory leak in a service that had been kept alive by daily restarts
+  infra.deployment:
+    name: Deployment and ReplicaSet
+    summary: A Deployment declares the desired number of Pods and a Pod template, and maintains them through a ReplicaSet. When the template changes, it gradually replaces Pods through a new ReplicaSet.
+    objectives:
+      - Explain the ownership relationship among Deployments, ReplicaSets, and Pods
+      - Explain why a Pod comes back after you delete it
+      - Explain what changing the replica count and changing the template each trigger
+    practical_cases:
+      - Understanding why deleting a problem Pod immediately brings back a new Pod with the same problem
+  infra.k8s-service-networking:
+    name: Services and Cluster Networking
+    summary: A Service puts a stable name and address in front of changing Pod IPs and sends traffic only to ready Pods. An Ingress routes external HTTP requests to Services.
+    objectives:
+      - Explain how a Service uses a label selector to choose its target Pods
+      - Explain the differences among ClusterIP, NodePort, LoadBalancer, and Ingress
+      - Explain how cluster DNS resolves Service names
+    practical_cases:
+      - 503 errors caused by a typo in a selector label that left a Service with no endpoints
+  infra.config-and-secrets:
+    name: Injecting Configuration and Secrets
+    summary: Configuration and secret values are not built into the image. They are injected at runtime as environment variables or files, so a single image can run in multiple environments.
+    objectives:
+      - Explain why configuration is kept separate from code and images
+      - Explain how ConfigMaps and Secrets are injected as environment variables or volumes, and how the two methods differ in picking up changes
+      - Explain that Kubernetes Secrets are encoded, not encrypted, by default
+    practical_cases:
+      - A changed config value that did not take effect until the Pod was restarted
+  infra.rolling-update:
+    name: Rolling Updates and Rollbacks
+    summary: A rolling update removes old Pods as new-version Pods become ready. If the readiness probe and graceful shutdown are not aligned, errors occur during the deployment.
+    objectives:
+      - Explain how maxSurge and maxUnavailable affect replacement speed and availability
+      - Explain why readiness and graceful shutdown are prerequisites for zero-downtime deployment
+      - Explain how to roll back to the previous version when a deployment fails, and the data compatibility conditions involved
+    practical_cases:
+      - Fixing a service that returned 502s for a few seconds on every deployment by adding a preStop delay and SIGTERM handling
+  infra.deployment-strategies:
+    name: Deployment Strategies
+    summary: Blue-green switches all traffic at once, while canary validates with part of the traffic first. Feature flags decouple deployment from feature release.
+    objectives:
+      - Compare the risks and costs of rolling, blue-green, and canary deployments
+      - Define the metrics to watch and the criteria for stopping during a canary stage
+      - Explain the benefits of using feature flags to decouple deployment from release
+    practical_cases:
+      - Sending a new version to only 5% of traffic, detecting a rise in error rate, and rolling back automatically
+  infra.observability:
+    name: Observability
+    summary: Observability is the ability to infer a system's internal state from externally visible signals (logs, metrics, traces). It should let you answer questions you did not anticipate.
+    objectives:
+      - Distinguish the questions that logs, metrics, and traces are each best suited to answer
+      - Explain the order in which to examine signals to narrow the scope during an incident
+    practical_cases:
+      - Using the error-rate metric to find when a problem started, logs to find the cause, and traces to locate the slow segment
+  infra.metrics:
+    name: Metrics and Dashboards
+    summary: Metrics are numeric values over time that reveal trends and anomalies. Averages hide tail latency, so look at percentiles and RED (rate, errors, duration) metrics.
+    objectives:
+      - Explain the differences among counters, gauges, and histograms
+      - Explain why you should look at p95 and p99 latency instead of the average
+      - Apply the RED or USE method to define a service's baseline metrics
+      - Explain the load that exploding label cardinality puts on a metrics system
+    practical_cases:
+      - Finding an API whose average response time is normal but whose p99 is 5 seconds
+  infra.structured-logging:
+    name: Structured Logging
+    summary: Writing logs as key-value structures with a request ID attached makes searching and correlation easier. You also need log levels and rules for keeping sensitive data out.
+    objectives:
+      - Explain why structured logs are better than plain-text logs for searching and aggregation
+      - Explain how to use a request ID to link logs across multiple services
+      - Explain what information must not be logged and the criteria for managing log volume
+    practical_cases:
+      - Tracing one user's failed request by its request ID from nginx all the way to the DB query
+  infra.distributed-tracing:
+    name: Distributed Tracing
+    summary: A trace links the segments (spans) of a single request as it passes through multiple services, showing where the time was spent.
+    objectives:
+      - Explain the concepts of traces, spans, and context propagation
+      - Use traces to identify slow segments and sequential versus parallel calls
+      - Explain how sampling affects cost and visibility
+    practical_cases:
+      - Finding through a trace that 80% of API latency comes from three external APIs called one after another
+  infra.slo-alerting:
+    name: SLOs and Alerting
+    summary: An SLI is a metric that reflects user experience, and an SLO is the target for it. Alerts cause less fatigue when they are tied to user impact and error budget burn rate rather than to cause metrics.
+    objectives:
+      - Explain the differences among SLI, SLO, and SLA
+      - Explain how an error budget is used to balance deployment speed and stability
+      - Explain the difference between symptom-based and cause-based alerts, and explain alert fatigue
+    practical_cases:
+      - Removing a CPU 80% alert and replacing it with alerts based on error-rate and latency SLOs
+  infra.ci-cd:
+    name: CI/CD
+    summary: CI automatically builds and tests every change, and CD deploys validated artifacts through a consistent process. The key is promoting the same artifact through each environment.
+    objectives:
+      - Explain the build, test, image creation, and deployment stages and how artifacts flow through them
+      - Explain why the same image is promoted instead of being rebuilt for each environment
+      - Explain the principles for handling secrets in a deployment pipeline
+    practical_cases:
+      - An incident in which separate builds for staging and production ended up with different dependency versions
+  infra.infrastructure-as-code:
+    name: Infrastructure as Code
+    summary: Managing infrastructure configuration as code gives you change history, reviews, and reproducibility. Changes made directly in the console create a gap (drift) between the code and the actual state.
+    objectives:
+      - Explain declarative infrastructure code and the plan/apply workflow
+      - Explain the drift that manual changes create and the risks it brings
+      - Explain why state files and locks against concurrent applies are needed
+    practical_cases:
+      - An incident in which an nginx config edited directly on the server was lost when the image was rebuilt
+  infra.backup-and-dr:
+    name: Backup and Disaster Recovery
+    summary: A disaster recovery plan defines how much data you will get back (RPO) and how quickly (RTO), and you have to actually rehearse it. The recovery scope must include volumes, configuration, and secrets.
+    objectives:
+      - Set RPO and RTO and choose a backup method that meets them
+      - Use restore drills to confirm that backups work and how long a restore takes
+      - Explain why the recovery scope must include configuration, secrets, and images in addition to data
+    practical_cases:
+      - A case where volume backups existed but could not be restored because the encryption key was missing
+  infra.incident-response:
+    name: Incident Response and Postmortems
+    summary: Incident response moves from assessing the impact to mitigation, root cause analysis, and preventing recurrence. Blameless postmortems and runbooks shorten the response time for the next incident.
+    objectives:
+      - Explain the stages of incident response and how roles are divided (command, communication, remediation)
+      - Explain how to write a timeline-based blameless postmortem
+      - Explain what a runbook should contain (symptoms, diagnostic commands, mitigation procedures, escalation)
+    practical_cases:
+      - A team that created runbooks and alerting criteria only after the same incident had happened three times

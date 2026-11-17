@@ -7,28 +7,17 @@ import { InlineError } from "@/src/shared/ui/punisher";
 import type { InstantResponse } from "@/src/shared/api/punisher";
 import { ResolutionChoices } from "./ResolutionChoices";
 import { inquiryHref, useLaunchInstant } from "./useLaunchInstant";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 
 type QueryMode = "answer" | "study";
 
-const MODES: { value: QueryMode; label: string; hint: string; shortcut: string; placeholder: string; max: number; icon: typeof BookOpen }[] = [
-  {
-    value: "answer",
-    label: "이 질문에 답하기",
-    hint: "겪은 상황을 그대로 적으면 원인·확인 방법·대처까지 해설을 써 드려요(1~3분).",
-    shortcut: "Enter는 줄바꿈, ⌘/Ctrl+Enter로 보내요.",
-    placeholder: "예) 서버는 살아 있는데 API를 쏘면 CORS 오류가 나요. 원인이 궁금해요",
-    max: 1000,
-    icon: MessageCircleQuestion,
-  },
-  {
-    value: "study",
-    label: "이 개념 공부하기",
-    hint: "개념 이름이나 짧은 말로 지도에서 개념을 찾아 바로 강의를 열어요.",
-    shortcut: "Enter로 보내요.",
-    placeholder: "예) Pod가 죽었다, 커넥션 풀",
-    max: 500,
-    icon: BookOpen,
-  },
+type ModeText = "Label" | "Hint" | "Shortcut" | "Placeholder";
+type ModeKey = `${QueryMode}${ModeText}`;
+
+const MODES: { value: QueryMode; max: number; icon: typeof BookOpen }[] = [
+  { value: "answer", max: 1000, icon: MessageCircleQuestion },
+  { value: "study", max: 500, icon: BookOpen },
 ];
 
 /**
@@ -38,6 +27,8 @@ const MODES: { value: QueryMode; label: string; hint: string; shortcut: string; 
  */
 export function InstantQueryBox() {
   const router = useRouter();
+  const t = useT(messages);
+  const text = (m: QueryMode, part: ModeText) => t[`${m}${part}` as ModeKey];
   const [mode, setMode] = useState<QueryMode>("answer");
   const [query, setQuery] = useState("");
   const [submitted, setSubmitted] = useState("");
@@ -114,7 +105,7 @@ export function InstantQueryBox() {
 
   return (
     <div className="flex flex-col gap-2">
-      <div role="radiogroup" aria-label="질문 방식" className="flex flex-wrap gap-2">
+      <div role="radiogroup" aria-label={t.modeGroup} className="flex flex-wrap gap-2">
         {MODES.map((m, index) => (
           <Chip
             key={m.value}
@@ -130,13 +121,13 @@ export function InstantQueryBox() {
             onKeyDown={(event) => handleRadioKey(event, index)}
             leading={<m.icon aria-hidden="true" />}
           >
-            {m.label}
+            {text(m.value, "Label")}
           </Chip>
         ))}
       </div>
       <form role="search" onSubmit={handleSubmit} className="relative">
         <Textarea
-          aria-label={current.label}
+          aria-label={text(current.value, "Label")}
           aria-describedby="instant-query-hint"
           value={query}
           maxLength={1000}
@@ -144,13 +135,13 @@ export function InstantQueryBox() {
           enterKeyHint={mode === "answer" ? "enter" : "send"}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={current.placeholder}
+          placeholder={text(current.value, "Placeholder")}
           className="resize-y pr-12"
         />
         <IconButton
           type="submit"
           size="sm"
-          aria-label={isPending ? "보내는 중" : current.label}
+          aria-label={isPending ? t.sending : text(current.value, "Label")}
           disabled={isPending || !query.trim() || tooLong}
           className="absolute bottom-2 right-2"
         >
@@ -159,12 +150,12 @@ export function InstantQueryBox() {
       </form>
       <div className="flex items-start justify-between gap-3 text-xs text-fg-muted">
         <p id="instant-query-hint" className="break-keep">
-          {current.hint}
+          {text(current.value, "Hint")}
           {/* JS 미디어쿼리는 첫 렌더 뒤에 바뀌어 모바일에서 줄이 밀리므로 CSS 로 숨긴다. */}
-          <span className="[@media(pointer:coarse)]:hidden"> {current.shortcut}</span>
+          <span className="[@media(pointer:coarse)]:hidden"> {text(current.value, "Shortcut")}</span>
         </p>
         <span role={tooLong ? "alert" : undefined} aria-hidden={!tooLong} className={cn("shrink-0 tabular-nums", tooLong && "font-medium text-danger")}>
-          {tooLong && `${current.max}자까지 쓸 수 있어요 · `}
+          {tooLong && t.tooLong(current.max)}
           {query.length}/{current.max}
         </span>
       </div>

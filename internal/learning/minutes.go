@@ -11,10 +11,12 @@ import (
 // Reading-time constants (quality design v2.2 §5, Q4) [사용자 체감 기반 — 실측 데이터가 생기면 보정].
 const (
 	ProseCharsPerMinute = 600.0
-	CodeCharsPerMinute  = 500.0
-	MinutesPerExercise  = 1.5
-	MinutesPerPause     = 0.5
-	MinutesPerTraceRow  = 0.1
+	// ProseCharsPerMinuteEn: English prose (≈250 words/min, letters without spaces) [추정].
+	ProseCharsPerMinuteEn = 1300.0
+	CodeCharsPerMinute    = 500.0
+	MinutesPerExercise    = 1.5
+	MinutesPerPause       = 0.5
+	MinutesPerTraceRow    = 0.1
 )
 
 // EstimateMinutes is the displayed lecture time: the sum of SectionMinutes, so
@@ -41,7 +43,11 @@ func SectionMinutes(c lecture.Content) []int {
 
 func readingMinutes(c lecture.Content) int {
 	m := lecture.MeasureContent(c)
-	total := float64(m.ProseChars)/ProseCharsPerMinute + float64(m.CodeChars)/CodeCharsPerMinute +
+	rate := ProseCharsPerMinute
+	if m.Language() == "en" {
+		rate = ProseCharsPerMinuteEn
+	}
+	total := float64(m.ProseChars)/rate + float64(m.CodeChars)/CodeCharsPerMinute +
 		float64(m.Exercises)*MinutesPerExercise + float64(m.Pauses)*MinutesPerPause + float64(m.TraceRows)*MinutesPerTraceRow
 	if n := int(math.Round(total)); n > 1 {
 		return n

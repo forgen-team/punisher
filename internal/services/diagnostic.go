@@ -214,7 +214,7 @@ func (s *Service) placementPlan(ctx context.Context, userID, chapterID string) (
 // diagnosticObjectives are the concept's active objectives (only ids when
 // given), in curriculum order, with the concept name.
 func (s *Service) diagnosticObjectives(ctx context.Context, userID, conceptID string, ids []string) ([]prompts.DiagnosticObjective, error) {
-	info, err := s.Store.ConceptInfo(ctx, userID, conceptID)
+	info, err := s.Store.ConceptInfo(ctx, userID, conceptID, s.Store.LocaleFor(ctx, userID))
 	if err != nil {
 		return nil, err
 	}

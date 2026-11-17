@@ -12,6 +12,8 @@ import { StructuredBlock } from "./StructuredBlock";
 import { AnswerBlock, ExerciseBlock, KeypointBlock, LabBlock, PauseBlock, SummaryBlock, WARNING_BOX } from "./StudyBlocks";
 import { labForOS, useExerciseContext } from "@/src/features/punisher/lecture-exercise";
 import { keepLineBreaks } from "../../lib/lineBreaks";
+import { useT } from "@/src/shared/i18n";
+import { blockMessages } from "../../i18n";
 
 /** 링크 글자의 마지막 낱말과 아이콘을 한 덩어리로 묶어 아이콘만 다음 줄로 떨어지지 않게 한다. */
 function SourceLabel({ text }: { text: string }) {
@@ -39,11 +41,12 @@ function SourceLabel({ text }: { text: string }) {
   );
 }
 
-export function SourcesList({ sources, title = "출처" }: { sources: DocumentLink[]; title?: string }) {
+export function SourcesList({ sources, title }: { sources: DocumentLink[]; title?: string }) {
+  const t = useT(blockMessages);
   if (sources.length === 0) { return null; }
   return (
     <aside className="my-4 border-t border-line pt-3 text-sm">
-      <p className="mb-1 text-xs font-semibold text-fg-secondary">{title}</p>
+      <p className="mb-1 text-xs font-semibold text-fg-secondary">{title ?? t.sources}</p>
       <ul className="flex flex-col gap-1">
         {sources.map((s) => (
           <li key={s.url}>
@@ -96,6 +99,7 @@ export function BlockGroupRenderer({ group, onBeforeDeeper }: { group: BlockGrou
 }
 
 export function BlockRenderer({ block, onBeforeDeeper }: BlockRendererProps) {
+  const t = useT(blockMessages);
   const exercise = useExerciseContext();
   const text = block.text ?? "";
   const renderTerm = termRenderer(onBeforeDeeper);
@@ -123,7 +127,7 @@ export function BlockRenderer({ block, onBeforeDeeper }: BlockRendererProps) {
         <aside role="note" className={WARNING_BOX}>
           <p className="flex items-center gap-1.5 text-sm font-semibold text-warning">
             <AlertOctagon className="size-4" aria-hidden="true" />
-            흔한 오해
+            {t.misconception}
           </p>
           {/* 원문의 ①②③ 은 줄바꿈 하나로 나뉘어 있다 — 이 블록에서만 줄바꿈을 살린다. */}
           <Markdown renderTerm={renderTerm}>{keepLineBreaks(toInlineTermLinks(closeUnclosedFence(text)))}</Markdown>

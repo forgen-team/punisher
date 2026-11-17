@@ -2,6 +2,8 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
+import { useT } from "@/src/shared/i18n";
+import { kitMessages } from "../lib/messages";
 
 const toastVariants = cva(
   // D1: 토큰만 사용. 상태색은 아이콘에만, 상자는 중립(elevated + hairline + overlay 그림자)
@@ -41,6 +43,7 @@ interface ToastProps extends VariantProps<typeof toastVariants> {
 
 export const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
   ({ id, message, variant = "info", onDismiss, duration = 5000 }, ref) => {
+    const t = useT(kitMessages);
     const [isExiting, setIsExiting] = React.useState(false);
 
     React.useEffect(() => {
@@ -75,7 +78,7 @@ export const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
           type="button"
           onClick={handleDismiss}
           className="relative -m-1 shrink-0 rounded-sm p-1 text-fg-muted transition-colors before:absolute before:-inset-2.5 before:content-[''] hover:bg-canvas-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          aria-label="알림 닫기"
+          aria-label={t.closeToast}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

@@ -26,6 +26,8 @@ type Sample struct {
 	ReviewModel      string            `json:"reviewModel"`
 	ReviewSummary    string            `json:"reviewSummary"`
 	CheckItems       []SampleCheckItem `json:"checkItems"`
+	// Language: ko|en of the lecture and its items (i18n L9); "" = ko.
+	Language string `json:"language,omitempty"`
 }
 
 // SampleCheckItem is one check/review item of a sample lecture.
@@ -41,12 +43,15 @@ type SampleCheckItem struct {
 
 // SeedSample inserts a sample as a published library lecture when its concept
 // exists, its objectives are the concept's current ones (same ids and texts)
-// and the concept has no published lecture yet. Returns whether it was added.
+// and the concept has no published lecture in the sample's language yet.
+// Returns whether it was added.
 func (s *SQLiteStore) SeedSample(ctx context.Context, sm Sample) (bool, error) {
 	added := false
 	err := s.tx(ctx, func(c conn) error {
 		var published int
-		if err := c.row(ctx, `SELECT COUNT(*) FROM lectures WHERE concept_id = $1 AND status = 'published'`, sm.ConceptID).Scan(&published); err != nil {
+		lang := learning.NormalizeLocale(sm.Language)
+		if err := c.row(ctx, `SELECT COUNT(*) FROM lectures WHERE concept_id = $1 AND status = 'published' AND language = $2`,
+			sm.ConceptID, lang).Scan(&published); err != nil {
 			return err
 		}
 		if published > 0 {
@@ -62,12 +67,12 @@ func (s *SQLiteStore) SeedSample(ctx context.Context, sm Sample) (bool, error) {
 		id := NewID()
 		if _, err := c.exec(ctx, `
 			INSERT INTO lectures (id, concept_id, objective_ids, objective_key, depth, kind, status, version,
-				title, content, content_hash, sources, model, prompt_version, estimated_minutes, published_at, minutes_estimated)
+				title, content, content_hash, sources, model, prompt_version, estimated_minutes, published_at, minutes_estimated, language)
 			VALUES ($1, $2, $3, $4, $5, 'library', 'published',
 				(SELECT COALESCE(MAX(version), 0) + 1 FROM lectures WHERE concept_id = $2 AND objective_key = $4 AND depth = $5),
-				$6, $7, $8, $9, $10, $11, $12, NOW(), 1)`,
+				$6, $7, $8, $9, $10, $11, $12, NOW(), 1, $13)`,
 			id, sm.ConceptID, sm.ObjectiveIDs, learning.ObjectiveKey(sm.ObjectiveIDs), sm.Depth,
-			sm.Title, string(sm.Content), sm.ContentHash, nonNullJSON(sm.Sources, "[]"), sm.Model, sm.PromptVersion, sm.EstimatedMinutes); err != nil {
+			sm.Title, string(sm.Content), sm.ContentHash, nonNullJSON(sm.Sources, "[]"), sm.Model, sm.PromptVersion, sm.EstimatedMinutes, lang); err != nil {
 			return fmt.Errorf("insert sample lecture: %w", err)
 		}
 		if _, err := c.exec(ctx, `INSERT INTO lecture_reviews (id, lecture_id, verdict, model, summary) VALUES ($1, $2, 'pass', $3, $4)`,
@@ -78,11 +83,12 @@ func (s *SQLiteStore) SeedSample(ctx context.Context, sm Sample) (bool, error) {
 			// 통합 문항(objective_id 빈 값)은 목표 없이 개념에 단다.
 			if _, err := c.exec(ctx, `
 				INSERT INTO check_items (id, concept_id, objective_id, lecture_id, purpose, format, prompt, material, rubric,
-					objective_text, objective_depth, model)
+					objective_text, objective_depth, model, language, objective_text_en)
 				VALUES ($1, $10, NULLIF($9, ''), $2, $3, $4, $5, $6, $7,
-					COALESCE((SELECT text FROM objectives WHERE id = $9), ''), COALESCE((SELECT depth FROM objectives WHERE id = $9), 0), $8)`,
+					COALESCE((SELECT text FROM objectives WHERE id = $9), ''), COALESCE((SELECT depth FROM objectives WHERE id = $9), 0), $8,
+					$11, COALESCE((SELECT text_en FROM objectives WHERE id = $9), ''))`,
 				NewID(), id, it.Purpose, it.Format, it.Prompt, nonNullJSON(it.Material, "{}"), nonNullJSON(it.Rubric, "{}"), it.Model,
-				it.ObjectiveID, sm.ConceptID); err != nil {
+				it.ObjectiveID, sm.ConceptID, lang); err != nil {
 				return fmt.Errorf("insert sample check item: %w", err)
 			}
 		}
@@ -97,9 +103,9 @@ func (s *SQLiteStore) SeedSample(ctx context.Context, sm Sample) (bool, error) {
 func (s *SQLiteStore) DumpSample(ctx context.Context, lectureID string) (Sample, error) {
 	var sm Sample
 	var content, sources, ids string
-	err := s.c().row(ctx, `SELECT concept_id, objective_ids, depth, title, content, content_hash, sources, model, prompt_version, estimated_minutes
+	err := s.c().row(ctx, `SELECT concept_id, objective_ids, depth, title, content, content_hash, sources, model, prompt_version, estimated_minutes, language
 		FROM lectures WHERE id = $1 AND status = 'published'`, lectureID).Scan(&sm.ConceptID, &ids, &sm.Depth, &sm.Title, &content,
-		&sm.ContentHash, &sources, &sm.Model, &sm.PromptVersion, &sm.EstimatedMinutes)
+		&sm.ContentHash, &sources, &sm.Model, &sm.PromptVersion, &sm.EstimatedMinutes, &sm.Language)
 	if err != nil {
 		return sm, fmt.Errorf("lecture %s: %w", lectureID, err)
 	}

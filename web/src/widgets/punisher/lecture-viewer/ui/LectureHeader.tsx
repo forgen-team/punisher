@@ -3,6 +3,8 @@ import { Link } from "@/src/shared/lib/router";
 import { ChevronRight } from "lucide-react";
 import type { ConceptDetail, ConceptMastery, Lecture, LectureContent } from "@/src/shared/api/punisher";
 import { LECTURE_TITLE_ID } from "./LectureTopBar";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 import { LectureReviewBadges, MasteryDots, USER_STATE_LABELS, UncheckedObjectives, areaLabel } from "@/src/entities/punisher";
 
 function mapHref(conceptId: string): string {
@@ -27,13 +29,14 @@ interface LectureHeaderProps {
  * 학습 목표 · 새로 다루는 범위 · 이전에 배운 개념은 접힌 상태로 둬 본문이 첫 화면에 보이게 한다.
  */
 export function LectureHeader({ lecture, content, concept, mastery, fallbackTitle, minutes = content.estimatedMinutes }: LectureHeaderProps) {
+  const t = useT(messages);
   const objectiveText = new Map((concept?.objectives ?? []).map((o) => [o.id, o.text]));
   const objectiveMastery = new Map((mastery?.objectives ?? []).map((o) => [o.objectiveId, o]));
   const prereqNames = new Map((concept?.prerequisites ?? []).map((p) => [p.id, p.name]));
   const meta = [
     concept ? areaLabel(concept.area) : "",
-    lecture ? `깊이 ${lecture.depth}` : "",
-    minutes ? `약 ${minutes}분` : "",
+    lecture ? t.depth(lecture.depth) : "",
+    minutes ? t.aboutMinutes(minutes) : "",
     concept ? (USER_STATE_LABELS[concept.userState] ?? concept.userState) : "",
   ].filter(Boolean);
   const hasScope =
@@ -60,10 +63,10 @@ export function LectureHeader({ lecture, content, concept, mastery, fallbackTitl
         {lecture?.promptVersion?.includes("+u:") && (
           <Link
             href="/settings/prompts"
-            title={`프롬프트 버전 ${lecture.promptVersion}`}
+            title={t.promptVersion(lecture.promptVersion)}
             className="rounded-md bg-accent-subtle px-1.5 text-xs font-medium text-accent-text"
           >
-            내 프롬프트로 생성
+            {t.myPrompt}
           </Link>
         )}
       </div>
@@ -71,12 +74,12 @@ export function LectureHeader({ lecture, content, concept, mastery, fallbackTitl
         <details className="group border-y border-line text-sm">
           <summary className="flex min-h-touch cursor-pointer list-none items-center gap-1 text-fg-secondary [&::-webkit-details-marker]:hidden">
             <ChevronRight className="size-4 transition-transform group-open:rotate-90" aria-hidden="true" />
-            학습 목표 · 새로 다루는 범위
+            {t.scopeSummary}
           </summary>
           <div className="flex flex-col gap-3 pb-3 pl-5">
             {content.objectiveIds.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-fg-secondary">학습 목표</p>
+                <p className="text-xs font-semibold text-fg-secondary">{t.objectives}</p>
                 <UncheckedObjectives count={mastery?.uncheckedCount} />
                 <ul className="mt-1 list-disc space-y-0.5 pl-5 text-fg">
                   {content.objectiveIds.map((id) => {
@@ -93,7 +96,7 @@ export function LectureHeader({ lecture, content, concept, mastery, fallbackTitl
             )}
             {content.newScope.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-fg-secondary">이번에 새로 다루는 범위</p>
+                <p className="text-xs font-semibold text-fg-secondary">{t.newScope}</p>
                 <ul className="mt-1 list-disc space-y-0.5 pl-5 text-fg">
                   {content.newScope.map((line, index) => (
                     <li key={index}>{line}</li>
@@ -103,7 +106,7 @@ export function LectureHeader({ lecture, content, concept, mastery, fallbackTitl
             )}
             {content.prerequisitesReferenced.length > 0 && (
               <p className="text-fg-secondary">
-                이전에 배운 개념:{" "}
+                {t.prerequisites}{" "}
                 {content.prerequisitesReferenced.map((id, index) => (
                   <span key={id}>
                     {index > 0 && ", "}

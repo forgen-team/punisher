@@ -33,7 +33,8 @@ import {
 import { useFollowScroll } from "./lib/useFollowScroll";
 import { CheckComposer, CheckItemCard, CheckResult, LectureCompleteAction, PlacementResult, ReviewMoreAction, SynthesisDoneAction, chapterMapHref } from "./ui";
 import { synthesisRows } from "./lib/synthesis";
-import { DIAGNOSTIC_TITLES, REVIEW_STATUS_LABELS, SESSION_STATUS_LABELS } from "./ui/constants";
+import { useLocale, useT } from "@/src/shared/i18n";
+import { DIAGNOSTIC_TITLES, REVIEW_STATUS_LABELS, SESSION_STATUS_LABELS, messages } from "./i18n";
 
 const NO_SECTIONS: LectureSection[] = [];
 
@@ -52,6 +53,8 @@ function StatusLine({ children }: { children: ReactNode }) {
  * 채점·문항 생성 중(pending)에만 폴링한다. 복습은 여러 강의의 문항이라 강의 링크를 두지 않는다.
  */
 export function CheckView({ checkId }: { checkId: string }) {
+  const locale = useLocale();
+  const t = useT(messages);
   const check = useCheckSession(checkId);
   const d = check.data;
   const lectureId = d?.session.lectureId ?? "";
@@ -66,12 +69,12 @@ export function CheckView({ checkId }: { checkId: string }) {
   const turnCount = d?.turns.length ?? 0;
   const review = d ? isReview(d) : false;
   const summary = useReviewSummary(review && status === "finished");
-  const statusLabels = review ? REVIEW_STATUS_LABELS : SESSION_STATUS_LABELS;
+  const statusLabels = (review ? REVIEW_STATUS_LABELS : SESSION_STATUS_LABELS)[locale];
 
   const anchorLink = useCallback(
     (anchor: string) =>
-      lectureId ? { href: `${lectureHref(lectureId)}#pa-${encodeURIComponent(anchor)}`, label: anchorTitle(sections, anchor) || "강의에서 보기" } : null,
-    [lectureId, sections],
+      lectureId ? { href: `${lectureHref(lectureId)}#pa-${encodeURIComponent(anchor)}`, label: anchorTitle(sections, anchor) || t.viewInLecture } : null,
+    [lectureId, sections, t],
   );
   const rows = useMemo(() => (d ? resultRows(d) : []), [d]);
   const synthesis = useMemo(() => (d ? synthesisRows(d) : []), [d]);
@@ -83,18 +86,19 @@ export function CheckView({ checkId }: { checkId: string }) {
   const markAct = useFollowScroll({ status, turnCount, lastTurnKey, currentId, endRef, resultRef });
 
   const kind = d?.session.kind;
-  const diagnosticTitle = kind && kind in DIAGNOSTIC_TITLES ? DIAGNOSTIC_TITLES[kind as keyof typeof DIAGNOSTIC_TITLES] : "";
-  const title = review ? "복습" : diagnosticTitle || lecture.data?.content?.title || lecture.data?.title || "확인하기";
+  const diagnosticTitle = kind && kind in DIAGNOSTIC_TITLES[locale] ? DIAGNOSTIC_TITLES[locale][kind as keyof (typeof DIAGNOSTIC_TITLES)["ko"]] : "";
+  const lectureTitle = lecture.data?.content?.title || lecture.data?.title;
+  const title = review ? t.reviewTitle : diagnosticTitle || (lectureTitle ? t.checkOf(lectureTitle) : t.checkTitle);
   const chapterId = d?.placement?.chapterId ?? "";
   const chapterHref = chapterId ? chapterMapHref(chapterId) : undefined;
   const backHref = lectureId ? lectureHref(lectureId) : chapterHref;
-  const barTitle = topBarTitle(title, d ? progressLabel(d) : "");
+  const barTitle = topBarTitle(title, d ? progressLabel(d, locale) : "");
   const shownCount = d ? d.items.filter((item) => isShownItem(item, currentId, itemTurns(d.turns, item.id).length)).length : 0;
   const open = status === "active" || status === "preparing";
   const menuItems: MenuItem[] = [
     {
       key: "abandon",
-      label: kind === "placement" ? "건너뛰기" : "포기",
+      label: kind === "placement" ? t.skip : t.abandon,
       danger: kind !== "placement",
       disabled: !open || abandon.isPending,
       onSelect: () => abandon.mutate(),
@@ -151,7 +155,7 @@ export function CheckView({ checkId }: { checkId: string }) {
       );
     }
     if (d.items.length === 0) {
-      return <EmptyState title="확인할 문항이 없어요" />;
+      return <EmptyState title={t.noItems} />;
     }
     return renderFlow(d);
   }

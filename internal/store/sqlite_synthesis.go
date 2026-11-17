@@ -66,6 +66,8 @@ func (s *SQLiteStore) LastSynthesisAt(ctx context.Context, userID string) (*time
 // SynthesisItems is a generated synthesis set to store: integrative items
 // (objective_id NULL) under the representative concept, private to the user.
 type SynthesisItems struct {
+	// Language: the items' language (the user's locale, i18n §1.2; "" = CreatedFor's locale).
+	Language      string
 	ConceptID     string
 	CreatedFor    string
 	PromptHash    string
@@ -86,10 +88,10 @@ func (s *SQLiteStore) SaveSynthesisItems(ctx context.Context, d SynthesisItems) 
 			id := NewID()
 			if _, err := c.exec(ctx, `
 				INSERT INTO check_items (id, concept_id, objective_id, purpose, format, prompt, material, rubric,
-					prompt_hash, created_for, model, prompt_version)
-				VALUES ($11, $1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+					prompt_hash, created_for, model, prompt_version, language)
+				VALUES ($11, $1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, $10, COALESCE(NULLIF($12, ''), `+userLocaleSQL("$8")+`))`,
 				d.ConceptID, it.Purpose, it.Format, it.Prompt, nonNullJSON(it.Material, "{}"), string(rubric),
-				d.PromptHash, d.CreatedFor, d.Model, d.PromptVersion, id); err != nil {
+				d.PromptHash, d.CreatedFor, d.Model, d.PromptVersion, id, d.Language); err != nil {
 				return fmt.Errorf("insert synthesis item: %w", err)
 			}
 			saved, err := scanCheckItem(c.row(ctx, `SELECT `+checkItemColumns+` FROM check_items ci WHERE ci.id = $1`, id))
@@ -136,7 +138,7 @@ type SynthesisObjective struct {
 
 // SynthesisObjectives loads the picked objectives (active, visible), in the given order.
 func (s *SQLiteStore) SynthesisObjectives(ctx context.Context, userID string, ids []string) ([]SynthesisObjective, error) {
-	list, err := collect(s.c().query(ctx, `SELECT o.id, o.concept_id, c.name, o.text FROM objectives o
+	list, err := collect(s.c().query(ctx, `SELECT o.id, o.concept_id, `+locName("c", userLocaleSQL("$1"))+`, `+locObjective("o", userLocaleSQL("$1"))+` FROM objectives o
 		JOIN concepts c ON c.id = o.concept_id
 		WHERE o.id IN (SELECT value FROM json_each($2)) AND o.status = 'active' AND `+visibleTo("c", "$1"), userID, ids),
 		func(r rowScanner) (SynthesisObjective, error) {

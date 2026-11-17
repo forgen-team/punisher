@@ -1,0 +1,141 @@
+# English overlay for ../../computer-architecture.yaml — same concept ids and objective order.
+# Objectives stay keyed by their Korean ordinal; only display/prompt text comes from here.
+area: computer-architecture
+title: Computer Architecture
+concepts:
+  arch.data-representation:
+    name: Data Representation
+    summary: Computers represent every value as a fixed-width bit string. Understanding integer ranges, signedness, and encodings lets you explain overflow and garbled text.
+    objectives:
+      - Explain bits, bytes, words, and signed integer representation (two's complement).
+      - Explain when integer overflow occurs and how it shows up in practice.
+      - Explain why a character encoding (UTF-8) makes the byte count differ from the character count.
+    practical_cases:
+      - An outage where inserts fail after a 32-bit ID column passes 2.1 billion.
+      - Text truncated because a length limit on Korean strings is counted in bytes.
+  arch.cpu-instruction-execution:
+    name: CPU and Instruction Execution
+    summary: The CPU runs a repeating loop of fetching an instruction from memory, decoding it, and executing it. The distance between registers and memory is where performance differences start.
+    objectives:
+      - Explain the fetch-decode-execute cycle.
+      - Explain how registers, memory, and clock speed relate to each other.
+      - Explain why 100% CPU utilization does not always mean useful work.
+    practical_cases:
+      - Why throughput differs between instance types that have the same number of cores.
+  arch.memory-hierarchy:
+    name: Memory Hierarchy
+    summary: Going from registers to cache, RAM, and disk, each level is larger and cheaper but slower. Many performance problems come down to which level the data is in.
+    objectives:
+      - Explain the rough capacity of each level and how far apart their access latencies are.
+      - Explain how data moves up to higher levels of the hierarchy.
+    practical_cases:
+      - A service where disk I/O suddenly becomes the bottleneck once data that used to fit in memory grows too large.
+  arch.cpu-cache:
+    name: CPU Cache
+    summary: A CPU cache is a small memory tens of times faster than RAM, and it loads data in 64-byte cache lines. When cache misses are frequent, the CPU spends its time waiting.
+    objectives:
+      - Explain L1, L2, and L3 caches and how data is loaded one cache line at a time.
+      - Explain how cache hits and misses affect execution time.
+      - Explain stalls, where the CPU is really waiting on memory even though CPU utilization is high.
+    practical_cases:
+      - A benchmark where the same algorithm runs several times faster or slower depending on how the data is laid out.
+  arch.cache-locality:
+    name: Locality and Memory Access Patterns
+    summary: Reading nearby addresses one after another (spatial locality) lets the cache work well, while following pointers to scattered addresses is slow. That is the practical reason arrays are faster than linked lists.
+    objectives:
+      - Explain spatial and temporal locality with examples.
+      - Explain the performance difference between row-major and column-major traversal.
+      - Explain why traversing an array uses the cache better than traversing a linked list.
+    practical_cases:
+      - Speeding up aggregation by replacing an array of objects with one array per field.
+  arch.multicore:
+    name: Multicore and Parallel Execution
+    summary: Multiple cores run different work at the same time, but the more they touch shared data, the more they wait on each other. Concurrency and parallelism are different concepts.
+    objectives:
+      - Explain the difference between concurrency and parallelism.
+      - Explain why adding cores does not increase performance proportionally (Amdahl's law).
+      - Explain how hyper-threaded vCPUs differ from physical cores.
+    practical_cases:
+      - A service whose throughput rose only 30% after its vCPUs were doubled.
+  arch.memory-ordering:
+    name: Memory Ordering and Visibility
+    summary: CPUs and compilers may reorder memory operations for performance, so nothing guarantees when one thread's write becomes visible to another thread. The language's memory model defines those guarantees.
+    objectives:
+      - Explain an example where reordering makes another thread see an unexpected value.
+      - Explain how happens-before relationships and synchronization primitives guarantee visibility.
+    practical_cases:
+      - A bug where a thread is told to stop through a flag variable, but its loop never exits.
+  arch.cache-coherence-false-sharing:
+    name: Cache Coherence and False Sharing
+    summary: The caches of multiple cores must keep each cache line coherent, so performance drops when different variables sit on the same line.
+    objectives:
+      - Explain at a conceptual level what a cache coherence protocol does.
+      - Explain when false sharing occurs and how padding fixes it.
+    practical_cases:
+      - An array of per-thread counters that turns out to be slower than a single counter.
+  arch.pipeline-branch-prediction:
+    name: Pipelining and Branch Prediction
+    summary: The CPU overlaps the execution of instructions and predicts branch outcomes ahead of time. When predictions are often wrong, the cost of flushing the pipeline adds up.
+    objectives:
+      - Explain how an instruction pipeline increases throughput.
+      - Explain how branch mispredictions affect performance.
+    practical_cases:
+      - Why a loop that sums values matching a condition runs faster on a sorted array.
+  arch.io-devices-interrupts:
+    name: I/O Devices and Interrupts
+    summary: Devices such as disks and network cards are much slower than the CPU, so they use interrupts to signal that work is done. While a program waits on I/O, the CPU can do other work.
+    objectives:
+      - Explain the difference between interrupts and polling.
+      - Explain why a process waiting on I/O does not use the CPU.
+      - Explain what the iowait metric means and how it is commonly misread.
+    practical_cases:
+      - Checking iowait on a server that responds slowly even though CPU utilization is low.
+  arch.dma:
+    name: DMA
+    summary: DMA lets a device move data into memory without going through the CPU. It is the basis for optimizations such as zero-copy transfers.
+    objectives:
+      - Explain how DMA reduces the load on the CPU.
+      - Explain how zero-copy calls such as sendfile reduce the number of copies.
+    practical_cases:
+      - Lowering CPU usage by turning on sendfile for static file serving.
+  arch.storage-devices:
+    name: Storage Devices (SSD and HDD)
+    summary: HDDs are slow at random access because of seek time. SSDs are much faster but behave differently on writes. IOPS, throughput, and latency are separate metrics.
+    objectives:
+      - Explain the performance difference between sequential and random access.
+      - Interpret disk performance by telling IOPS, throughput, and latency apart.
+      - Explain how the IOPS limit of a cloud volume affects performance.
+    practical_cases:
+      - An outage where a database suddenly slowed down after the cloud disk ran out of IOPS credits.
+  arch.latency-numbers:
+    name: A Feel for Latency Numbers
+    summary: Cache access takes nanoseconds, memory takes tens to hundreds of nanoseconds, SSDs take tens to hundreds of microseconds, and intercontinental network trips take tens to hundreds of milliseconds. A feel for these numbers guides design decisions.
+    objectives:
+      - Explain the orders of magnitude of cache, memory, disk, and network access latency.
+      - Estimate latency by counting how many network round trips a single request makes.
+    practical_cases:
+      - Estimating ahead of time the latency of code that makes remote calls inside a loop.
+  arch.numa:
+    name: NUMA
+    summary: On multi-socket servers, each CPU has near memory and far memory, and access costs differ between them. This shows up when tuning large database servers.
+    objectives:
+      - Explain NUMA nodes and the cost of remote memory access.
+      - Explain how NUMA affects the performance of large databases and JVMs.
+    practical_cases:
+      - Database latency becoming erratic after moving to a server with more cores.
+  arch.floating-point:
+    name: Floating Point
+    summary: Floating-point numbers are approximations, so 0.1 + 0.2 is not exactly 0.3. Use integers or decimals for money calculations.
+    objectives:
+      - Explain why the IEEE 754 representation introduces approximation errors.
+      - Explain why floating point should be avoided for money and quantity calculations, and what to use instead.
+    practical_cases:
+      - A bug where payment totals are off by 1 won.
+  arch.endianness-alignment:
+    name: Endianness and Memory Alignment
+    summary: Endianness is the order in which the bytes of a multi-byte value are placed in memory or on the network. It must match when you work with binary protocols or file formats.
+    objectives:
+      - Explain big-endian, little-endian, and network byte order.
+      - Explain how struct alignment and padding affect memory size.
+    practical_cases:
+      - A binary protocol parser that reads the byte order wrong and produces corrupted values.

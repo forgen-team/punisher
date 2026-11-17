@@ -153,9 +153,7 @@ func (s *Scheduler) tick(ctx context.Context) {
 	case len(brep.Passed)+len(brep.Flagged)+len(brep.Failed) > 0:
 		log.Printf("[scheduler] backfill review: passed=%d flagged=%d failed=%d", len(brep.Passed), len(brep.Flagged), len(brep.Failed))
 	}
-	if s.Svc.Cfg.LibraryAhead <= 0 {
-		return
-	}
+	// 낮엔 PUNISHER_LIBRARY_AHEAD, 새벽 창(PUNISHER_NIGHT_*)엔 PUNISHER_NIGHT_AHEAD 편(둘 다 0이면 아무것도 안 함).
 	rep, err := s.Svc.GenerateLibraryAhead(ctx)
 	logLibrary("library", rep, err)
 }

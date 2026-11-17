@@ -2,7 +2,8 @@
 import { useId, useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { cn, focusRing } from "@/src/shared/ui/kit";
-import { BLOCK_LABELS } from "./constants";
+import { useT } from "@/src/shared/i18n";
+import { blockMessages } from "../../i18n";
 
 /** 접힌 내용(풀이·출력) — 버튼에 aria-expanded, 펼치면 아래에 내용을 그린다. */
 export function Reveal({ label, children }: { label: string; children: ReactNode }) {
@@ -29,9 +30,10 @@ export function Reveal({ label, children }: { label: string; children: ReactNode
 
 /** 구조 블록 데이터가 깨졌을 때의 작은 표시 — 화면의 나머지는 그대로 그린다. */
 export function BlockError() {
+  const t = useT(blockMessages);
   return (
     <p role="note" className="my-3 text-xs text-fg-muted">
-      {BLOCK_LABELS.broken}
+      {t.broken}
     </p>
   );
 }

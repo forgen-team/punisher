@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/forgen-team/punisher/internal/learning"
 	"github.com/forgen-team/punisher/internal/lecture"
 	"github.com/forgen-team/punisher/internal/llm"
 	"github.com/forgen-team/punisher/internal/models"
@@ -74,7 +75,8 @@ func (s *Service) ExplainSelection(ctx context.Context, userID string, lec model
 		ConceptID: lec.ConceptID, LectureTitle: lec.Title, SectionTitle: section.Title,
 		SectionText: RenderSection(section), ExampleLanguage: s.exampleLanguageName(ctx, userID),
 	}
-	if info, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID); err == nil {
+	lang := learning.NormalizeLocale(lec.Language) // 구절 설명은 강의 언어(i18n §1.1)
+	if info, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID, lang); err == nil {
 		pc.ConceptName = info.Name
 	}
 	if err := s.CheckBudget(ctx, userID, false); err != nil {
@@ -87,8 +89,8 @@ func (s *Service) ExplainSelection(ctx context.Context, userID string, lec model
 	var u usage
 	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{
 		Model: s.Cfg.LectureModel,
-		System: s.UserPrompts(ctx, userID).Text(prompts.BlockExplainSystem,
-			map[string]string{"concept_name": pc.ConceptName, "example_language": pc.ExampleLanguage}),
+		System: prompts.WithOutputLanguage(s.UserPrompts(ctx, userID).Text(prompts.BlockExplainSystem,
+			map[string]string{"concept_name": pc.ConceptName, "example_language": pc.ExampleLanguage}), lang),
 		User:      prompts.ExplainSelection(pc, selection),
 		MaxTokens: 2000, Timeout: 90 * time.Second, Priority: llm.ShortUnlessBackground(ctx),
 	}, &u)

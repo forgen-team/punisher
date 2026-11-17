@@ -2,6 +2,8 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, ty
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { IconButton, cn, focusRing, useFocusTrap, useMediaQuery } from "@/src/shared/ui/kit";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 import { placeOverlay, type OverlayPlacement } from "./overlayPlacement";
 
 /** 읽기 위치를 기준으로 붙일 사각형(문서 좌표가 아니라 getBoundingClientRect 값). */
@@ -46,6 +48,7 @@ function insetPx(variable: string): number {
  * 잘린 건지 스크롤되는 건지 구분되게 하고, 끝까지 내리면 없앤다.
  */
 function OverlayBody({ scrollRef, contentRef, labelId, children }: { scrollRef: RefObject<HTMLDivElement>; contentRef: RefObject<HTMLDivElement>; labelId: string; children: ReactNode }) {
+  const t = useT(messages);
   const [more, setMore] = useState(false);
   // 탭 정지는 '넘치는가'로만 정한다. 끝까지 내렸다고 없애면 포커스가 body 로 빠져 Esc·Tab 이 먹지 않는다.
   const [overflowing, setOverflowing] = useState(false);
@@ -84,7 +87,7 @@ function OverlayBody({ scrollRef, contentRef, labelId, children }: { scrollRef: 
       {more && (
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 flex h-[min(4rem,25%)] items-end justify-center bg-gradient-to-t from-canvas-elevated from-45% to-transparent pb-1.5">
           <span className="inline-flex items-center gap-1 text-xs font-medium text-fg-secondary">
-            <ChevronDown className="size-3.5" />아래로 이어져요
+            <ChevronDown className="size-3.5" />{t.continuesBelow}
           </span>
         </div>
       )}
@@ -100,6 +103,7 @@ function OverlayBody({ scrollRef, contentRef, labelId, children }: { scrollRef: 
  * 포커스 이동·복귀는 preventScroll 로만 한다(useFocusTrap).
  */
 export function ReadingOverlay({ open, onClose, anchor, title, description, children, footer }: ReadingOverlayProps) {
+  const t = useT(messages);
   const desktop = useMediaQuery("(min-width: 768px)");
   const panelRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
@@ -161,7 +165,7 @@ export function ReadingOverlay({ open, onClose, anchor, title, description, chil
         <h2 id={titleId} className="text-base font-semibold text-fg">{title}</h2>
         {description ? <p className="mt-0.5 text-xs text-fg-muted">{description}</p> : null}
       </div>
-      <IconButton aria-label="닫기" onClick={onClose} className="-mr-2 -mt-1">
+      <IconButton aria-label={t.close} onClick={onClose} className="-mr-2 -mt-1">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <path d="M18 6 6 18M6 6l12 12" />
         </svg>

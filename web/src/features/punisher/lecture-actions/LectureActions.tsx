@@ -4,6 +4,8 @@ import { Button, Section } from "@/src/shared/ui/kit";
 import { USER_STATE_LABELS, useCompleteLecture, useMarkKnown } from "@/src/entities/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { FeedbackBar } from "./FeedbackBar";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 
 /**
  * 완료 / 이미 앎 상태 — 상단 오버플로 메뉴와 본문 끝 마무리 구역이 같은 상태를 공유한다.
@@ -36,17 +38,18 @@ export type LectureActionsState = ReturnType<typeof useLectureActions>;
  * 낭독 중복을 피하려 한 곳만 live 로 둔다.
  */
 export function LectureActionStatus({ actions, live = true }: { actions: LectureActionsState; live?: boolean }) {
+  const t = useT(messages);
   const { complete, known } = actions;
   return (
     <div aria-live={live ? "polite" : undefined} className="text-sm">
       <InlineError error={complete.error ?? known.error} />
       {complete.data && (
         <p className="text-success">
-          목표 {complete.data.objectivesCompleted?.length ?? 0}개를 완료했습니다. 개념 상태:{" "}
+          {t.objectivesCompleted(complete.data.objectivesCompleted?.length ?? 0)}{" "}
           {USER_STATE_LABELS[complete.data.conceptState] ?? complete.data.conceptState}
         </p>
       )}
-      {known.isSuccess && <p className="text-fg-secondary">이 개념을 이미 앎으로 표시했습니다.</p>}
+      {known.isSuccess && <p className="text-fg-secondary">{t.markedKnown}</p>}
     </div>
   );
 }
@@ -66,17 +69,18 @@ export const LectureWrapup = forwardRef<HTMLElement, LectureWrapupProps>(functio
   { lectureId, actions, getAnchor, checkAction, checkStatus },
   ref,
 ) {
+  const t = useT(messages);
   const { complete, known, done, knownDone } = actions;
   return (
-    <Section ref={ref} id="lecture-wrapup" tabIndex={-1} title="강의 마무리" className="border-t border-line pt-4 outline-none">
+    <Section ref={ref} id="lecture-wrapup" tabIndex={-1} title={t.wrapup} className="border-t border-line pt-4 outline-none">
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <Button variant={done ? "secondary" : "primary"} onClick={actions.markComplete} disabled={done} loading={complete.isPending}>
-            {done ? "완료함" : "완료"}
+            {done ? t.completed : t.complete}
           </Button>
           {checkAction}
           <Button variant="secondary" onClick={actions.markKnown} disabled={knownDone} loading={known.isPending}>
-            {knownDone ? "이미 앎으로 표시됨" : "이미 앎"}
+            {knownDone ? t.knownDone : t.known}
           </Button>
         </div>
         <LectureActionStatus actions={actions} live={false} />

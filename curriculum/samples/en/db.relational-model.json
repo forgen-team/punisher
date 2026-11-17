@@ -1,0 +1,388 @@
+{
+  "conceptId": "db.relational-model",
+  "objectiveIds": [
+    "db.relational-model#1",
+    "db.relational-model#2",
+    "db.relational-model#3"
+  ],
+  "objectiveTexts": [
+    "기본 키·외래 키·유니크 제약의 역할을 설명한다",
+    "일대다·다대다 관계를 테이블로 표현한다",
+    "제약 조건을 DB에 두는 것과 코드에만 두는 것의 차이를 설명한다"
+  ],
+  "depth": 1,
+  "title": "Relational Tables and the Constraints That Guard Them",
+  "content": {
+    "schemaVersion": 1,
+    "title": "Relational Tables and the Constraints That Guard Them",
+    "conceptId": "db.relational-model",
+    "objectiveIds": [
+      "db.relational-model#1",
+      "db.relational-model#2",
+      "db.relational-model#3"
+    ],
+    "depth": 1,
+    "estimatedMinutes": 19,
+    "newScope": [
+      "Tables, rows, and columns as the relational way to store data; the roles of primary keys, foreign keys, and unique constraints (plus NOT NULL and CHECK); modeling one-to-many and many-to-many relationships with tables; why a rule declared in the database holds where the same rule checked only in application code does not."
+    ],
+    "prerequisitesReferenced": [
+      "db.sql-basics",
+      "db.joins",
+      "db.normalization",
+      "db.nosql-models",
+      "db.transaction",
+      "db.isolation-levels",
+      "db.index",
+      "os.race-condition"
+    ],
+    "sections": [
+      {
+        "anchor": "situation_question",
+        "kind": "situation_question",
+        "title": "Two Rows, One Email",
+        "minutes": 2,
+        "blocks": [
+          {
+            "anchor": "situation_question-1",
+            "type": "markdown",
+            "text": "A support ticket arrives. A customer named Min says the password-reset email goes to an account that shows none of his orders. In the `users` table you find two rows with the email `min@example.com`, with ids 5120 and 5121, created 9 ms apart.\n\nThe sign-up handler already has a guard: if the email exists, return `409 Conflict`. That code was deployed and reviewed. Here are the log lines for the two requests:"
+          },
+          {
+            "anchor": "situation_question-2",
+            "type": "log",
+            "text": "09:14:02.101 POST /signup req=a1f email=min@example.com\n09:14:02.109 POST /signup req=b7c email=min@example.com\n09:14:02.112 a1f SELECT count(*) FROM users WHERE email='min@example.com' -\u003e 0\n09:14:02.118 b7c SELECT count(*) FROM users WHERE email='min@example.com' -\u003e 0\n09:14:02.131 a1f INSERT INTO users (email, ...) -\u003e ok id=5120\n09:14:02.140 b7c INSERT INTO users (email, ...) -\u003e ok id=5121\n09:14:02.141 a1f 201 Created\n09:14:02.143 b7c 201 Created",
+            "lang": "text"
+          },
+          {
+            "anchor": "situation_question-3",
+            "type": "markdown",
+            "text": "Both checks returned 0, and both inserts succeeded. Two questions follow. Why did a guard that ran on every request not prevent this? And what could have rejected the second row no matter how the handler was written?\n\nThe answers depend on how relational databases structure data and on which rules they enforce themselves."
+          }
+        ]
+      },
+      {
+        "anchor": "principles",
+        "kind": "principles",
+        "title": "Tables, Keys, and Rules the Database Enforces",
+        "minutes": 9,
+        "blocks": [
+          {
+            "anchor": "principles-1",
+            "type": "markdown",
+            "text": "A table has named columns and any number of rows. Each row holds one value per column, or `NULL`, which means \"no value\". For a `users` table with columns `id` and `email`, the row `(1, 'ana@x.com')` states one fact: user 1 has that email. Row order carries no meaning, so you identify a row by its values, not by its position. You have already read and written such tables with [SQL](term:db.sql-basics). This lecture is about the rules a table declares about those values."
+          },
+          {
+            "anchor": "principles-2",
+            "type": "keypoint",
+            "text": "The **relational model** stores data as tables (relations). Each row is one fact about one thing, each column has a name and a type, and rows refer to each other through key values instead of nesting or memory pointers. The table definition (the schema) also declares rules about what values are allowed. Example: an `orders` table whose `user_id` column holds a user's `id`. Non-example: a JSON file where each user object contains an array of order objects and nothing declares what those objects may contain.",
+            "kind": "definition"
+          },
+          {
+            "anchor": "principles-3",
+            "type": "markdown",
+            "text": "The rules in a schema are called **constraints**. A constraint is a condition the database checks on every `INSERT`, `UPDATE`, and `DELETE`. A statement that would break it fails with an error, and that statement changes nothing. Three constraints do most of the work."
+          },
+          {
+            "anchor": "principles-4",
+            "type": "keypoint",
+            "text": "A **primary key** is a column (or set of columns) whose values are unique and non-null in every row, so it identifies exactly one row. A table has at most one. A **foreign key** is a column whose value must match an existing primary key value in another table (or be NULL if the column allows it), so a reference cannot point at nothing. A **[unique constraint](term:g.unique-constraint)** forbids two rows from having the same value in a column (or column set) that is not the primary key. A table can have several, for example `email` and `sku`.",
+            "kind": "definition"
+          },
+          {
+            "anchor": "principles-5",
+            "type": "markdown",
+            "text": "Here is a small schema that uses these constraints, plus two simpler ones. `NOT NULL` forbids a missing value. `CHECK` requires a condition on the row's own values to be true."
+          },
+          {
+            "anchor": "principles-6",
+            "type": "code",
+            "text": "CREATE TABLE users (\n  id    BIGINT PRIMARY KEY,\n  email TEXT NOT NULL UNIQUE\n);\n\nCREATE TABLE orders (\n  id      BIGINT PRIMARY KEY,\n  user_id BIGINT NOT NULL REFERENCES users (id),   -- foreign key\n  total   NUMERIC NOT NULL CHECK (total \u003e= 0)\n);",
+            "lang": "sql"
+          },
+          {
+            "anchor": "principles-7",
+            "type": "markdown",
+            "text": "Follow the database through a few statements. It starts with `users` = (1, 'ana@x.com'), (2, 'bo@x.com') and `orders` = (10, 1, 25), (11, 2, 30), where each order row is (id, user_id, total)."
+          },
+          {
+            "anchor": "principles-8",
+            "type": "trace",
+            "data": {
+              "caption": "Which statements the database accepts",
+              "columns": [
+                "Step",
+                "Statement",
+                "Decision"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "INSERT INTO orders VALUES (12, 3, 40)",
+                  "Foreign key check: no users row has id 3. Rejected."
+                ],
+                [
+                  "2",
+                  "INSERT INTO orders VALUES (12, 2, 40)",
+                  "User 2 exists and id 12 is new. Accepted. orders now has 3 rows."
+                ],
+                [
+                  "3",
+                  "INSERT INTO orders VALUES (11, 1, 15)",
+                  "Primary key check: id 11 already exists. Rejected."
+                ],
+                [
+                  "4",
+                  "INSERT INTO users VALUES (3, 'ana@x.com')",
+                  "Unique check: that email already belongs to user 1. Rejected."
+                ],
+                [
+                  "5",
+                  "INSERT INTO orders VALUES (13, 1, -5)",
+                  "CHECK (total \u003e= 0) is false. Rejected."
+                ],
+                [
+                  "6",
+                  "DELETE FROM users WHERE id = 2",
+                  "Orders 11 and 12 still reference user 2. Rejected under the default foreign key setting."
+                ]
+              ],
+              "note": "Only step 2 changed data. The rejected statements left both tables as they were. Deletion behavior is configurable (for example, deleting dependent rows automatically); the default and the options depend on the product."
+            }
+          },
+          {
+            "anchor": "principles-9",
+            "type": "exercise",
+            "text": "Start from these tables. `products(id PRIMARY KEY, sku UNIQUE)` holds (1, 'A-1') and (2, 'B-2'). `order_items(id PRIMARY KEY, product_id NOT NULL REFERENCES products(id))` holds (100, 1), (101, 1), (102, 2). Run these statements in order and say which succeed. How many rows does `order_items` have at the end?\n\na) `INSERT INTO order_items VALUES (103, 2)`\nb) `INSERT INTO order_items VALUES (101, 2)`\nc) `INSERT INTO products VALUES (3, 'A-1')`\nd) `DELETE FROM products WHERE id = 2`\ne) `INSERT INTO order_items VALUES (104, 5)`"
+          },
+          {
+            "anchor": "principles-10",
+            "type": "answer",
+            "text": "a) Succeeds. Product 2 exists and id 103 is new, so `order_items` has 4 rows.\nb) Rejected. Id 101 already exists, which violates the primary key.\nc) Rejected. The sku `'A-1'` already belongs to product 1, which violates the unique constraint.\nd) Rejected. Item 102 still references product 2 (default foreign key behavior).\ne) Rejected. No product has id 5.\n\nOnly (a) changed data, so `order_items` ends with 4 rows and `products` still has 2."
+          },
+          {
+            "anchor": "principles-11",
+            "type": "markdown",
+            "text": "**One-to-many.** One user has many orders, but each order belongs to one user. A single column can hold only one value, so the link goes on the \"many\" side. `orders.user_id` points at one user, and a user's orders are found by searching `orders` for that id. Because the column is a foreign key, an order cannot name a user who does not exist.\n\n**Many-to-many.** A student takes many courses, and a course has many students. Neither table can hold the link in one column. Storing a list such as `'101,102'` in a text column would turn the link into a string the database cannot check or enforce uniqueness on. Instead, add a third table with one row per pair, called a link table (or junction table). It has two foreign keys, and the pair of columns together forms its primary key, called a composite primary key (a primary key made of two or more columns)."
+          },
+          {
+            "anchor": "principles-12",
+            "type": "mermaid",
+            "text": "graph LR\n  E[enrollments] --\u003e|student_id| S[students]\n  E --\u003e|course_id| C[courses]"
+          },
+          {
+            "anchor": "principles-13",
+            "type": "markdown",
+            "text": "The primary key of `enrollments` is the pair `(student_id, course_id)`, which means the same pair cannot appear twice. Splitting facts across tables so that each fact is stored once is the subject of [normalization](term:db.normalization). Here it is enough to see that each relationship becomes a table or a foreign key column."
+          },
+          {
+            "anchor": "principles-14",
+            "type": "trace",
+            "data": {
+              "caption": "enrollments with PRIMARY KEY (student_id, course_id)",
+              "columns": [
+                "Step",
+                "Statement",
+                "Decision"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "INSERT INTO enrollments VALUES (1, 101)",
+                  "Student 1 and course 101 exist; pair is new. Accepted."
+                ],
+                [
+                  "2",
+                  "INSERT INTO enrollments VALUES (1, 102)",
+                  "Same student, different course. Accepted (one student, many courses)."
+                ],
+                [
+                  "3",
+                  "INSERT INTO enrollments VALUES (2, 101)",
+                  "Same course, different student. Accepted (one course, many students)."
+                ],
+                [
+                  "4",
+                  "INSERT INTO enrollments VALUES (1, 101)",
+                  "Pair (1, 101) already exists. Rejected by the primary key."
+                ],
+                [
+                  "5",
+                  "INSERT INTO enrollments VALUES (2, 103)",
+                  "No course 103. Rejected by the foreign key on course_id."
+                ]
+              ],
+              "note": "Starting data: students 1 and 2, courses 101 and 102, empty enrollments. After step 5 the table has 3 rows."
+            }
+          },
+          {
+            "anchor": "principles-15",
+            "type": "exercise",
+            "text": "A blog has `posts(id)` and `tags(id, name)`. A post can have several tags, and a tag can be on several posts. Each post also has many comments. Which tables and foreign keys do you add? What is the primary key of the link table? If post 1 has tags 'db' and 'sql' and post 2 has tag 'db', how many rows does the link table hold?"
+          },
+          {
+            "anchor": "principles-16",
+            "type": "answer",
+            "text": "Comments are one-to-many, so `comments` gets a `post_id` foreign key referencing `posts(id)`. Tags are many-to-many, so add `post_tags(post_id, tag_id)`. Both columns are foreign keys (to `posts` and `tags`), and the primary key is the pair `(post_id, tag_id)`. The pair key prevents tagging the same post with the same tag twice. For the example the link table holds (1, db), (1, sql), (2, db), which is 3 rows. The tag 'db' is stored once in `tags` and referenced twice."
+          },
+          {
+            "anchor": "principles-17",
+            "type": "markdown",
+            "text": "**Where a rule is enforced matters.** The sign-up handler enforced uniqueness in application code: read, decide, then write. That is two separate steps, and other requests can run between them. When the result depends on how overlapping operations interleave, the bug is a [race condition](term:os.race-condition). A unique constraint moves the decision into the write itself. The database looks for the key as part of the `INSERT`, and in databases that enforce the constraint, two rows with the same key cannot both be stored.\n\nThe difference also covers writers that never run your handler: a second service, a one-off script, a data fix typed into a SQL console, or a future endpoint someone forgets to guard.\n\n| Question | Rule only in application code | Rule declared in the database |\n|---|---|---|\n| Which writers are covered? | Only code paths that call the check | Every writer that reaches the table |\n| Concurrent requests | Check and write are separate steps with a gap | The decision happens as part of the write |\n| After a bug in the check | The bad row is stored | The statement fails and nothing is stored |\n| Error message for the user | Custom and friendly | Generic; the handler must translate it |\n| Role | First line: fast feedback | Last line: guarantees the data |\n\nKeep the application check for friendly messages. Declare the constraint so that a wrong or missing check cannot corrupt the data."
+          },
+          {
+            "anchor": "principles-18",
+            "type": "misconception",
+            "text": "① \"My handler checks for the email before inserting, so duplicates can't be created.\" ② Take the log from the opening. Request a1f checked at 09:14:02.112 and saw 0 rows, but it did not insert until .131. Request b7c checked at .118, inside that 19 ms gap, and also saw 0 rows. Both passed, both inserted, and the table ended with 2 rows. Any two requests whose checks both run before the first insert will behave this way. ③ A check followed by a write is two steps, and other requests can write in between. Only a rule the database applies during the write closes the gap."
+          },
+          {
+            "anchor": "principles-19",
+            "type": "misconception",
+            "text": "① \"Foreign keys are only for joins, and my [ORM](term:g.orm) already knows the relationships.\" ② Suppose `orders` holds (10, 1), (11, 2), (12, 3) as (id, user_id), and `users` has only ids 1 and 2. A [join](term:db.joins) combines rows whose key values match, and an inner join keeps only matched rows. Joining `orders` to `users` returns 2 rows, so order 12 exists in storage but disappears from every report built on that join. ③ An ORM relationship is a mapping in one codebase. A script or another service that writes SQL directly is not bound by it. A foreign key makes the database refuse row 12 from any writer."
+          },
+          {
+            "anchor": "principles-20",
+            "type": "sources",
+            "sources": [
+              {
+                "title": "PostgreSQL documentation: Constraints",
+                "url": "https://www.postgresql.org/docs/current/ddl-constraints.html"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "anchor": "walkthrough",
+        "kind": "walkthrough",
+        "title": "Replaying the Duplicate Sign-up",
+        "minutes": 6,
+        "blocks": [
+          {
+            "anchor": "walkthrough-1",
+            "type": "markdown",
+            "text": "This TypeScript sketch reproduces the opening log without a database. An array stands in for the `users` table, and `sleep` stands in for the round trip between the check and the insert."
+          },
+          {
+            "anchor": "walkthrough-2",
+            "type": "code",
+            "text": "const users: { email: string }[] = [];\nconst sleep = (ms: number) =\u003e new Promise((r) =\u003e setTimeout(r, ms));\n\nasync function signUp(email: string, who: string) {\n  const exists = users.some((u) =\u003e u.email === email); // 1. check\n  await sleep(10);                                     // gap: other requests run here\n  if (exists) {\n    console.log(`${who}: rejected`);\n    return;\n  }\n  users.push({ email });                               // 2. insert\n  console.log(`${who}: created`);\n}\n\nasync function main() {\n  await Promise.all([\n    signUp(\"min@example.com\", \"request A\"),\n    signUp(\"min@example.com\", \"request B\"),\n  ]);\n  console.log(users.length);\n}\nmain();",
+            "lang": "ts"
+          },
+          {
+            "anchor": "walkthrough-3",
+            "type": "pause",
+            "text": "What does this program print, and how many users does the array contain at the end?"
+          },
+          {
+            "anchor": "walkthrough-4",
+            "type": "log",
+            "text": "request A: created\nrequest B: created\n2",
+            "lang": "text"
+          },
+          {
+            "anchor": "walkthrough-5",
+            "type": "markdown",
+            "text": "Request A runs its check synchronously, finds the array empty, and pauses at `await`. While A waits, request B starts and also finds the array empty. When each wait ends, each request sees its own stale `exists = false` and pushes a row. The check was correct when it ran and wrong by the time of the insert.\n\nNow declare the rule in the schema, so the database makes the final decision."
+          },
+          {
+            "anchor": "walkthrough-6",
+            "type": "diff",
+            "lang": "sql",
+            "data": {
+              "before": "CREATE TABLE users (\n  id    BIGINT PRIMARY KEY,\n  email TEXT\n);",
+              "after": "CREATE TABLE users (\n  id    BIGINT PRIMARY KEY,\n  email TEXT NOT NULL UNIQUE\n);",
+              "note": "UNIQUE makes the database reject a second row with the same email. NOT NULL keeps rows from escaping the rule by having no email. How case differences and NULLs are compared depends on the product."
+            }
+          },
+          {
+            "anchor": "walkthrough-7",
+            "type": "markdown",
+            "text": "Replay the original requests against the new schema:\n\n1. Request a1f runs its check and sees 0 rows. Request b7c runs its check and also sees 0 rows. The gap is still there.\n2. a1f's `INSERT` reaches the database. No row has that email, so the row is stored.\n3. b7c's `INSERT` reaches the database. A row with that email now exists, so the statement fails with a constraint-violation error and stores nothing.\n4. b7c's handler catches the error and returns `409 Conflict`.\n\nThe table ends with one row. The check in code can stay as a fast path with a friendly message, but the handler must also be ready for the database's error."
+          },
+          {
+            "anchor": "walkthrough-8",
+            "type": "code",
+            "text": "// db and isUniqueViolation are hypothetical helpers.\n// How a driver reports a unique violation (error code, class) differs by driver.\nasync function signUp(email: string) {\n  try {\n    await db.insertUser(email);              // the UNIQUE constraint makes the final decision\n    return { status: 201 };\n  } catch (err) {\n    if (isUniqueViolation(err)) return { status: 409 };\n    throw err;                               // anything else is a real failure\n  }\n}",
+            "lang": "ts"
+          },
+          {
+            "anchor": "walkthrough-9",
+            "type": "exercise",
+            "text": "A teammate proposes: \"Right before the `INSERT`, run the same `SELECT count(*)` once more. That shrinks the gap from 19 ms to under 1 ms, so duplicates will be practically gone. We don't need a constraint.\" Find the problems in this reasoning and give the correct fix."
+          },
+          {
+            "anchor": "walkthrough-10",
+            "type": "answer",
+            "text": "First, the gap shrinks but does not close. Two requests whose second checks fall inside the same sub-millisecond window still both see 0 rows and both insert. Double-clicked forms and client retries produce exactly such near-simultaneous requests. Second, the failure stays silent: if a duplicate does slip through, the row is stored and nobody is told. Third, the fix covers only code paths that run this handler, not scripts or other services.\n\nThe correct fix is `UNIQUE` on `email`, which makes the database decide during the write. The handler then converts the constraint error into `409`, as in the code above."
+          },
+          {
+            "anchor": "walkthrough-11",
+            "type": "sources",
+            "sources": [
+              {
+                "title": "PostgreSQL documentation: INSERT",
+                "url": "https://www.postgresql.org/docs/current/sql-insert.html"
+              },
+              {
+                "title": "SQLite documentation: Foreign Key Support",
+                "url": "https://www.sqlite.org/foreignkeys.html"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "anchor": "judgment_next",
+        "kind": "judgment_next",
+        "title": "Which Rule Goes Where",
+        "minutes": 3,
+        "blocks": [
+          {
+            "anchor": "judgment_next-1",
+            "type": "markdown",
+            "text": "Back to the opening log. b7c checked at .118 and a1f inserted at .131, so a 13 ms window existed in which every check saw 0 rows. With a unique constraint on `email`, b7c's insert at .140 would have failed, and the table would hold one row for Min.\n\n| Situation | Declare in the database |\n|---|---|\n| A value identifies a row | `PRIMARY KEY` |\n| A row refers to a row in another table | `FOREIGN KEY` (and choose the `ON DELETE` behavior) |\n| A business value must not repeat (email, SKU) | `UNIQUE` |\n| A column must always have a value | `NOT NULL` |\n| A condition on one row's own values (`total \u003e= 0`) | `CHECK` |\n| A rule that spans many rows (for example, items must sum to a limit) | These constraints do not express it. It needs other mechanisms, such as a [transaction](term:db.transaction) with explicit locking, or a product-specific feature |\n\n`ON DELETE` controls what happens to child rows when the parent row is deleted. If you declare no action, the common default is to reject a delete that would leave child rows without a parent. Depending on the product, that default is called `NO ACTION` or `RESTRICT`, and the two can differ in when the check runs (for example, with deferred constraints). You can also declare that the delete cascades to the child rows, or that the child column is set to NULL. Check your product's documentation for the exact default, its timing, and the available options.\n\n**Check before relying on it.** Confirm these in your database's documentation:\n\n- Whether foreign keys are actually enforced. SQLite's documentation says enforcement must be turned on. In MySQL, the default InnoDB storage engine (the component that stores and reads a table's data) enforces foreign keys, but some other engines accept the declaration and ignore it. Check your table's engine.\n- How `UNIQUE` treats upper/lower case and `NULL` values.\n- The procedure for adding a constraint to a table that already has duplicates; existing violations must be resolved first.\n- How your driver reports a constraint violation.\n- Your product's syntax for [upsert](term:g.upsert) (insert, or update if the key exists), which avoids the error path for some flows.\n\n**Observation.** Count `409` responses and constraint-violation errors in your logs and error metrics. A sudden rise means the database is catching races or bugs that your code missed. To find existing damage, run queries like these:"
+          },
+          {
+            "anchor": "judgment_next-2",
+            "type": "code",
+            "text": "-- emails that appear more than once (HAVING filters groups after GROUP BY)\nSELECT email, count(*) FROM users GROUP BY email HAVING count(*) \u003e 1;\n\n-- orders whose user_id points at no user (orphans)\nSELECT o.id FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE u.id IS NULL;",
+            "lang": "sql"
+          },
+          {
+            "anchor": "judgment_next-3",
+            "type": "markdown",
+            "text": "**What to learn next:**\n\n- [Normalization and denormalization](term:db.normalization): how to decide which facts get their own table and when to repeat data on purpose.\n- [Indexes](term:db.index): the lookup structures that let the database check keys and find rows quickly.\n- [Isolation levels](term:db.isolation-levels): transactions group statements so they succeed or fail together (atomicity), but that alone does not stop the duplicate sign-up. Whether two overlapping check-then-insert sequences can both pass depends on the isolation level and on locking, which this topic covers.\n- [NoSQL data models](term:db.nosql-models): document and key-value stores, which often handle relationships differently and may not enforce the same rules."
+          },
+          {
+            "anchor": "judgment_next-4",
+            "type": "summary",
+            "text": "- The relational model stores data as typed rows in tables, linked by key values, and the schema declares rules the database checks on every write.\n- A primary key identifies one row, a foreign key requires a reference to point at an existing row, and a unique constraint blocks repeated values in non-key columns.\n- One-to-many puts a foreign key on the \"many\" side. Many-to-many uses a link table with two foreign keys and a composite primary key.\n- A check in code followed by an insert is two steps with a gap, so overlapping requests can all pass the check.\n- A constraint is decided during the write for every writer, so it works as the last line of defense, while the application check remains useful for friendly errors.\n- Confirm your product's behavior for foreign key enforcement, case and NULL handling in unique columns, and constraint error reporting."
+          }
+        ]
+      }
+    ]
+  },
+  "contentHash": "d2ec256c259852684687890874b81f5e944ace17414fb8028d16ff9ed95db28f",
+  "sources": [
+    {
+      "title": "PostgreSQL documentation: Constraints",
+      "url": "https://www.postgresql.org/docs/current/ddl-constraints.html"
+    },
+    {
+      "title": "PostgreSQL documentation: INSERT",
+      "url": "https://www.postgresql.org/docs/current/sql-insert.html"
+    },
+    {
+      "title": "SQLite documentation: Foreign Key Support",
+      "url": "https://www.sqlite.org/foreignkeys.html"
+    }
+  ],
+  "model": "claude-sonnet-5-5",
+  "promptVersion": "punisher-prompts-2026-11-16.1",
+  "estimatedMinutes": 19,
+  "reviewModel": "claude-sonnet-5-5",
+  "reviewSummary": "The revision resolves the previous finding: the ON DELETE default is no longer stated as 'reject in most products'. It is now a conditional statement with the NO ACTION/RESTRICT distinction and a pointer to product documentation. I found no new blocking problems in the changed block.",
+  "checkItems": [],
+  "language": "en"
+}

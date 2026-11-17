@@ -79,7 +79,7 @@ func (s *Service) placementResult(ctx context.Context, userID string, st checkSt
 		}
 		seen[item.ConceptID] = true
 		name := item.ConceptID
-		if info, err := s.Store.ConceptInfo(ctx, userID, item.ConceptID); err == nil {
+		if info, err := s.Store.ConceptInfo(ctx, userID, item.ConceptID, s.Store.LocaleFor(ctx, userID)); err == nil {
 			name = info.Name
 		} else {
 			logf("placement candidate %s: %v", item.ConceptID, err)

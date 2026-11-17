@@ -1,6 +1,10 @@
 // Typed fetch for the local Punisher server (same origin, /v1).
 // Error envelope: {"error": {"code", "message", "requestId"}}.
 
+import { getLocale, translate } from "@/src/shared/i18n";
+import { messages } from "./i18n";
+import { errorCodeMessage } from "./reasons";
+
 export const PUNISHER_API_BASE = "/v1";
 
 export class PunisherApiError extends Error {
@@ -58,27 +62,39 @@ export async function punisherFetch<T>(path: string, init: PunisherRequestInit =
   return (await res.json()) as T;
 }
 
-/** Korean, user-facing description of a punisher API error. */
+/** User-facing description of a punisher API error, in the current locale. */
 export function describePunisherError(error: unknown): string {
+  const t = translate(messages);
   if (!(error instanceof PunisherApiError)) {
-    return error instanceof Error && error.message ? `요청에 실패했습니다: ${error.message}` : "요청에 실패했습니다.";
+    return error instanceof Error && error.message ? t.requestFailedWith(error.message) : t.requestFailed;
   }
+  const byCode = errorCodeMessage(error.code);
+  if (byCode) { return byCode; }
   switch (error.status) {
     case 404:
-      return "요청한 항목을 찾을 수 없습니다.";
+      return t.notFound;
     case 409:
-      return "같은 강의를 이미 생성하고 있습니다. 잠시 후 다시 시도해 주세요.";
+      return t.alreadyGenerating;
     case 429:
-      if (error.code === "BUDGET_EXCEEDED") { return "오늘의 생성 예산을 모두 사용했습니다. 내일 다시 시도해 주세요."; }
-      return error.code === "LLM_RATE_LIMITED" ? error.message : "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
+      if (error.code === "BUDGET_EXCEEDED") { return t.budgetExceeded; }
+      // LLM_RATE_LIMITED: 로컬 Claude 사용 한도 — 서버가 한국어 안내를 보낸다(ko 일 때만 그대로).
+      return error.code === "LLM_RATE_LIMITED" ? localServerText(error.message, t.claudeRateLimited) : t.tooManyRequests;
     case 502:
-      return error.message || "AI 응답 생성에 실패했습니다. 다시 시도해 주세요.";
+      return localServerText(error.message, t.aiFailed(""));
     case 503:
       // GENERATION_UNAVAILABLE: Claude Code 미설치/미로그인 — 서버가 고치는 방법을 한국어로 보낸다.
-      return error.message || "Claude Code를 사용할 수 없어요. 설정 화면의 안내를 확인해 주세요.";
+      return localServerText(error.message, t.claudeUnavailable);
     default:
-      return error.status >= 500 ? "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." : error.message;
+      return error.status >= 500 ? t.serverError : error.message;
   }
+}
+
+/**
+ * 단독판: 로컬 Claude CLI 안내(services.DescribeLLMError)는 서버가 한국어로만 쓴다 —
+ * ko 화면이면 그 문구, 아니면 같은 뜻의 화면 문구.
+ */
+function localServerText(serverMessage: string, fallback: string): string {
+  return getLocale() === "ko" && serverMessage ? serverMessage : fallback;
 }
 
 function shouldRetry(failureCount: number, error: unknown): boolean {

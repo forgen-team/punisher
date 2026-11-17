@@ -1,0 +1,391 @@
+{
+  "conceptId": "net.network-layers",
+  "objectiveIds": [
+    "net.network-layers#1",
+    "net.network-layers#2",
+    "net.network-layers#3"
+  ],
+  "objectiveTexts": [
+    "TCP/IP 4계층 각각의 역할과 대표 프로토콜을 설명한다",
+    "캡슐화로 HTTP 요청이 패킷이 되는 과정을 설명한다",
+    "연결 실패를 계층별 가설로 나누어 생각한다"
+  ],
+  "depth": 1,
+  "title": "Reading a Failed Connection Layer by Layer",
+  "content": {
+    "schemaVersion": 1,
+    "title": "Reading a Failed Connection Layer by Layer",
+    "conceptId": "net.network-layers",
+    "objectiveIds": [
+      "net.network-layers#1",
+      "net.network-layers#2",
+      "net.network-layers#3"
+    ],
+    "depth": 1,
+    "estimatedMinutes": 20,
+    "newScope": [
+      "The four TCP/IP layers (link, internet, transport, application) and their main protocols. How encapsulation wraps an HTTP request in TCP, IP and Ethernet headers. How to turn a connection failure into per-layer hypotheses and pick which one to check first."
+    ],
+    "prerequisitesReferenced": [
+      "net.ip-and-routing"
+    ],
+    "sections": [
+      {
+        "anchor": "situation_question",
+        "kind": "situation_question",
+        "title": "Ping works, the request does not",
+        "minutes": 2,
+        "blocks": [
+          {
+            "anchor": "situation_question-1",
+            "type": "markdown",
+            "text": "You deployed a new build of `orders-api` to the staging server at `10.0.3.25`. From your laptop you call the health endpoint, and nothing comes back. A teammate says, \"The server is up, ping works.\" Another says, \"Then the network is fine, so it is the app. Restart it.\"\n\nYou run the two commands side by side. `ping` sends small test [packets](term:g.packet) (chunks of data with addressing information in front) and waits for replies. `curl --max-time 5` sends an HTTP request and gives up after 5 seconds. With `-s` it prints nothing, so `echo $?` shows curl's exit code (28 means the operation timed out)."
+          },
+          {
+            "anchor": "situation_question-2",
+            "type": "log",
+            "text": "$ ping -c 3 10.0.3.25\nPING 10.0.3.25 (10.0.3.25): 56 data bytes\n64 bytes from 10.0.3.25: icmp_seq=0 ttl=62 time=3.4 ms\n64 bytes from 10.0.3.25: icmp_seq=1 ttl=62 time=3.1 ms\n64 bytes from 10.0.3.25: icmp_seq=2 ttl=62 time=3.3 ms\n3 packets transmitted, 3 packets received, 0.0% packet loss\n\n$ curl -s --max-time 5 http://10.0.3.25:8080/health\n$ echo $?\n28",
+            "lang": "text"
+          },
+          {
+            "anchor": "situation_question-3",
+            "type": "markdown",
+            "text": "Three of three ping replies came back, and zero bytes of HTTP response came back in 5 seconds. The ping times above are an example and differ per network.\n\nToday's question is what a ping reply proves and what it leaves unproven. Answering it requires knowing what an HTTP request passes through between your code and the wire."
+          }
+        ]
+      },
+      {
+        "anchor": "principles",
+        "kind": "principles",
+        "title": "Layers, encapsulation, and per-layer hypotheses",
+        "minutes": 9,
+        "blocks": [
+          {
+            "anchor": "principles-1",
+            "type": "markdown",
+            "text": "A *header* is a small block of fields (addresses, port numbers, lengths) placed in front of the data it describes. For example, a 46-byte message with a 20-byte header in front becomes a 66-byte unit. The receiver reads the first 20 bytes as fields and treats the remaining 46 bytes as data. Network software uses this trick repeatedly."
+          },
+          {
+            "anchor": "principles-2",
+            "type": "keypoint",
+            "text": "A **network layer model** splits network communication into stacked layers. Each layer offers one service to the layer above it, relies only on the layer below, and communicates with the same layer on the other machine through the header it adds. The TCP/IP model has four layers: link, internet, transport and application.",
+            "kind": "definition"
+          },
+          {
+            "anchor": "principles-3",
+            "type": "markdown",
+            "text": "Here is what each of the four layers does.\n\n| Layer | Job | Addressing | Main protocols | Where it runs |\n|---|---|---|---|---|\n| Application | Defines what messages between two programs mean | Names and URLs | [HTTP](term:net.http), [DNS](term:net.dns), [TLS](term:net.tls) (encryption, runs between TCP and HTTP) | Your process and its libraries |\n| Transport | Delivers data between a program on one host and a program on another | Port numbers | [TCP](term:net.tcp), [UDP](term:net.udp) | Operating system kernel |\n| Internet | Delivers packets between hosts across several networks | IP addresses | IP, [ICMP](term:g.icmp) | Operating system kernel |\n| Link | Delivers frames between neighbors on one local network | MAC addresses | Ethernet, Wi-Fi, ARP | Network card driver and hardware |\n\nEach layer names its unit of data. A *frame* is the link-layer unit (an Ethernet header plus the IP packet). A *packet* is the IP-layer unit (an IP header plus data). A *segment* is the TCP-layer unit (a TCP header plus data).\n\nSome textbooks split the bottom layer into a physical layer (signals on a cable or radio) and a link layer, which gives five layers. RFC 1122, which defines the four-layer model, groups them as one link layer. Both versions describe the same stack.\n\nTwo terms in the table need a definition. A MAC address is a 6-byte hardware address of a network interface, and it is meaningful only on the local network. ARP is a helper protocol that asks \"which MAC address owns this IP address?\" on the local network.\n\nThe application layer lives in your process. Your code reaches the [kernel](term:os.kernel-and-syscall) (the core of the operating system, which owns the network hardware) through a [socket](term:os.socket), the operating system object an application uses to send and receive data. The kernel implements TCP and IP, and the network card driver implements the link layer.\n\nThe transport layer adds one idea to the picture: the [port](term:net.nat-and-ports). A port is a 16-bit number that tells the receiving kernel which program gets the data. TCP gives the two programs a connection that delivers bytes in order and retransmits lost ones. Setting it up starts with a [SYN](term:g.syn) segment, the first message of the three-message handshake (SYN, SYN-ACK, ACK) that opens a connection. UDP sends independent messages with no connection and no delivery guarantee.\n\nThe internet layer needs a short bridge. Between your laptop and `10.0.3.25` there can be several routers. Each router reads the destination IP address, picks the next router from its routing table and forwards the packet. The IP addresses stay the same along the way, while the link-layer (MAC) addresses are replaced at every hop. [IP Addresses and Routing](term:net.ip-and-routing) covers routing tables in detail.\n\nICMP carries error and test messages, such as the echo request and echo reply that `ping` uses. It travels directly inside IP packets, with no TCP or UDP and no port. A ping therefore exercises the link and internet layers and never touches the transport or application layers."
+          },
+          {
+            "anchor": "principles-4",
+            "type": "keypoint",
+            "text": "**Encapsulation** is the process in which each layer, on the sending side, places the data received from the layer above, unchanged, behind its own header. The receiving side removes the headers in the reverse order. The fields in each header (a type, a protocol number, a port) tell the receiver which layer or program gets the data next.",
+            "kind": "definition"
+          },
+          {
+            "anchor": "principles-5",
+            "type": "mermaid",
+            "text": "flowchart LR\n  A[\"HTTP request 46 B\"] --\u003e B[\"TCP segment 66 B\"]\n  B --\u003e C[\"IPv4 packet 86 B\"]\n  C --\u003e D[\"Ethernet frame 100 B\"]"
+          },
+          {
+            "anchor": "principles-6",
+            "type": "markdown",
+            "text": "In memory, the four layers are nested, not side by side:\n\n```\n| Ethernet hdr 14 | IPv4 hdr 20 | TCP hdr 20 | HTTP request 46 |\n```\n\nThe trace below follows one small request through the stack. The request is `GET /health HTTP/1.1`, a `Host: 10.0.3.25:8080` line and a blank line, each ending in CRLF (a carriage return plus a line feed). It uses the minimum header sizes: 20 bytes for TCP, 20 for IPv4 and 14 for Ethernet."
+          },
+          {
+            "anchor": "principles-7",
+            "type": "trace",
+            "data": {
+              "caption": "One 46-byte HTTP request going down the sender's stack and up the receiver's stack",
+              "columns": [
+                "Step",
+                "Layer",
+                "What is added or removed",
+                "Size in bytes"
+              ],
+              "rows": [
+                [
+                  "1",
+                  "Application",
+                  "The client builds the request text: request line, Host line, blank line",
+                  "46"
+                ],
+                [
+                  "2",
+                  "Transport",
+                  "TCP header added: source port, destination port 8080, sequence number, flags (20 bytes)",
+                  "66"
+                ],
+                [
+                  "3",
+                  "Internet",
+                  "IPv4 header added: source IP, destination IP 10.0.3.25, protocol field 6 meaning TCP (20 bytes)",
+                  "86"
+                ],
+                [
+                  "4",
+                  "Link",
+                  "Ethernet header added: destination MAC, source MAC, type 0x0800 meaning IPv4 (14 bytes)",
+                  "100"
+                ],
+                [
+                  "5",
+                  "Link (receiver)",
+                  "Reads type 0x0800, removes 14 bytes, passes the rest up",
+                  "86"
+                ],
+                [
+                  "6",
+                  "Internet (receiver)",
+                  "Checks the destination IP is its own, reads protocol 6, removes 20 bytes",
+                  "66"
+                ],
+                [
+                  "7",
+                  "Transport (receiver)",
+                  "Reads destination port 8080, finds the process listening there, removes 20 bytes",
+                  "46"
+                ],
+                [
+                  "8",
+                  "Application (receiver)",
+                  "The HTTP server parses the 46 bytes as a request",
+                  "46"
+                ]
+              ],
+              "note": "Sizes exclude the preamble and the 4-byte trailer that Ethernet hardware adds. When the server is on another network, the destination MAC in step 4 belongs to the next hop, not to the server."
+            }
+          },
+          {
+            "anchor": "principles-8",
+            "type": "markdown",
+            "text": "The next hop is usually your [default gateway](term:g.default-gateway), the router your machine uses for destinations outside its own network. Real traffic differs from this minimal trace in two ways. TCP often carries options, which makes its header longer than 20 bytes. And the first packets of a connection (the SYN handshake) carry no HTTP bytes at all.\n\nEthernet usually limits an IP packet to a 1500-byte [MTU](term:g.mtu) (maximum transmission unit). Subtracting the 20-byte IP header and the 20-byte TCP header leaves 1460 bytes of data per TCP segment. TCP splits larger data into several segments."
+          },
+          {
+            "anchor": "principles-9",
+            "type": "exercise",
+            "text": "A server sends a 3,000-byte response (HTTP headers included) over TCP. Assume an MTU of 1500, no TCP or IP options, and a 14-byte Ethernet header. How many TCP segments are needed, and how large is the last Ethernet frame?"
+          },
+          {
+            "anchor": "principles-10",
+            "type": "answer",
+            "text": "1. Data per segment is 1500 − 20 (IP) − 20 (TCP) = 1460 bytes.\n2. 3,000 bytes need ⌈3000 / 1460⌉ = 3 segments, carrying 1460, 1460 and 80 bytes.\n3. The last frame is 80 + 20 + 20 + 14 = 134 bytes. The first two are 1460 + 54 = 1514 bytes each."
+          },
+          {
+            "anchor": "principles-11",
+            "type": "markdown",
+            "text": "You can check the trace's sizes with a few lines of TypeScript. The header sizes are the minimums from the trace."
+          },
+          {
+            "anchor": "principles-12",
+            "type": "code",
+            "text": "const enc = new TextEncoder();\nconst http = \"GET /health HTTP/1.1\\r\\nHost: 10.0.3.25:8080\\r\\n\\r\\n\";\n\nconst TCP_HEADER = 20;  // minimum, no options\nconst IPV4_HEADER = 20; // minimum, no options\nconst ETH_HEADER = 14;  // destination MAC 6 + source MAC 6 + type 2\n\nconst app = enc.encode(http).length;\nconst segment = app + TCP_HEADER;\nconst packet = segment + IPV4_HEADER;\nconst frame = packet + ETH_HEADER;\n\nconsole.log(`HTTP request: ${app} bytes`);\nconsole.log(`TCP segment: ${segment} bytes`);\nconsole.log(`IPv4 packet: ${packet} bytes`);\nconsole.log(`Ethernet frame: ${frame} bytes`);",
+            "lang": "ts"
+          },
+          {
+            "anchor": "principles-13",
+            "type": "log",
+            "text": "HTTP request: 46 bytes\nTCP segment: 66 bytes\nIPv4 packet: 86 bytes\nEthernet frame: 100 bytes",
+            "lang": "text"
+          },
+          {
+            "anchor": "principles-14",
+            "type": "markdown",
+            "text": "Now the same stack as a debugging tool. A connection attempt passes through ordered stages: resolve the name, open the TCP connection, finish TLS if the URL is https, send the request, and read the response. Each stage depends on the layers below it. If a stage succeeds, the layers beneath it worked for those packets. If a stage fails, the suspects are that stage's layer and the layers below it. Two failures at the connect stage look similar but point in different directions:\n\n- **Refused.** Something on the path answers the SYN with an [RST](term:g.rst) (reset) segment, a TCP message meaning \"no such connection\". The result is [connection refused](term:g.connection-refused). The sender of the RST is usually the target host's kernel, because no process is listening on that address and port. (A server process calls `listen()` on a port, and the kernel then accepts incoming connections for it.) A [firewall](term:g.firewall) or load balancer can also send an RST when a rule rejects the connection on purpose. Either way, something answered, so traffic gets at least that far. `tcpdump` on the server shows whether an RST left the server, and comparing the TTL (the hop-limit field in the IP header) of the RST with that of normal replies from the host can hint at a different sender.\n- **Timeout.** A [timeout](term:net.timeouts) means no answer arrived before the client stopped waiting. A silent drop by a filter (a rule on a host or network device that drops or rejects traffic), a broken return path (the route the reply takes back to you), a wrong destination address or a full [listen backlog](term:g.listen-backlog) (the server's queue of waiting connections) can all cause it. The cause is not limited to one layer.\n\n| Layer | Hypotheses | Typical evidence | First check |\n|---|---|---|---|\n| Application | Server error, wrong path or Host, expired TLS certificate | Connection succeeds, then a 4xx/5xx [status code](term:net.http-status-codes) or a TLS error | `curl -v` output, server logs |\n| Application (name lookup) | Name resolves to the wrong IP or not at all | \"Could not resolve host\", or a connection to an unexpected address | [dig](term:g.dig) (a command that queries DNS directly) on the name |\n| Transport | Nothing listening, wrong port, filter drops or rejects TCP on that port | Refused, or a timeout at connect | `curl -v`, then the server's listening sockets |\n| Internet | No route, wrong gateway, filter blocks ICMP or all traffic | \"No route to host\" or \"Network is unreachable\" (wording varies by OS), failed ping | `ping`, `traceroute` |\n| Link | Interface down, Wi-Fi disconnected, cable unplugged | Even the local gateway is unreachable | Interface status |"
+          },
+          {
+            "anchor": "principles-15",
+            "type": "keypoint",
+            "text": "Rank hypotheses by the stage where the attempt stopped. A success at layer N rules out the layers below N for that traffic. A failure at layer N points to layer N and everything below it. Check the cheapest hypothesis that matches all the evidence.",
+            "kind": "rule"
+          },
+          {
+            "anchor": "principles-16",
+            "type": "misconception",
+            "text": "① \"Ping gets replies, so the network is fine and the problem is in the application.\"\n\n② Counterexample: suppose a filter allows ICMP but drops TCP to port 8080. Ping shows 3 of 3 replies. curl exits with code 28, because the SYN gets no answer. The HTTP request is never sent, so 0 of the 46 request bytes reach the server and the application code runs 0 times. Ping success and a total HTTP failure coexist.\n\n③ Correct model: a ping reply shows that ICMP packets travel to the host and back. It says nothing about TCP on a specific port, because that traffic can be filtered differently. A ping failure is also weak evidence, since some networks block ICMP while allowing HTTP."
+          },
+          {
+            "anchor": "principles-17",
+            "type": "misconception",
+            "text": "① \"Each layer sends its own packet, so a 46-byte HTTP request becomes four packets.\"\n\n② Counterexample: 46 + 20 + 20 + 14 = 100 bytes, and it leaves as one Ethernet frame. The headers nest inside each other like the trace shows. The extra frames you see in a capture are the TCP handshake (SYN, SYN-ACK, ACK) before the request, and they carry no HTTP bytes.\n\n③ Correct model: layers add headers to one unit of data. Separate frames come from separate TCP segments, which are split by size or by protocol steps like the handshake."
+          },
+          {
+            "anchor": "principles-18",
+            "type": "sources",
+            "sources": [
+              {
+                "title": "RFC 1122: Requirements for Internet Hosts, Communication Layers",
+                "url": "https://www.rfc-editor.org/rfc/rfc1122"
+              },
+              {
+                "title": "RFC 9293: Transmission Control Protocol (TCP)",
+                "url": "https://www.rfc-editor.org/rfc/rfc9293"
+              },
+              {
+                "title": "RFC 791: Internet Protocol",
+                "url": "https://www.rfc-editor.org/rfc/rfc791"
+              },
+              {
+                "title": "RFC 792: Internet Control Message Protocol",
+                "url": "https://www.rfc-editor.org/rfc/rfc792"
+              },
+              {
+                "title": "RFC 894: IP Datagrams over Ethernet Networks",
+                "url": "https://www.rfc-editor.org/rfc/rfc894"
+              },
+              {
+                "title": "RFC 9112: HTTP/1.1",
+                "url": "https://www.rfc-editor.org/rfc/rfc9112"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "anchor": "walkthrough",
+        "kind": "walkthrough",
+        "title": "Locating the stage where staging fails",
+        "minutes": 6,
+        "blocks": [
+          {
+            "anchor": "walkthrough-1",
+            "type": "code",
+            "text": "# Probe the staging host one layer at a time (10.0.3.25 is the staging server)\n\n# 1) Internet layer: ICMP echo, 3 probes\nping -c 3 10.0.3.25\n\n# 2) Transport and application: -sS hides the progress meter but still prints errors,\n#    -v prints each step, --connect-timeout 5 gives the TCP handshake 5 seconds,\n#    -o /dev/null discards the response body\ncurl -sS -v --connect-timeout 5 -o /dev/null http://10.0.3.25:8080/health",
+            "lang": "bash"
+          },
+          {
+            "anchor": "walkthrough-2",
+            "type": "pause",
+            "text": "At which line does `curl -v` stop, and does it ever print an HTTP status line?"
+          },
+          {
+            "anchor": "walkthrough-3",
+            "type": "log",
+            "text": "PING 10.0.3.25 (10.0.3.25): 56 data bytes\n64 bytes from 10.0.3.25: icmp_seq=0 ttl=62 time=3.4 ms\n64 bytes from 10.0.3.25: icmp_seq=1 ttl=62 time=3.1 ms\n64 bytes from 10.0.3.25: icmp_seq=2 ttl=62 time=3.3 ms\n\n--- 10.0.3.25 ping statistics ---\n3 packets transmitted, 3 packets received, 0.0% packet loss\n\n*   Trying 10.0.3.25:8080...\n* Failed to connect to 10.0.3.25 port 8080 after 5002 ms: Timeout was reached\n* Closing connection\ncurl: (28) Failed to connect to 10.0.3.25 port 8080 after 5002 ms: Timeout was reached",
+            "lang": "text"
+          },
+          {
+            "anchor": "walkthrough-4",
+            "type": "markdown",
+            "text": "This output is an example. The wording of curl's messages and the timings differ by curl version and network. What matters is that no \"Connected to\" line appears and no HTTP status line follows. The [curl](term:g.curl) manual documents exit code 28 as an operation timeout.\n\nWalk through the evidence in order:\n\n1. The URL uses an IP address, so no name lookup happened. The name-resolution stage is out of play.\n2. Ping replies show that the link and internet layers carry ICMP packets to the host and back.\n3. curl printed `Trying` and then stopped. The TCP handshake did not complete, so curl never sent the request. The HTTP request was never sent, so an HTTP-level error such as a 4xx or 5xx cannot explain this. The server process can still matter if it is not accepting connections.\n4. A timeout at connect means the SYN got no answer. Refused would have meant something on the path answered with a reset."
+          },
+          {
+            "anchor": "walkthrough-5",
+            "type": "mermaid",
+            "text": "flowchart TD\n  S1[\"1 Resolve name (DNS)\"] --\u003e S2[\"2 TCP connect: SYN, SYN-ACK, ACK\"]\n  S2 --\u003e S3[\"3 TLS handshake (https only)\"]\n  S3 --\u003e S4[\"4 Send HTTP request\"]\n  S4 --\u003e S5[\"5 Read HTTP response\"]"
+          },
+          {
+            "anchor": "walkthrough-6",
+            "type": "markdown",
+            "text": "The attempt stopped at stage 2. Ranking the hypotheses that fit \"ICMP passes, SYN gets no answer\":\n\n- A filter on the path or on the server allows ICMP but drops TCP to port 8080.\n- The server's listen backlog is full, and SYNs are ignored (behavior depends on the OS and its settings). The kernel holds connections that are waiting to be accepted in this queue until the application accepts them. If the application is hung or overloaded and does not accept fast enough, the queue can fill.\n- The return path for TCP is broken, even though the ICMP replies get back.\n\nTo split these, check on the server. List its listening sockets with [ss](term:g.ss) (a Linux command that shows sockets), and capture traffic with [tcpdump](term:g.tcpdump) (a tool that prints packets arriving at a network interface). `ss` runs on a Linux server. On macOS, use `lsof -i :8080` or `netstat -an` instead. If the SYN shows up in the capture, the request reached the server and the problem is on the server or the return path. If it does not, something dropped it before the server.\n\nIn this scenario the capture shows no SYN, and the cloud [security group](term:g.security-group) (a set of firewall rules attached to the server) allows only ICMP from the office range. The following diff shows an illustrative rule change. The format is generic, not a specific product's schema."
+          },
+          {
+            "anchor": "walkthrough-7",
+            "type": "diff",
+            "lang": "yaml",
+            "data": {
+              "before": "inbound_rules:\n  - protocol: icmp\n    source: 10.0.0.0/16\n",
+              "after": "inbound_rules:\n  - protocol: icmp\n    source: 10.0.0.0/16\n  - protocol: tcp\n    port: 8080\n    source: 10.0.0.0/16\n",
+              "note": "The added rule lets TCP segments to port 8080 from the same source range reach the server. Rule syntax and defaults differ by firewall and cloud provider."
+            }
+          },
+          {
+            "anchor": "walkthrough-8",
+            "type": "markdown",
+            "text": "In the rules, `10.0.0.0/16` is CIDR notation: it means every address whose first 16 bits match 10.0, which is 10.0.0.0 to 10.0.255.255.\n\nTrace the same request after the change, assuming the filter tracks connections, which lets reply traffic back in:\n\n1. curl's SYN reaches the server, and the filter no longer drops it.\n2. The server's kernel finds a listener on port 8080 and answers with SYN-ACK. The reply travels back and the filter lets it through.\n3. curl sends the final ACK, and `curl -v` prints a `Connected to 10.0.3.25` line.\n4. curl sends the 46+ bytes of request. The application layer now runs for the first time and returns a status line, which `-v` prints.\n\nThe same command no longer ends in exit code 28. If it still did, the next suspects would come from the table: a listener bound to the wrong port, or a full queue.\n\nThe lab below shows the two lower layers on your own machine."
+          },
+          {
+            "anchor": "walkthrough-9",
+            "type": "lab",
+            "text": "$ netstat -rn\nLook: find the line that starts with `default`. Its Gateway column is the next-hop IP, and its Netif column is the network interface that carries the frames.\nExpect: a `default` line with a private gateway address and an interface name such as `en0` (names and addresses differ per machine).",
+            "kind": "macos"
+          },
+          {
+            "anchor": "walkthrough-10",
+            "type": "exercise",
+            "text": "A teammate writes: \"curl -v printed `Connection refused` within a few milliseconds. Refused means the firewall dropped our packets, so we open port 8080 in the firewall and wait.\" Find the error and give a better next step."
+          },
+          {
+            "anchor": "walkthrough-11",
+            "type": "answer",
+            "text": "The error is the reading of \"refused\". Refused means something on the path answered the connection attempt with a reset, so the packets got at least as far as the sender of that reset. It is usually the target host's kernel (nothing is listening), but a firewall or load balancer can also send one. A silent drop typically shows up as a timeout, not as an immediate refusal. A firewall configured to reject with a reset can produce a refusal too, so the firewall is not ruled out without evidence.\n\nA better next step is to find out who sent the reset and check the transport layer on the server. Run `tcpdump` on the server to see whether the SYN arrived and an RST left it. List the server's listening sockets (`ss` on Linux) for port 8080. Look for a process that is down, a wrong port number, or a listener bound only to the loopback address (loopback means the host talking to itself, so it is unreachable from outside). If no listener exists, fix the process or its binding. If a listener exists and refusals continue, look for a reject rule on the path."
+          },
+          {
+            "anchor": "walkthrough-12",
+            "type": "sources",
+            "sources": [
+              {
+                "title": "curl manual page (options and exit codes)",
+                "url": "https://curl.se/docs/manpage.html"
+              },
+              {
+                "title": "RFC 9293: TCP, connection establishment and reset handling",
+                "url": "https://www.rfc-editor.org/rfc/rfc9293"
+              },
+              {
+                "title": "RFC 792: ICMP echo request and reply",
+                "url": "https://www.rfc-editor.org/rfc/rfc792"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "anchor": "judgment_next",
+        "kind": "judgment_next",
+        "title": "Deciding which layer to suspect first",
+        "minutes": 3,
+        "blocks": [
+          {
+            "anchor": "judgment_next-1",
+            "type": "markdown",
+            "text": "Back to the opening numbers. Ping returned 3 of 3 replies, so ICMP traffic crossed the link and internet layers. curl made 0 successful connections and sent 0 of the 46 request bytes. The attempt stopped at the connect stage, so the first suspect is a filter on TCP port 8080, followed by the listener and its queue. Restarting would not help if a filter is dropping the SYN. Check that first.\n\n| What you observe | Where the attempt stopped | Suspect first |\n|---|---|---|\n| \"Could not resolve host\" | Name lookup | DNS record, resolver settings, typo in the name |\n| Ping fails and connect times out | Internet layer or an ICMP filter | Route, gateway, firewall. A failed ping alone is weak evidence |\n| Ping works, connect times out | TCP connect | Filter on the port, return path, full connection queue |\n| Ping works, connect refused | TCP connect, something answered with a reset | Process down, wrong port, wrong bind address, reject rule. Check who sent the RST |\n| TCP connects, TLS error | TLS handshake | Certificate, name mismatch, protocol versions |\n| TCP connects, HTTP 5xx | Response | Server logs and application code |\n| TCP connects, HTTP 4xx | Request | URL, headers, authentication |\n\nObservation sources: `curl -v` shows the stage on the client. `dig` shows what a name resolves to. [traceroute](term:g.traceroute) shows how far packets get toward the host. `ss` on the server shows listening sockets, and `tcpdump` on the server shows whether the SYN arrived.\n\nThe layer model is a thinking tool, and real protocols blur its boundaries. TLS sits between TCP and HTTP, ARP sits between link and internet, and NAT (a device that rewrites addresses and ports in transit) changes headers along the path. Load balancer vendors describe \"layer 4\" and \"layer 7\" using the 7-layer OSI numbering, in which layer 4 is transport and layer 7 is application.\n\nThings to check in your own environment's documentation: whether the cloud firewall treats ICMP and TCP rules separately, whether it tracks connections, and whether a load balancer in the path works at the transport or application level.\n\nNext concepts:\n\n- [The Request Path from DNS to HTTP](term:net.request-path): puts the stages of this lecture on one timeline, from name lookup to response.\n- [TCP Connection Setup and Teardown States](term:net.tcp-connection-states): shows which TCP state a dropped SYN leaves the client in.\n- [Load Balancers](term:net.load-balancer): uses the layer 4 versus layer 7 distinction to decide what a balancer can see and route on."
+          },
+          {
+            "anchor": "judgment_next-2",
+            "type": "summary",
+            "text": "- The TCP/IP model has four layers. Link delivers frames on one local network (Ethernet, Wi-Fi), internet delivers packets across networks (IP, ICMP), transport connects programs by port (TCP, UDP), and application defines message meaning (HTTP, DNS, TLS).\n- Encapsulation puts each layer's header in front of the data from the layer above. A 46-byte HTTP request becomes a 66-byte TCP segment, an 86-byte IPv4 packet and a 100-byte Ethernet frame (minimum headers).\n- The receiver removes headers in reverse order, using the Ethernet type, the IP protocol number and the TCP port to decide who gets the data next.\n- Ping uses ICMP inside IP, so a reply shows the internet layer works for ICMP. It does not show that TCP to a given port works.\n- A connection attempt moves through stages (resolve, connect, TLS, request, response). The stage where it stops names the lowest layer to suspect.\n- Refused (a reset came back) and timed out (no answer) at connect time point to different causes, so read them separately."
+          }
+        ]
+      }
+    ]
+  },
+  "contentHash": "7ffae787f9d16e441423c1b703a555cb9230f07f78a78fd40a006e0150843948",
+  "sources": [
+    {
+      "title": "RFC 1122: Requirements for Internet Hosts, Communication Layers",
+      "url": "https://www.rfc-editor.org/rfc/rfc1122"
+    },
+    {
+      "title": "RFC 9293: Transmission Control Protocol (TCP)",
+      "url": "https://www.rfc-editor.org/rfc/rfc9293"
+    },
+    {
+      "title": "RFC 791: Internet Protocol",
+      "url": "https://www.rfc-editor.org/rfc/rfc791"
+    },
+    {
+      "title": "RFC 792: Internet Control Message Protocol",
+      "url": "https://www.rfc-editor.org/rfc/rfc792"
+    },
+    {
+      "title": "RFC 894: IP Datagrams over Ethernet Networks",
+      "url": "https://www.rfc-editor.org/rfc/rfc894"
+    },
+    {
+      "title": "RFC 9112: HTTP/1.1",
+      "url": "https://www.rfc-editor.org/rfc/rfc9112"
+    },
+    {
+      "title": "curl manual page (options and exit codes)",
+      "url": "https://curl.se/docs/manpage.html"
+    }
+  ],
+  "model": "claude-sonnet-5-5",
+  "promptVersion": "punisher-prompts-2026-11-16.1",
+  "estimatedMinutes": 20,
+  "reviewModel": "claude-sonnet-5-5",
+  "reviewSummary": "Both previous blocking issues are resolved: the RST sender is no longer assumed to be the target host, and the walkthrough no longer rules out the server process. The changed blocks contain one new minor factual problem (a mismatch between the ping bullet and the 'ICMP' row wording) and no blocking issues.",
+  "checkItems": [],
+  "language": "en"
+}

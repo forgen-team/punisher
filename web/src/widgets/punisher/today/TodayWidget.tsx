@@ -7,8 +7,10 @@ import { useInquiries, useReviewSummary, useToday } from "@/src/entities/punishe
 import { InstantQueryBox, ResolutionChoices, useLaunchInstant } from "@/src/features/punisher/instant-start";
 import { DismissedNotice, ResumeList, useResumeDismiss } from "@/src/features/punisher/resume-dismiss";
 import { describePunisherError, type InstantResponse, type Recommendation } from "@/src/shared/api/punisher";
+import { useLocale, useT } from "@/src/shared/i18n";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { AddStudyRequestForm } from "@/src/features/punisher/study-request-add";
+import { messages } from "./i18n";
 import { todayRows, type TodayRow } from "./lib/recheck";
 import { reviewCardState } from "./lib/reviewCard";
 import { sessionTimeLabel } from "./lib/sessionTime";
@@ -30,6 +32,8 @@ function renderRow(row: TodayRow, onOpen: (item: Recommendation) => void) {
 
 /** 강의(오늘): 복습 카드 → 궁금한 것 입력 한 줄 → 이어보기 → 추천 목록 → 학습 요청(단독판: 직접 입력. witems 는 이 자리가 RSS '학습 요청' — docs/SYNC.md). */
 export function TodayWidget() {
+  const locale = useLocale();
+  const t = useT(messages);
   const today = useToday();
   const { launch, isPending, error } = useLaunchInstant();
   const [pickResult, setPickResult] = useState<InstantResponse | null>(null);
@@ -62,12 +66,12 @@ export function TodayWidget() {
   const reviewState = reviewCardState(reviewToday, reviewSummary.data?.today);
   // 세션 시간 합계(서버 계산 — 강의는 다음에 볼 강의, 이어보기가 있으면 그 남은 시간)는 '오늘의 추천' 밖 한 줄에만 보이고
   // 복습 카드의 합계 줄은 뺀다. 추천 목록의 설명 자리에 두면 추천 항목들의 합으로 읽혀 헷갈린다.
-  const sessionTime = sessionTimeLabel(today.data?.session);
+  const sessionTime = sessionTimeLabel(today.data?.session, locale);
   const reviewReady = ready && (!reviewToday || !reviewSummary.isLoading);
   const showResume = ready && (resume.length > 0 || resumeDismiss.dismissed || resumeDismiss.error);
 
   const resumeSection = showResume ? (
-    <Section variant="card" title="이어보기">
+    <Section variant="card" title={t.resume}>
       <ResumeList items={resume} columns dismissing={resumeDismiss.pending} onDismiss={resumeDismiss.dismiss} expanded={resumeExpanded} onExpandedChange={setResumeExpanded} />
       <div aria-live="polite">
         <DismissedNotice
@@ -83,13 +87,13 @@ export function TodayWidget() {
 
   const recommendSection = today.isLoading ? (
     // 실제 화면(섹션 제목 + 카드 안 추천 5줄)과 같은 높이로 자리를 잡아 아래 '학습 요청'이 밀리지 않게 한다.
-    <Section variant="card" title="오늘의 추천" aria-busy="true">
+    <Section variant="card" title={t.recommendations} aria-busy="true">
       <ListSkeleton rows={5} />
     </Section>
   ) : today.error ? (
     <ErrorState message={describePunisherError(today.error)} onRetry={() => today.refetch()} retrying={today.isRefetching} />
   ) : (
-    <Section variant="card" title="오늘의 추천">
+    <Section variant="card" title={t.recommendations}>
       {rows.length > 0 ? (
         <List>
           {rows.map((row) => renderRow(row, setDetail))}
@@ -98,16 +102,16 @@ export function TodayWidget() {
         <EmptyState
           compact
           icon={<Target />}
-          title="추천할 다음 강의가 없어요"
-          description="지금 지도에서 배울 강의를 다 마쳤어요. 다음 챕터를 골라 새 개념을 열어 보세요."
+          title={t.exhaustedTitle}
+          description={t.exhaustedDescription}
           action={
             <Link href={NEW_CHAPTER_PATH} className={buttonVariants({ variant: "secondary", size: "sm" })}>
-              다음 챕터 고르기
+              {t.pickNextChapter}
             </Link>
           }
         />
       ) : (
-        <EmptyState compact title="오늘 추천이 없어요" />
+        <EmptyState compact title={t.noRecommendations} />
       )}
     </Section>
   );
@@ -160,7 +164,7 @@ export function TodayWidget() {
             </div>
           )}
           <div className="order-4 min-w-0 fold:order-none">
-            <Section variant="card" title="학습 요청">
+            <Section variant="card" title={t.studyRequests}>
               <AddStudyRequestForm />
               <StudyRequestList starting={isPending} onStart={(id, query) => start(id, query)} />
             </Section>

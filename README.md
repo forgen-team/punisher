@@ -32,7 +32,7 @@
 
 ## What it is
 
-Punisher is a personal learning app for computer-science fundamentals. The UI is in Korean.
+Punisher is a personal learning app for computer-science fundamentals, in English or Korean.
 
 - **Today's lecture.** It recommends the next concept to study and writes a ~30-minute lecture on it, streamed live as Claude writes.
 - **Read actively.** Tap a term for a short gloss, select a passage for "explain this part", ask questions, take notes. "Go deeper" lectures stay linked under the lecture you came from.
@@ -44,6 +44,7 @@ Punisher is a personal learning app for computer-science fundamentals. The UI is
 - **Knowledge map.** 168 concepts across 8 areas (data structures, computer architecture, OS, network/web, databases, distributed systems, infra/ops, security/design) with your progress and goals.
 - **Study requests.** Write down a topic; Punisher finds the concept and prepares its lecture in advance.
 - **Your prompts.** Every instruction block (outline → lecture → review → gloss → Q&A → explain) can be viewed and edited, with preview and history.
+- **English or Korean.** Settings → Learning → "언어 / Language" switches the UI and the language of new lectures, questions and tutor replies (existing lectures keep theirs). The first start follows the OS language (`LANG`, or the macOS system language): Korean if it is Korean, English otherwise. `PUNISHER_LOCALE=en punisher` sets it explicitly.
 - **Local only.** One binary serves the web UI on `127.0.0.1`, stores everything in one SQLite file, and calls the `claude` CLI you are already logged in to. No server, Docker, database, API key or account.
 
 ## Requirements

@@ -6,6 +6,8 @@ import { useGloss } from "@/src/entities/punisher";
 import { InlineError, ReadingOverlay, toOverlayAnchor, type OverlayAnchor } from "@/src/shared/ui/punisher";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 import { useLaunchInstant } from "../instant-start";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 
 /** 사전 용어 id(term:g.…) — 지도 개념이 아니다. */
 export function isGlossaryTerm(id: string): boolean {
@@ -38,6 +40,7 @@ interface TermPopoverProps {
  * Esc·바깥·닫기로 본문 복귀, "더 깊게"는 현재 위치를 북마크하고 해당 개념 강의로 이동 (design §3.3).
  */
 export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeDeeper, inline = false }: TermPopoverProps) {
+  const t = useT(messages);
   const [anchor, setAnchor] = useState<OverlayAnchor | null>(null);
   const open = anchor !== null;
   const gloss = useGloss(conceptId, open);
@@ -75,7 +78,7 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
       >
         {!inline && <BookOpen className="size-4" aria-hidden="true" />}
         {label}
-        {proposed && <span className="text-xs font-normal text-fg-muted no-underline">(제안)</span>}
+        {proposed && <span className="text-xs font-normal text-fg-muted no-underline">{t.proposed}</span>}
       </button>
       <ReadingOverlay
         open={open}
@@ -85,7 +88,7 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
         footer={
           deeperId ? (
             <Button size="sm" variant="secondary" loading={isPending} onClick={goDeeper}>
-              이 개념 더 깊게
+              {t.goDeeper}
             </Button>
           ) : undefined
         }

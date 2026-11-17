@@ -190,9 +190,10 @@ describe("복습(자기 채점)", () => {
   const selfSession = (patch: Partial<CheckSession> = {}) => session({ kind: "review", grader: "self", lectureId: "", conceptId: "", ...patch });
 
   it("상단 진행은 복습·확인 모두 문항 n/N", () => {
-    expect(progressLabel(detail({ session: selfSession({ cursor: 1 }) }))).toBe("문항 2/3");
-    expect(progressLabel(detail())).toBe("문항 1/3");
-    expect(progressLabel(detail({ session: session({ itemIds: [] }) }))).toBe("");
+    expect(progressLabel(detail({ session: selfSession({ cursor: 1 }) }), "ko")).toBe("문항 2/3");
+    expect(progressLabel(detail({ session: selfSession({ cursor: 1 }) }), "en")).toBe("Question 2/3");
+    expect(progressLabel(detail(), "ko")).toBe("문항 1/3");
+    expect(progressLabel(detail({ session: session({ itemIds: [] }) }), "ko")).toBe("");
   });
 
   it("자기 채점 단계: 답 쓰기 → 채점 고르기, 실행 중·튜터 채점·현재 문항 없음은 null", () => {

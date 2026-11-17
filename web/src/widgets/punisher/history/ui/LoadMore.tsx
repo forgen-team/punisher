@@ -1,5 +1,7 @@
 
 import { Button } from "@/src/shared/ui/kit";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "../i18n";
 
 interface LoadMoreProps {
   hasNextPage: boolean;
@@ -8,10 +10,11 @@ interface LoadMoreProps {
 }
 
 export function LoadMore({ hasNextPage, isFetching, onLoad }: LoadMoreProps) {
+  const t = useT(messages);
   if (!hasNextPage) { return null; }
   return (
     <Button variant="ghost" size="sm" loading={isFetching} onClick={onLoad} className="self-center">
-      더 보기
+      {t.loadMore}
     </Button>
   );
 }

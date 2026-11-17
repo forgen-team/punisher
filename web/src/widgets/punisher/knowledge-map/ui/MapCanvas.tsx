@@ -8,6 +8,8 @@ import type { GraphEdge, GraphNode } from "@/src/shared/api/punisher";
 import { NODE_HEIGHT, layoutGraph, nodeWidth, type LaidOutNode } from "../lib/elkLayout";
 import { FIT_MAX_ZOOM, FIT_MIN_ZOOM, FIT_PADDING, fitCandidates, fitsAtMinZoom, type FitBox } from "../lib/initialFit";
 import { ConceptNode, type ConceptFlowNode } from "./ConceptNode";
+import { messages } from "../i18n";
+import { useT } from "@/src/shared/i18n";
 
 const nodeTypes = { concept: ConceptNode };
 
@@ -28,6 +30,7 @@ function nodeBox(node: GraphNode, pos: LaidOutNode | undefined): FitBox {
 }
 
 export default function MapCanvas({ nodes, edges, highlightIds, selectedId, masteredIds, recentConceptIds, onSelect }: MapCanvasProps) {
+  const t = useT(messages);
   const theme = useResolvedTheme();
   const [positions, setPositions] = useState<Map<string, LaidOutNode> | null>(null);
   const [layoutError, setLayoutError] = useState(false);
@@ -134,7 +137,7 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, mast
   );
 
   if (layoutError) {
-    return <p role="alert" className="p-4 text-sm text-danger">지도 배치를 계산하지 못했어요.</p>;
+    return <p role="alert" className="p-4 text-sm text-danger">{t.layoutError}</p>;
   }
 
   return (
@@ -157,7 +160,7 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, mast
           // React Flow가 노드 내부 버튼의 마우스 클릭을 팬/드래그 처리로 가져가므로 노드 클릭은 여기서 받는다.
           // (노드 내부 버튼은 키보드 Enter/Space 선택용으로 유지)
           onNodeClick={(_, node) => onSelect(node.id)}
-          aria-label="지식 지도"
+          aria-label={t.mapLabel}
         >
           <Background />
           <Controls showInteractive={false} />

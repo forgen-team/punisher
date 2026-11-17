@@ -14,7 +14,7 @@ import (
 	"github.com/forgen-team/punisher/internal/models"
 )
 
-const settingsColumns = `example_language, daily_minutes, mastery_target, review_intervals, review_minutes, review_grader, pretest_enabled, lab_os, adaptive_intervals, updated_at`
+const settingsColumns = `example_language, daily_minutes, mastery_target, review_intervals, review_minutes, review_grader, pretest_enabled, lab_os, adaptive_intervals, locale, updated_at`
 
 func defaultLearningSettings() models.LearningSettings {
 	return models.LearningSettings{
@@ -22,7 +22,7 @@ func defaultLearningSettings() models.LearningSettings {
 		MasteryTarget: learning.DefaultMasteryTarget, ReviewIntervals: append([]int{}, learning.DefaultReviewIntervals...),
 		ReviewMinutes: learning.DefaultReviewMinutes, ReviewGrader: learning.DefaultReviewGrader,
 		PretestEnabled: learning.DefaultPretestEnabled, LabOS: defaultLabOS(),
-		AdaptiveIntervals: learning.DefaultAdaptiveIntervals,
+		AdaptiveIntervals: learning.DefaultAdaptiveIntervals, Locale: defaultLocale(),
 	}
 }
 
@@ -40,12 +40,15 @@ func scanSettings(row rowScanner) (models.LearningSettings, error) {
 	var intervals string
 	var updated time.Time
 	err := row.Scan(&out.ExampleLanguage, &out.DailyMinutes, &out.MasteryTarget, &intervals, &out.ReviewMinutes, &out.ReviewGrader, &out.PretestEnabled,
-		&out.LabOS, &out.AdaptiveIntervals, ts(&updated))
+		&out.LabOS, &out.AdaptiveIntervals, &out.Locale, ts(&updated))
 	if err != nil {
 		return out, err
 	}
 	out.UpdatedAt = &updated
 	out.ExampleLanguage = learning.NormalizeExampleLanguage(out.ExampleLanguage)
+	if !learning.ValidLocale(out.Locale) {
+		out.Locale = defaultLocale()
+	}
 	if !learning.ValidLabOS(out.LabOS) {
 		out.LabOS = defaultLabOS()
 	}
@@ -80,6 +83,7 @@ type LearningSettingsPatch struct {
 	LabOS           *string
 	// AdaptiveIntervals false resets every objective's ease to 2.0 (v3 §7).
 	AdaptiveIntervals *bool
+	Locale            *string
 }
 
 // UpdateLearningSettings upserts the given fields and keeps the rest (defaults on first save).
@@ -96,10 +100,10 @@ func (s *SQLiteStore) UpdateLearningSettings(ctx context.Context, userID string,
 	defIntervals, _ := json.Marshal(def.ReviewIntervals)
 	out, err := scanSettings(s.c().row(ctx, `
 		INSERT INTO user_learning_settings (user_id, example_language, daily_minutes, mastery_target, review_intervals,
-			review_minutes, review_grader, pretest_enabled, lab_os, adaptive_intervals, updated_at)
+			review_minutes, review_grader, pretest_enabled, lab_os, adaptive_intervals, locale, updated_at)
 		VALUES ($1, COALESCE($2, $8), COALESCE($3, $9), COALESCE($4, $10),
 			COALESCE($5, $11), COALESCE($6, $12), COALESCE($7, $13),
-			COALESCE($14, $15), COALESCE($16, ''), COALESCE($17, $18), NOW())
+			COALESCE($14, $15), COALESCE($16, ''), COALESCE($17, $18), COALESCE($19, $20), NOW())
 		ON CONFLICT (user_id) DO UPDATE SET
 			example_language = COALESCE($2, user_learning_settings.example_language),
 			daily_minutes = COALESCE($3, user_learning_settings.daily_minutes),
@@ -110,11 +114,12 @@ func (s *SQLiteStore) UpdateLearningSettings(ctx context.Context, userID string,
 			pretest_enabled = COALESCE($14, user_learning_settings.pretest_enabled),
 			lab_os = COALESCE($16, user_learning_settings.lab_os),
 			adaptive_intervals = COALESCE($17, user_learning_settings.adaptive_intervals),
+			locale = COALESCE($19, user_learning_settings.locale),
 			updated_at = NOW()
 		RETURNING `+settingsColumns,
 		userID, p.ExampleLanguage, p.DailyMinutes, p.MasteryTarget, intervals, p.ReviewMinutes, p.ReviewGrader,
 		def.ExampleLanguage, def.DailyMinutes, def.MasteryTarget, string(defIntervals), def.ReviewMinutes, def.ReviewGrader,
-		p.PretestEnabled, def.PretestEnabled, p.LabOS, p.AdaptiveIntervals, def.AdaptiveIntervals))
+		p.PretestEnabled, def.PretestEnabled, p.LabOS, p.AdaptiveIntervals, def.AdaptiveIntervals, p.Locale, def.Locale))
 	if err != nil {
 		return out, fmt.Errorf("save learning settings: %w", err)
 	}
@@ -148,4 +153,14 @@ func (s *SQLiteStore) ExampleLanguageFor(ctx context.Context, userID string) str
 		return learning.DefaultExampleLanguage
 	}
 	return st.ExampleLanguage
+}
+
+// LocaleFor is the user's locale (ko|en); falls back to the default on error.
+func (s *SQLiteStore) LocaleFor(ctx context.Context, userID string) string {
+	st, err := s.GetLearningSettings(ctx, userID)
+	if err != nil {
+		log.Printf("[store] locale for %s: %v (using default)", userID, err)
+		return defaultLocale()
+	}
+	return st.Locale
 }

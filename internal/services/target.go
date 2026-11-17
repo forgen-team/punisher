@@ -46,7 +46,8 @@ func (s *Service) BuildTarget(ctx context.Context, userID, conceptID string, dep
 
 // planLecture is the next lecture plan of the concept for the user (learning.PlanLecture).
 func (s *Service) planLecture(ctx context.Context, userID, conceptID string, depth int) (models.ConceptInfo, learning.LecturePlan, error) {
-	concept, err := s.Store.ConceptInfo(ctx, userID, conceptID)
+	lang := s.Store.LocaleFor(ctx, userID) // 새로 만드는 강의는 사용자 언어(i18n §1.2).
+	concept, err := s.Store.ConceptInfo(ctx, userID, conceptID, lang)
 	if err != nil {
 		return concept, learning.LecturePlan{}, err
 	}
@@ -59,26 +60,33 @@ func (s *Service) planLecture(ctx context.Context, userID, conceptID string, dep
 		refs = append(refs, learning.ObjectiveRef{ID: o.ID, Depth: o.Depth, Ordinal: o.Ordinal})
 	}
 	plan, err := learning.PlanLecture(conceptID, refs, done, depth)
+	plan.Language = lang
 	return concept, plan, err
 }
 
 // TargetForLecture rebuilds the generation target of an existing lecture (same
-// concept, objectives and depth) regardless of what the user already learned.
-func (s *Service) TargetForLecture(ctx context.Context, userID string, lec models.Lecture) (Target, error) {
-	concept, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID)
+// concept, objectives, depth and language) regardless of what the user already
+// learned. lang "" keeps the lecture's language; '다시 만들기' passes the user's
+// (RegenerateLecture), so names, objectives and the output rule follow it.
+func (s *Service) TargetForLecture(ctx context.Context, userID string, lec models.Lecture, lang string) (Target, error) {
+	if lang == "" {
+		lang = lec.Language
+	}
+	lang = learning.NormalizeLocale(lang)
+	concept, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID, lang)
 	if err != nil {
 		return Target{}, err
 	}
 	plan := learning.LecturePlan{
 		ConceptID: lec.ConceptID, ObjectiveIDs: lec.ObjectiveIDs,
-		ObjectiveKey: learning.ObjectiveKey(lec.ObjectiveIDs), Depth: lec.Depth,
+		ObjectiveKey: learning.ObjectiveKey(lec.ObjectiveIDs), Depth: lec.Depth, Language: lang,
 	}
 	return s.targetForPlan(ctx, userID, concept, plan, "")
 }
 
 func (s *Service) targetForPlan(ctx context.Context, userID string, concept models.ConceptInfo, plan learning.LecturePlan, query string) (Target, error) {
-	conceptID := concept.ID
-	related, err := s.Store.RelatedConcepts(ctx, userID, conceptID)
+	conceptID, lang := concept.ID, plan.Language
+	related, err := s.Store.RelatedConcepts(ctx, userID, conceptID, lang)
 	if err != nil {
 		return Target{}, err
 	}
@@ -94,7 +102,7 @@ func (s *Service) targetForPlan(ctx context.Context, userID string, concept mode
 	pc := prompts.LectureContext{
 		ConceptID: concept.ID, ConceptName: concept.Name, Area: concept.Area, Depth: plan.Depth,
 		Summary: concept.Summary, PracticalCases: concept.PracticalCases, StyleHint: prompts.StyleHintFor(feedback),
-		Query: query, ExampleLanguage: s.exampleLanguageName(ctx, userID), Glossary: s.glossaryRefs(),
+		Query: query, ExampleLanguage: s.exampleLanguageName(ctx, userID), Glossary: s.glossaryRefs(lang),
 	}
 	for _, d := range concept.DocLinks {
 		pc.DocLinks = append(pc.DocLinks, prompts.DocLink{Title: d.Title, URL: d.URL})
@@ -117,12 +125,12 @@ func (s *Service) targetForPlan(ctx context.Context, userID string, concept mode
 			pc.Learned = append(pc.Learned, ref)
 		}
 	}
-	prereqs, err := s.Store.PrerequisitesOf(ctx, userID, conceptID)
+	prereqs, err := s.Store.PrerequisitesOf(ctx, userID, conceptID, lang)
 	if err != nil {
 		return Target{}, err
 	}
 	pc.Unlearned = UnlearnedRefs(prereqs)
-	catalog, err := s.Store.ConceptCatalog(ctx, userID)
+	catalog, err := s.Store.ConceptCatalog(ctx, userID, lang)
 	if err != nil {
 		return Target{}, err
 	}
@@ -184,9 +192,9 @@ func (s *Service) withGlossary(known map[string]bool) map[string]bool {
 	return out
 }
 
-// glossaryRefs are the basic terms for the lecture prompt.
-func (s *Service) glossaryRefs() []prompts.GlossaryRef {
-	terms := s.Glossary.Terms()
+// glossaryRefs are the basic terms for the lecture prompt, named in the lecture language.
+func (s *Service) glossaryRefs(lang string) []prompts.GlossaryRef {
+	terms := s.Glossary.TermsIn(lang)
 	out := make([]prompts.GlossaryRef, 0, len(terms))
 	for _, t := range terms {
 		out = append(out, prompts.GlossaryRef{ID: t.ID, Name: t.Name})

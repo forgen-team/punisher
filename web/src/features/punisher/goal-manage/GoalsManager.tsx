@@ -5,6 +5,8 @@ import { useGoals } from "@/src/entities/punisher";
 import { describePunisherError } from "@/src/shared/api/punisher";
 import { GoalForm } from "./GoalForm";
 import { GoalItem } from "./GoalItem";
+import { useT } from "@/src/shared/i18n";
+import { messages } from "./i18n";
 
 interface GoalsManagerProps {
   onShowPath: (goalId: string, conceptId?: string) => void;
@@ -13,11 +15,12 @@ interface GoalsManagerProps {
 /** 목표 관리(시트 본문): 내 목표 목록 + 새 목표. 지도 화면의 "목표 관리" 시트에서 쓴다. */
 export function GoalsManager({ onShowPath }: GoalsManagerProps) {
   const goals = useGoals();
+  const t = useT(messages);
   const list = goals.data ?? [];
 
   return (
     <div className="flex flex-col gap-6">
-      <Section title="내 목표" description="목표를 누르면 필요한 선행 사슬과 다음 학습이 펼쳐져요.">
+      <Section title={t.myGoals} description={t.myGoalsDescription}>
         {goals.isLoading ? (
           <div aria-busy="true">
             <ListSkeleton rows={3} />
@@ -25,7 +28,7 @@ export function GoalsManager({ onShowPath }: GoalsManagerProps) {
         ) : goals.error ? (
           <ErrorState compact message={describePunisherError(goals.error)} onRetry={() => goals.refetch()} />
         ) : list.length === 0 ? (
-          <EmptyState compact icon={<Target />} title="아직 목표가 없어요" description="아래에서 첫 목표를 추가해 보세요." />
+          <EmptyState compact icon={<Target />} title={t.emptyTitle} description={t.emptyDescription} />
         ) : (
           <ul role="list">
             {list.map((g) => (
@@ -34,7 +37,7 @@ export function GoalsManager({ onShowPath }: GoalsManagerProps) {
           </ul>
         )}
       </Section>
-      <Section title="새 목표" className="border-t border-line pt-4">
+      <Section title={t.newGoal} className="border-t border-line pt-4">
         <GoalForm />
       </Section>
     </div>

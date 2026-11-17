@@ -40,6 +40,8 @@ type LecturePlan struct {
 	ObjectiveIDs []string
 	ObjectiveKey string
 	Depth        int
+	// Language: the lecture language (ko|en, i18n §1). "" = ko (LanguageSuffix).
+	Language string
 }
 
 // PendingObjectives returns not-done objectives, ordered by depth then ordinal.
@@ -119,10 +121,31 @@ func KSTDayStart(t time.Time) time.Time {
 // generation of the same objective set is additionally blocked by the
 // generation_jobs partial unique index on active jobs.
 func LibraryJobKey(plan LecturePlan, day string) string {
-	return fmt.Sprintf("%s:%s@%d:%s", JobLibrary, plan.ObjectiveKey, plan.Depth, day)
+	return fmt.Sprintf("%s:%s@%d%s:%s", JobLibrary, plan.ObjectiveKey, plan.Depth, LanguageSuffix(plan.Language), day)
 }
 
-// TargetKey identifies a generation target independent of job kind.
+// TargetKey identifies a generation target independent of job kind. The
+// language is part of the target: ko and en lectures of the same objectives
+// and depth are generated independently (i18n §2).
 func TargetKey(plan LecturePlan) string {
-	return fmt.Sprintf("%s@%d", plan.ObjectiveKey, plan.Depth)
+	return fmt.Sprintf("%s@%d%s", plan.ObjectiveKey, plan.Depth, LanguageSuffix(plan.Language))
+}
+
+// LanguageSuffix is the key suffix of a language: "" for ko (keys made before
+// i18n stay valid), "|en" otherwise.
+func LanguageSuffix(lang string) string {
+	if NormalizeLocale(lang) == LocaleKO {
+		return ""
+	}
+	return "|" + NormalizeLocale(lang)
+}
+
+// InKSTHours reports whether t falls in the KST hour window [start, end).
+// A window may wrap midnight (23 → 5); start == end is an empty window.
+func InKSTHours(t time.Time, start, end int) bool {
+	h := t.In(kst).Hour()
+	if start <= end {
+		return h >= start && h < end
+	}
+	return h >= start || h < end
 }
