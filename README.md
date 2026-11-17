@@ -36,10 +36,10 @@ Punisher is a personal learning app for computer-science fundamentals, in Englis
 
 - **Today's lecture.** It recommends the next concept to study and writes a ~30-minute lecture on it, streamed live as Claude writes.
 - **Read actively.** Tap a term for a short gloss, select a passage for "explain this part", ask questions, take notes. "Go deeper" lectures stay linked under the lecture you came from.
-- **Practice while reading.** "직접 해 보기" exercises ask for your answer before showing the solution, with a one-line tutor comment. Some lectures add a lab: one read-only command to run in your own terminal (`lsof`, `dig`, `curl -I` …); paste the output and the tutor reads it with you.
+- **Practice while reading.** "Try it yourself" exercises ask for your answer before showing the solution, with a one-line tutor comment. Some lectures add a lab: one read-only command to run in your own terminal (`lsof`, `dig`, `curl -I` …); paste the output and the tutor reads it with you.
 - **Check and review.** After a lecture, answer a few short questions; a tutor narrows the question instead of giving the answer. Say how sure you are before answering — a confident wrong answer is called out as a misconception. Each learning objective builds a mastery level, and spaced reviews (1, 7, 30 days by default, adjusted per objective) bring it back.
 - **Weekly synthesis.** Once you have checked a few concepts, a weekly problem mixes 3–4 of them in one realistic scene.
-- **Lectures that improve.** Where you got stuck (missed exercises, labs, questions) shows up as "고칠 곳", and remaking the lecture uses it.
+- **Lectures that improve.** Where you got stuck (missed exercises, labs, questions) shows up as "Things to fix", and remaking the lecture uses it.
 - **Reviewed lectures.** Every lecture passes a factual review before it is published; generation shows only the writing → review → fix stages.
 - **Knowledge map.** 168 concepts across 8 areas (data structures, computer architecture, OS, network/web, databases, distributed systems, infra/ops, security/design) with your progress and goals.
 - **Study requests.** Write down a topic; Punisher finds the concept and prepares its lecture in advance.
@@ -84,7 +84,7 @@ Stop it with `Ctrl+C`. Running it again while it is up just reopens the page.
 Data lives in one SQLite file: `~/Library/Application Support/Punisher/punisher.db` on macOS, `~/.local/share/punisher/punisher.db` on Linux (`$XDG_DATA_HOME` is honored). Upgrades migrate it automatically; see [CHANGELOG.md](CHANGELOG.md).
 
 ```sh
-punisher export                 # punisher-backup-YYYYMMDD.zip (fine while the app runs; also Settings → 데이터 내보내기)
+punisher export                 # punisher-backup-YYYYMMDD.zip (fine while the app runs; also Settings → Export data)
 punisher import backup.zip      # app must be stopped; the current folder is kept as <folder>.bak-<time>
 ```
 
