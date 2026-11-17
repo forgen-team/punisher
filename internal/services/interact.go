@@ -113,7 +113,7 @@ func (s *Service) Ask(ctx context.Context, userID string, lec models.Lecture, an
 	}
 	qc, err := s.qaContext(ctx, userID, lec, anchor, true)
 	if err != nil {
-		return s.Store.FailQuestion(ctx, q.ID, "", err.Error())
+		return s.Store.FailQuestion(ctx, q.ID, "", questionFailText(err))
 	}
 	return s.answer(ctx, userID, q, qc, prompts.Question(qc.prompt, question))
 }
@@ -137,13 +137,13 @@ func (s *Service) RequestAltExplanation(ctx context.Context, userID string, lec 
 	}
 	qc, err := s.qaContext(ctx, userID, lec, anchor, false)
 	if err != nil {
-		return s.Store.FailQuestion(ctx, q.ID, "", err.Error())
+		return s.Store.FailQuestion(ctx, q.ID, "", questionFailText(err))
 	}
 	go func() {
 		bg, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 		defer cancel()
 		defer recoverPanic("alt explanation", q.ID, func(err error) {
-			if _, ferr := s.Store.FailQuestion(context.Background(), q.ID, "", err.Error()); ferr != nil {
+			if _, ferr := s.Store.FailQuestion(context.Background(), q.ID, "", questionFailText(err)); ferr != nil {
 				logf("alt explanation %s: fail after panic: %v", q.ID, ferr)
 			}
 		})
@@ -156,11 +156,11 @@ func (s *Service) RequestAltExplanation(ctx context.Context, userID string, lec 
 
 func (s *Service) answer(ctx context.Context, userID string, q models.Question, qc qaCtx, prompt string) (models.Question, error) {
 	if err := s.CheckBudget(ctx, userID, false); err != nil {
-		return s.Store.FailQuestion(ctx, q.ID, "", err.Error())
+		return s.Store.FailQuestion(ctx, q.ID, "", questionFailText(err))
 	}
 	apiKey, err := s.Keys.RequestKey(ctx, userID)
 	if err != nil {
-		return s.Store.FailQuestion(ctx, q.ID, "", err.Error())
+		return s.Store.FailQuestion(ctx, q.ID, "", questionFailText(err))
 	}
 	return s.answerWithKey(ctx, userID, apiKey, q, qc, prompt)
 }
@@ -181,7 +181,7 @@ func (s *Service) answerWithKey(ctx context.Context, userID, apiKey string, q mo
 	}
 	s.recordUsage(ctx, userID, "question", q.ConceptID, u, err)
 	if err != nil {
-		return s.Store.FailQuestion(ctx, q.ID, u.model, err.Error())
+		return s.Store.FailQuestion(ctx, q.ID, u.model, questionFailText(err))
 	}
 	linked := []string{}
 	for _, id := range out.LinkedConceptIDs {
@@ -306,4 +306,14 @@ func altExplanationRequest(lang string) string {
 		return "Please explain this another way. "
 	}
 	return "다른 방식으로 다시 설명해 주세요. "
+}
+
+// questionFailText is the stored error of a failed question / alt explanation
+// (shown under it): the reason text of a Claude failure, which the web
+// translates, else the error itself (logged details for budget/key errors).
+func questionFailText(err error) string {
+	if msg := DescribeLLMError(err); msg != "" {
+		return msg
+	}
+	return err.Error()
 }

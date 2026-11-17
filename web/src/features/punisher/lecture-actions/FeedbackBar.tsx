@@ -9,7 +9,7 @@ import {
   useLectureFeedback,
   useQuestionPoll,
 } from "@/src/entities/punisher";
-import type { FeedbackKind, FeedbackResponse } from "@/src/shared/api/punisher";
+import { localizeServerText, type FeedbackKind, type FeedbackResponse } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 import { useT } from "@/src/shared/i18n";
@@ -35,7 +35,7 @@ function AltExplanation({ id }: { id: string }) {
         {t.altExplanation} · <span className="font-normal text-fg-secondary">{QUESTION_STATUS_LABELS[status]}</span>
       </p>
       {status === "answered" && data && <Markdown className="text-base leading-[1.7]">{data.answer}</Markdown>}
-      {status === "failed" && <p className="text-danger">{data?.error || t.altFailed}</p>}
+      {status === "failed" && <p className="text-danger">{localizeServerText(data?.error, t.altFailed)}</p>}
     </div>
   );
 }

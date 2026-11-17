@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/forgen-team/punisher/internal/i18n"
 	"github.com/forgen-team/punisher/internal/learning"
 	"github.com/forgen-team/punisher/internal/llm"
 	"github.com/forgen-team/punisher/internal/store"
@@ -186,10 +187,11 @@ const (
 	codeTimeout     = "claude_timeout"
 )
 
-// Korean fix-it texts shown when the local claude CLI cannot generate.
-const (
-	MsgClaudeMissing   = "Claude Code(claude 명령)를 찾을 수 없습니다. Claude Code를 설치한 뒤 터미널에서 `claude`를 한 번 실행해 로그인하고 다시 시도해 주세요."
-	MsgClaudeLoggedOut = "Claude Code에 로그인되어 있지 않습니다. 터미널에서 `claude`를 실행해 로그인(/login)한 뒤 다시 시도해 주세요."
+// Korean fix-it texts shown when the local claude CLI cannot generate (the
+// stored text of their i18n reason codes, which the web translates).
+var (
+	MsgClaudeMissing   = i18n.ReasonKo(i18n.ReasonClaudeMissing)
+	MsgClaudeLoggedOut = i18n.ReasonKo(i18n.ReasonClaudeLoggedOut)
 )
 
 // checkErrorText is the stored error of a failed check step (shown on the
@@ -201,9 +203,19 @@ func checkErrorText(err error) string {
 	return err.Error()
 }
 
-// DescribeLLMError returns a Korean, user-facing description of a generation
-// failure ("" when err is not a generation error).
+// DescribeLLMError returns the stored (Korean) text of a generation failure
+// ("" when err is not a generation error); LLMErrorReason gives its code.
 func DescribeLLMError(err error) string {
+	if code := LLMErrorReason(err); code != "" {
+		return i18n.ReasonKo(code)
+	}
+	return ""
+}
+
+// LLMErrorReason is the i18n reason code of a generation failure ("" when err
+// is not a generation error). The CLI's own message of an unclassified
+// failure is logged, not shown.
+func LLMErrorReason(err error) string {
 	var le *llm.LLMError
 	code := ""
 	if errors.As(err, &le) {
@@ -211,23 +223,24 @@ func DescribeLLMError(err error) string {
 	}
 	switch {
 	case code == codeCLIMissing:
-		return MsgClaudeMissing
+		return i18n.ReasonClaudeMissing
 	case code == codeNotLoggedIn:
-		return MsgClaudeLoggedOut
+		return i18n.ReasonClaudeLoggedOut
 	case code == codeRateLimited:
-		return "Claude 사용 한도에 도달했습니다. 한도가 풀린 뒤(보통 몇 시간 이내) 다시 시도해 주세요."
+		return i18n.ReasonClaudeRateLimited
 	case code == codeQueueFull:
-		return "다른 생성 작업이 많이 밀려 있습니다. 잠시 후 다시 시도해 주세요."
+		return i18n.ReasonClaudeQueueFull
 	case code == codeDailyCap:
-		return "오늘 설정한 Claude 호출 한도를 모두 사용했습니다. 내일 다시 시도해 주세요."
+		return i18n.ReasonClaudeDailyCap
 	case code == codeTimeout || errors.Is(err, llm.ErrTimeout):
-		return "Claude 응답이 너무 오래 걸려 중단했습니다. 다시 시도해 주세요."
+		return i18n.ReasonClaudeTimeout
 	case errors.Is(err, llm.ErrGenerationUnavailable):
-		return MsgClaudeLoggedOut
+		return i18n.ReasonClaudeLoggedOut
 	case errors.Is(err, ErrUnusableOutput):
-		return "AI가 만든 강의 형식이 올바르지 않아 저장하지 못했습니다. 다시 시도해 주세요."
+		return i18n.ReasonClaudeBadOutput
 	case le != nil:
-		return "Claude 호출에 실패했습니다: " + le.Message
+		logf("claude call failed: %s", le.Message)
+		return i18n.ReasonClaudeFailed
 	}
 	return ""
 }

@@ -1,5 +1,11 @@
 # 바뀐 점
 
+## Unreleased — v0.9.1
+
+- 영어 화면에서 Claude 실패 안내(미설치·미로그인·사용 한도·응답 시간 초과 등)가 한국어로 나오던 문제를 고쳤어요. 강의 생성 실패 사유, 강의 질문 답·대체 설명의 실패 안내가 화면 언어를 따라요.
+
+English: Claude failure messages (not installed, signed out, usage limit, timeout and so on) now follow the UI language in lecture generation and in failed answers to lecture questions.
+
 ## v0.9.0 (2026-11-17)
 
 한국어·영어 두 언어를 지원해요. 실행하면 DB 가 자동으로 업그레이드됩니다(마이그레이션 017, 기존 데이터는 모두 한국어로 남아요).

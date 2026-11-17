@@ -9,5 +9,5 @@ export * from "./misconceptionTypes";
 export * from "./exerciseTypes";
 export { PunisherApiError, describePunisherError, punisherFetch, punisherQueryDefaults, PUNISHER_API_BASE } from "./client";
 export { punisherApi, instantStreamUrl } from "./endpoints";
-export { translateReasonCodes, errorCodeMessage } from "./reasons";
+export { translateReasonCodes, localizeServerText, errorCodeMessage } from "./reasons";
 export { punisherKeys, punisherLearningStateKeys } from "./queryKeys";

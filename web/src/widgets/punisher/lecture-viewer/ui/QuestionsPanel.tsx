@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Button, EmptyState, ErrorState, Field, FieldTextarea, ListSkeleton } from "@/src/shared/ui/kit";
 import { QUESTION_STATUS_LABELS, useAskQuestion, useQuestions } from "@/src/entities/punisher";
 import { scrollToAnchor } from "@/src/features/punisher/lecture-progress";
-import { describePunisherError, type Question } from "@/src/shared/api/punisher";
+import { describePunisherError, localizeServerText, type Question } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 import { useT } from "@/src/shared/i18n";
@@ -38,7 +38,7 @@ function QuestionItem({ q, onJump }: { q: Question; onJump?: () => void }) {
         </button>
       )}
       {q.status === "answered" && <Markdown className="text-sm leading-6">{q.answer}</Markdown>}
-      {q.status === "failed" && <p className="text-danger">{q.error || t.answerFailed}</p>}
+      {q.status === "failed" && <p className="text-danger">{localizeServerText(q.error, t.answerFailed)}</p>}
       {linked.length > 0 && (
         <p className="text-xs text-fg-secondary">
           {t.linkedConcepts}{" "}

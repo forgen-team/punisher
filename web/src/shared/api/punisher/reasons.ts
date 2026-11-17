@@ -1,4 +1,4 @@
-import { translate, type Locale } from "@/src/shared/i18n";
+import { getLocale, translate, type Locale } from "@/src/shared/i18n";
 import { errorCodeMessages, reasonMessages } from "./i18n";
 
 type ReasonCode = keyof typeof reasonMessages.ko;
@@ -23,4 +23,17 @@ export function translateReasonCodes(codes: unknown, locale?: Locale): string[] 
 export function errorCodeMessage(code: string, locale?: Locale): string | undefined {
   const t = translate(errorCodeMessages, locale);
   return code in t ? t[code as ErrorCodeWithMessage] : undefined;
+}
+
+/**
+ * 서버가 저장한 실패 문구(질문 답·대체 설명의 error)를 화면 언어로: 아는 사유 문구면 그 code 의
+ * 번역, 모르는 문구는 한국어 화면이면 그대로, 아니면 fallback(서버 원문이 한국어·내부 오류일 수 있어서).
+ */
+export function localizeServerText(text: string | undefined, fallback: string, locale: Locale = getLocale()): string {
+  const trimmed = text?.trim();
+  if (!trimmed) { return fallback; }
+  const ko = reasonMessages.ko as Record<string, string>;
+  const code = Object.keys(ko).find((key) => ko[key] === trimmed);
+  if (code) { return translateReasonCodes([code], locale)[0] ?? fallback; }
+  return locale === "ko" ? trimmed : fallback;
 }
