@@ -50,10 +50,12 @@ Punisher is a personal learning app for computer-science fundamentals, in Englis
 ## Requirements
 
 - macOS (Apple Silicon or Intel) or Linux (amd64 / arm64)
-- [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and logged in:
+- [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and logged in. With the install script, download it and read it before running it:
   ```sh
-  curl -fsSL https://claude.ai/install.sh | bash
-  claude          # run once, log in, then /exit
+  curl -fsSL https://claude.ai/install.sh -o claude-install.sh
+  less claude-install.sh      # read what it does
+  bash claude-install.sh
+  claude                      # run once, log in, then /exit
   ```
   `claude auth status` should report `"loggedIn": true`. Usage counts against your Claude subscription.
 
