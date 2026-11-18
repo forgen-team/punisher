@@ -41,10 +41,12 @@ Claude Code로 나만의 CS 기본기 강의를 만들어 읽는 학습 앱입�
 ## 1. 준비물
 
 1. macOS (Apple Silicon / Intel) 또는 Linux (amd64 / arm64)
-2. **Claude Code** 설치 + 로그인
+2. **Claude Code** 설치 + 로그인 ([공식 안내](https://docs.claude.com/en/docs/claude-code)). 설치 스크립트는 받아서 내용을 확인한 뒤 실행하세요.
    ```sh
-   curl -fsSL https://claude.ai/install.sh | bash
-   claude          # 처음 한 번 실행해서 안내대로 로그인한 뒤 /exit 로 나오기
+   curl -fsSL https://claude.ai/install.sh -o claude-install.sh
+   less claude-install.sh      # 무엇을 하는지 확인
+   bash claude-install.sh
+   claude                      # 처음 한 번 실행해서 안내대로 로그인한 뒤 /exit 로 나오기
    ```
    `claude auth status` 를 실행했을 때 `"loggedIn": true` 가 나오면 준비 끝입니다.
 
