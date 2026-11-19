@@ -6,6 +6,7 @@ import (
 
 	"github.com/forgen-team/punisher/internal/claudecli"
 	"github.com/forgen-team/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/services"
 )
 
 // GatewayStatus reports the host claude-gateway in the shape of the local CLI
@@ -39,4 +40,16 @@ func (g GatewayStatus) Status(ctx context.Context) claudecli.Status {
 		st.LoggedIn = &loggedIn
 	}
 	return st
+}
+
+// OwnerSignals asks rss-server for the Witems owner's reading signals. Inside
+// the app the only user is the local one, but rss-server knows the owner by
+// their Witems user id.
+type OwnerSignals struct {
+	Source      services.SignalSource
+	OwnerUserID string
+}
+
+func (o OwnerSignals) LearningSignals(ctx context.Context, _ string) (services.LearningSignals, error) {
+	return o.Source.LearningSignals(ctx, o.OwnerUserID)
 }

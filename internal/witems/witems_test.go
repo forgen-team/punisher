@@ -1,6 +1,7 @@
 package witems
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,8 @@ import (
 	"testing"
 	"testing/fstest"
 	"time"
+
+	"github.com/forgen-team/punisher/internal/services"
 )
 
 // fakeAuth answers /v1/auth/me: token "owner" → owner-id, "other" → other-id, "down" → 500, else 401.
@@ -153,5 +156,22 @@ func TestAppHandler(t *testing.T) {
 	// A path climbing out of /static is never served (the mux redirects to the cleaned path).
 	if rec := get("/static/../app.go"); rec.Code == http.StatusOK {
 		t.Fatalf("/static/../app.go served: %q", rec.Body.String())
+	}
+}
+
+type recordSignals struct{ got string }
+
+func (r *recordSignals) LearningSignals(_ context.Context, userID string) (services.LearningSignals, error) {
+	r.got = userID
+	return services.LearningSignals{}, nil
+}
+
+func TestOwnerSignalsAsksForTheOwner(t *testing.T) {
+	rec := &recordSignals{}
+	if _, err := (OwnerSignals{Source: rec, OwnerUserID: "owner-id"}).LearningSignals(context.Background(), "local"); err != nil {
+		t.Fatal(err)
+	}
+	if rec.got != "owner-id" {
+		t.Fatalf("rss-server asked for %q, want the Witems owner id", rec.got)
 	}
 }

@@ -63,8 +63,18 @@ func applySignals(in *learning.SuggestionInput, sig LearningSignals) {
 	for _, c := range sig.ExplanationConcepts {
 		mentions[c.ConceptID] = c.Count
 	}
+	read := map[string]int{}
+	for _, c := range sig.ReadConcepts {
+		read[c.ConceptID] = c.Count
+	}
 	for i := range in.Deepen {
 		in.Deepen[i].Mentions = mentions[in.Deepen[i].ConceptID]
+		in.Deepen[i].ReadMentions = read[in.Deepen[i].ConceptID]
+	}
+	for _, c := range sig.ReadCandidates {
+		if name, ok := learning.CleanReadTopicName(c.Name); ok {
+			in.ReadTopics = append(in.ReadTopics, learning.ReadTopicSignal{Name: name, Count: c.Count})
+		}
 	}
 }
 
@@ -169,7 +179,7 @@ func (s *Service) chapterPromptContext(ctx context.Context, userID string, req C
 		}
 		for _, id := range req.SuggestionIDs {
 			if sg, ok := byID[id]; ok {
-				pc.Picks = append(pc.Picks, prompts.ChapterPick{Title: sg.Title, Reason: sg.Reason, ConceptIDs: sg.ConceptIDs})
+				pc.Picks = append(pc.Picks, prompts.ChapterPick{Title: sg.Title, Reason: sg.Reason, ConceptIDs: sg.ConceptIDs, Untrusted: sg.Kind == learning.SuggestReading})
 			}
 		}
 		if len(pc.Picks) == 0 && req.FreeText == "" {

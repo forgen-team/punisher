@@ -244,6 +244,13 @@ func run(cfg config.Config) error {
 		},
 	}
 
+	if app.Enabled && app.RSSServerURL != "" {
+		// 다음 챕터 제안에 Witems RSS 의 최근 읽은 글·관심 신호를 쓴다(비우면 끔).
+		svc.Signals = witems.OwnerSignals{
+			Source:      services.RSSSignals{BaseURL: app.RSSServerURL, Token: app.InternalToken},
+			OwnerUserID: app.OwnerUserID,
+		}
+	}
 	deps := httpapi.RouterDependencies{
 		Store: st, Services: svc, Claude: status, AppVersion: version, DataDir: cfg.DataDir,
 	}

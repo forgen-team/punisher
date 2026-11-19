@@ -22,6 +22,15 @@ type LearningSignals struct {
 		ConceptID string `json:"conceptId"`
 		Count     int    `json:"count"`
 	} `json:"explanationConcepts"`
+	// ReadConcepts/ReadCandidates: 최근 연 글의 개념 분류. 없는 응답(이전 rss-server)도 그대로 받는다.
+	ReadConcepts []struct {
+		ConceptID string `json:"conceptId"`
+		Count     int    `json:"count"`
+	} `json:"readConcepts"`
+	ReadCandidates []struct {
+		Name  string `json:"name"`
+		Count int    `json:"count"`
+	} `json:"readCandidates"`
 }
 
 // SignalSource provides LearningSignals for a user. Nil on the Service = off
