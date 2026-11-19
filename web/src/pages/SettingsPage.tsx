@@ -3,7 +3,7 @@ import { List, ListRow, PageHeader, Section, Skeleton, ThemeSelect } from "@/src
 import { Link } from "@/src/shared/lib/router";
 import { LearningSettingsForm } from "@/src/features/punisher/learning-settings";
 import { useAppStatus } from "@/src/shared/api/status";
-import { PUNISHER_API_BASE } from "@/src/shared/api/punisher";
+import { punisherApiBase } from "@/src/shared/api/punisher";
 import { BRAND_LINE, PunisherLogo } from "@/src/shared/ui/brand";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
@@ -28,7 +28,7 @@ export function SettingsPage() {
             meta={t.promptsMeta}
           />
           <ListRow
-            href={`${PUNISHER_API_BASE}/export`}
+            href={`${punisherApiBase()}/export`}
             leading={<Download />}
             title={t.export}
             meta={t.exportMeta}

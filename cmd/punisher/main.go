@@ -29,6 +29,7 @@ import (
 	"github.com/forgen-team/punisher/internal/curriculum"
 	"github.com/forgen-team/punisher/internal/glossary"
 	httpapi "github.com/forgen-team/punisher/internal/http"
+	"github.com/forgen-team/punisher/internal/http/handlers"
 	"github.com/forgen-team/punisher/internal/llm"
 	"github.com/forgen-team/punisher/internal/middleware"
 	"github.com/forgen-team/punisher/internal/phone"
@@ -36,6 +37,7 @@ import (
 	"github.com/forgen-team/punisher/internal/services"
 	"github.com/forgen-team/punisher/internal/store"
 	"github.com/forgen-team/punisher/internal/webui"
+	"github.com/forgen-team/punisher/internal/witems"
 	"github.com/forgen-team/punisher/migrations"
 )
 
@@ -154,7 +156,14 @@ func loadPhoneAccess(dataDir string) phone.Access {
 }
 
 func run(cfg config.Config) error {
-	ln, existing, err := listen(cfg.Port)
+	app := cfg.Witems
+	if app.Enabled {
+		if err := app.Validate(); err != nil {
+			return err
+		}
+		cfg.OpenBrowser = false
+	}
+	ln, existing, err := listenFor(cfg)
 	if err != nil {
 		return err
 	}
@@ -190,7 +199,10 @@ func run(cfg config.Config) error {
 	if err := syncCurriculum(ctx, cfg, st); err != nil {
 		return fmt.Errorf("curriculum seed: %w", err)
 	}
-	seedSamples(ctx, st)
+	if !app.Enabled {
+		// Witems 앱은 옮겨 온 기록으로 시작하므로 맛보기 강의를 넣지 않는다.
+		seedSamples(ctx, st)
+	}
 	// 확인 문항 만들기·채점은 이 프로세스 안에서만 돌므로, 지난 실행이 남긴 진행 중 작업은 끝나지 않는다.
 	if r, err := st.RecoverInterruptedChecks(ctx); err != nil {
 		log.Printf("recover interrupted checks: %v", err)
@@ -198,13 +210,7 @@ func run(cfg config.Config) error {
 		log.Printf("recovered interrupted checks: %d jobs, %d sessions, %d turns, %d exercise attempts", r.Jobs, r.Sessions, r.Turns, r.Attempts)
 	}
 
-	claude := claudecli.New(claudecli.Config{
-		Bin:          cfg.ClaudeBin,
-		TempBase:     filepath.Join(cfg.DataDir, "tmp"),
-		Concurrency:  cfg.Concurrency,
-		DefaultModel: cfg.LectureModel,
-		DailyLimit:   cfg.DailyCallLimit,
-	})
+	gen, status, claude := newGenerator(cfg)
 	terms, err := glossary.Load(seedfiles.Glossary)
 	if err != nil {
 		log.Printf("glossary: %v (term glosses are generated instead)", err)
@@ -212,7 +218,7 @@ func run(cfg config.Config) error {
 	svc := &services.Service{
 		Glossary: terms,
 		Store:    st,
-		LLM:      claude,
+		LLM:      gen,
 		Keys:     services.GatewayKeys{},
 		Hub:      services.NewHub(),
 		Cfg: services.Config{
@@ -238,13 +244,27 @@ func run(cfg config.Config) error {
 		},
 	}
 
-	access := loadPhoneAccess(cfg.DataDir)
+	if app.Enabled && app.RSSServerURL != "" {
+		// 다음 챕터 제안에 Witems RSS 의 최근 읽은 글·관심 신호를 쓴다(비우면 끔).
+		svc.Signals = witems.OwnerSignals{
+			Source:      services.RSSSignals{BaseURL: app.RSSServerURL, Token: app.InternalToken},
+			OwnerUserID: app.OwnerUserID,
+		}
+	}
+	deps := httpapi.RouterDependencies{
+		Store: st, Services: svc, Claude: status, AppVersion: version, DataDir: cfg.DataDir,
+	}
+	if app.Enabled {
+		guard := &witems.Guard{AuthServiceURL: app.AuthServiceURL, OwnerUserID: app.OwnerUserID, Origin: app.Origin, InternalToken: app.InternalToken}
+		deps.Guard = guard.Middleware
+		deps.App = witems.AppHandler(version)
+	} else {
+		access := loadPhoneAccess(cfg.DataDir)
+		deps.UI, deps.AllowedHost, deps.AllowedLogin = webui.Handler(), access.Host, access.Login
+	}
 	// No WriteTimeout: instant lectures stream over SSE for minutes.
 	srv := &http.Server{
-		Handler: httpapi.NewRouter(httpapi.RouterDependencies{
-			Store: st, Services: svc, Claude: claude, UI: webui.Handler(), AppVersion: version, DataDir: cfg.DataDir,
-			AllowedHost: access.Host, AllowedLogin: access.Login,
-		}),
+		Handler:           httpapi.NewRouter(deps),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -258,8 +278,16 @@ func run(cfg config.Config) error {
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.Serve(ln) }()
 
-	reportClaude(ctx, claude)
-	fmt.Printf(tr("\nPunisher 실행 중: %s\n데이터: %s\n종료하려면 이 창에서 Ctrl+C 를 누르세요.\n\n", "\nPunisher is running: %s\nData: %s\nPress Ctrl+C in this window to quit.\n\n"), url, dbPath)
+	if claude != nil {
+		reportClaude(ctx, claude)
+	} else {
+		reportGateway(ctx, status)
+	}
+	if app.Enabled {
+		log.Printf("punisher %s (Witems app) listening on %s, data %s", version, ln.Addr(), dbPath)
+	} else {
+		fmt.Printf(tr("\nPunisher 실행 중: %s\n데이터: %s\n종료하려면 이 창에서 Ctrl+C 를 누르세요.\n\n", "\nPunisher is running: %s\nData: %s\nPress Ctrl+C in this window to quit.\n\n"), url, dbPath)
+	}
 	if cfg.OpenBrowser {
 		openBrowser(url)
 	}
@@ -281,6 +309,47 @@ func run(cfg config.Config) error {
 		log.Printf("shutdown: %v", err)
 	}
 	return nil
+}
+
+// newGenerator picks the generation backend: the host claude-gateway in the
+// Witems app mode, otherwise the local claude CLI (returned as claude too, for
+// the startup report).
+func newGenerator(cfg config.Config) (services.LLM, handlers.ClaudeStatusSource, *claudecli.Client) {
+	if cfg.Witems.Enabled {
+		gw := &llm.ClaudeGatewayClient{BaseURL: cfg.Witems.GatewayURL, InternalToken: cfg.Witems.InternalToken}
+		return gw, witems.GatewayStatus{Client: gw}, nil
+	}
+	claude := claudecli.New(claudecli.Config{
+		Bin:          cfg.ClaudeBin,
+		TempBase:     filepath.Join(cfg.DataDir, "tmp"),
+		Concurrency:  cfg.Concurrency,
+		DefaultModel: cfg.LectureModel,
+		DailyLimit:   cfg.DailyCallLimit,
+	})
+	return claude, claude, claude
+}
+
+// listenFor binds the Witems app address as given (inside a container), or
+// the standalone loopback port.
+func listenFor(cfg config.Config) (net.Listener, string, error) {
+	if !cfg.Witems.Enabled {
+		return listen(cfg.Port)
+	}
+	ln, err := net.Listen("tcp", cfg.Witems.Addr)
+	if err != nil {
+		return nil, "", fmt.Errorf("listen %s: %w", cfg.Witems.Addr, err)
+	}
+	return ln, "", nil
+}
+
+func reportGateway(ctx context.Context, status handlers.ClaudeStatusSource) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	if st := status.Status(ctx); st.Ready {
+		log.Printf("claude-gateway connected (%s)", st.Version)
+	} else {
+		log.Printf("claude-gateway not ready: %s", st.Code)
+	}
 }
 
 // listen binds 127.0.0.1 on the requested port (default 4710). When the

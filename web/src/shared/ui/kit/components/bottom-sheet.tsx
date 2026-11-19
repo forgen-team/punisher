@@ -7,6 +7,7 @@ import { kitMessages } from "../lib/messages";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { IconButton } from "./button";
+import { portalRoot } from "@/src/shared/config/runtime";
 
 export type BottomSheetDesktop = "dialog" | "side" | "sheet";
 
@@ -136,6 +137,6 @@ export function BottomSheet({
         {footer ? <div className="flex shrink-0 justify-end gap-2 border-t border-line px-4 py-3">{footer}</div> : null}
       </div>
     </div>,
-    document.body
+    portalRoot()
   );
 }

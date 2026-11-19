@@ -1,5 +1,7 @@
-import { usePathname, useRouter } from "@/src/shared/lib/router";
-import { PageHeader, SegmentedTabs } from "@/src/shared/ui/kit";
+import { Settings } from "lucide-react";
+import { isWitems } from "@/src/shared/config/runtime";
+import { Link, usePathname, useRouter } from "@/src/shared/lib/router";
+import { PageHeader, SegmentedTabs, cn, focusRing } from "@/src/shared/ui/kit";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 
@@ -29,19 +31,33 @@ export function LearnNav() {
   const segment = segmentOf(pathname);
   const t = useT(messages);
   if (!segment) { return null; }
+  // Witems 셸은 화면 제목을 스스로 보이고 상단 바에 설정이 없으므로, 제목 대신 탭 옆에 학습 설정 링크를 둔다.
+  const inWitems = isWitems();
 
   return (
     <div className="shrink-0">
       {/* 단독판 셸 상단 바는 화면 제목을 보이지 않으므로 md 이상에서 여기 둔다(witems 는 lg — docs/SYNC.md). */}
-      <PageHeader title={t.title} className="hidden pb-2 md:flex" />
-      <SegmentedTabs
-        aria-label={t.tabsLabel}
-        items={SEGMENTS.map((value) => ({ value, label: t[value] }))}
-        value={segment}
-        onChange={(next) => router.push(HREFS[next])}
-        fill
-        className="md:max-w-sm"
-      />
+      {inWitems ? null : <PageHeader title={t.title} className="hidden pb-2 md:flex" />}
+      <div className="flex items-center gap-2">
+        <SegmentedTabs
+          aria-label={t.tabsLabel}
+          items={SEGMENTS.map((value) => ({ value, label: t[value] }))}
+          value={segment}
+          onChange={(next) => router.push(HREFS[next])}
+          fill
+          className="min-w-0 flex-1 md:max-w-sm md:flex-none"
+        />
+        {inWitems ? (
+          <Link
+            href="/settings"
+            aria-label={t.settings}
+            className={cn("inline-flex min-h-touch shrink-0 items-center gap-1.5 rounded-md px-2 text-sm text-fg-secondary hover:bg-canvas-hover hover:text-fg", focusRing)}
+          >
+            <Settings className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">{t.settings}</span>
+          </Link>
+        ) : null}
+      </div>
     </div>
   );
 }

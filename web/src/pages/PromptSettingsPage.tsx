@@ -12,7 +12,7 @@ export function PromptSettingsPage() {
   const split = useIsSplitLayout();
   const inDetail = !split && params.has("block");
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col xl:max-w-7xl">
+    <div className="flex w-full flex-col">
       {inDetail ? <BackLink href="/settings/prompts" label={t.prompts} replace /> : <BackLink href="/settings" label={t.settings} />}
       <PageHeader title={t.prompts} className="pt-1" />
       <PromptSettingsWidget />

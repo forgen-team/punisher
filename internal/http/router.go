@@ -29,6 +29,12 @@ type RouterDependencies struct {
 	// allowed besides loopback ("" = none, the default; set by `punisher phone on`).
 	AllowedHost  string
 	AllowedLogin string
+	// Guard, when set, replaces the loopback/Tailscale check: it wraps only the
+	// /v1 API (the Witems app mode admits the Witems owner session).
+	Guard func(http.Handler) http.Handler
+	// App serves /static/*, /manifest.json and /healthz without a login (the
+	// Witems app mode); nil in the standalone app.
+	App http.Handler
 }
 
 func NewRouter(deps RouterDependencies) http.Handler {
@@ -36,7 +42,9 @@ func NewRouter(deps RouterDependencies) http.Handler {
 
 	router.Use(middleware.RequestID)
 	router.Use(middleware.Recoverer)
-	router.Use(localOnly(deps.AllowedHost, deps.AllowedLogin))
+	if deps.Guard == nil {
+		router.Use(localOnly(deps.AllowedHost, deps.AllowedLogin))
+	}
 
 	healthHandler := &handlers.HealthHandler{Store: deps.Store}
 	statusHandler := &handlers.StatusHandler{Claude: deps.Claude, AppVersion: deps.AppVersion, DataDir: deps.DataDir}
@@ -46,6 +54,9 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	learn := &handlers.LearnHandler{Store: deps.Store, Svc: deps.Services}
 
 	router.Route("/v1", func(r chi.Router) {
+		if deps.Guard != nil {
+			r.Use(deps.Guard)
+		}
 		r.Get("/health", healthHandler.Health)
 		r.Get("/status", statusHandler.Status)
 		r.Get("/export", statusHandler.Export)
@@ -143,6 +154,11 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Get("/misconceptions", learn.ListMisconceptions)
 	})
 
+	if deps.App != nil {
+		router.Handle("/static/*", deps.App)
+		router.Handle("/manifest.json", deps.App)
+		router.Handle("/healthz", deps.App)
+	}
 	if deps.UI != nil {
 		router.NotFound(deps.UI.ServeHTTP)
 	}

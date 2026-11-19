@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactElement, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Provider as JotaiProvider } from "jotai";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
@@ -18,32 +18,47 @@ function createQueryClient(): QueryClient {
   });
 }
 
-export function App() {
+/** Query client and atoms — shared by the standalone app and the Witems mount. */
+export function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(createQueryClient);
   return (
     <JotaiProvider>
-      <QueryClientProvider client={queryClient}>
-        <ThemeSync />
-        <BrowserRouter>
-          <ScrollToTopOnNavigate />
-          <Routes>
-            <Route element={<AppShell />}>
-              <Route index element={<TodayPage />} />
-              <Route path="map" element={<MapPage />} />
-              <Route path="goals" element={<MapPage />} />
-              <Route path="history" element={<HistoryPage />} />
-              <Route path="chapters/new" element={<NewChapterPage />} />
-              <Route path="lectures/:id" element={<LecturePage />} />
-              <Route path="inquiries/:id" element={<InquiryPage />} />
-              <Route path="check/:id" element={<CheckPage />} />
-              <Route path="instant/:jobId" element={<InstantPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-              <Route path="settings/prompts" element={<PromptSettingsPage />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </JotaiProvider>
+  );
+}
+
+/** The screens under a shell (AppShell standalone, WitemsShell inside Witems). `extra` adds mode-only routes. */
+export function AppRoutes({ shell, extra }: { shell: ReactElement; extra?: ReactNode }) {
+  return (
+    <Routes>
+      <Route element={shell}>
+        <Route index element={<TodayPage />} />
+        <Route path="map" element={<MapPage />} />
+        <Route path="goals" element={<MapPage />} />
+        <Route path="history" element={<HistoryPage />} />
+        <Route path="chapters/new" element={<NewChapterPage />} />
+        <Route path="lectures/:id" element={<LecturePage />} />
+        <Route path="inquiries/:id" element={<InquiryPage />} />
+        <Route path="check/:id" element={<CheckPage />} />
+        <Route path="instant/:jobId" element={<InstantPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route path="settings/prompts" element={<PromptSettingsPage />} />
+        {extra}
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+    </Routes>
+  );
+}
+
+export function App() {
+  return (
+    <AppProviders>
+      <ThemeSync />
+      <BrowserRouter>
+        <ScrollToTopOnNavigate />
+        <AppRoutes shell={<AppShell />} />
+      </BrowserRouter>
+    </AppProviders>
   );
 }

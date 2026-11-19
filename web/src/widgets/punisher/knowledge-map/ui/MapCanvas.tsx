@@ -1,6 +1,5 @@
 
 // Lazy chunk: @xyflow/react + elkjs are only loaded on the map route.
-import "@xyflow/react/dist/style.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Background, Controls, MiniMap, ReactFlow, type Edge, type ReactFlowInstance } from "@xyflow/react";
 import { MAP_STATE_STYLES, mapNodeState, useResolvedTheme } from "@/src/entities/punisher";

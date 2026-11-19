@@ -14,7 +14,8 @@ import { messages } from "./i18n";
 import { todayRows, type TodayRow } from "./lib/recheck";
 import { reviewCardState } from "./lib/reviewCard";
 import { sessionTimeLabel } from "./lib/sessionTime";
-import { InquiryList, NEW_CHAPTER_PATH, NextChapterCard, RecheckRow, RecommendationRow, RecommendationSheet, ReviewCard, StudyRequestList, SynthesisRow, UncheckedRow } from "./ui";
+import { ExplanationRequestList, InquiryList, NEW_CHAPTER_PATH, NextChapterCard, RecheckRow, RecommendationRow, RecommendationSheet, ReviewCard, StudyRequestList, SynthesisRow, UncheckedRow } from "./ui";
+import { isWitems } from "@/src/shared/config/runtime";
 
 /** 추천 목록의 한 줄 — 확인하기 · 다시 확인 · 추천. */
 function renderRow(row: TodayRow, onOpen: (item: Recommendation) => void) {
@@ -164,10 +165,17 @@ export function TodayWidget() {
             </div>
           )}
           <div className="order-4 min-w-0 fold:order-none">
-            <Section variant="card" title={t.studyRequests}>
-              <AddStudyRequestForm />
-              <StudyRequestList starting={isPending} onStart={(id, query) => start(id, query)} />
-            </Section>
+            {isWitems() ? (
+              // Witems 안: RSS '이 글 깊게 읽기'로 만든 글 해설(학습 요청 자리를 대신 — witems 와 같은 구성).
+              <Section variant="card" title={t.explanations}>
+                <ExplanationRequestList />
+              </Section>
+            ) : (
+              <Section variant="card" title={t.studyRequests}>
+                <AddStudyRequestForm />
+                <StudyRequestList starting={isPending} onStart={(id, query) => start(id, query)} />
+              </Section>
+            )}
           </div>
         </div>
       </div>

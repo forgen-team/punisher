@@ -5,8 +5,9 @@
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 WEBUI_DIST := internal/webui/dist
+WITEMS_DIST := internal/witems/dist
 
-.PHONY: build web go-darwin go-linux linux test lint clean run release
+.PHONY: build web witems-web image go-darwin go-linux linux test lint clean run release
 
 build: web go-darwin
 
@@ -14,6 +15,14 @@ web:
 	cd web && npm ci --no-audit --no-fund
 	find $(WEBUI_DIST) -mindepth 1 ! -name .gitkeep -delete
 	cd web && npm run build
+
+# Witems app mode: the Module Federation remote (web/src/witems/mount.tsx) embedded into internal/witems.
+witems-web:
+	cd web && npm ci --no-audit --no-fund
+	find $(WITEMS_DIST) -mindepth 1 ! -name .gitkeep -delete
+	cd web && npm run build:witems
+	@# CSS imported from components would be injected into the shell's <head>, outside the Shadow DOM.
+	@if ls $(WITEMS_DIST)/assets/*.css >/dev/null 2>&1; then echo "witems-web: stray CSS files (import CSS in styles/globals.css instead):"; ls $(WITEMS_DIST)/assets/*.css; exit 1; fi
 
 # Pure Go (modernc SQLite, no CGO) so both architectures cross-compile anywhere.
 go-darwin:

@@ -21,6 +21,8 @@ import { ConceptLecturesSection } from "./ConceptLecturesSection";
 import { ConceptQuestionsSection } from "./ConceptQuestionsSection";
 import { messages } from "../i18n";
 import { useT } from "@/src/shared/i18n";
+import { isWitems } from "@/src/shared/config/runtime";
+import { ConceptRecentReadsSection } from "./ConceptRecentReadsSection";
 
 function LinkGroup({ title, links, onSelect }: { title: string; links: ConceptLink[]; onSelect: (id: string) => void }) {
   if (links.length === 0) { return null; }
@@ -186,6 +188,8 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
           <ConceptLecturesSection conceptId={c.id} />
           <ConceptQuestionsSection conceptId={c.id} />
           <NotesGroup conceptId={c.id} />
+          {/* Witems 안에서만: 이 개념이 나온 최근에 연 RSS 글 */}
+          {isWitems() ? <ConceptRecentReadsSection conceptId={c.id} /> : null}
         </div>
       ) : null}
     </>

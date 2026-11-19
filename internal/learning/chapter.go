@@ -5,6 +5,8 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 // Next-chapter trigger and suggestion ranking (pure; no I/O).
@@ -58,6 +60,7 @@ const (
 	SuggestProposed = "proposed" // (a) proposed concepts that keep coming up
 	SuggestDeepen   = "deepen"   // (b) deeper objectives of finished concepts
 	SuggestTrend    = "trend"    // (c) RSS rising topics
+	SuggestReading  = "reading"  // (c) concepts in articles the user opened, not on the map
 	SuggestInterest = "interest" // (c) RSS interests
 	SuggestNewArea  = "new_area" // (d) areas outside the curriculum
 )
@@ -77,6 +80,14 @@ type DeepenSignal struct {
 	Area      string
 	Remaining int // pending objectives at depth 2-3
 	Mentions  int // e.g. how often RSS explanations pointed to it
+	// ReadMentions: articles the user opened recently that were classified to it.
+	ReadMentions int
+}
+
+// ReadTopicSignal is a concept that keeps appearing in opened articles but is not on the map.
+type ReadTopicSignal struct {
+	Name  string
+	Count int
 }
 
 // TrendSignal is an RSS rising topic.
@@ -101,7 +112,9 @@ type SuggestionInput struct {
 	Deepen    []DeepenSignal
 	Interests []string
 	Trending  []TrendSignal
-	NewAreas  []NewArea
+	// ReadTopics stays empty without RSS (standalone build).
+	ReadTopics []ReadTopicSignal
+	NewAreas   []NewArea
 	// Covered: normalized names of concepts already on the user's map (skip as topics).
 	Covered map[string]bool
 	// Locale: ko|en of titles and reasons ("" = ko).
@@ -143,12 +156,15 @@ func RankSuggestions(in SuggestionInput, limit int) []Suggestion {
 			Reason: reason, Score: score, ConceptIDs: []string{p.ID}})
 	}
 	for _, d := range in.Deepen {
-		score := 1.5 + math.Min(float64(d.Remaining), 6)*0.25 + math.Min(float64(d.Mentions), 4)*0.3
+		score := 1.5 + math.Min(float64(d.Remaining), 6)*0.25 + math.Min(float64(d.Mentions), 4)*0.3 + math.Min(float64(d.ReadMentions), 4)*0.3
 		reason := fmt.Sprintf(inLocale(loc, "기본은 마쳤고 심화 목표 %d개가 남았어요.",
 			"You finished the basics; %d advanced objectives remain."), d.Remaining)
 		if d.Mentions > 0 {
 			reason = fmt.Sprintf(inLocale(loc, "기본은 마쳤고 심화 목표 %d개가 남았어요. 최근 글 해설에서도 %d번 이어졌어요.",
 				"You finished the basics; %d advanced objectives remain. Recent article explanations led here %d times."), d.Remaining, d.Mentions)
+		}
+		if d.ReadMentions > 0 {
+			reason += fmt.Sprintf(inLocale(loc, " 최근 연 글 %d건에도 나왔어요.", " It also appeared in %d articles you opened recently."), d.ReadMentions)
 		}
 		title := d.Name + inLocale(loc, " 심화", " (advanced)")
 		all = append(all, Suggestion{ID: SuggestDeepen + ":" + d.ConceptID, Kind: SuggestDeepen, Title: title,
@@ -162,6 +178,20 @@ func RankSuggestions(in SuggestionInput, limit int) []Suggestion {
 		trendTopics[normalize(t.Topic)] = true
 		all = append(all, Suggestion{ID: SuggestTrend + ":" + t.Topic, Kind: SuggestTrend, Title: t.Topic,
 			Reason: inLocale(loc, "RSS 흐름에서 최근 크게 늘어난 주제예요.", "A topic rising sharply in your RSS feeds."), Score: 1 + math.Min(math.Max(t.Score, 0), 5)*0.4})
+	}
+	for _, t := range in.ReadTopics {
+		if covered(t.Name, in.Covered) || trendTopics[normalize(t.Name)] {
+			continue
+		}
+		trendTopics[normalize(t.Name)] = true // 관심 분야와 겹치면 이 카드 하나만
+		reason := fmt.Sprintf(inLocale(loc, "최근 연 글 %d건에 나왔지만 아직 지도에 없는 주제예요.",
+			"Appeared in %d articles you opened recently but is not on your map yet."), t.Count)
+		if matchesExact(t.Name, in.Interests) {
+			reason += inLocale(loc, " 등록한 관심 분야이기도 해요.", " It is also one of your interests.")
+		}
+		// ID 는 대소문자 변형이 있어도 같게(초안을 만들 때 제안을 다시 계산해 ID 로 찾는다).
+		all = append(all, Suggestion{ID: SuggestReading + ":" + normalize(t.Name), Kind: SuggestReading, Title: t.Name,
+			Reason: reason, Score: 1.3 + math.Min(float64(t.Count), 5)*0.3})
 	}
 	for _, name := range in.Interests {
 		if covered(name, in.Covered) || trendTopics[normalize(name)] {
@@ -214,6 +244,37 @@ func RankSuggestions(in SuggestionInput, limit int) []Suggestion {
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Score > out[j].Score })
 	return out
+}
+
+const (
+	maxReadTopicRunes = 60
+	maxReadTopicWords = 6
+)
+
+// CleanReadTopicName validates a concept name extracted from article text: it
+// ends up in the chapter-design prompt, so anything that is not a short
+// technical term (markup, control characters, sentences) is rejected.
+func CleanReadTopicName(raw string) (string, bool) {
+	words := strings.Fields(raw)
+	name := strings.Join(words, " ")
+	if name == "" || len(words) > maxReadTopicWords || utf8.RuneCountInString(name) > maxReadTopicRunes || strings.Contains(name, "##") {
+		return "", false
+	}
+	for _, r := range name {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && !unicode.IsMark(r) && !strings.ContainsRune(" .+#-_/()·&", r) {
+			return "", false
+		}
+	}
+	return name, true
+}
+
+func matchesExact(s string, list []string) bool {
+	for _, x := range list {
+		if normalize(x) == normalize(s) {
+			return true
+		}
+	}
+	return false
 }
 
 func normalize(s string) string {
