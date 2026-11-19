@@ -1,4 +1,4 @@
-import { punisherFetch } from "./client";
+import { punisherApiBase, punisherFetch } from "./client";
 import type {
   CompleteResult,
   Concept,
@@ -260,5 +260,5 @@ export const punisherApi = {
 
 /** SSE URL for an instant lecture job (consumed with EventSource). */
 export function instantStreamUrl(jobId: string): string {
-  return `/v1/lectures/instant/${enc(jobId)}/stream`;
+  return `${punisherApiBase()}/lectures/instant/${enc(jobId)}/stream`;
 }

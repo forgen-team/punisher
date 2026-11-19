@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAtom } from "jotai";
 import { isLocale, localeAtom, rememberLocale, setCurrentLocale } from "@/src/shared/i18n";
+import { isWitems } from "@/src/shared/config/runtime";
 import { useLearningSettings } from "./reading";
 
 /**
@@ -16,7 +17,9 @@ export function LocaleSync() {
   const next = data?.settings.locale;
 
   // 첫 화면은 기억한 언어(localStorage)로 그리므로 <html lang> 도 처음부터 맞춘다.
+  // Witems 안에서는 <html> 이 셸의 것이라 건드리지 않는다.
   useEffect(() => {
+    if (isWitems()) { return; }
     document.documentElement.lang = locale;
   }, [locale]);
 

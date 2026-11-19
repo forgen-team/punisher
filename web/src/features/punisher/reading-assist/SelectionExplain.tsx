@@ -10,6 +10,7 @@ import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 import { useTextSelection, type TextSelectionSnapshot } from "./useTextSelection";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
+import { portalRoot } from "@/src/shared/config/runtime";
 
 const BUTTON_GAP = 10;
 
@@ -82,7 +83,7 @@ export function SelectionExplain({ lectureId, containerRef }: SelectionExplainPr
               {tooLong ? t.tooLong(SELECTION_MAX_CHARS) : t.explainThis}
             </button>
           </div>,
-          document.body,
+          portalRoot(),
         )}
       <ReadingOverlay
         open={target !== null}

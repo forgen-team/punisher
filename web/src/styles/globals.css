@@ -2,6 +2,8 @@
  * Punisher global styles — tokens in design-tokens.css (ported from @witems/config).
  * No web fonts: system UI (+ Pretendard if installed).
  */
+/* React Flow(지식 지도) 기본 스타일 — 컴포넌트에서 import 하면 Witems 앱 모드에서 Shadow DOM 밖(<head>)으로 새므로 여기서 */
+@import '@xyflow/react/dist/style.css';
 @import './design-tokens.css';
 @import './animations.css';
 @import './brand.css';

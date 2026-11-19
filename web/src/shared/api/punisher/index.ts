@@ -7,7 +7,7 @@ export * from "./checkTypes";
 export * from "./reviewTypes";
 export * from "./misconceptionTypes";
 export * from "./exerciseTypes";
-export { PunisherApiError, describePunisherError, punisherFetch, punisherQueryDefaults, PUNISHER_API_BASE } from "./client";
+export { PunisherApiError, describePunisherError, punisherFetch, punisherQueryDefaults, punisherApiBase } from "./client";
 export { punisherApi, instantStreamUrl } from "./endpoints";
 export { translateReasonCodes, localizeServerText, errorCodeMessage } from "./reasons";
 export { punisherKeys, punisherLearningStateKeys } from "./queryKeys";

@@ -5,6 +5,7 @@ import { IconButton, cn, focusRing, useFocusTrap, useMediaQuery } from "@/src/sh
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 import { placeOverlay, type OverlayPlacement } from "./overlayPlacement";
+import { portalRoot } from "@/src/shared/config/runtime";
 
 /** 읽기 위치를 기준으로 붙일 사각형(문서 좌표가 아니라 getBoundingClientRect 값). */
 export interface OverlayAnchor {
@@ -193,7 +194,7 @@ export function ReadingOverlay({ open, onClose, anchor, title, description, chil
         {body}
         {foot}
       </div>,
-      document.body,
+      portalRoot(),
     );
   }
 
@@ -220,6 +221,6 @@ export function ReadingOverlay({ open, onClose, anchor, title, description, chil
         {foot}
       </div>
     </div>,
-    document.body,
+    portalRoot(),
   );
 }

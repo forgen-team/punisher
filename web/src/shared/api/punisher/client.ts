@@ -1,11 +1,15 @@
 // Typed fetch for the local Punisher server (same origin, /v1).
 // Error envelope: {"error": {"code", "message", "requestId"}}.
 
+import { apiBase } from "@/src/shared/config/runtime";
 import { getLocale, translate } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 import { errorCodeMessage } from "./reasons";
 
-export const PUNISHER_API_BASE = "/v1";
+/** API base ("/v1" standalone, "/apps-api/punisher/v1" inside Witems). */
+export function punisherApiBase(): string {
+  return apiBase();
+}
 
 export class PunisherApiError extends Error {
   readonly status: number;
@@ -46,7 +50,7 @@ export interface PunisherRequestInit extends Omit<RequestInit, "body"> {
 /** Calls `/v1{path}` and returns parsed JSON (undefined for 204). */
 export async function punisherFetch<T>(path: string, init: PunisherRequestInit = {}): Promise<T> {
   const { json, headers, ...rest } = init;
-  const res = await fetch(`${PUNISHER_API_BASE}${path}`, {
+  const res = await fetch(`${punisherApiBase()}${path}`, {
       ...rest,
     headers: {
       Accept: "application/json",

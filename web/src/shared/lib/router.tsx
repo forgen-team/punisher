@@ -3,6 +3,7 @@
 // (<Link href>, useRouter().push/replace, usePathname, useSearchParams).
 import { forwardRef, useEffect, useMemo, type AnchorHTMLAttributes } from "react";
 import { Link as RouterLink, useLocation, useNavigate, useNavigationType } from "react-router-dom";
+import { isWitems } from "@/src/shared/config/runtime";
 
 export interface LinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
   href: string;
@@ -36,7 +37,8 @@ export function useRouter(): AppRouter {
     () => ({
       push: (href: string) => navigate(href),
       replace: (href: string) => navigate(href, { replace: true }),
-      back: () => navigate(-1),
+      // Witems 안에서는 주소의 주인이 셸이라 브라우저 뒤로가기를 쓴다(앱 라우터 기록은 직접 들어오면 비어 있다).
+      back: () => (isWitems() ? window.history.back() : navigate(-1)),
     }),
     [navigate],
   );

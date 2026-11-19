@@ -10,26 +10,12 @@ import { BrandMark } from "@/src/shared/ui/brand";
 import { LocaleSync } from "@/src/entities/punisher";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
-
-type TitleKey = keyof (typeof messages)["ko"];
-
-const TITLES: Array<[RegExp, TitleKey]> = [
-  [/^\/map/, "titleMap"],
-  [/^\/history/, "titleHistory"],
-  [/^\/chapters\/new/, "titleNewChapter"],
-  [/^\/lectures\//, "titleLecture"],
-  [/^\/inquiries\//, "titleInquiry"],
-  [/^\/check\//, "titleCheck"],
-  [/^\/instant\//, "titleInstant"],
-  [/^\/settings\/prompts/, "titlePrompts"],
-  [/^\/settings/, "titleSettings"],
-];
+import { titleKeyFor } from "./titles";
 
 function useDocumentTitle(pathname: string) {
   const t = useT(messages);
   useEffect(() => {
-    const match = TITLES.find(([re]) => re.test(pathname));
-    document.title = `${t[match ? match[1] : "titleToday"]} · Punisher`;
+    document.title = `${t[titleKeyFor(pathname)]} · Punisher`;
   }, [pathname, t]);
 }
 

@@ -6,6 +6,7 @@ import { useTextSelection } from "@/src/features/punisher/reading-assist";
 import { INQUIRY_MAX_QUOTE_CHARS } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
+import { portalRoot } from "@/src/shared/config/runtime";
 
 const BUTTON_GAP = 10;
 const MIN_CHARS = 2;
@@ -43,6 +44,6 @@ export function QuoteAsk({ containerRef, onQuote }: { containerRef: RefObject<HT
         {t.quoteAsk}
       </button>
     </div>,
-    document.body,
+    portalRoot(),
   );
 }

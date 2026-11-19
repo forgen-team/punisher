@@ -2,6 +2,8 @@
 /dist/
 /internal/webui/dist/*
 !/internal/webui/dist/.gitkeep
+/internal/witems/dist/*
+!/internal/witems/dist/.gitkeep
 web/node_modules/
 
 # local data — never commit
