@@ -255,7 +255,7 @@ func run(cfg config.Config) error {
 		Store: st, Services: svc, Claude: status, AppVersion: version, DataDir: cfg.DataDir,
 	}
 	if app.Enabled {
-		guard := &witems.Guard{AuthServiceURL: app.AuthServiceURL, OwnerUserID: app.OwnerUserID, Origin: app.Origin}
+		guard := &witems.Guard{AuthServiceURL: app.AuthServiceURL, OwnerUserID: app.OwnerUserID, Origin: app.Origin, InternalToken: app.InternalToken}
 		deps.Guard = guard.Middleware
 		deps.App = witems.AppHandler(version)
 	} else {

@@ -9,6 +9,7 @@ package witems
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,9 +32,16 @@ var errUnauthenticated = errors.New("not authenticated")
 // Guard admits only the Witems owner. A missing or rejected session is 401,
 // another account is 403, a foreign Origin is 403, and project-setup being
 // unreachable is 503 (never treated as "allowed").
+//
+// Witems services (rss-server's "study this concept", mcp-server tools) call
+// the API inside the Docker network with X-Internal-Token + X-Internal-User-Id,
+// like the go-shared auth. nginx clears those headers on browser requests, so
+// this path is reachable only from inside; it too admits only the owner.
 type Guard struct {
 	AuthServiceURL string
 	OwnerUserID    string
+	// InternalToken is WITEMS_INTERNAL_TOKEN; empty disables service calls.
+	InternalToken string
 	// Origin is the Witems origin; a request with a different Origin header is refused.
 	Origin string
 	Client *http.Client
@@ -52,6 +60,10 @@ type cachedSession struct {
 // Middleware wraps the /v1 API.
 func (g *Guard) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serviceUser := r.Header.Get("X-Internal-User-Id"); serviceUser != "" {
+			g.serveService(w, r, serviceUser, next)
+			return
+		}
 		if origin := r.Header.Get("Origin"); origin != "" && origin != g.Origin {
 			writeError(w, http.StatusForbidden, "FORBIDDEN_ORIGIN", "forbidden origin")
 			return
@@ -75,6 +87,20 @@ func (g *Guard) Middleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// serveService handles a call from another Witems service.
+func (g *Guard) serveService(w http.ResponseWriter, r *http.Request, userID string, next http.Handler) {
+	token := r.Header.Get("X-Internal-Token")
+	if g.InternalToken == "" || subtle.ConstantTimeCompare([]byte(token), []byte(g.InternalToken)) != 1 {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid internal token")
+		return
+	}
+	if userID != g.OwnerUserID {
+		writeError(w, http.StatusForbidden, "OWNER_ONLY", "only the owner account can use this app")
+		return
+	}
+	next.ServeHTTP(w, r)
 }
 
 func (g *Guard) now() time.Time {

@@ -84,6 +84,42 @@ func TestGuard(t *testing.T) {
 	}
 }
 
+func TestGuardServiceCalls(t *testing.T) {
+	var calls atomic.Int32
+	auth := fakeAuth(t, &calls)
+	g := &Guard{AuthServiceURL: auth.URL, OwnerUserID: "owner-id", Origin: "https://witems.kr", InternalToken: "secret"}
+	h := guarded(g)
+	serve := func(token, user string) int {
+		req := httptest.NewRequest(http.MethodPost, "/v1/study-requests", nil)
+		req.Header.Set("X-Internal-Token", token)
+		req.Header.Set("X-Internal-User-Id", user)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	if got := serve("secret", "owner-id"); got != http.StatusNoContent {
+		t.Fatalf("owner service call: %d", got)
+	}
+	if got := serve("wrong", "owner-id"); got != http.StatusUnauthorized {
+		t.Fatalf("wrong token: %d", got)
+	}
+	if got := serve("secret", "other-id"); got != http.StatusForbidden {
+		t.Fatalf("another user via service call: %d", got)
+	}
+	if calls.Load() != 0 {
+		t.Fatal("service calls must not consult the session service")
+	}
+	// no token configured: service calls are off even with an empty header match
+	off := guarded(&Guard{AuthServiceURL: auth.URL, OwnerUserID: "owner-id", Origin: "https://witems.kr"})
+	req := httptest.NewRequest(http.MethodGet, "/v1/today", nil)
+	req.Header.Set("X-Internal-User-Id", "owner-id")
+	rec := httptest.NewRecorder()
+	off.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("service call without a configured token: %d", rec.Code)
+	}
+}
+
 func TestGuardCachesOnlySuccess(t *testing.T) {
 	var calls atomic.Int32
 	auth := fakeAuth(t, &calls)

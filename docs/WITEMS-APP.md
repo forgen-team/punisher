@@ -13,6 +13,8 @@ Punisher는 두 가지로 돈다.
 
 앱 안의 사용자는 두 모드 모두 `local` 한 명이다. Witems 모드는 그 앞에서 Witems 세션이 오너인지만 확인한다.
 
+Witems 의 다른 서비스(rss-server 의 '이 개념 공부하기'·질문 만들기, mcp-server 도구)는 Docker 내부 주소(`http://witems-app-punisher:8080/v1/…`)로 `X-Internal-Token`(= `WITEMS_INTERNAL_TOKEN`) + `X-Internal-User-Id` 를 보내 부른다. 이 경로도 오너만 통과하고, nginx 가 브라우저 요청에서 이 머리글을 지우므로 밖에서는 쓸 수 없다.
+
 ## 경로 (컨테이너 :8080)
 
 | 경로 | 내용 | 로그인 |
