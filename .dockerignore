@@ -1,0 +1,13 @@
+.git
+dist
+web/node_modules
+internal/webui/dist/*
+!internal/webui/dist/.gitkeep
+internal/witems/dist/*
+!internal/witems/dist/.gitkeep
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.*
+.sync

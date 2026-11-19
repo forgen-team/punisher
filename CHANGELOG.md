@@ -1,5 +1,11 @@
 # 바뀐 점
 
+## 다음 버전 (작업 중)
+
+- **Witems 앱 모드**(`PUNISHER_MODE=witems`, `docs/WITEMS-APP.md`): Witems 셸 안의 `/apps/punisher` 로 뜨는 컨테이너. Witems 로그인(오너 계정만), 생성은 claude-gateway, 화면은 Module Federation remote(Shadow DOM). Witems 안에서만 RSS 연동(오늘의 글 해설·최근 읽은 글·RSS 에서 강의 시작·챕터 제안 신호).
+- 이미지 `ghcr.io/forgen-team/punisher`(CI), Witems PostgreSQL 기록을 옮기는 `punisher-witems-import`.
+- 단독판은 바뀌지 않아요(지식 지도 스타일을 전역 CSS 로 옮긴 것 외).
+
 ## v0.9.1 (2026-11-17)
 
 - 영어 화면에서 Claude 실패 안내(미설치·미로그인·사용 한도·응답 시간 초과 등)가 한국어로 나오던 문제를 고쳤어요. 강의 생성 실패 사유, 강의 질문 답·대체 설명의 실패 안내가 화면 언어를 따라요.

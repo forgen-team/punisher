@@ -283,7 +283,11 @@ func run(cfg config.Config) error {
 	} else {
 		reportGateway(ctx, status)
 	}
-	fmt.Printf(tr("\nPunisher 실행 중: %s\n데이터: %s\n종료하려면 이 창에서 Ctrl+C 를 누르세요.\n\n", "\nPunisher is running: %s\nData: %s\nPress Ctrl+C in this window to quit.\n\n"), url, dbPath)
+	if app.Enabled {
+		log.Printf("punisher %s (Witems app) listening on %s, data %s", version, ln.Addr(), dbPath)
+	} else {
+		fmt.Printf(tr("\nPunisher 실행 중: %s\n데이터: %s\n종료하려면 이 창에서 Ctrl+C 를 누르세요.\n\n", "\nPunisher is running: %s\nData: %s\nPress Ctrl+C in this window to quit.\n\n"), url, dbPath)
+	}
 	if cfg.OpenBrowser {
 		openBrowser(url)
 	}

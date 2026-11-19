@@ -1,5 +1,9 @@
 # witems ↔ 단독판 동기화
 
+> **2026-11-19 부터 이 저장소가 원본이다.** Witems 는 Punisher 를 이 저장소의 이미지(Witems 앱 모드, `docs/WITEMS-APP.md`)로 띄우고,
+> Witems 안의 복사본(`apps/punisher-server`, `apps/web/src/**/punisher/**`)은 지운다. 아래 표와 순서는 그 전까지의 기록이다.
+> 마지막 이식: witems `e336d89` 의 RSS 전용분(챕터 제안 신호 `ReadTopics`·`SuggestReading`, 글 해설·최근 읽은 글·`/start` 화면)을 Witems 앱 모드에서만 켜지게 옮김.
+
 Punisher 기능은 witems(`apps/punisher-server`, `apps/web/src/**/punisher/**`)와 이 저장소에 **같이** 들어갑니다.
 witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입니다. 이 문서는 이식할 때마다 따르는 순서와,
 일부러 다르게 둔 부분(갈라진 곳) 목록입니다.
