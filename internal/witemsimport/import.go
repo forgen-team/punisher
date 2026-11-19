@@ -42,13 +42,35 @@ type TableReport struct {
 // Report lists every table in SQLite order.
 type Report []TableReport
 
+// OtherUsers is the number of rows skipped because they belong to another Witems user.
+func (r Report) OtherUsers() int {
+	n := 0
+	for _, t := range r {
+		n += t.OtherUsers
+	}
+	return n
+}
+
 type column struct{ name, pgType string }
 
-// Run copies pg into out. out must be a migrated, seeded, otherwise empty database.
+// querier is what copyTable reads PostgreSQL with (a read-only snapshot transaction).
+type querier interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}
+
+// Run copies pg into out. out must be a migrated, seeded, otherwise empty
+// database. Every table is read from one REPEATABLE READ snapshot, so parents
+// and children match even if Witems is still writing.
 func Run(ctx context.Context, pg, out *sql.DB, ownerUserID string) (Report, error) {
+	ownerUserID = strings.ToLower(strings.TrimSpace(ownerUserID))
 	if ownerUserID == "" {
 		return nil, fmt.Errorf("owner user id is required")
 	}
+	snapshot, err := pg.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true})
+	if err != nil {
+		return nil, fmt.Errorf("postgres snapshot: %w", err)
+	}
+	defer func() { _ = snapshot.Rollback() }()
 	tables, err := sqliteTables(ctx, out)
 	if err != nil {
 		return nil, err
@@ -75,7 +97,7 @@ func Run(ctx context.Context, pg, out *sql.DB, ownerUserID string) (Report, erro
 		if skipTables[table] {
 			continue
 		}
-		r, err := copyTable(ctx, pg, tx, table, ownerUserID)
+		r, err := copyTable(ctx, snapshot, tx, table, ownerUserID)
 		if err != nil {
 			return report, fmt.Errorf("%s: %w", table, err)
 		}
@@ -124,7 +146,7 @@ func sqliteColumns(ctx context.Context, tx *sql.Tx, table string) ([]string, err
 	return out, rows.Err()
 }
 
-func pgColumns(ctx context.Context, pg *sql.DB, table string) ([]column, error) {
+func pgColumns(ctx context.Context, pg querier, table string) ([]column, error) {
 	rows, err := pg.QueryContext(ctx, `SELECT column_name, data_type FROM information_schema.columns
 		WHERE table_schema = 'public' AND table_name = $1 ORDER BY ordinal_position`, table)
 	if err != nil {
@@ -169,7 +191,7 @@ func isUserColumn(name string) bool {
 	return name == "user_id" || strings.HasSuffix(name, "_user_id")
 }
 
-func copyTable(ctx context.Context, pg *sql.DB, tx *sql.Tx, table, owner string) (TableReport, error) {
+func copyTable(ctx context.Context, pg querier, tx *sql.Tx, table, owner string) (TableReport, error) {
 	r := TableReport{Table: table}
 	pgCols, err := pgColumns(ctx, pg, table)
 	if err != nil {
@@ -239,7 +261,7 @@ rowLoop:
 			if !isUserColumn(c.name) || values[i] == nil {
 				continue
 			}
-			if fmt.Sprint(values[i]) != owner {
+			if !strings.EqualFold(strings.TrimSpace(fmt.Sprint(values[i])), owner) {
 				r.OtherUsers++
 				continue rowLoop
 			}

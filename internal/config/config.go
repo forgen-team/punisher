@@ -141,6 +141,8 @@ func (w Witems) Validate() error {
 		return errors.New("PUNISHER_MODE=witems needs PUNISHER_WITEMS_ORIGIN")
 	case w.GatewayURL == "":
 		return errors.New("PUNISHER_MODE=witems needs CLAUDE_GATEWAY_URL")
+	case w.InternalToken == "":
+		return errors.New("PUNISHER_MODE=witems needs WITEMS_INTERNAL_TOKEN (claude-gateway, rss-server)")
 	}
 	return nil
 }

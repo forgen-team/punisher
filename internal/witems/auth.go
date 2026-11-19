@@ -14,16 +14,23 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
 const (
 	sessionCookie = "WITEMS_SESSION"
 	sessionTTL    = 5 * time.Minute
-	authTimeout   = 3 * time.Second
-	maxCached     = 1024
+	// rejectedTTL keeps a rejected session for a moment, so a burst of requests
+	// with a bad cookie does not become a burst of calls to project-setup.
+	rejectedTTL = 10 * time.Second
+	authTimeout = 3 * time.Second
+	maxCached   = 1024
 )
 
 // errUnauthenticated: no session, or project-setup said the session is not valid.
@@ -42,19 +49,29 @@ type Guard struct {
 	OwnerUserID    string
 	// InternalToken is WITEMS_INTERNAL_TOKEN; empty disables service calls.
 	InternalToken string
-	// Origin is the Witems origin; a request with a different Origin header is refused.
+	// Origin is the Witems origin (comma-separated for several hosts); a request with a different Origin header is refused.
 	Origin string
 	Client *http.Client
 	// Now is for tests.
 	Now func() time.Time
 
-	mu    sync.Mutex
-	cache map[string]cachedSession
+	mu      sync.Mutex
+	cache   map[string]cachedSession
+	flights singleflight.Group
 }
 
 type cachedSession struct {
-	userID  string
+	userID  string // "" = rejected
 	expires time.Time
+}
+
+func (g *Guard) originAllowed(origin string) bool {
+	for _, allowed := range strings.Split(g.Origin, ",") {
+		if strings.EqualFold(strings.TrimSpace(allowed), origin) {
+			return true
+		}
+	}
+	return false
 }
 
 // Middleware wraps the /v1 API.
@@ -64,7 +81,7 @@ func (g *Guard) Middleware(next http.Handler) http.Handler {
 			g.serveService(w, r, serviceUser, next)
 			return
 		}
-		if origin := r.Header.Get("Origin"); origin != "" && origin != g.Origin {
+		if origin := r.Header.Get("Origin"); origin != "" && !g.originAllowed(origin) {
 			writeError(w, http.StatusForbidden, "FORBIDDEN_ORIGIN", "forbidden origin")
 			return
 		}
@@ -79,9 +96,11 @@ func (g *Guard) Middleware(next http.Handler) http.Handler {
 			writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "login required")
 			return
 		case err != nil:
+			log.Printf("witems auth: %v", err)
 			writeError(w, http.StatusServiceUnavailable, "AUTH_UNAVAILABLE", "could not check the login")
 			return
 		case userID != g.OwnerUserID:
+			log.Printf("witems auth: refused a non-owner account on %s %s", r.Method, r.URL.Path)
 			writeError(w, http.StatusForbidden, "OWNER_ONLY", "only the owner account can use this app")
 			return
 		}
@@ -97,6 +116,7 @@ func (g *Guard) serveService(w http.ResponseWriter, r *http.Request, userID stri
 		return
 	}
 	if userID != g.OwnerUserID {
+		log.Printf("witems auth: refused a service call for a non-owner user on %s %s", r.Method, r.URL.Path)
 		writeError(w, http.StatusForbidden, "OWNER_ONLY", "only the owner account can use this app")
 		return
 	}
@@ -110,29 +130,45 @@ func (g *Guard) now() time.Time {
 	return time.Now()
 }
 
-// userFor returns the Witems user id of a session (cached for sessionTTL).
-// Only successful checks are cached, so a revoked or newly valid session is
-// seen within sessionTTL at most.
+// userFor returns the Witems user id of a session. A valid session is cached
+// for sessionTTL (a revoked session is seen within that), a rejected one for
+// rejectedTTL; project-setup failures are not cached. Concurrent checks of the
+// same token share one call.
 func (g *Guard) userFor(ctx context.Context, token string) (string, error) {
 	now := g.now()
 	g.mu.Lock()
 	if c, ok := g.cache[token]; ok && now.Before(c.expires) {
 		g.mu.Unlock()
+		if c.userID == "" {
+			return "", errUnauthenticated
+		}
 		return c.userID, nil
 	}
 	g.mu.Unlock()
 
-	userID, err := g.lookup(ctx, token)
+	v, err, _ := g.flights.Do(token, func() (any, error) {
+		userID, err := g.lookup(context.WithoutCancel(ctx), token)
+		switch {
+		case err == nil:
+			g.remember(token, cachedSession{userID: userID, expires: now.Add(sessionTTL)})
+		case errors.Is(err, errUnauthenticated):
+			g.remember(token, cachedSession{expires: now.Add(rejectedTTL)})
+		}
+		return userID, err
+	})
 	if err != nil {
 		return "", err
 	}
+	return v.(string), nil
+}
+
+func (g *Guard) remember(token string, c cachedSession) {
 	g.mu.Lock()
+	defer g.mu.Unlock()
 	if g.cache == nil || len(g.cache) >= maxCached {
 		g.cache = make(map[string]cachedSession)
 	}
-	g.cache[token] = cachedSession{userID: userID, expires: now.Add(sessionTTL)}
-	g.mu.Unlock()
-	return userID, nil
+	g.cache[token] = c
 }
 
 func (g *Guard) lookup(ctx context.Context, token string) (string, error) {
@@ -145,14 +181,18 @@ func (g *Guard) lookup(ctx context.Context, token string) (string, error) {
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
 	client := g.Client
 	if client == nil {
-		client = http.DefaultClient
+		client = noRedirectClient
 	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("auth service: %w", err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+	defer func() {
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
+		resp.Body.Close()
+	}()
+	// a redirect (to a login page) also means "not signed in"
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden || (resp.StatusCode >= 300 && resp.StatusCode < 400) {
 		return "", errUnauthenticated
 	}
 	if resp.StatusCode != http.StatusOK {
@@ -171,6 +211,9 @@ func (g *Guard) lookup(ctx context.Context, token string) (string, error) {
 	}
 	return body.User.ID, nil
 }
+
+// noRedirectClient never follows redirects: project-setup answers /v1/auth/me directly.
+var noRedirectClient = &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 
 // writeError uses the API's error envelope ({"error": {"code", "message"}}).
 func writeError(w http.ResponseWriter, status int, code, message string) {

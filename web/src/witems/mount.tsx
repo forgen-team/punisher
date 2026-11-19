@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import css from "@/src/styles/globals.css?inline";
 import { AppProviders, AppRoutes } from "@/src/app/App";
-import { setWitemsRuntime } from "@/src/shared/config/runtime";
+import { setWitemsRuntime, witemsRuntime, type WitemsRuntime } from "@/src/shared/config/runtime";
 import { ScrollToTopOnNavigate } from "@/src/shared/lib/router";
 import type { AppContext, Unmount } from "./contract";
 import { RouteSync } from "./RouteSync";
@@ -19,7 +19,8 @@ const ROOT_CLASS = ROOT_SELECTOR.slice(1);
  * tokens and dark mode apply to both.
  */
 export function mount(el: HTMLElement, ctx: AppContext): Unmount {
-  setWitemsRuntime({ apiBase: ctx.apiBase, portal: ctx.portal, setTitle: (title) => ctx.setTitle(title) });
+  const runtime: WitemsRuntime = { apiBase: ctx.apiBase, portal: ctx.portal, setTitle: (title) => ctx.setTitle(title) };
+  setWitemsRuntime(runtime);
 
   const style = document.createElement("style");
   style.textContent = css;
@@ -61,6 +62,7 @@ export function mount(el: HTMLElement, ctx: AppContext): Unmount {
       node.classList.remove(ROOT_CLASS);
       node.removeAttribute("data-theme");
     }
-    setWitemsRuntime(null);
+    // 다시 시도 등으로 새 mount 가 먼저 runtime 을 바꿨으면 그대로 둔다
+    if (witemsRuntime() === runtime) { setWitemsRuntime(null); }
   };
 }

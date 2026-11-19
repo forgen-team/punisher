@@ -13,6 +13,8 @@ export function RouteSync({ ctx }: { ctx: AppContext }) {
   const navigate = useNavigate();
   const type = useNavigationType();
   const first = useRef(true);
+  const current = useRef("");
+  current.current = `${location.pathname}${location.search}`;
 
   useEffect(() => {
     if (first.current) {
@@ -27,6 +29,9 @@ export function RouteSync({ ctx }: { ctx: AppContext }) {
   useEffect(
     () =>
       ctx.onRouteChange((path, search) => {
+        // 앱이 ctx.navigate 로 바꾼 주소도 여기로 돌아온다 — 이미 그 자리면 다시 이동하지 않는다
+        // (불필요한 REPLACE 가 쿼리만 바뀐 이동을 맨 위로 올리지 않게).
+        if (`${path}${search}` === current.current) { return; }
         navigate(`${path}${search}`, { replace: true });
       }),
     [ctx, navigate],

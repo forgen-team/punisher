@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io/fs"
+	"log"
 	"mime"
 	"net/http"
 	"path"
@@ -64,6 +65,9 @@ func AppHandler(version string) http.Handler {
 
 func appHandler(sub fs.FS, version string) http.Handler {
 	etags := computeETags(sub)
+	if _, ok := etags["remoteEntry.js"]; !ok {
+		log.Printf("witems: no remoteEntry.js in the embedded build — run `make witems-web` (the shell will show the load-failed screen)")
+	}
 	manifest := map[string]any{"version": version}
 	for k, v := range Manifest {
 		manifest[k] = v

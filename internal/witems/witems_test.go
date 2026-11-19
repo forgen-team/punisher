@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"testing/fstest"
@@ -138,8 +139,68 @@ func TestGuardCachesOnlySuccess(t *testing.T) {
 	}
 	call(h, "expired", "")
 	call(h, "expired", "")
+	if calls.Load() != 3 {
+		t.Fatalf("a rejected session is remembered for a moment, calls=%d", calls.Load())
+	}
+	now = now.Add(rejectedTTL + time.Second)
+	call(h, "expired", "")
 	if calls.Load() != 4 {
-		t.Fatalf("rejected sessions must not be cached, calls=%d", calls.Load())
+		t.Fatalf("a rejected session is checked again after rejectedTTL, calls=%d", calls.Load())
+	}
+	call(h, "down", "")
+	call(h, "down", "")
+	if calls.Load() != 6 {
+		t.Fatalf("auth service failures must not be cached, calls=%d", calls.Load())
+	}
+}
+
+func TestGuardSharesConcurrentChecks(t *testing.T) {
+	var calls atomic.Int32
+	release := make(chan struct{})
+	auth := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		<-release
+		_, _ = w.Write([]byte(`{"user":{"id":"owner-id"}}`))
+	}))
+	t.Cleanup(auth.Close)
+	h := guarded(&Guard{AuthServiceURL: auth.URL, OwnerUserID: "owner-id", Origin: "https://witems.kr"})
+	var wg sync.WaitGroup
+	for range 5 {
+		wg.Add(1)
+		go func() { defer wg.Done(); call(h, "owner", "") }()
+	}
+	time.Sleep(100 * time.Millisecond)
+	close(release)
+	wg.Wait()
+	if calls.Load() != 1 {
+		t.Fatalf("5 concurrent requests made %d auth calls, want 1", calls.Load())
+	}
+}
+
+func TestGuardRedirectIsNotSignedIn(t *testing.T) {
+	auth := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/login", http.StatusFound)
+	}))
+	t.Cleanup(auth.Close)
+	h := guarded(&Guard{AuthServiceURL: auth.URL, OwnerUserID: "owner-id", Origin: "https://witems.kr"})
+	if status, code := call(h, "owner", ""); status != http.StatusUnauthorized || code != "UNAUTHORIZED" {
+		t.Fatalf("got %d %q", status, code)
+	}
+}
+
+func TestGuardOrigins(t *testing.T) {
+	var calls atomic.Int32
+	auth := fakeAuth(t, &calls)
+	h := guarded(&Guard{AuthServiceURL: auth.URL, OwnerUserID: "owner-id", Origin: "https://witems.kr, https://www.witems.kr"})
+	for origin, want := range map[string]int{
+		"https://witems.kr":      http.StatusNoContent,
+		"https://WWW.witems.kr":  http.StatusNoContent,
+		"null":                   http.StatusForbidden,
+		"https://witems.kr.evil": http.StatusForbidden,
+	} {
+		if status, _ := call(h, "owner", origin); status != want {
+			t.Errorf("Origin %q: %d, want %d", origin, status, want)
+		}
 	}
 }
 

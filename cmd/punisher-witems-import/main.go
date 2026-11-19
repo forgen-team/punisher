@@ -28,13 +28,14 @@ func main() {
 	owner := flag.String("owner", os.Getenv("PUNISHER_OWNER_USER_ID"), "Witems user id of the owner (becomes the local user)")
 	dataDir := flag.String("data-dir", envOr("PUNISHER_DATA_DIR", "/data"), "folder for punisher.db (must not contain one)")
 	locale := flag.String("locale", envOr("PUNISHER_LOCALE", "ko"), "default language for settings that were never saved")
+	allowOthers := flag.Bool("allow-other-users", false, "keep going when rows of other Witems users are skipped (default: fail — usually a wrong -owner)")
 	flag.Parse()
 	pgURL := os.Getenv("WITEMS_PUNISHER_PG_URL")
 	if pgURL == "" || *owner == "" {
 		fmt.Fprintln(os.Stderr, "set WITEMS_PUNISHER_PG_URL and -owner (or PUNISHER_OWNER_USER_ID)")
 		os.Exit(2)
 	}
-	if err := run(pgURL, *owner, *dataDir, *locale); err != nil {
+	if err := run(pgURL, *owner, *dataDir, *locale, *allowOthers); err != nil {
 		fmt.Fprintln(os.Stderr, "import failed:", err)
 		os.Exit(1)
 	}
@@ -47,7 +48,7 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
-func run(pgURL, owner, dataDir, locale string) error {
+func run(pgURL, owner, dataDir, locale string, allowOthers bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	path := filepath.Join(dataDir, "punisher.db")
@@ -56,6 +57,10 @@ func run(pgURL, owner, dataDir, locale string) error {
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
+	// Build next to it and rename at the end, so a killed import never leaves a
+	// half-filled punisher.db the app would start on.
+	work := path + ".importing"
+	removeDB(work)
 	pg, err := sql.Open("pgx", pgURL)
 	if err != nil {
 		return err
@@ -66,7 +71,7 @@ func run(pgURL, owner, dataDir, locale string) error {
 	}
 
 	// The same start-up steps as the app: migrations, then the curriculum seed.
-	st, err := store.Open(path)
+	st, err := store.Open(work)
 	if err != nil {
 		return err
 	}
@@ -96,14 +101,31 @@ func run(pgURL, owner, dataDir, locale string) error {
 			fmt.Println()
 		}
 	}
+	if err == nil && report.OtherUsers() > 0 && !allowOthers {
+		err = fmt.Errorf("%d rows belong to other Witems users — check -owner (or pass -allow-other-users)", report.OtherUsers())
+	}
 	if err != nil {
-		// leave no half-filled database behind (the transaction was rolled back)
 		_ = st.Close()
-		for _, suffix := range []string{"", "-wal", "-shm"} {
-			_ = os.Remove(path + suffix)
-		}
+		removeDB(work)
 		return err
 	}
+	// checkpoint the WAL into the file, close, then put it in place
+	if _, err := st.DB().ExecContext(ctx, `PRAGMA wal_checkpoint(TRUNCATE)`); err != nil {
+		return err
+	}
+	if err := st.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(work, path); err != nil {
+		return err
+	}
+	removeDB(work) // stray -wal/-shm
 	fmt.Println("done:", path)
 	return nil
+}
+
+func removeDB(path string) {
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		_ = os.Remove(path + suffix)
+	}
 }
