@@ -3,6 +3,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -52,6 +53,30 @@ type Config struct {
 	// pass review (lecture quality design v2.2 §2.2; also the lectures already
 	// in a user's database). Runs only when SchedulerEnabled.
 	BackfillReviewEnabled bool
+
+	// Witems is the Witems app mode (PUNISHER_MODE=witems): the app runs as a
+	// container inside the Witems shell instead of on this machine. See
+	// docs/WITEMS-APP.md.
+	Witems Witems
+}
+
+// Witems app mode settings. Only read when PUNISHER_MODE=witems.
+type Witems struct {
+	Enabled bool
+	// Addr to listen on inside the container (PUNISHER_LISTEN, default 0.0.0.0:8080).
+	Addr string
+	// AuthServiceURL is Witems project-setup; the WITEMS_SESSION cookie is checked at {AuthServiceURL}/v1/auth/me.
+	AuthServiceURL string
+	// OwnerUserID is the Witems user allowed to use the app (PUNISHER_OWNER_USER_ID); others get 403.
+	OwnerUserID string
+	// Origin is the Witems origin (PUNISHER_WITEMS_ORIGIN, e.g. https://witems.kr). A request carrying another Origin is refused.
+	Origin string
+	// GatewayURL is the host claude-gateway (CLAUDE_GATEWAY_URL); generation goes there instead of a local CLI.
+	GatewayURL string
+	// InternalToken authenticates service-to-service calls (WITEMS_INTERNAL_TOKEN: claude-gateway, rss-server).
+	InternalToken string
+	// RSSServerURL enables reading signals for chapter suggestions (PUNISHER_RSS_SERVER_URL; empty = off).
+	RSSServerURL string
 }
 
 // Load reads PUNISHER_* env vars over the defaults.
@@ -87,7 +112,37 @@ func Load() Config {
 		DailyCheckTokenLimit: readInt("PUNISHER_DAILY_CHECK_TOKEN_LIMIT", 0),
 
 		BackfillReviewEnabled: readEnv("PUNISHER_BACKFILL_REVIEW_ENABLED", "true") != "false",
+
+		Witems: loadWitems(),
 	}
+}
+
+func loadWitems() Witems {
+	return Witems{
+		Enabled:        strings.EqualFold(strings.TrimSpace(os.Getenv("PUNISHER_MODE")), "witems"),
+		Addr:           readEnv("PUNISHER_LISTEN", "0.0.0.0:8080"),
+		AuthServiceURL: strings.TrimRight(strings.TrimSpace(os.Getenv("AUTH_SERVICE_URL")), "/"),
+		OwnerUserID:    strings.TrimSpace(os.Getenv("PUNISHER_OWNER_USER_ID")),
+		Origin:         strings.TrimRight(strings.TrimSpace(os.Getenv("PUNISHER_WITEMS_ORIGIN")), "/"),
+		GatewayURL:     strings.TrimRight(strings.TrimSpace(os.Getenv("CLAUDE_GATEWAY_URL")), "/"),
+		InternalToken:  strings.TrimSpace(os.Getenv("WITEMS_INTERNAL_TOKEN")),
+		RSSServerURL:   strings.TrimRight(strings.TrimSpace(os.Getenv("PUNISHER_RSS_SERVER_URL")), "/"),
+	}
+}
+
+// Validate reports the first missing setting the Witems mode cannot start without.
+func (w Witems) Validate() error {
+	switch {
+	case w.AuthServiceURL == "":
+		return errors.New("PUNISHER_MODE=witems needs AUTH_SERVICE_URL")
+	case w.OwnerUserID == "":
+		return errors.New("PUNISHER_MODE=witems needs PUNISHER_OWNER_USER_ID")
+	case w.Origin == "":
+		return errors.New("PUNISHER_MODE=witems needs PUNISHER_WITEMS_ORIGIN")
+	case w.GatewayURL == "":
+		return errors.New("PUNISHER_MODE=witems needs CLAUDE_GATEWAY_URL")
+	}
+	return nil
 }
 
 // otherModel is the regrade default: of the lecture and fast models, the one grading does not use.
