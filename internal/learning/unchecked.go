@@ -27,7 +27,7 @@ type UncheckedCard struct {
 func LatestVersions(in []UncheckedLecture, newer map[string]NewerVersion) []UncheckedLecture {
 	out := make([]UncheckedLecture, 0, len(in))
 	for _, u := range in {
-		if n, ok := newest(u.LectureID, newer); ok && n.Item.ConceptID == u.ConceptID {
+		if n, ok := newest(u.LectureID, newer); ok && n.Checkable && n.Item.ConceptID == u.ConceptID {
 			u.LectureID, u.Title = n.Item.LectureID, n.Item.Title
 		}
 		out = append(out, u)

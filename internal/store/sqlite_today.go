@@ -216,14 +216,17 @@ func (s *SQLiteStore) regeneratedVersions(ctx context.Context, userID string) (m
 	rows, err := collect(s.c().query(ctx, `
 		SELECT k.parent_lecture_id, c.id, c.concept_id, c.title, c.estimated_minutes,
 		       CASE WHEN c.minutes_estimated THEN NULL ELSE c.content END,
-		       EXISTS (SELECT 1 FROM user_lecture_progress q WHERE q.user_id = $1 AND q.lecture_id = c.id)
+		       EXISTS (SELECT 1 FROM user_lecture_progress q WHERE q.user_id = $1 AND q.lecture_id = c.id),
+		       (`+checkableLecture("c", "$1")+`)
 		FROM lecture_links k
 		JOIN lectures c ON c.id = k.child_lecture_id
-		WHERE k.user_id = $1 AND k.kind = $2 AND c.status = 'published'
+		-- Only a version this user can open: a link moved to this identity may still point at a
+		-- lecture made for an earlier one (swapped in, it answered 404 on 확인하기 and 이어 보기).
+		WHERE k.user_id = $1 AND k.kind = $2 AND c.status = 'published' AND `+openableLecture("c", "$1")+`
 		ORDER BY k.created_at`, userID, LinkRegeneratedKind), func(rs rowScanner) (row, error) {
 		var r row
 		var legacy json.RawMessage
-		err := rs.Scan(&r.parent, &r.n.Item.LectureID, &r.n.Item.ConceptID, &r.n.Item.Title, &r.n.Item.EstimatedMinutes, rawJSON(&legacy), &r.n.Started)
+		err := rs.Scan(&r.parent, &r.n.Item.LectureID, &r.n.Item.ConceptID, &r.n.Item.Title, &r.n.Item.EstimatedMinutes, rawJSON(&legacy), &r.n.Started, &r.n.Checkable)
 		if err == nil && legacy != nil {
 			r.n.Item.EstimatedMinutes = contentMinutes(legacy, r.n.Item.EstimatedMinutes)
 		}

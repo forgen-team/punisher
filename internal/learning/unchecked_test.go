@@ -23,11 +23,14 @@ func TestUncheckedCards(t *testing.T) {
 
 func TestLatestVersions(t *testing.T) {
 	newer := map[string]NewerVersion{
-		"v1": {Item: ResumeItem{LectureID: "v2", ConceptID: "c", Title: "2판"}}, "v2": {Item: ResumeItem{LectureID: "v3", ConceptID: "c", Title: "3판"}},
-		"y": {Item: ResumeItem{LectureID: "other", ConceptID: "d"}},
+		"v1": {Item: ResumeItem{LectureID: "v2", ConceptID: "c", Title: "2판"}, Checkable: true},
+		"v2": {Item: ResumeItem{LectureID: "v3", ConceptID: "c", Title: "3판"}, Checkable: true},
+		"y":  {Item: ResumeItem{LectureID: "other", ConceptID: "d"}, Checkable: true},
+		// A newer version the check cannot take (its objectives retired): the lecture stays.
+		"z": {Item: ResumeItem{LectureID: "z2", ConceptID: "c"}},
 	}
-	got := LatestVersions([]UncheckedLecture{{LectureID: "v1", ConceptID: "c", Title: "1판"}, {LectureID: "x", Title: "그대로"}, {LectureID: "y", ConceptID: "c"}}, newer)
-	if got[0].LectureID != "v3" || got[0].Title != "3판" || got[1].LectureID != "x" || got[2].LectureID != "y" {
+	got := LatestVersions([]UncheckedLecture{{LectureID: "v1", ConceptID: "c", Title: "1판"}, {LectureID: "x", Title: "그대로"}, {LectureID: "y", ConceptID: "c"}, {LectureID: "z", ConceptID: "c"}}, newer)
+	if got[0].LectureID != "v3" || got[0].Title != "3판" || got[1].LectureID != "x" || got[2].LectureID != "y" || got[3].LectureID != "z" {
 		t.Fatalf("got %+v", got)
 	}
 }

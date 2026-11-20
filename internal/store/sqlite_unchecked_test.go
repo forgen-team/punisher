@@ -164,3 +164,28 @@ func TestTodaySkipsLecturesTheCheckCannotTake(t *testing.T) {
 		t.Fatalf("unchecked = %+v, want none (the check cannot take them)", d.Unchecked)
 	}
 }
+
+// 이 계정으로 옮겨진 '다시 만든 버전' 링크가 예전 계정의 강의를 가리켜도, 오늘의 확인하기는 그 강의로
+// 바뀌지 않는다(그쪽은 이 사용자가 열 수 없어 404) — 원래 강의 그대로 남는다.
+func TestTodayKeepsTheLectureWhenTheNewerVersionIsNotTheUsers(t *testing.T) {
+	s, _ := newTestStore(t)
+	ctx := context.Background()
+	user := testUser
+	cA, _ := twoConcepts(t, s)
+	mine := checkableRaw(t, s, user, cA, "내 강의", "")
+	theirs := checkableRaw(t, s, "old-identity", cA, "예전 계정이 다시 만든 강의", "")
+	if _, err := s.c().exec(ctx, `INSERT INTO user_lecture_progress (user_id, lecture_id, anchor, percent, last_seen_at, completed_at)
+		VALUES ($1, $2, 'principles', 100, NOW(), NOW())`, user, mine); err != nil {
+		t.Fatalf("progress: %v", err)
+	}
+	if err := s.LinkDeeper(ctx, DeeperLink{UserID: user, ParentLecture: mine, ChildLectureID: theirs, ChildConceptID: cA, Kind: LinkRegeneratedKind}); err != nil {
+		t.Fatalf("link: %v", err)
+	}
+	d, err := s.LoadToday(ctx, user, time.Now())
+	if err != nil {
+		t.Fatalf("load today: %v", err)
+	}
+	if len(d.Unchecked) != 1 || d.Unchecked[0].LectureID != mine {
+		t.Fatalf("unchecked = %+v, want the user's own lecture %s", d.Unchecked, mine)
+	}
+}

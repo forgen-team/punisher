@@ -6,6 +6,9 @@ type NewerVersion struct {
 	// Started: the user already has progress on the new version (it shows up,
 	// or was finished, on its own), so the old row is just dropped.
 	Started bool
+	// Checkable: the check can take the new version too (its concept and objectives are still
+	// active and visible); only then does 확인하기 move to it.
+	Checkable bool
 }
 
 // ReplaceRegenerated points 이어보기 at the newest regenerated version: an
