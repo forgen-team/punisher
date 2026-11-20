@@ -79,9 +79,11 @@ export function isIgnoredTapTarget(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest(IGNORE_TAP) !== null;
 }
 
-function caretAt(x: number, y: number): { node: Node; offset: number } | null {
+function caretAt(x: number, y: number, root?: Node): { node: Node; offset: number } | null {
   if (typeof document.caretPositionFromPoint === "function") {
-    const pos = document.caretPositionFromPoint(x, y);
+    // Witems 는 화면을 Shadow DOM 에 띄운다 — shadowRoots 를 넘겨야 그 안의 글자를 돌려준다(미지원 브라우저는 무시).
+    const shadowRoots = root instanceof ShadowRoot ? [root] : [];
+    const pos = document.caretPositionFromPoint(x, y, { shadowRoots } as { shadowRoots: ShadowRoot[] });
     return pos ? { node: pos.offsetNode, offset: pos.offset } : null;
   }
   if (typeof document.caretRangeFromPoint === "function") {
@@ -100,7 +102,7 @@ export interface TappedSentence {
 
 /** 화면 좌표(탭)의 문장 — 글자 위가 아니거나 문단을 못 찾으면 null. */
 export function sentenceAtPoint(container: HTMLElement, x: number, y: number): TappedSentence | null {
-  const caret = caretAt(x, y);
+  const caret = caretAt(x, y, container.getRootNode());
   if (!caret || caret.node.nodeType !== Node.TEXT_NODE || !container.contains(caret.node)) { return null; }
   const host = caret.node.parentElement;
   const paragraph = host?.closest(PARAGRAPH) ?? host?.closest("[data-lecture-anchor]");
