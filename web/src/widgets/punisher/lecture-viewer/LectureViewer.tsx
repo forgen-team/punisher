@@ -11,10 +11,12 @@ import { CheckStartButton, CheckStartError, KnownVerifyChoice, useKnownChoice, u
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import { useLectureProgress } from "@/src/features/punisher/lecture-progress";
 import { PretestPanel, usePretest } from "@/src/features/punisher/pretest";
-import { SelectionExplain } from "@/src/features/punisher/reading-assist";
+import { ReadingAssist, ReadingThreadsProvider, ThreadCountBadge } from "@/src/features/punisher/reading-assist";
+import { LevelSuggestionCard } from "@/src/features/punisher/level-suggestion";
 import { LectureActionStatus, LectureWrapup, useLectureActions } from "@/src/features/punisher/lecture-actions";
 import { describePunisherError, type DocumentLink, type SectionFix } from "@/src/shared/api/punisher";
 import { DeeperLecturesSection, ParentLectureLink } from "./ui/DeeperLectures";
+import { DeepLectureStatus } from "./ui/DeepLectureStatus";
 import { FlaggedBanner } from "./ui/FlaggedBanner";
 import { latestPublished } from "./lib/newerVersion";
 import { LectureBody } from "./ui/LectureBody";
@@ -163,11 +165,13 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
   ];
 
   return (
+    <ReadingThreadsProvider lectureId={lectureId} conceptId={lecture.conceptId} getAnchor={getAnchor}>
     <div className="flex w-full flex-col">
       <LectureTopBar
         title={concept.data ? `${concept.data.name} · ${content.title}` : content.title}
         onOpenToc={() => setTocOpen(true)}
         onOpenAssist={() => setAssistOpen(true)}
+        assistBadge={<ThreadCountBadge />}
         menuItems={menuItems}
       />
       <LectureLayout
@@ -185,6 +189,8 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
           />
         }
       >
+        <LevelSuggestionCard />
+        <DeepLectureStatus lectureId={lectureId} />
         {parentLecture && <ParentLectureLink parent={parentLecture} />}
         {showReturn && (
           <div className="flex items-center gap-2 border-b border-line py-1 text-sm">
@@ -209,7 +215,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
             <LectureBody content={content} onBeforeDeeper={onBeforeDeeper} />
           </ExerciseProvider>
         </div>
-        <SelectionExplain lectureId={lectureId} containerRef={bodyRef} />
+        <ReadingAssist containerRef={bodyRef} />
         <SourcesList sources={sources} title={t.sourcesTitle} />
         <DeeperLecturesSection ref={deeperRef} kind="deeper" lectures={deeperLectures} />
         <DeeperLecturesSection kind="regenerated" lectures={regenerated} />
@@ -236,5 +242,6 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
         getAnchor={getAnchor}
       />
     </div>
+    </ReadingThreadsProvider>
   );
 }

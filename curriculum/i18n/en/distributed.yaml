@@ -161,3 +161,13 @@ concepts:
       - Explain how consistent hashing reduces data movement when nodes are added
     practical_cases:
       - Using the date as the shard key put all of today's data on a single node
+  dist.consistent-hashing:
+    name: Consistent Hashing and Virtual Nodes
+    summary: Consistent hashing places nodes and keys on the same hash ring and assigns each key to the next node clockwise, so adding or removing a node only moves the keys around it. Giving each node many virtual nodes reduces load skew, and unlike simple modulo hashing, scaling out does not invalidate most of the cache at once.
+    objectives:
+      - Explain why hash(key) mod N moves most keys when the number of nodes changes, and how a hash ring reduces the moved share to about 1/N
+      - Explain how variants such as virtual nodes, replica placement and rendezvous hashing affect load balance and redistribution after failures
+      - Use the per-node key count and request distribution to judge whether to adjust the number of virtual nodes or handle hot keys separately
+    practical_cases:
+      - Adding one cache server caused the hit rate to collapse because of modulo distribution, overloading the database
+      - A load balancer with hash-based session affinity moved most users' sessions to other servers when backends were added

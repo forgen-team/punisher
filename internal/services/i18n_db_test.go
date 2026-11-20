@@ -38,7 +38,7 @@ func TestTargetLanguageFollowsLocale(t *testing.T) {
 	}
 	ko := models.Lecture{ID: "00000000-0000-0000-0000-000000000001", ConceptID: conceptID,
 		ObjectiveIDs: inst.Plan.ObjectiveIDs, Depth: inst.Plan.Depth, Language: learning.LocaleKO}
-	back, err := s.TargetForLecture(ctx, user, ko, "")
+	back, err := s.TargetForLecture(ctx, user, ko, "", "")
 	if err != nil || back.Plan.Language != learning.LocaleKO {
 		t.Fatalf("stored lecture keeps its language: %q %v", back.Plan.Language, err)
 	}

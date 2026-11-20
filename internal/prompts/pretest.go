@@ -35,6 +35,8 @@ type DiagnosticContext struct {
 	// Count: items to write (pretest only; the others write one per objective).
 	Count     int
 	Revisions []string
+	// Reader: the reader level section (ReaderProfile).
+	Reader Reader
 }
 
 var diagnosticTasks = map[string]string{
@@ -57,6 +59,7 @@ func Diagnostic(c DiagnosticContext) string {
 		task = fmt.Sprintf(task, c.Count)
 	}
 	b.WriteString(task)
+	writeReaderProfile(&b, c.Reader)
 	writeFactualRules(&b)
 	writeRevisions(&b, c.Revisions)
 	return b.String()

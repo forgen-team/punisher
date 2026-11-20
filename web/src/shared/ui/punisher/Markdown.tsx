@@ -63,7 +63,7 @@ const components: Components = {
 
 /**
  * GitHub-flavoured markdown with token-based styles (raw HTML is not rendered).
- * 본문 글자 크기·행간은 부모가 정한다(강의 본문 16px/1.7, 패널 14px).
+ * 본문 글자 크기·행간은 부모가 정한다(강의 본문 16px/1.75, 패널 14px).
  */
 export function Markdown({
   children,

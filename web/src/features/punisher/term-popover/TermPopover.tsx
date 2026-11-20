@@ -1,11 +1,13 @@
 
 import { useState } from "react";
 import { BookOpen } from "lucide-react";
-import { Button, Skeleton, cn, focusRing } from "@/src/shared/ui/kit";
-import { useGloss } from "@/src/entities/punisher";
+import { Button, Chip, Skeleton, cn, focusRing } from "@/src/shared/ui/kit";
+import { useCreateStudyRequest, useGloss } from "@/src/entities/punisher";
+import { SELECTION_MIN_CHARS, type ThreadMode } from "@/src/shared/api/punisher";
 import { InlineError, ReadingOverlay, toOverlayAnchor, type OverlayAnchor } from "@/src/shared/ui/punisher";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 import { useLaunchInstant } from "../instant-start";
+import { useReadingThreads } from "../reading-assist/ReadingThreadsProvider";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 
@@ -42,7 +44,11 @@ interface TermPopoverProps {
 export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeDeeper, inline = false }: TermPopoverProps) {
   const t = useT(messages);
   const [anchor, setAnchor] = useState<OverlayAnchor | null>(null);
+  // 용어가 놓인 본문 블록의 진도 앵커 — 용어로 스레드를 시작할 때 구절 위치로 쓴다.
+  const [blockAnchor, setBlockAnchor] = useState("");
   const open = anchor !== null;
+  const threads = useReadingThreads();
+  const readLater = useCreateStudyRequest();
   const gloss = useGloss(conceptId, open);
   const { launch, isPending, error } = useLaunchInstant();
   const label = term || conceptId;
@@ -62,16 +68,33 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
 
   const text = gloss.data?.gloss || fallbackText || "";
 
+  // 서버는 SELECTION_MIN_CHARS 보다 짧은 구절을 받지 않는다(한 글자 용어 등) — 그때는 스레드 칩을 숨긴다.
+  const canThread = threads !== null && Array.from(label.trim()).length >= SELECTION_MIN_CHARS;
+
+  /** 더 쉽게(바로 답) · 이어서 묻기(입력 열기) — 용어를 구절로 스레드를 시작하고 이 시트는 닫는다. */
+  function startThread(mode: ThreadMode) {
+    if (!threads) { return; }
+    const rect = anchor;
+    const passage = { anchor: blockAnchor || threads.getAnchor(), quote: label, rect };
+    setAnchor(null);
+    // 이 시트가 닫히는 프레임에 스레드 시트를 열면 두 오버레이의 포커스 복귀·닫힘 애니메이션이 엉킨다 — 다음 프레임에 연다.
+    requestAnimationFrame(() => threads.start(passage, mode));
+  }
+
   return (
     <>
       <button
         type="button"
         aria-haspopup="dialog"
         aria-expanded={open}
-        onClick={(event) => setAnchor(toOverlayAnchor(event.currentTarget.getBoundingClientRect()))}
+        onClick={(event) => {
+          setBlockAnchor(event.currentTarget.closest<HTMLElement>("[data-lecture-anchor]")?.dataset.lectureAnchor ?? "");
+          setAnchor(toOverlayAnchor(event.currentTarget.getBoundingClientRect()));
+        }}
         className={cn(
+          // 문장 속 용어: 보이는 크기·행간은 그대로, 위아래 터치 영역만 44px 이상(줄 높이 약 28px + 위아래 10px).
           inline
-            ? "inline rounded-sm text-accent-text underline decoration-dotted underline-offset-4"
+            ? "relative inline rounded-sm text-accent-text underline decoration-dotted underline-offset-4 before:absolute before:inset-x-0 before:-inset-y-2.5 before:content-['']"
             : "inline-flex min-h-touch items-center gap-1.5 rounded-sm text-base font-medium text-accent-text underline decoration-dotted underline-offset-4",
           focusRing,
         )}
@@ -86,11 +109,22 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
         anchor={anchor}
         title={label}
         footer={
-          deeperId ? (
-            <Button size="sm" variant="secondary" loading={isPending} onClick={goDeeper}>
-              {t.goDeeper}
+          <>
+            <Button
+              size="sm"
+              variant="ghost"
+              loading={readLater.isPending}
+              disabled={readLater.isSuccess}
+              onClick={() => readLater.mutate(label)}
+            >
+              {readLater.isSuccess ? t.readLaterDone : t.readLater}
             </Button>
-          ) : undefined
+            {deeperId && (
+              <Button size="sm" variant="secondary" loading={isPending} onClick={goDeeper}>
+                {t.goDeeper}
+              </Button>
+            )}
+          </>
         }
       >
         {gloss.isLoading && !fallbackText ? (
@@ -100,8 +134,14 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
         ) : (
           <InlineError error={gloss.error} />
         )}
+        {canThread && text && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Chip onClick={() => startThread("easier")}>{t.easier}</Chip>
+            <Chip onClick={() => startThread("question")}>{t.askMore}</Chip>
+          </div>
+        )}
         <div aria-live="polite" className="mt-2">
-          <InlineError error={error} />
+          <InlineError error={error ?? readLater.error} />
         </div>
       </ReadingOverlay>
     </>

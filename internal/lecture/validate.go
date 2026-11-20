@@ -55,8 +55,9 @@ func Validate(c Content, vc ValidationContext) []Issue {
 	if c.ConceptID == "" {
 		add("conceptId", "conceptId is required")
 	}
-	if c.Depth < 1 || c.Depth > 3 {
-		add("depth", "depth must be 1..3, got %d", c.Depth)
+	// 0 = 0단계 기초(foundations) 강의; depth comes from the plan, never from model output.
+	if c.Depth < 0 || c.Depth > 3 {
+		add("depth", "depth must be 0..3, got %d", c.Depth)
 	}
 	if len(c.NewScope) == 0 {
 		add("newScope", "newScope (what is new in this lecture) is required")

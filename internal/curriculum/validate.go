@@ -11,9 +11,10 @@ import (
 var conceptIDPattern = regexp.MustCompile(`^[a-z0-9]+(\.[a-z0-9]+(-[a-z0-9]+)*)+$`)
 
 // Validate checks the whole concept set and returns every problem found
-// (joined), or nil. Rules: unique well-formed ids, valid area/depth,
-// at least one objective, references exist, aliases unique after
-// normalization, and an acyclic prerequisite graph.
+// (joined), or nil. Rules: unique well-formed ids, valid area/depth (0 only
+// for foundations), at least one objective, references exist, no other area
+// requires a foundations concept, aliases unique after normalization, and an
+// acyclic prerequisite graph.
 func Validate(concepts []Concept) error {
 	var errs []error
 	byID := make(map[string]*Concept, len(concepts))
@@ -52,8 +53,9 @@ func validateConcept(c *Concept, byID map[string]*Concept) []error {
 	if !IsValidArea(c.Area) {
 		fail("unknown area %q", c.Area)
 	}
-	if c.Depth < 1 || c.Depth > 3 {
-		fail("depth must be 1..3, got %d", c.Depth)
+	minDepth := MinDepth(c.Area)
+	if c.Depth < minDepth || c.Depth > 3 {
+		fail("depth must be %d..3, got %d", minDepth, c.Depth)
 	}
 	if strings.TrimSpace(c.Summary) == "" {
 		fail("summary is required")
@@ -65,15 +67,20 @@ func validateConcept(c *Concept, byID map[string]*Concept) []error {
 		if strings.TrimSpace(o.Text) == "" {
 			fail("objective %d text is empty", i+1)
 		}
-		if o.Depth < 1 || o.Depth > 3 {
-			fail("objective %d depth must be 1..3, got %d", i+1, o.Depth)
+		if o.Depth < minDepth || o.Depth > 3 {
+			fail("objective %d depth must be %d..3, got %d", i+1, minDepth, o.Depth)
 		}
 	}
 	for _, ref := range refs(c) {
-		if ref.id == c.ID {
+		target, ok := byID[ref.id]
+		switch {
+		case ref.id == c.ID:
 			fail("%s references itself", ref.kind)
-		} else if _, ok := byID[ref.id]; !ok {
+		case !ok:
 			fail("%s %q does not exist", ref.kind, ref.id)
+		case ref.kind == EdgePrerequisite && target.Area == AreaFoundations && c.Area != AreaFoundations:
+			// 0단계는 실무자·숙련자에게 숨겨지므로 다른 영역의 진도를 막으면 안 된다.
+			fail("prerequisite %q is a foundations concept; only foundations concepts may require one", ref.id)
 		}
 	}
 	for _, l := range c.DocLinks {

@@ -174,3 +174,32 @@ concepts:
       - Explain how the latency of individual requests can spike even when the average cost is low.
     practical_cases:
       - p99 latency spikes at the moment a large map is rehashed.
+  ds.skip-list:
+    name: Skip Lists
+    summary: A skip list stacks several layers that link only randomly chosen nodes on top of a sorted linked list, giving O(log n) search and insertion on average. It is simple to implement without rotations and is used by Redis sorted sets and the memtables of several LSM engines.
+    objectives:
+      - Explain how each node's level is chosen randomly and how a search descends from the upper layers to the lower ones.
+      - Explain the differences from balanced trees in expected complexity, worst case and difficulty of concurrent implementation.
+      - Judge from ranking and range query requirements whether a Redis sorted set (ZADD, ZRANGE, ZRANK) can solve the problem.
+    practical_cases:
+      - Implementing real-time rank lookups for a game leaderboard with a Redis sorted set.
+  ds.cache-eviction-policies:
+    name: Cache Eviction Policies (LRU, LFU, ARC)
+    summary: What a full cache discards determines its hit rate. LRU discards what has gone unused the longest, LFU discards what is used least often, and adaptive policies such as ARC balance recency and frequency on their own, which reduces the cache being flushed by one-off scans.
+    objectives:
+      - Explain how to implement an O(1) LRU with a hash table and a doubly linked list.
+      - Explain why LRU is vulnerable to sequential scans and LFU gets stuck on items that were popular in the past, and the compromises made by ARC and approximate LRU.
+      - Read hit rate and eviction metrics (such as keyspace_hits, keyspace_misses and evicted_keys in Redis INFO) and decide whether to change the eviction policy or the cache size.
+    practical_cases:
+      - A nightly full-scan batch flushed the cache and the hit rate collapsed the next morning.
+      - A Redis instance where most keys had no TTL, so a volatile policy had nothing to evict and writes started failing.
+  ds.probabilistic-structures:
+    name: Probabilistic Data Structures (HyperLogLog, Count-Min Sketch)
+    summary: Probabilistic data structures give approximate answers using a small, fixed amount of memory. HyperLogLog estimates the number of distinct items from patterns of leading zeros in hash values, and Count-Min Sketch counts per-item frequencies as the minimum of several hashed counters, erring only toward overestimation.
+    objectives:
+      - Explain how HyperLogLog estimates the number of distinct items from hash value patterns and that its error is determined by the memory it uses.
+      - Explain the structure of Count-Min Sketch, why its error only goes toward overestimation, and how its use differs from a Bloom filter.
+      - Compare the memory and error of exact COUNT(DISTINCT) with approximate estimation and decide whether approximation is acceptable for unique visitor counts or heavy-hitter detection.
+    practical_cases:
+      - Counting daily unique visitors with Redis HyperLogLog instead of a set of user IDs, greatly reducing memory.
+      - Tracking the top requesting IPs in real time with a Count-Min Sketch to choose rate-limit targets.

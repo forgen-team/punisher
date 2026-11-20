@@ -69,7 +69,7 @@ func SanitizeResolveOutput(out ResolveOutput, existing map[string]bool) ([]strin
 	if existing[p.ID] {
 		return []string{p.ID}, nil
 	}
-	if !proposedIDRe.MatchString(p.ID) || !curriculum.IsValidArea(p.Area) || strings.TrimSpace(p.Name) == "" {
+	if !proposedIDRe.MatchString(p.ID) || !curriculum.IsProposalArea(p.Area) || strings.TrimSpace(p.Name) == "" {
 		return ids, nil
 	}
 	if p.Depth < 1 || p.Depth > 3 {
@@ -150,7 +150,7 @@ func (s *Service) resolveWithLLM(ctx context.Context, userID, apiKey string, res
 	var u usage
 	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{
 		Model: s.Cfg.FastModel, System: prompts.WithOutputLanguage(s.UserPrompts(ctx, userID).Text(prompts.BlockResolveSystem, nil), lang),
-		User: prompts.Resolve(res.Query, candidates, curriculum.Areas), MaxTokens: 1500, Timeout: 60 * time.Second,
+		User: prompts.Resolve(res.Query, candidates, curriculum.ProposalAreas), MaxTokens: 1500, Timeout: 60 * time.Second,
 	}, &u)
 	if err == nil {
 		var out ResolveOutput
@@ -184,13 +184,18 @@ func (s *Service) fillPath(ctx context.Context, userID string, res *Resolution) 
 }
 
 // GoalPath returns the prerequisite chain to target with user states and the
-// starting point.
+// starting point. A '필요 없음' concept stays on the path (marked Dismissed) and
+// still gates the steps after it — dismissing never silently skips a prerequisite.
 func (s *Service) GoalPath(ctx context.Context, userID, target string) ([]models.PathStep, string, error) {
 	catalog, err := s.Store.ConceptCatalog(ctx, userID, s.Store.LocaleFor(ctx, userID))
 	if err != nil {
 		return nil, "", err
 	}
 	edges, err := s.Store.PrerequisiteEdges(ctx, userID)
+	if err != nil {
+		return nil, "", err
+	}
+	dismissed, err := s.Store.ConceptDismissals(ctx, userID)
 	if err != nil {
 		return nil, "", err
 	}
@@ -219,7 +224,8 @@ func (s *Service) GoalPath(ctx context.Context, userID, target string) ([]models
 			}
 		}
 		steps = append(steps, models.PathStep{ConceptID: id, Name: c.Name, Area: c.Area, Depth: c.Depth,
-			State: learning.NormalizeState(c.State), Locked: locked, IsTarget: id == target, IsNext: id == start})
+			State: learning.NormalizeState(c.State), Locked: locked, IsTarget: id == target, IsNext: id == start,
+			Dismissed: dismissed[id]})
 	}
 	return steps, start, nil
 }

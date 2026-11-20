@@ -40,6 +40,9 @@ type InstantResponse struct {
 	JobID      string      `json:"jobId,omitempty"`
 	StreamURL  string      `json:"streamUrl,omitempty"`
 	Resolution *Resolution `json:"resolution,omitempty"`
+	// InquiryID: set with status "inquiry" — a deep lecture asked from a reading
+	// thread whose concept is the lecture being read became a question explanation.
+	InquiryID string `json:"inquiryId,omitempty"`
 }
 
 // ErrTargetBusy: a library job is generating the same target right now.
@@ -76,7 +79,7 @@ func (s *Service) StartInstant(ctx context.Context, userID string, req InstantRe
 	}
 	resp := InstantResponse{ConceptID: conceptID, Resolution: resolution}
 
-	existing, err := s.Store.PublishedLectureCovering(ctx, userID, conceptID, t.Plan.Depth, t.Plan.ObjectiveIDs, t.Plan.Language, store.LangExact)
+	existing, err := s.Store.PublishedLectureCovering(ctx, userID, conceptID, t.Plan.Depth, t.Plan.ObjectiveIDs, t.Plan.Language, t.Plan.ReaderLevel, store.LangExact)
 	if err == nil {
 		resp.Status, resp.LectureID = InstantExisting, existing.ID
 		s.linkDeeper(ctx, userID, req, resp)
@@ -102,7 +105,7 @@ func (s *Service) StartInstant(ctx context.Context, userID string, req InstantRe
 	job, _, err := s.Store.CreateJob(ctx, store.NewJob{
 		IdempotencyKey: fmt.Sprintf("%s:%s:%s", learning.JobInstant, target, store.RandomToken()),
 		Kind:           learning.JobInstant, UserID: userID, ConceptID: conceptID,
-		ObjectiveKey: t.Plan.ObjectiveKey, Depth: t.Plan.Depth, Reason: "instant", Language: t.Plan.Language,
+		ObjectiveKey: t.Plan.ObjectiveKey, Depth: t.Plan.Depth, Reason: "instant", Language: t.Plan.Language, ReaderLevel: t.Plan.ReaderLevel,
 	})
 	if errors.Is(err, store.ErrJobActive) {
 		if jobID, ok := s.Hub.ActiveJob(target); ok {

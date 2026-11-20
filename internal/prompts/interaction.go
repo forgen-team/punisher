@@ -8,9 +8,10 @@ import (
 // SystemGloss: short term popovers (haiku).
 const SystemGloss = `당신은 개발자용 용어 팝오버를 쓰는 편집자입니다. 강의를 읽던 사람이 본문 흐름을 놓치지 않도록, 용어의 핵심만 2~3문장(200자 이내)으로 설명합니다. 정의 → 왜 중요한지(실무에서 마주치는 장면) 순서로 씁니다. 확실하지 않은 수치·버전은 쓰지 않습니다. 마크다운 제목·목록 없이 평문만 출력합니다.`
 
-// Gloss builds the user prompt for a term popover.
-func Gloss(name, area, summary string) string {
-	return fmt.Sprintf("용어: %s\n영역: %s\n커리큘럼 요약: %s\n\n위 용어의 팝오버 설명을 쓰세요.", name, area, summary)
+// Gloss builds the user prompt for a term popover, for reader r.
+func Gloss(name, area, summary string, r Reader) string {
+	return fmt.Sprintf("용어: %s\n영역: %s\n커리큘럼 요약: %s\n", name, area, summary) +
+		ReaderProfile(r.Level, r.Locale) + "\n위 용어의 팝오버 설명을 쓰세요."
 }
 
 // SystemResolve: map a free query to concept ids (haiku).
@@ -52,7 +53,7 @@ JSON만 출력:
 }
 
 // SystemQA: contextual Q&A during a lecture.
-const SystemQA = `당신은 강의 중 질문에 답하는 조교입니다. 수강생은 경력 개발자이며 지금 특정 강의의 특정 섹션을 읽고 있습니다.
+const SystemQA = `당신은 강의 중 질문에 답하는 조교입니다. 수강생은 지금 특정 강의의 특정 섹션을 읽고 있습니다(수강생의 배경은 요청의 '독자 수준' 절을 따릅니다).
 - 질문에 직접 답하고, 강의 본문과 연결해 "본문의 어느 설명과 이어지는지"를 짚습니다.
 - 필요하면 짧은 코드·명령어 예시를 마크다운 코드블록으로 붙입니다.
 - 확실하지 않은 내용은 추측하지 말고 확인 방법(공식 문서, 명령어)을 안내합니다.
@@ -73,6 +74,8 @@ type QAContext struct {
 	Misconceptions []Misconception
 	// ExampleLanguage: display name of the preferred example-code language.
 	ExampleLanguage string
+	// Reader: the reader level section (ReaderProfile).
+	Reader Reader
 }
 
 // QATurn is a previous question/answer in the thread.
@@ -100,6 +103,7 @@ func Question(c QAContext, question string) string {
 	writeRefs(&b, c.Linkable)
 	writeMisconceptions(&b, c.Misconceptions)
 	b.WriteString(ExampleLanguageRule(c.ExampleLanguage))
+	writeReaderProfile(&b, c.Reader)
 	writeFactualRules(&b)
 	fmt.Fprintf(&b, "\n## 질문\n%s\n", question)
 	b.WriteString(`
@@ -118,6 +122,7 @@ func AltExplanation(c QAContext, comment string) string {
 		fmt.Fprintf(&b, "\n## 수강생 코멘트\n%s\n", comment)
 	}
 	b.WriteString(ExampleLanguageRule(c.ExampleLanguage))
+	writeReaderProfile(&b, c.Reader)
 	writeFactualRules(&b)
 	b.WriteString(`
 ## 작업

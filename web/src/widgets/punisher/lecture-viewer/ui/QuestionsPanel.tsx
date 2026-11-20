@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Button, EmptyState, ErrorState, Field, FieldTextarea, ListSkeleton } from "@/src/shared/ui/kit";
 import { QUESTION_STATUS_LABELS, useAskQuestion, useQuestions } from "@/src/entities/punisher";
 import { scrollToAnchor } from "@/src/features/punisher/lecture-progress";
+import { PassageThreadList, passageQuestionIds, useReadingThreads } from "@/src/features/punisher/reading-assist";
 import { describePunisherError, localizeServerText, type Question } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
@@ -89,7 +90,12 @@ export function QuestionsPanel({ lectureId, getAnchor, onJump }: QuestionsPanelP
     ask.mutate({ anchor: getAnchor(), question }, { onSuccess: () => setText("") });
   }
 
-  const items = list.data ?? [];
+  const threads = useReadingThreads();
+  // 구절 스레드(인용·이어 묻기)는 위 구절별 목록에서 보이고, 여기는 그 밖의 것만 남긴다 —
+  // 예전 방식 질문과, 루트가 목록에 없어 구절에 묶이지 못한 이어 묻기(사라지지 않게).
+  const inPassages = threads ? passageQuestionIds(threads.passages) : null;
+  const items = (list.data ?? []).filter((q) => !inPassages || !inPassages.has(q.id));
+  const hasPassages = (threads?.passages.length ?? 0) > 0 || threads?.focus?.kind === "draft";
 
   return (
     <div className="flex flex-col gap-3">
@@ -104,12 +110,13 @@ export function QuestionsPanel({ lectureId, getAnchor, onJump }: QuestionsPanelP
           <InlineError error={ask.error} />
         </div>
       </form>
+      <PassageThreadList />
       {list.isLoading ? (
         <ListSkeleton rows={2} />
       ) : list.error ? (
         <ErrorState compact message={describePunisherError(list.error)} onRetry={() => list.refetch()} />
       ) : items.length === 0 ? (
-        <EmptyState compact title={t.noQuestions} />
+        hasPassages ? null : <EmptyState compact title={t.noQuestions} />
       ) : (
         <ul role="list">
           {[...items].reverse().map((q) => (

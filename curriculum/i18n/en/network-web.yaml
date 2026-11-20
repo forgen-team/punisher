@@ -199,3 +199,61 @@ concepts:
       - Explain how to design pagination and filters for list APIs
     practical_cases:
       - An API that returns every error as 200 with a flag in the body, so monitoring cannot catch failures
+  net.tcp-congestion-control:
+    name: TCP Congestion Control
+    summary: TCP adjusts its congestion window (cwnd) based on loss and delay signals to decide how much it may send at once. Loss-based (CUBIC) and bandwidth/RTT model-based (BBR) algorithms deliver very different throughput on long paths with some packet loss.
+    objectives:
+      - Explain the slow start and congestion avoidance phases and how the congestion window limits throughput
+      - Explain the differences between loss-based CUBIC and model-based BBR, and the network conditions that hurt each
+      - Read cwnd, rtt and retrans in ss -ti output and decide whether a slow transfer is caused by congestion control
+    practical_cases:
+      - A large cross-region backup transfer whose throughput collapsed with only slight packet loss
+      - Reducing first-response latency caused by slow start on every new connection by reusing connections
+  net.tcp-accept-backlog:
+    name: Connection Queues and Backlog
+    summary: Linux keeps connections that are mid-handshake (the SYN queue) separate from connections that are established but not yet accepted by the application (the accept queue). When the accept queue overflows, connections are dropped or delayed by retransmissions; SYN cookies let the handshake continue without stored state when the SYN queue overflows.
+    objectives:
+      - Explain the roles of the SYN queue and the accept queue, and how the listen backlog relates to somaxconn
+      - Explain how SYN cookies work during a SYN flood and what their limits are
+      - Read Recv-Q and Send-Q from ss -lnt and the ListenOverflows and ListenDrops counters from nstat to decide whether the accept queue is overflowing
+    practical_cases:
+      - During a traffic spike the application accepted connections too slowly, so client connections were delayed by the SYN retransmission interval
+  net.time-wait-port-exhaustion:
+    name: TIME_WAIT and Ephemeral Port Exhaustion
+    summary: The side that closes a connection first keeps it in TIME_WAIT for a while, so opening many short connections to the same destination can exhaust the source's ephemeral ports. Reusing connections comes before tuning kernel settings.
+    objectives:
+      - Explain why TIME_WAIT exists (blocking delayed segments, retransmitting the final ACK)
+      - Explain how the source IP, source port, destination IP and destination port tuple and the ephemeral port range limit the number of concurrent connections
+      - Count TIME_WAIT sockets per destination with ss -tan state time-wait and decide between connection pooling or keep-alive and changing kernel settings
+    practical_cases:
+      - A service that created a new HTTP client per request started failing external API calls with EADDRNOTAVAIL
+      - Many instances behind a NAT gateway connecting to the same destination exhausted the NAT's ports
+  net.hol-blocking-quic:
+    name: Head-of-Line Blocking and QUIC
+    summary: HTTP/2 multiplexes requests over one connection, but on TCP a single lost packet makes every following stream wait. QUIC only guarantees ordering within each stream, which reduces this delay, and its connection IDs let a connection survive a network change.
+    objectives:
+      - Distinguish the layer at which head-of-line blocking occurs in HTTP/1.1, HTTP/2 (TCP) and HTTP/3 (QUIC)
+      - Explain how QUIC's independent streams, connection IDs and transport-level encryption differ from TCP combined with TLS
+      - Use loss rate, tail latency and per-protocol request share to judge whether adopting HTTP/3 pays off, and check whether clients fall back when UDP is blocked
+    practical_cases:
+      - In a service with many mobile users, tail latency for image loading on lossy links piled up on a single HTTP/2 connection
+      - Confirming that browsers fall back from HTTP/3 to HTTP/2 because a corporate firewall blocks UDP 443
+  net.nagle-delayed-ack:
+    name: Nagle's Algorithm and Delayed ACK
+    summary: Nagle's algorithm holds small segments while unacknowledged data is outstanding, and delayed ACK briefly postpones ACKs to combine them. Together they can add tens of milliseconds per request to request/response protocols that split small writes.
+    objectives:
+      - Explain the cost that Nagle's algorithm and delayed ACK each try to reduce
+      - Explain how the two interact to cause delay in a write-write-read pattern
+      - Use the gaps between segments in a packet capture to decide between setting TCP_NODELAY and coalescing writes
+    practical_cases:
+      - A client that wrote headers and body separately saw a consistent delay of tens of milliseconds on every request
+  net.anycast-bgp:
+    name: Anycast and BGP Basics
+    summary: BGP is the protocol autonomous systems (AS) use to announce routes to IP prefixes to each other. Anycast announces the same IP from many locations so users reach the network-nearest one; CDNs and public DNS resolvers work this way.
+    objectives:
+      - Explain how BGP chooses internet paths through autonomous systems, route announcements and route selection
+      - Explain why "nearest" in anycast is decided by BGP paths rather than geography, and why connections can break when routes change
+      - Use traceroute output and the PoP information in CDN response headers to judge whether users are routed to an unexpected region
+    practical_cases:
+      - An outage in which a bad BGP announcement made an entire large service disappear from the internet
+      - Domestic users being served from an overseas CDN PoP, which increased latency

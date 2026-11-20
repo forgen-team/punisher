@@ -40,7 +40,7 @@ export function GoalPathView({ goalId, onSelectStep }: GoalPathViewProps) {
                   selected={s.isNext}
                   titleLines={1}
                   title={`${index + 1}. ${s.name}`}
-                  meta={[areaLabel(s.area), USER_STATE_LABELS[s.state] ?? s.state, s.locked ? t.locked : ""]
+                  meta={[areaLabel(s.area), USER_STATE_LABELS[s.state] ?? s.state, s.locked ? t.locked : "", s.dismissed ? t.dismissed : ""]
                     .filter(Boolean)
                     .join(" · ")}
                   trailing={s.isNext ? <Badge tone="accent">{t.nextUp}</Badge> : undefined}

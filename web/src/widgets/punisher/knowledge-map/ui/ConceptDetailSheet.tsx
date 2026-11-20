@@ -23,8 +23,10 @@ import { messages } from "../i18n";
 import { useT } from "@/src/shared/i18n";
 import { isWitems } from "@/src/shared/config/runtime";
 import { ConceptRecentReadsSection } from "./ConceptRecentReadsSection";
+import { ConceptDismissAction } from "./ConceptDismissAction";
 
 function LinkGroup({ title, links, onSelect }: { title: string; links: ConceptLink[]; onSelect: (id: string) => void }) {
+  const t = useT(messages);
   if (links.length === 0) { return null; }
   return (
     <Section title={title} headingLevel={3}>
@@ -32,12 +34,20 @@ function LinkGroup({ title, links, onSelect }: { title: string; links: ConceptLi
         {links.map((l) => (
           <Button key={l.id} variant="secondary" size="sm" onClick={() => onSelect(l.id)}>
             {l.name}
-            <span className="font-normal text-fg-muted">{USER_STATE_LABELS[l.userState] ?? l.userState}</span>
+            <span className="font-normal text-fg-muted">
+              {USER_STATE_LABELS[l.userState] ?? l.userState}
+              {l.dismissed ? ` · ${t.dismissedBadge}` : ""}
+            </span>
           </Button>
         ))}
       </div>
     </Section>
   );
+}
+
+/** 뺐지만 아직 배우지 않은 선행 개념 — 이 개념을 잠그고 있는 이유. */
+function isDismissedBlocker(p: ConceptLink): boolean {
+  return Boolean(p.dismissed) && p.userState !== "known" && p.userState !== "completed";
 }
 
 function NotesGroup({ conceptId }: { conceptId: string }) {
@@ -115,14 +125,15 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
 
   const title = c?.name ?? conceptId ?? "";
   const conceptActions = c ? (
-    <>
+    <div className="flex w-full flex-wrap items-center justify-end gap-2">
       <Button variant="secondary" disabled={learned || known.isSuccess} loading={known.isPending} onClick={() => knownChoice.ask(c.id)}>
         {known.isSuccess ? t.knownDone : t.known}
       </Button>
       <Button loading={isPending} onClick={() => start(c.id)}>
         {t.startLecture}
       </Button>
-    </>
+      <ConceptDismissAction conceptId={c.id} dismissed={Boolean(c.dismissed)} learned={learned} />
+    </div>
   ) : null;
   const actions = knownChoice.asking ? <KnownVerifyChoice choice={knownChoice} variant="inline" /> : conceptActions;
   const body = (
@@ -141,7 +152,7 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
           {c.locked && (
             <p className="flex items-center gap-1.5 text-sm text-fg-secondary">
               <Lock className="size-4" aria-hidden="true" />
-              {t.lockedHint}
+              {c.prerequisites.some((link) => isDismissedBlocker(link)) ? t.dismissedPrereqHint : t.lockedHint}
             </p>
           )}
           {requests.length > 0 && (

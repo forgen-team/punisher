@@ -303,3 +303,93 @@ concepts:
     prerequisites: [db.relational-model]
     practical_cases:
       - 세션·캐시는 Redis에, 주문은 관계형 DB에 두는 이유 설명
+
+  - id: db.btree-vs-lsm
+    name: B-Tree vs LSM 스토리지 엔진
+    aliases: [LSM Tree, LSM-Tree, LSM 트리, Log-Structured Merge Tree, Storage Engine, 스토리지 엔진, Compaction, 컴팩션, SSTable, Memtable]
+    depth: 3
+    summary: B-Tree 엔진은 페이지를 제자리에서 갱신해 읽기 비용이 예측 가능하고, LSM 엔진은 쓰기를 메모리에 모았다가 정렬된 파일로 내려 순차 쓰기로 처리한 뒤 백그라운드 컴팩션으로 합친다. 쓰기·읽기·공간 증폭 중 무엇을 아끼는가가 둘의 차이다.
+    objectives:
+      - B-Tree의 제자리 갱신과 LSM의 memtable·SSTable·컴팩션 흐름을 설명한다
+      - 쓰기·읽기·공간 증폭 관점에서 두 엔진의 트레이드오프와 LSM 읽기에서 블룸 필터가 하는 역할을 설명한다
+      - 워크로드의 읽기·쓰기 비율과 컴팩션 대기량·디스크 사용량 지표를 보고 어느 엔진이 맞는지, 컴팩션 설정을 바꿀지 판단한다
+    prerequisites: [ds.b-tree, db.index, db.wal-and-durability]
+    practical_cases:
+      - 쓰기가 많은 이벤트 저장소에서 컴팩션이 밀려 읽기 지연과 디스크 사용량이 함께 늘어난 사례
+    doc_links:
+      - title: PostgreSQL - B-Tree Indexes
+        url: https://www.postgresql.org/docs/current/btree.html
+      - title: RocksDB Wiki
+        url: https://github.com/facebook/rocksdb/wiki
+
+  - id: db.query-optimizer-statistics
+    name: 쿼리 옵티마이저와 통계
+    aliases: [Optimizer Statistics, 옵티마이저 통계, 플래너 통계, Cost-based Optimizer, 비용 기반 옵티마이저, ANALYZE, 행 수 추정, Extended Statistics, 확장 통계]
+    depth: 3
+    summary: 비용 기반 옵티마이저는 테이블 통계(행 수·고유값 수·값 분포)로 각 단계에서 나올 행 수를 추정해 가장 싸 보이는 실행 계획을 고른다. 통계가 오래됐거나 컬럼 간 상관관계를 모르면 추정이 크게 빗나가 나쁜 계획이 선택된다.
+    objectives:
+      - 옵티마이저가 통계로 선택도와 행 수를 추정하고 계획별 비용을 비교하는 과정을 설명한다
+      - 오래된 통계·데이터 쏠림·상관된 컬럼·바인드 값 차이가 추정 오류를 만드는 방식을 설명한다
+      - EXPLAIN ANALYZE의 추정 행 수와 실제 행 수를 비교해 ANALYZE 실행·확장 통계·쿼리 수정 중 무엇이 필요한지 판단한다
+    prerequisites: [db.query-plan, db.composite-index]
+    practical_cases:
+      - 대량 적재 직후 통계가 갱신되지 않아 인덱스 대신 잘못된 조인 방식이 선택되어 느려진 배치
+      - 특정 고객사에 데이터가 몰려 그 고객의 조회만 느려진 사례
+    doc_links:
+      - title: PostgreSQL - Statistics Used by the Planner
+        url: https://www.postgresql.org/docs/current/planner-stats.html
+      - title: PostgreSQL - ANALYZE
+        url: https://www.postgresql.org/docs/current/sql-analyze.html
+
+  - id: db.vacuum-bloat
+    name: VACUUM과 테이블 블로트(PostgreSQL)
+    aliases: [테이블 블로트, 오토베큠, 데드 튜플, Transaction ID Wraparound, XID 랩어라운드]
+    depth: 3
+    summary: PostgreSQL은 UPDATE·DELETE로 생긴 옛 행 버전(데드 튜플)을 VACUUM이 정리할 때까지 남겨 두므로, 정리가 쓰기 속도를 따라가지 못하거나 긴 트랜잭션이 정리를 막으면 테이블과 인덱스가 부풀어 느려진다. autovacuum 설정과 트랜잭션 ID 랩어라운드 방지가 운영 과제다.
+    objectives:
+      - 데드 튜플이 생기고 VACUUM이 그 공간을 재사용 가능하게 만드는 과정과 VACUUM·VACUUM FULL의 차이를 설명한다
+      - 긴 트랜잭션·유휴 트랜잭션·복제 슬롯이 정리를 막는 이유와 트랜잭션 ID 랩어라운드 위험을 설명한다
+      - pg_stat_user_tables의 n_dead_tup·last_autovacuum을 읽고 테이블별 autovacuum 임계값 조정 여부를 결정한다
+    prerequisites: [db.mvcc]
+    practical_cases:
+      - idle in transaction 상태의 세션 하나가 몇 시간 열려 있어 작업 큐 테이블이 크게 부푼 사례
+    doc_links:
+      - title: PostgreSQL - Routine Vacuuming
+        url: https://www.postgresql.org/docs/current/routine-vacuuming.html
+
+  - id: db.gap-next-key-lock
+    name: 갭 락과 넥스트 키 락(InnoDB)
+    aliases: [Gap Lock, 갭 락, Next-Key Lock, 넥스트 키 락, Record Lock, 레코드 락, InnoDB Locking, InnoDB 잠금]
+    depth: 3
+    summary: InnoDB는 REPEATABLE READ에서 팬텀을 막기 위해 인덱스 레코드뿐 아니라 레코드 사이 간격(갭)까지 잠그며, 레코드 락과 그 앞 갭 락을 합친 것이 넥스트 키 락이다. 조건 컬럼에 맞는 인덱스가 없거나 범위 조건이면 예상보다 넓은 구간이 잠겨 INSERT가 막히거나 교착 상태가 생긴다.
+    objectives:
+      - 레코드 락·갭 락·넥스트 키 락이 각각 잠그는 범위를 인덱스 위에서 설명한다
+      - 격리 수준(REPEATABLE READ와 READ COMMITTED)과 조건 컬럼의 인덱스 유무가 잠금 범위를 바꾸는 방식을 설명한다
+      - SHOW ENGINE INNODB STATUS의 최근 교착 상태 기록이나 performance_schema.data_locks의 LOCK_MODE 값을 읽고 인덱스 추가와 격리 수준 변경 중 무엇으로 해결할지 결정한다
+    prerequisites: [db.locking, db.isolation-levels, db.deadlock]
+    practical_cases:
+      - 없는 행을 SELECT ... FOR UPDATE로 확인한 뒤 INSERT하는 코드가 동시 요청에서 교착 상태를 낸 사례
+    doc_links:
+      - title: MySQL Reference Manual - InnoDB Locking
+        url: https://dev.mysql.com/doc/refman/8.0/en/innodb-locking.html
+      - title: MySQL Reference Manual - Phantom Rows
+        url: https://dev.mysql.com/doc/refman/8.0/en/innodb-next-key-locking.html
+
+  - id: db.replication-lag-consistency
+    name: 복제 지연과 읽기 일관성
+    aliases: [Read-after-write Consistency, 쓰기 후 읽기 일관성, Monotonic Reads, 단조 읽기, Stale Read, 오래된 읽기]
+    depth: 3
+    summary: 비동기 복제에서는 복제본이 주 DB보다 늦으므로, 방금 쓴 데이터를 복제본에서 읽으면 보이지 않거나 새로고침할 때마다 값이 오락가락할 수 있다. 자기 쓰기 읽기·단조 읽기 같은 보장을 읽기 라우팅 규칙으로 직접 만들어야 한다.
+    objectives:
+      - 복제 지연이 생기는 원인(쓰기 폭주·큰 트랜잭션 재생·네트워크·복제본 부하)을 설명한다
+      - 자기 쓰기 읽기·단조 읽기가 깨지는 상황과 쓰기 직후 주 DB 읽기·복제 위치 대기·세션 고정 같은 대안을 설명한다
+      - pg_stat_replication의 replay_lag나 MySQL 복제 상태의 지연 값을 읽고 어떤 읽기를 복제본에서 주 DB로 옮길지 결정한다
+    prerequisites: [db.replication, dist.consistency-models]
+    practical_cases:
+      - 프로필 수정 직후 다시 조회하면 옛 값이 보이는 문제를 쓰기 후 일정 시간 주 DB에서 읽도록 해 해결
+      - 배치 작업 중 복제 지연이 분 단위로 늘어 복제본을 읽는 화면에 오래된 재고가 보인 사례
+    doc_links:
+      - title: PostgreSQL - High Availability, Load Balancing, and Replication
+        url: https://www.postgresql.org/docs/current/high-availability.html
+      - title: MySQL Reference Manual - Replication
+        url: https://dev.mysql.com/doc/refman/8.0/en/replication.html

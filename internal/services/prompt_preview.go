@@ -68,7 +68,7 @@ func (s *Service) PreviewPrompt(ctx context.Context, userID, blockID string, dra
 
 	qa := prompts.QAContext{ConceptID: pc.ConceptID, ConceptName: pc.ConceptName, LectureTitle: "(예시 강의 제목)",
 		SectionTitle: "(예시 섹션)", SectionText: "(강의 섹션 본문이 여기에 들어갑니다)", Linkable: pc.Linkable,
-		LearnedBefore: pc.Learned, Misconceptions: pc.Misconceptions, ExampleLanguage: pc.ExampleLanguage}
+		LearnedBefore: pc.Learned, Misconceptions: pc.Misconceptions, ExampleLanguage: pc.ExampleLanguage, Reader: pc.Reader}
 	switch block.Stage {
 	case prompts.StageOutline:
 		out.System, out.User = set.Text(prompts.BlockTeacherSystem, vars), prompts.Outline(pc, set)
@@ -93,21 +93,21 @@ func (s *Service) PreviewPrompt(ctx context.Context, userID, blockID string, dra
 		out.Version = set.Version(prompts.FullBlocks...)
 	case prompts.StageGloss:
 		out.System = set.Text(prompts.BlockGlossSystem, vars)
-		out.User = prompts.Gloss(pc.ConceptName, pc.Area, pc.Summary)
+		out.User = prompts.Gloss(pc.ConceptName, pc.Area, pc.Summary, pc.Reader)
 	case prompts.StageQA:
 		out.System, out.User = set.Text(prompts.BlockQASystem, vars), prompts.Question(qa, previewQuestion)
 	case prompts.StageExplain:
 		out.System = set.Text(prompts.BlockExplainSystem, vars)
 		out.User = prompts.ExplainSelection(prompts.ExplainContext{ConceptID: pc.ConceptID, ConceptName: pc.ConceptName,
 			LectureTitle: qa.LectureTitle, SectionTitle: qa.SectionTitle, SectionText: qa.SectionText,
-			ExampleLanguage: pc.ExampleLanguage}, previewSelection)
+			ExampleLanguage: pc.ExampleLanguage, Reader: pc.Reader}, previewSelection)
 	case prompts.StageResolve:
 		cands := make([]prompts.ResolveCandidate, 0, len(pc.Linkable)+1)
 		cands = append(cands, prompts.ResolveCandidate{ID: pc.ConceptID, Name: pc.ConceptName, Area: pc.Area, Summary: pc.Summary})
 		for _, r := range pc.Linkable {
 			cands = append(cands, prompts.ResolveCandidate{ID: r.ID, Name: r.Name})
 		}
-		out.System, out.User = set.Text(prompts.BlockResolveSystem, nil), prompts.Resolve(previewQuery, cands, curriculum.Areas)
+		out.System, out.User = set.Text(prompts.BlockResolveSystem, nil), prompts.Resolve(previewQuery, cands, curriculum.ProposalAreas)
 	case prompts.StageCheck:
 		out.System, out.User = set.Text(blockID, vars), previewCheck(blockID, pc)
 	case prompts.StagePretest:
@@ -144,7 +144,7 @@ func (s *Service) previewTarget(ctx context.Context, userID string) (Target, err
 	if err != nil {
 		return Target{}, err
 	}
-	plan.Language = lang
+	plan.Language, plan.ReaderLevel = lang, s.Store.ReaderLevelFor(ctx, userID) // 미리보기도 호출하는 사용자의 수준 절
 	t, err := s.targetForPlan(ctx, userID, concept, plan, "")
 	t.Owner = userID
 	return t, err
@@ -156,14 +156,14 @@ func previewCheck(blockID string, pc prompts.LectureContext) string {
 		return prompts.CheckTutor(prompts.CheckTutorContext{ConceptName: pc.ConceptName, Objective: "(예시 목표)",
 			Prompt: "(예시 문항) 입력이 두 배가 되면 비용은 어떻게 늘어나나요?", Must: []string{"(예시 기준)"},
 			Answer: "(모범답이 여기에 들어갑니다)", LearnerAnswer: "(학습자 답이 여기에 들어갑니다)",
-			Allowed: []string{"narrow", "next"}})
+			Allowed: []string{"narrow", "next"}, Reader: pc.Reader})
 	}
 	objectives := make([]prompts.CheckObjective, 0, len(pc.Objectives))
 	for _, o := range pc.Objectives {
 		objectives = append(objectives, prompts.CheckObjective{ID: o.ID, Text: o.Text})
 	}
 	return prompts.CheckItems(prompts.CheckItemsContext{ConceptName: pc.ConceptName, LectureTitle: "(예시 강의 제목)",
-		Objectives: objectives, Anchors: []string{"s1", "s2"}, Sections: []string{"[s1] (강의 본문이 여기에 들어갑니다)"}})
+		Objectives: objectives, Anchors: []string{"s1", "s2"}, Sections: []string{"[s1] (강의 본문이 여기에 들어갑니다)"}, Reader: pc.Reader})
 }
 
 // previewPretest is the user prompt of a lecture-start prediction set for the example concept.
@@ -175,5 +175,5 @@ func previewPretest(pc prompts.LectureContext) string {
 		}
 	}
 	return prompts.Diagnostic(prompts.DiagnosticContext{Purpose: check.PurposePretest, Objectives: objectives,
-		Count: check.PretestCount(len(objectives))})
+		Count: check.PretestCount(len(objectives)), Reader: pc.Reader})
 }

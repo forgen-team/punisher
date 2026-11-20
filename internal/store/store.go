@@ -48,11 +48,17 @@ type Store interface {
 	DismissLecture(ctx context.Context, userID, lectureID string) error
 	RestoreLecture(ctx context.Context, userID, lectureID string) error
 	DismissedConceptIDs(ctx context.Context, userID string) (map[string]bool, error)
+	// '필요 없음' (concept-level, separate from 이미 앎/완료 and from lecture dismissal).
+	DismissConcept(ctx context.Context, userID, conceptID string) error
+	RestoreConcept(ctx context.Context, userID, conceptID string) error
+	ConceptDismissals(ctx context.Context, userID string) (map[string]bool, error)
 	GetLearningSettings(ctx context.Context, userID string) (models.LearningSettings, error)
 	SaveLearningSettings(ctx context.Context, userID, lang string, daily int) (models.LearningSettings, error)
 	UpdateLearningSettings(ctx context.Context, userID string, p LearningSettingsPatch) (models.LearningSettings, error)
+	DismissLevelSuggestion(ctx context.Context, userID string, at time.Time) error
 	ExampleLanguageFor(ctx context.Context, userID string) string
 	LocaleFor(ctx context.Context, userID string) string
+	ReaderLevelFor(ctx context.Context, userID string) string
 
 	// lectures
 	InsertLecture(ctx context.Context, l NewLecture) (models.Lecture, error)
@@ -61,8 +67,8 @@ type Store interface {
 	LecturesToReview(ctx context.Context, limit int) ([]models.Lecture, error)
 	SetLectureReviewOutcome(ctx context.Context, lectureID string, passed bool, reason string) error
 	InsertReview(ctx context.Context, lectureID string, r models.LectureReview) error
-	LatestLectureForTarget(ctx context.Context, kind, conceptID, objectiveKey string, depth int, language string, statuses []string) (models.Lecture, error)
-	PublishedLectureCovering(ctx context.Context, userID, conceptID string, depth int, objectiveIDs []string, language string, mode LangMode) (models.Lecture, error)
+	LatestLectureForTarget(ctx context.Context, kind, conceptID, objectiveKey string, depth int, language, readerLevel string, statuses []string) (models.Lecture, error)
+	PublishedLectureCovering(ctx context.Context, userID, conceptID string, depth int, objectiveIDs []string, language, readerLevel string, mode LangMode) (models.Lecture, error)
 	GetLecture(ctx context.Context, userID, lectureID string) (models.Lecture, error)
 
 	// history
@@ -72,7 +78,7 @@ type Store interface {
 
 	// generation jobs
 	CreateJob(ctx context.Context, j NewJob) (models.GenerationJob, bool, error)
-	ActiveJobForTarget(ctx context.Context, objectiveKey string, depth int, language string) (models.GenerationJob, error)
+	ActiveJobForTarget(ctx context.Context, objectiveKey string, depth int, language, readerLevel string) (models.GenerationJob, error)
 	GetJob(ctx context.Context, userID, jobID string) (models.GenerationJob, error)
 	StartJob(ctx context.Context, jobID string) error
 	FinishJob(ctx context.Context, jobID string, o JobOutcome) error
@@ -96,6 +102,9 @@ type Store interface {
 	FailQuestion(ctx context.Context, id, model, errMsg string) (models.Question, error)
 	ListQuestions(ctx context.Context, userID, lectureID string) ([]models.Question, error)
 	GetQuestion(ctx context.Context, userID, id string) (models.Question, error)
+	ListThread(ctx context.Context, userID, rootID string) ([]models.Question, error)
+	CreateThreadQuestion(ctx context.Context, userID string, q models.Question, dedupeWindow time.Duration) (models.Question, bool, error)
+	EasierRequestsSince(ctx context.Context, userID string, since time.Time) (int, error)
 
 	// study requests
 	// inquiries (이 질문에 답하기, 이어서 묻기)

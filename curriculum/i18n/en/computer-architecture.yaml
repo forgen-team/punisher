@@ -139,3 +139,23 @@ concepts:
       - Explain how struct alignment and padding affect memory size.
     practical_cases:
       - A binary protocol parser that reads the byte order wrong and produces corrupted values.
+  arch.simd-vectorization:
+    name: SIMD and Vectorization
+    summary: SIMD instructions operate on several values held in one wide register at once, making code that repeats the same operation over large arrays several times faster. Compiler auto-vectorization only happens when conditions such as contiguous memory access, no branches and no dependencies between iterations are met.
+    objectives:
+      - Explain, using register width and lanes, how one SIMD instruction processes multiple data elements.
+      - Explain what prevents auto-vectorization (dependencies between iterations, pointer aliasing, branches, non-contiguous access, array-of-structs layout).
+      - Use compiler vectorization reports (clang -Rpass=loop-vectorize, gcc -fopt-info-vec) or benchmark results to judge whether to change the data layout or use a SIMD library.
+    practical_cases:
+      - Switching to JSON parsing and string search libraries implemented with SIMD greatly increased throughput.
+      - Turning an array of structs into per-field arrays let an aggregation loop be vectorized.
+  arch.tlb-huge-pages:
+    name: TLB and Huge Pages
+    summary: The TLB is a small cache of virtual-to-physical address translations, and on a miss the CPU must walk the page tables, which slows memory access. Huge pages widen the range one TLB entry covers and reduce misses for large-memory workloads, but THP's automatic merging and compaction can cause latency spikes and memory growth.
+    objectives:
+      - Explain the address translation process and the cost of TLB misses and page table walks.
+      - Explain the difference between pre-reserved HugePages and Transparent Huge Pages, and why THP causes latency and memory growth in some databases and caches.
+      - Check dTLB-load-misses from perf stat, the /sys/kernel/mm/transparent_hugepage settings and your database's official recommendations to decide whether to use huge pages.
+    practical_cases:
+      - Redis logging a THP warning at startup, prompting a review of the server's THP setting.
+      - Backing PostgreSQL's large shared_buffers with huge pages to reduce page table memory.

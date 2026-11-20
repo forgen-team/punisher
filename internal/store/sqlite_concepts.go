@@ -23,12 +23,12 @@ var conceptColumns = `
 	` + locCases("c", userLocaleSQL("$1")) + `, c.doc_links,
 	c.status, c.origin, COALESCE(c.curriculum_version, ''), c.updated_at,
 	(SELECT COUNT(*) FROM objectives o WHERE o.concept_id = c.id AND o.status = 'active'),
-	COALESCE(s.state, 'not_started'), COALESCE(c.chapter_id, '')`
+	COALESCE(s.state, 'not_started'), COALESCE(c.chapter_id, ''), ` + conceptDismissedSQL("c.id", "$1")
 
 func scanConcept(row rowScanner) (models.Concept, error) {
 	var c models.Concept
 	err := row.Scan(&c.ID, &c.Name, &c.Area, &c.Depth, &c.Summary, rawJSON(&c.PracticalCases), rawJSON(&c.DocLinks),
-		&c.Status, &c.Origin, &c.CurriculumVersion, ts(&c.UpdatedAt), &c.ObjectiveCount, &c.UserState, &c.ChapterID)
+		&c.Status, &c.Origin, &c.CurriculumVersion, ts(&c.UpdatedAt), &c.ObjectiveCount, &c.UserState, &c.ChapterID, &c.Dismissed)
 	return c, err
 }
 
@@ -109,14 +109,15 @@ func (s *SQLiteStore) fillNeighbours(ctx context.Context, userID string, d *mode
 	rows, err := collect(s.c().query(ctx, `
 		SELECT e.kind,
 		       CASE WHEN e.to_id = $2 THEN 'in' ELSE 'out' END AS direction,
-		       n.id, `+locName("n", userLocaleSQL("$1"))+`, n.area, COALESCE(s.state, 'not_started')
+		       n.id, `+locName("n", userLocaleSQL("$1"))+`, n.area, COALESCE(s.state, 'not_started'),
+		       `+conceptDismissedSQL("n.id", "$1")+`
 		FROM concept_edges e
 		JOIN concepts n ON n.id = CASE WHEN e.to_id = $2 THEN e.from_id ELSE e.to_id END
 		LEFT JOIN user_concept_states s ON s.concept_id = n.id AND s.user_id = $1
 		WHERE (e.from_id = $2 OR e.to_id = $2) AND n.status <> 'retired' AND `+visibleTo("n", "$1")+`
 		ORDER BY n.area, n.depth, n.id`, userID, d.ID), func(row rowScanner) (neighbour, error) {
 		var n neighbour
-		err := row.Scan(&n.link.Kind, &n.direction, &n.link.ID, &n.link.Name, &n.link.Area, &n.link.UserState)
+		err := row.Scan(&n.link.Kind, &n.direction, &n.link.ID, &n.link.Name, &n.link.Area, &n.link.UserState, &n.link.Dismissed)
 		return n, err
 	})
 	if err != nil {

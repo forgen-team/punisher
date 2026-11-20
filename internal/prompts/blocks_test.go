@@ -93,7 +93,7 @@ func TestUnknownVars(t *testing.T) {
 }
 
 func TestAssumedKnowledgeRules(t *testing.T) {
-	if Version != "punisher-prompts-2026-11-16.1" {
+	if Version != "punisher-prompts-2026-11-20.2" {
 		t.Fatalf("version = %s (bump when default blocks change)", Version)
 	}
 	for _, want := range []string{"전제하지 않습니다", "첫 등장에서 정의합니다", "2~3문장", "\"당연히\""} {
@@ -106,7 +106,7 @@ func TestAssumedKnowledgeRules(t *testing.T) {
 			t.Errorf("markup spec lacks %q", want)
 		}
 	}
-	for _, want := range []string{"초보 독자 시뮬레이션", "assumed_knowledge", "\"reader_gaps\"", "INSERT INSERT INTO"} {
+	for _, want := range []string{"독자 시뮬레이션", "assumed_knowledge", "\"reader_gaps\"", "INSERT INSERT INTO"} {
 		if !strings.Contains(ReviewTask, want) {
 			t.Errorf("review task lacks %q", want)
 		}

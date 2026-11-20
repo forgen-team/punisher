@@ -11,7 +11,7 @@ const ReviewTask = `
 ## 작업
 당신은 강사가 아니라 엄격한 기술 검수자입니다. 초안을 처음부터 끝까지 두 번 읽습니다.
 
-1차 — 초보 독자 시뮬레이션: 당신은 웹 FE/BE 실무 개발자입니다(HTTP·JSON·JS/TS·SQL 기본 CRUD·git·기초 셸은 압니다). OS·네트워크 스택·DB 내부·인프라·보안 용어는 모릅니다. 이 독자로서 읽다가 "이 말을 몰라서" 문장의 요점을 놓치는 곳을 모두 reader_gaps 에 적습니다. 정의가 그 문장이나 바로 다음 문장에 없고, 위쪽에서도 풀린 적이 없는 용어·약어·도구·명령 옵션·선행 메커니즘, 그리고 "당연히/알다시피" 류 전제 문장이 대상입니다. 같은 것은 첫 등장 한 번만 적습니다.
+1차 — 독자 시뮬레이션: 당신은 아래 '독자 수준' 절의 독자입니다(그 절의 전제 지식만 압니다). 이 독자로서 읽다가 "이 말을 몰라서" 문장의 요점을 놓치는 곳을 모두 reader_gaps 에 적습니다. 정의가 그 문장이나 바로 다음 문장에 없고, 위쪽에서도 풀린 적이 없는 용어·약어·도구·명령 옵션·선행 메커니즘, 그리고 "당연히/알다시피" 류 전제 문장이 대상입니다. 같은 것은 첫 등장 한 번만 적습니다.
 
 2차 — 기술 검수: 아래 항목을 하나씩 판정해 문제를 지적합니다.
 - factual_error: 사실 오류(동작 설명, 명령어 옵션, 출력 형식, 기본값, 버전 의존 동작을 일반론처럼 쓴 경우 포함). 특히 다음은 major 이상입니다:
@@ -52,7 +52,7 @@ JSON만 출력하세요:
   "summary": "한두 문장 총평",
   "reader_gaps": [
     {"section": "situation_question|principles|walkthrough|judgment_next", "quote": "막힌 문장 일부(그대로 인용)",
-     "unknown": "모를 수 있는 용어·메커니즘", "why": "웹 개발자가 이걸 모를 수 있는 이유",
+     "unknown": "모를 수 있는 용어·메커니즘", "why": "이 독자가 이걸 모를 수 있는 이유",
      "fix": "한 줄 정의 / 2~3문장 다리 / 개념 링크 중 무엇을 어떻게"}
   ],
   "issues": [
@@ -85,6 +85,7 @@ func review(c LectureContext, markup string, set Set, legacy bool) string {
 	writeContext(&b, c)
 	b.WriteString("\n## 검수할 강의 초안\n<<<LECTURE\n" + markup + "\nLECTURE>>>\n")
 	b.WriteString(set.Text(BlockReviewTask, c.vars()))
+	writeReaderProfile(&b, c.Reader)
 	writeDepthScope(&b, c.Depth)
 	if legacy {
 		b.WriteString(legacyReviewNote)
@@ -166,6 +167,7 @@ func Recheck(c LectureContext, findings []RecheckFinding, changed []RecheckBlock
 		fmt.Fprintf(&b, "\n### 바뀐 블록 %d (%s)\n<<<BLOCK\n%s\nBLOCK>>>\n", i+1, blk.Section, strings.TrimRight(blk.Text, "\n"))
 	}
 	b.WriteString(set.Text(BlockReviewRecheck, c.vars()))
+	writeReaderProfile(&b, c.Reader)
 	writeDepthScope(&b, c.Depth)
 	b.WriteString(BlockingRules)
 	writeFactualRules(&b)

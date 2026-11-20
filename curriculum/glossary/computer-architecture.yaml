@@ -15,7 +15,9 @@ concepts:
     arch.multicore: 멀티코어는 한 CPU 안의 여러 코어가 서로 다른 작업을 실제로 동시에 실행하는 구조다. 공유 데이터와 직렬 구간 때문에 코어를 늘린 만큼 성능이 오르지는 않으므로, vCPU 증설 효과를 예측할 때 필요하다.
     arch.numa: NUMA는 여러 CPU 소켓을 가진 서버에서 CPU마다 가까운 메모리와 먼 메모리가 있어 접근 비용이 달라지는 구조다. 코어가 많은 대형 서버로 옮긴 뒤 DB나 JVM의 지연이 들쭉날쭉해질 때 원인 후보가 된다.
     arch.pipeline-branch-prediction: 파이프라인은 여러 명령의 단계를 겹쳐 실행해 처리량을 높이는 방식이고, 분기 예측은 조건문의 결과를 미리 추측해 실행을 이어가는 기법이다. 예측이 자주 틀리면 미리 실행한 작업을 버리는 비용이 쌓여, 정렬 여부만으로 같은 루프의 속도가 달라진다.
+    arch.simd-vectorization: SIMD는 명령 하나로 여러 값을 동시에 계산하는 CPU 기능이고, 벡터화는 반복문을 이런 명령으로 바꾸는 것이다. 연속된 배열에 같은 연산을 반복하는 코드가 몇 배 빨라질 수 있다.
     arch.storage-devices: SSD와 HDD는 데이터를 영구 저장하는 장치로, HDD는 헤드가 움직여야 해서 랜덤 접근이 특히 느리고 SSD는 전자적으로 접근한다. DB 성능을 볼 때는 IOPS·처리량·지연을 구분해야 하고, 클라우드 볼륨의 IOPS 한도도 함께 봐야 한다.
+    arch.tlb-huge-pages: TLB는 가상 주소를 실제 주소로 바꾼 결과를 담는 CPU의 작은 캐시다. 큰 페이지를 쓰면 TLB 하나가 더 넓은 메모리를 덮어 대용량 작업이 빨라지지만, 자동 큰 페이지(THP)는 DB에서 지연 튐을 일으키기도 한다.
 terms:
     - id: g.twos-complement
       name: 2의 보수
@@ -61,7 +63,7 @@ terms:
         - 벡터 연산
         - AVX
         - NEON
-      concept: arch.cpu-instruction-execution
+      concept: arch.simd-vectorization
       gloss: SIMD는 명령 하나로 여러 데이터에 같은 연산을 동시에 적용하는 CPU 기능이다. 데이터가 메모리에 연속으로 놓여 있어야 효과가 커서, 압축·해시·JSON 파싱 라이브러리의 성능 차이를 설명할 때 자주 등장한다.
     - id: g.cache-hit
       name: 캐시 히트
@@ -93,7 +95,7 @@ terms:
       aliases:
         - Translation Lookaside Buffer
         - 주소 변환 캐시
-      concept: arch.memory-hierarchy
+      concept: arch.tlb-huge-pages
       gloss: TLB는 가상 주소를 물리 주소로 바꾼 결과를 저장해 두는 CPU 내부 캐시다. 넓은 메모리를 흩어서 접근하면 TLB 미스가 늘어 느려지며, 대형 DB에서 huge page 설정을 검토하는 이유가 된다.
     - id: g.mmu
       name: MMU

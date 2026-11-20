@@ -23,8 +23,11 @@ import (
 	"time"
 
 	seedfiles "github.com/forgen-team/punisher/curriculum"
+	"github.com/forgen-team/punisher/internal/agycli"
 	"github.com/forgen-team/punisher/internal/backup"
 	"github.com/forgen-team/punisher/internal/claudecli"
+	"github.com/forgen-team/punisher/internal/clicore"
+	"github.com/forgen-team/punisher/internal/codexcli"
 	"github.com/forgen-team/punisher/internal/config"
 	"github.com/forgen-team/punisher/internal/curriculum"
 	"github.com/forgen-team/punisher/internal/glossary"
@@ -210,7 +213,7 @@ func run(cfg config.Config) error {
 		log.Printf("recovered interrupted checks: %d jobs, %d sessions, %d turns, %d exercise attempts", r.Jobs, r.Sessions, r.Turns, r.Attempts)
 	}
 
-	gen, status, claude := newGenerator(cfg)
+	gen, status, ai := newGenerator(cfg, st)
 	terms, err := glossary.Load(seedfiles.Glossary)
 	if err != nil {
 		log.Printf("glossary: %v (term glosses are generated instead)", err)
@@ -254,6 +257,9 @@ func run(cfg config.Config) error {
 	deps := httpapi.RouterDependencies{
 		Store: st, Services: svc, Claude: status, AppVersion: version, DataDir: cfg.DataDir,
 	}
+	if ai != nil {
+		deps.AIProviders, deps.SelectedAI = ai.statuses, ai.router.Provider
+	}
 	if app.Enabled {
 		guard := &witems.Guard{AuthServiceURL: app.AuthServiceURL, OwnerUserID: app.OwnerUserID, Origin: app.Origin, InternalToken: app.InternalToken}
 		deps.Guard = guard.Middleware
@@ -278,8 +284,8 @@ func run(cfg config.Config) error {
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.Serve(ln) }()
 
-	if claude != nil {
-		reportClaude(ctx, claude)
+	if ai != nil {
+		reportProvider(ctx, ai)
 	} else {
 		reportGateway(ctx, status)
 	}
@@ -311,22 +317,40 @@ func run(cfg config.Config) error {
 	return nil
 }
 
+// localAI is the standalone generation backend: the provider router and
+// each provider's status source.
+type localAI struct {
+	router   *llm.Router
+	statuses map[string]handlers.ClaudeStatusSource
+}
+
 // newGenerator picks the generation backend: the host claude-gateway in the
-// Witems app mode, otherwise the local claude CLI (returned as claude too, for
-// the startup report).
-func newGenerator(cfg config.Config) (services.LLM, handlers.ClaudeStatusSource, *claudecli.Client) {
+// Witems app mode (ai = nil), otherwise the local AI CLIs behind a router that
+// reads the owner's aiProvider setting on every call.
+func newGenerator(cfg config.Config, st *store.SQLiteStore) (services.LLM, handlers.ClaudeStatusSource, *localAI) {
 	if cfg.Witems.Enabled {
 		gw := &llm.ClaudeGatewayClient{BaseURL: cfg.Witems.GatewayURL, InternalToken: cfg.Witems.InternalToken}
 		return gw, witems.GatewayStatus{Client: gw}, nil
 	}
-	claude := claudecli.New(claudecli.Config{
-		Bin:          cfg.ClaudeBin,
-		TempBase:     filepath.Join(cfg.DataDir, "tmp"),
-		Concurrency:  cfg.Concurrency,
-		DefaultModel: cfg.LectureModel,
-		DailyLimit:   cfg.DailyCallLimit,
-	})
-	return claude, claude, claude
+	// One gate for every provider: the process limit and daily cap hold whichever AI is selected.
+	gate := clicore.NewGate(clicore.GateConfig{Concurrency: cfg.Concurrency, DailyLimit: cfg.DailyCallLimit})
+	tmp := filepath.Join(cfg.DataDir, "tmp")
+	claude := claudecli.New(claudecli.Config{Bin: cfg.ClaudeBin, TempBase: tmp, Gate: gate, DefaultModel: cfg.LectureModel})
+	codex := codexcli.New(codexcli.Config{Bin: cfg.CodexBin, TempBase: tmp, Gate: gate})
+	agy := agycli.New(agycli.Config{Bin: cfg.AgyBin, TempBase: tmp, Gate: gate})
+	router := &llm.Router{
+		Clients: map[string]llm.Client{llm.ProviderClaude: claude, llm.ProviderCodex: codex, llm.ProviderAgy: agy},
+		Tiers: map[string]llm.Tiers{
+			llm.ProviderCodex: {Lecture: cfg.CodexLectureModel, Fast: cfg.CodexFastModel},
+			llm.ProviderAgy:   {Lecture: cfg.AgyLectureModel, Fast: cfg.AgyFastModel},
+		},
+		FastModel:    cfg.FastModel,
+		RegradeModel: cfg.CheckRegradeModel,
+		Selected:     func(ctx context.Context) string { return st.AIProviderFor(ctx, middleware.LocalUserID) },
+	}
+	ai := &localAI{router: router, statuses: map[string]handlers.ClaudeStatusSource{
+		llm.ProviderClaude: claude, llm.ProviderCodex: codex, llm.ProviderAgy: agy}}
+	return router, claude, ai
 }
 
 // listenFor binds the Witems app address as given (inside a container), or
@@ -392,17 +416,32 @@ func isPunisher(url string) bool {
 	return json.NewDecoder(resp.Body).Decode(&body) == nil && body.Service == "punisher"
 }
 
-func reportClaude(ctx context.Context, c *claudecli.Client) {
+// providerNames are the startup-report names of the AIs.
+var providerNames = map[string]string{llm.ProviderClaude: "Claude Code", llm.ProviderCodex: "Codex", llm.ProviderAgy: "Antigravity (agy)"}
+
+// providerCommands are their terminal commands (install / sign-in hints).
+var providerCommands = map[string][2]string{
+	llm.ProviderClaude: {"claude", "`claude` (/login)"},
+	llm.ProviderCodex:  {"codex", "`codex login`"},
+	llm.ProviderAgy:    {"agy", "`agy`"},
+}
+
+// reportProvider prints the selected AI's state at startup.
+func reportProvider(ctx context.Context, ai *localAI) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	st := c.Status(ctx)
+	p := ai.router.Provider(ctx)
+	st := ai.statuses[p].Status(ctx)
+	name, cmd := providerNames[p], providerCommands[p]
 	switch st.Code {
-	case claudecli.CodeCLIMissing:
-		fmt.Println(tr("[주의] "+services.MsgClaudeMissing, "[warning] Claude Code (the claude command) was not found. Install Claude Code, run `claude` once in a terminal to sign in, then try again."))
-	case claudecli.CodeNotLoggedIn:
-		fmt.Println(tr("[주의] "+services.MsgClaudeLoggedOut, "[warning] Claude Code is not signed in. Run `claude` in a terminal and sign in (/login), then try again."))
+	case p + "_unavailable":
+		fmt.Println(tr("[주의] "+services.ProviderMessage(p, "missing"),
+			fmt.Sprintf("[warning] %s (the %s command) was not found. Install it, sign in with %s in a terminal, then try again.", name, cmd[0], cmd[1])))
+	case p + "_not_logged_in":
+		fmt.Println(tr("[주의] "+services.ProviderMessage(p, "logged_out"),
+			fmt.Sprintf("[warning] %s is not signed in. Run %s in a terminal and sign in, then try again.", name, cmd[1])))
 	default:
-		fmt.Printf(tr("Claude Code 연결됨 (%s)\n", "Claude Code connected (%s)\n"), st.Version)
+		fmt.Printf(tr("%s 연결됨 (%s)\n", "%s connected (%s)\n"), name, st.Version)
 	}
 }
 

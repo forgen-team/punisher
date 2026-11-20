@@ -115,6 +115,8 @@ export function useQuestions(lectureId: string) {
     queryFn: () => punisherApi.listQuestions(lectureId),
     enabled: Boolean(lectureId),
     ...punisherQueryDefaults,
+    // 스레드 답이 백그라운드로 쓰이는 중(pending)이면 다 쓸 때까지 다시 읽는다.
+    refetchInterval: (query) => ((query.state.data ?? []).some((q) => q.status === "pending" && q.mode) ? 3000 : false),
   });
 }
 

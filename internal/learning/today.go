@@ -32,6 +32,9 @@ type TodayConcept struct {
 	Private bool
 	// PendingDepths: depths that still have a pending objective (≈ lectures left).
 	PendingDepths int
+	// Dismissed: the user marked it '필요 없음' — never recommended (not even 이어보기),
+	// but its state is untouched, so it still gates its dependents.
+	Dismissed bool
 }
 
 // ResumeItem is an in-progress lecture.
@@ -79,6 +82,9 @@ type TodayInput struct {
 	LectureMinutes map[string]int
 	// Locale: ko|en of the reason texts ("" = ko).
 	Locale string
+	// ReaderLevel: the user's saved level ("" = not chosen); decides whether and in
+	// which order the foundations track is recommended (FoundationsOrder).
+	ReaderLevel string
 }
 
 // LapsedConcept is how a "다시 확인" card opens: today's review when one of the
@@ -153,7 +159,7 @@ type todayBuilder struct {
 // learnable: active, not done, still has a pending objective.
 func (b *todayBuilder) learnable(id string) (TodayConcept, bool) {
 	c, ok := b.in.Concepts[id]
-	if !ok || IsDone(NormalizeState(c.State)) || !c.HasPending || b.used[id] {
+	if !ok || IsDone(NormalizeState(c.State)) || !c.HasPending || c.Dismissed || b.used[id] {
 		return TodayConcept{}, false
 	}
 	return c, true
@@ -186,10 +192,11 @@ func (b *todayBuilder) add(c TodayConcept, r Recommendation) {
 }
 
 // BuildToday orders recommendations: every in-progress lecture (not counted in Limit) → selected goal path's
-// next unlearned prerequisite → pending study requests → essential gaps
-// (depth-1 frontier, balanced across areas) → one new deeper-goal suggestion.
-// Completed/known concepts and concepts without pending objectives are never
-// recommended. If nothing qualifies the result is Exhausted.
+// next unlearned prerequisite → pending study requests → the foundations track
+// (beginner/novice only, FoundationsOrder) → essential gaps (depth-1 frontier,
+// balanced across areas) → one new deeper-goal suggestion.
+// Completed/known/dismissed ('필요 없음') concepts and concepts without pending
+// objectives are never recommended. If nothing qualifies the result is Exhausted.
 func BuildToday(in TodayInput) TodayResult {
 	if in.Limit <= 0 {
 		in.Limit = 5
@@ -206,7 +213,7 @@ func BuildToday(in TodayInput) TodayResult {
 	// 지도에서 사라진 개념의 강의도 뺀다.
 	// 읽고 있는 개념은 같은 개념을 또 추천하지 않도록 add 가 used 로 표시한다(의도).
 	for _, r := range in.Resume {
-		if c, ok := in.Concepts[r.ConceptID]; ok && !IsDone(NormalizeState(c.State)) {
+		if c, ok := in.Concepts[r.ConceptID]; ok && !IsDone(NormalizeState(c.State)) && !c.Dismissed {
 			b.add(c, Recommendation{Kind: RecResume, LectureID: r.LectureID, Title: r.Title, Anchor: r.Anchor,
 				Percent: r.Percent, EstimatedMinutes: remainingMinutes(r), ParentLectureID: r.ParentLectureID,
 				Reason: fmt.Sprintf(inLocale(in.Locale, "지난번 %d%%까지 본 강의입니다. 멈춘 위치에서 이어서 끝내면 흐름이 끊기지 않습니다.",
@@ -230,6 +237,7 @@ func BuildToday(in TodayInput) TodayResult {
 		}
 		b.addRequest(r)
 	}
+	b.addFoundations()
 	b.addEssentialGaps()
 	b.addNewGoal()
 

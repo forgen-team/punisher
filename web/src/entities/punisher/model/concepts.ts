@@ -65,3 +65,13 @@ export function useMarkKnown() {
     onSuccess: () => invalidateLearningState(queryClient),
   });
 }
+
+/** '필요 없음' 토글: dismissed=true 면 빼고, false 면 되돌린다. 학습 상태 쿼리를 모두 새로 읽는다. */
+export function useConceptDismiss() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conceptId, dismissed }: { conceptId: string; dismissed: boolean }) =>
+      dismissed ? punisherApi.dismissConcept(conceptId) : punisherApi.restoreConcept(conceptId),
+    onSuccess: () => invalidateLearningState(queryClient),
+  });
+}

@@ -1,0 +1,135 @@
+# English overlay for ../../foundations.yaml — same concept ids and objective order.
+# Objectives stay keyed by their Korean ordinal; only display/prompt text comes from here.
+area: foundations
+title: Foundations
+concepts:
+  found.running-programs:
+    name: How a Computer Runs a Program
+    summary: A program is a list of instructions the computer follows in order. Source code written for people to read is turned into a form the computer can run, and when it runs it is loaded into memory and the CPU works through it step by step.
+    objectives:
+      - Explain that a program is a list of instructions run in a set order
+      - Explain how source code relates to the program that actually runs (translation and interpretation)
+      - Explain what the CPU, memory and storage each do when a program runs
+    practical_cases:
+      - Understanding what happens inside the phone in the moment between tapping an app icon and seeing its screen
+      - Telling apart an app's installer file and the app while it is running
+  found.code-basics:
+    name: Building Blocks of Code (Variables, Conditions, Loops, Functions)
+    summary: Almost all code is made of variables that hold values under a name, conditions that branch depending on the situation, loops that repeat the same work, and functions that bundle common work under a name. Once you recognize these four, you can follow the flow of code you have never seen before.
+    objectives:
+      - Explain that a variable keeps a value under a name so it can be used again
+      - Trace in short code how conditions (if) and loops (for, while) change the flow of execution
+      - Explain that a function is a bundle that takes input, does some work and returns a result
+    practical_cases:
+      - Writing out, with a condition and a loop, how you go through a shopping list and skip what you already have
+      - Reading the spreadsheet formula =IF(A1>100, "many", "few") as the same idea as a condition in code
+  found.data-shapes:
+    name: Shapes of Data (Numbers, Strings, Lists, Dictionaries)
+    summary: Values in a program have shapes. The basics are single values like numbers and text (strings), lists that line up several values in order, and dictionaries that look values up by a label (key). Knowing the shape tells you which calculations and lookups are possible.
+    objectives:
+      - Explain the difference between numbers and strings, and why "10" and 10 are treated differently
+      - Explain that a list is an ordered group of values taken out by position (index)
+      - Explain that a dictionary (key-value) finds values by label, and when to use it instead of a list
+    practical_cases:
+      - Thinking of one contact (name, phone, email) as a dictionary and the whole contact list as a list
+      - Understanding the mistake where a cart total shows '10001000' because the strings '1000' were joined
+  found.files-and-paths:
+    name: Files, Folders and Paths
+    summary: Data on a computer lives in files, and files are arranged in folders (directories) shaped like a tree. A path is the address of a file in that tree; an absolute path starts from the top, and a relative path starts from where you are now.
+    objectives:
+      - Explain that files and folders form a tree and what a file extension is for
+      - Tell absolute and relative paths apart and write the same file both ways
+      - Explain how hidden files, letter case and spaces cause path problems
+    practical_cases:
+      - Checking the path in the file explorer's address bar when you cannot find a file you downloaded
+      - Checking whether an image path is correct relative to the page when a picture on a web page does not show
+  found.terminal-and-shell:
+    name: The Terminal and Shell Commands
+    summary: A terminal is a window where you give the computer commands as text, and the shell is the program that takes those commands and runs them. Knowing just a few commands, such as checking where you are (pwd), moving (cd) and listing (ls), is enough to follow the instructions of developer tools.
+    objectives:
+      - Explain how the terminal and the shell relate, and read a command line made of a command, options and arguments
+      - Use pwd, cd, ls and mkdir to check where you are, move between folders and create them
+      - Guess what went wrong from the printed message and exit status when a command fails
+    practical_cases:
+      - Reading what each part of a command in an install guide does before copying and pasting it
+      - Telling from a command not found message whether it is a typo or the tool is not installed
+  found.internet-and-web:
+    name: The Internet and the Web (Clients, Servers, URLs, Domains)
+    summary: The internet is the network that links computers around the world, and the web is a way of exchanging documents and services on top of it. One side asks (the client) and the other answers (the server); a URL is the address of what you want, and a domain is a name for a server that is easy for people to remember.
+    objectives:
+      - Explain the difference between the internet (the network) and the web (the services on it)
+      - Explain how clients and servers exchange requests and responses
+      - Read a URL as protocol, domain, path and query, and explain that a domain is turned into a server address
+    practical_cases:
+      - Splitting a shared link into parts to read which site and which page it points to
+      - Thinking through whether the problem is on your side or the server's when Wi-Fi works but one site will not open
+  found.what-browsers-do:
+    name: What a Browser Does (HTML, CSS, JS)
+    summary: A browser is a program that reads the files it gets from a server and draws the screen. HTML carries the content and structure, CSS the look, and JavaScript the behavior; the browser takes all three, interprets them and turns them into the page you see.
+    objectives:
+      - Explain that HTML, CSS and JavaScript handle structure, look and behavior respectively
+      - Explain the order in which a browser receives files, interprets them and draws them on screen
+      - Use the browser's developer tools to see a page's HTML and the list of files it loaded
+    practical_cases:
+      - Guessing that the CSS changed when a site redesign keeps the same text but changes fonts and colors
+      - Opening the developer tools console to look for red errors when a button does nothing
+  found.http-first-look:
+    name: A First Look at HTTP Requests and Responses
+    summary: HTTP is the agreement by which a browser or app tells a server what it wants (the request) and the server answers (the response). A request says what to do (the method) and where (the URL); a response carries a result number (the status code) and the content.
+    objectives:
+      - Explain that a request is made of a method (GET, POST), URL, headers and body, and a response of a status code, headers and body
+      - Tell which side is at fault for common status codes such as 200, 404 and 500
+      - Check one request's method, status code and response in the browser developer tools' network tab
+    practical_cases:
+      - Thinking through whether the address is wrong or the page was removed when a link shows '404 Not Found'
+      - Seeing in the network tab that what you typed is sent to the server as a POST request when you press a sign-up button
+  found.json-and-api:
+    name: JSON and APIs
+    summary: An API is a window through which programs ask each other for work in an agreed way and get results back, and JSON is the most common text format for the data exchanged. JSON is dictionaries and lists written out as text, so people can read it too.
+    objectives:
+      - Explain with an example that an API is an agreed request-and-response window between programs
+      - Read JSON objects, arrays, strings, numbers, booleans and null, and match them to dictionaries and lists
+      - Find a value in a public API's JSON response and write its path (e.g., data.items[0].name)
+    practical_cases:
+      - Following how a weather app sends a region to a weather service API and shows the temperature it gets back as JSON
+      - Writing the path when you set up a no-code automation tool to take a value out of a JSON response
+  found.tables-and-sql:
+    name: Tables and a First Taste of SQL
+    summary: Many services store data in tables of rows and columns, much like a spreadsheet. SQL is the language for asking such a table for rows that match a condition, in a given order, and a single SELECT line lets you pull out the data you want.
+    objectives:
+      - Explain tables, rows, columns and the number that identifies each row (the primary key)
+      - Read and write queries that pick and sort matching rows with SELECT, WHERE and ORDER BY
+      - Explain that spreadsheet filters and sorting do the same work as an SQL query in a different way
+    practical_cases:
+      - Rewriting a spreadsheet step like 'only Seoul customers, sorted by sign-up date' as one line of SQL
+      - Reading what a SELECT statement a colleague left in the company dashboard's query window shows
+  found.git-version-control:
+    name: Version Control with git
+    summary: Version control records when, by whom and how files changed, so you can go back to an earlier state when needed. git is the most widely used tool; it saves changes as commits, lets you work separately on branches and then merges them.
+    objectives:
+      - Explain the problem version control solves compared with naming files final_really_final
+      - Explain what a repository, a commit, a branch and a remote repository (such as GitHub) each are
+      - Record changes and check the history with git status, add, commit and log
+    practical_cases:
+      - Imagining how a commit history would solve the confusion when several people edit a shared document and nobody knows who changed what
+      - Reading what changed recently in the commit list on a GitHub project page
+  found.hosting-and-deploy:
+    name: Hosting and Deployment
+    summary: For others to reach a website that only ran on your computer, it has to be put on a server that is always on. Renting that server space is hosting, and putting a new version on the server so it actually changes is deployment.
+    objectives:
+      - Explain the difference between seeing something on your own computer (local) and having it public on the internet
+      - Explain in order what hosting, connecting a domain and deploying each do
+      - Explain the steps to publish one page with static site hosting (such as GitHub Pages)
+    practical_cases:
+      - Recognizing that a link that works on your computer but not for others happened because you sent a localhost address
+      - Understanding what process is meant when you hear a company homepage edit will only show after a deploy
+  found.reading-errors:
+    name: Reading Error Messages and First Steps in Debugging
+    summary: An error message is a clue that tells you where and why a program stopped. Reading the kind of error and the file and line number, and checking by changing one thing at a time, is where debugging starts.
+    objectives:
+      - Find and read the error type, description, file name and line number in an error message
+      - Find the line where your own code appears in a multi-line error record (stack trace)
+      - Explain the order of narrowing down a cause by reproducing it, changing one thing at a time and printing values
+    practical_cases:
+      - Working backwards to the cell that caused an error mark (DIV/0, N/A) in a spreadsheet
+      - Sharing the full message and the steps to reproduce it when you search for an error or ask a colleague

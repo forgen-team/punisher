@@ -42,6 +42,8 @@ type LecturePlan struct {
 	Depth        int
 	// Language: the lecture language (ko|en, i18n §1). "" = ko (LanguageSuffix).
 	Language string
+	// ReaderLevel: the reader level written for (learner-level ①). "" = practitioner (ReaderLevelSuffix).
+	ReaderLevel string
 }
 
 // PendingObjectives returns not-done objectives, ordered by depth then ordinal.
@@ -121,14 +123,16 @@ func KSTDayStart(t time.Time) time.Time {
 // generation of the same objective set is additionally blocked by the
 // generation_jobs partial unique index on active jobs.
 func LibraryJobKey(plan LecturePlan, day string) string {
-	return fmt.Sprintf("%s:%s@%d%s:%s", JobLibrary, plan.ObjectiveKey, plan.Depth, LanguageSuffix(plan.Language), day)
+	return fmt.Sprintf("%s:%s@%d%s%s:%s", JobLibrary, plan.ObjectiveKey, plan.Depth, LanguageSuffix(plan.Language),
+		ReaderLevelSuffix(plan.ReaderLevel), day)
 }
 
 // TargetKey identifies a generation target independent of job kind. The
-// language is part of the target: ko and en lectures of the same objectives
-// and depth are generated independently (i18n §2).
+// language and the reader level are part of the target: ko and en (or beginner
+// and practitioner) lectures of the same objectives and depth are generated
+// independently (i18n §2, learner-level ①).
 func TargetKey(plan LecturePlan) string {
-	return fmt.Sprintf("%s@%d%s", plan.ObjectiveKey, plan.Depth, LanguageSuffix(plan.Language))
+	return fmt.Sprintf("%s@%d%s%s", plan.ObjectiveKey, plan.Depth, LanguageSuffix(plan.Language), ReaderLevelSuffix(plan.ReaderLevel))
 }
 
 // LanguageSuffix is the key suffix of a language: "" for ko (keys made before

@@ -30,6 +30,17 @@ func TestSettingsPatchNeedsOneValidField(t *testing.T) {
 		{"bad minutes", settingsBody{ReviewMinutes: ptr(31)}, ErrorInvalidReviewMinutes},
 		{"bad grader", settingsBody{ReviewGrader: str("llm_regrade")}, ErrorInvalidGrader},
 		{"bad language", settingsBody{ExampleLanguage: str("cobol")}, ErrorInvalidLanguage},
+		{"reader level only", settingsBody{ReaderLevel: str(" Beginner ")}, ""},
+		{"empty reader level", settingsBody{ReaderLevel: str("")}, ErrorInvalidReaderLevel},
+		{"bad reader level", settingsBody{ReaderLevel: str("expert")}, ErrorInvalidReaderLevel},
+		{"familiarity only", settingsBody{AreaFamiliarity: map[string]string{"os": "can_explain", "database": "new"}}, ""},
+		{"empty familiarity", settingsBody{AreaFamiliarity: map[string]string{}}, ""},
+		{"unknown area", settingsBody{AreaFamiliarity: map[string]string{"cooking": "heard"}}, ErrorInvalidFamiliarity},
+		{"bad familiarity", settingsBody{AreaFamiliarity: map[string]string{"os": "expert"}}, ErrorInvalidFamiliarity},
+		{"ai provider only", settingsBody{AIProvider: str(" Codex ")}, ""},
+		{"agy provider", settingsBody{AIProvider: str("agy")}, ""},
+		{"gemini is not a provider", settingsBody{AIProvider: str("gemini")}, ErrorInvalidAIProvider},
+		{"empty ai provider", settingsBody{AIProvider: str("")}, ErrorInvalidAIProvider},
 	}
 	for _, c := range cases {
 		p, invalid := settingsPatch(c.body)
@@ -43,6 +54,12 @@ func TestSettingsPatchNeedsOneValidField(t *testing.T) {
 		if c.name == "review grader only" && (p.ReviewGrader == nil || *p.ReviewGrader != "llm") {
 			t.Errorf("grader must be normalized: %+v", p.ReviewGrader)
 		}
+		if c.name == "ai provider only" && (p.AIProvider == nil || *p.AIProvider != "codex") {
+			t.Errorf("ai provider must be normalized: %+v", p.AIProvider)
+		}
+		if c.name == "reader level only" && (p.ReaderLevel == nil || *p.ReaderLevel != "beginner") {
+			t.Errorf("reader level must be normalized: %+v", p.ReaderLevel)
+		}
 	}
 }
 
@@ -51,11 +68,16 @@ func TestSettingsPatchNeedsOneValidField(t *testing.T) {
 func TestPutSettingsBadRequestCode(t *testing.T) {
 	h := &LearnHandler{}
 	for body, want := range map[string]ErrorCode{
-		`{"dailyMinutes":20}`:         ErrorInvalidDailyMinutes,
-		`{"reviewIntervals":[7,1]}`:   ErrorInvalidIntervals,
-		`{}`:                          ErrorSettingsRequired,
-		`{"unknown":1}`:               ErrorBadRequest,
-		`{"exampleLanguage":"cobol"}`: ErrorInvalidLanguage,
+		`{"dailyMinutes":20}`:                ErrorInvalidDailyMinutes,
+		`{"reviewIntervals":[7,1]}`:          ErrorInvalidIntervals,
+		`{}`:                                 ErrorSettingsRequired,
+		`{"unknown":1}`:                      ErrorBadRequest,
+		`{"exampleLanguage":"cobol"}`:        ErrorInvalidLanguage,
+		`{"readerLevel":""}`:                 ErrorInvalidReaderLevel,
+		`{"readerLevel":"expert"}`:           ErrorInvalidReaderLevel,
+		`{"areaFamiliarity":{"os":"x"}}`:     ErrorInvalidFamiliarity,
+		`{"areaFamiliarity":{"nope":"new"}}`: ErrorInvalidFamiliarity,
+		`{"aiProvider":"gemini"}`:            ErrorInvalidAIProvider,
 	} {
 		req := httptest.NewRequest(http.MethodPut, "/v1/me/settings", strings.NewReader(body))
 		rec := httptest.NewRecorder()

@@ -55,7 +55,7 @@ func TestBuildGraphRequestsAndAreaSummary(t *testing.T) {
 		},
 		Dismissed: map[string]bool{"os.c": true},
 	}
-	g := buildGraph(data, "")
+	g := buildGraph(data, "", true)
 	byID := map[string]models.GraphNode{}
 	for _, n := range g.Nodes {
 		byID[n.ID] = n

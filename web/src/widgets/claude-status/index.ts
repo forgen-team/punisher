@@ -1,2 +1,3 @@
 export { ClaudeStatusBanner } from "./ClaudeStatusBanner";
-export { messages, statusText } from "./i18n";
+export { AiConnectionPanel } from "./AiConnectionPanel";
+export { messages, panelMessages, statusText } from "./i18n";

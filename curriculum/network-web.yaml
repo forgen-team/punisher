@@ -324,3 +324,115 @@ concepts:
     prerequisites: [net.http-status-codes]
     practical_cases:
       - 모든 오류를 200과 본문 플래그로 반환해 모니터링이 실패를 못 잡는 API
+
+  - id: net.tcp-congestion-control
+    name: TCP 혼잡 제어
+    aliases: [TCP Congestion Control, CUBIC, BBR, 혼잡 윈도우, cwnd]
+    depth: 3
+    summary: TCP는 손실·지연 신호로 혼잡 윈도우(cwnd)를 조절해 한 번에 보낼 수 있는 양을 정한다. 손실 기반(CUBIC)과 대역폭·RTT 모델 기반(BBR) 알고리즘은 손실이 섞인 장거리 경로에서 처리량이 크게 다르다.
+    objectives:
+      - 슬로 스타트·혼잡 회피 단계와 혼잡 윈도우가 처리량을 제한하는 방식을 설명한다
+      - 손실 기반 CUBIC과 모델 기반 BBR의 차이와 각각 불리한 네트워크 환경을 설명한다
+      - ss -ti 출력의 cwnd·rtt·retrans 값을 읽고 느린 전송이 혼잡 제어 때문인지 판단한다
+    prerequisites: [net.tcp, net.keepalive-connection-reuse]
+    practical_cases:
+      - 리전 간 대용량 백업 전송이 약간의 패킷 손실에도 처리량이 급감한 사례
+      - 요청마다 새 연결을 열어 매번 슬로 스타트를 겪던 첫 응답 지연을 연결 재사용으로 완화
+    doc_links:
+      - title: RFC 5681 - TCP Congestion Control
+        url: https://www.rfc-editor.org/rfc/rfc5681
+      - title: RFC 9438 - CUBIC for Fast and Long-Distance Networks
+        url: https://www.rfc-editor.org/rfc/rfc9438
+
+  - id: net.tcp-accept-backlog
+    name: 연결 큐와 백로그
+    aliases: [accept 큐, SYN Queue, SYN 큐, SYN Cookies, SYN 쿠키, SYN Flood, SYN 플러드]
+    depth: 3
+    summary: 리눅스는 핸드셰이크 중인 연결(SYN 큐)과 수립됐지만 애플리케이션이 아직 accept하지 않은 연결(accept 큐)을 따로 관리한다. accept 큐가 넘치면 연결이 버려지거나 재전송으로 지연되고, SYN 쿠키는 SYN 큐가 넘칠 때 상태를 저장하지 않고 핸드셰이크를 이어 간다.
+    objectives:
+      - SYN 큐와 accept 큐의 역할과 listen backlog·somaxconn 값의 관계를 설명한다
+      - SYN 플러드 상황에서 SYN 쿠키가 동작하는 원리와 한계를 설명한다
+      - ss -lnt의 Recv-Q·Send-Q와 nstat의 ListenOverflows·ListenDrops 카운터를 읽어 accept 큐 넘침 여부를 판단한다
+    prerequisites: [net.tcp-connection-states, os.socket]
+    practical_cases:
+      - 트래픽 급증 때 애플리케이션이 accept를 늦게 처리해 클라이언트 연결이 SYN 재전송 간격만큼 지연된 사례
+    doc_links:
+      - title: listen(2) - Linux manual page
+        url: https://man7.org/linux/man-pages/man2/listen.2.html
+      - title: tcp(7) - Linux manual page
+        url: https://man7.org/linux/man-pages/man7/tcp.7.html
+
+  - id: net.time-wait-port-exhaustion
+    name: TIME_WAIT와 임시 포트 고갈
+    aliases: [Ephemeral Port Exhaustion, 임시 포트 고갈, 포트 고갈, Port Exhaustion, ip_local_port_range, EADDRNOTAVAIL]
+    depth: 3
+    summary: 연결을 먼저 끊은 쪽은 TIME_WAIT 상태를 일정 시간 유지하므로, 같은 목적지로 짧은 연결을 많이 만들면 출발지 임시 포트가 바닥난다. 해결은 커널 값 조정보다 연결 재사용이 우선이다.
+    objectives:
+      - TIME_WAIT가 존재하는 이유(지연된 세그먼트 차단, 마지막 ACK 재전송)를 설명한다
+      - 출발지 IP·출발지 포트·목적지 IP·목적지 포트 조합과 임시 포트 범위가 동시 연결 수를 제한하는 방식을 설명한다
+      - ss -tan state time-wait로 목적지별 TIME_WAIT 수를 세고 연결 풀·keep-alive 적용과 커널 설정 변경 중 무엇을 할지 결정한다
+    prerequisites: [net.tcp-connection-states, net.keepalive-connection-reuse, net.nat-and-ports]
+    practical_cases:
+      - 요청마다 새 HTTP 클라이언트를 만들던 서비스가 외부 API 호출에서 EADDRNOTAVAIL 오류를 낸 사례
+      - NAT 게이트웨이 뒤 여러 인스턴스가 같은 목적지로 연결해 NAT 포트가 고갈된 사례
+    doc_links:
+      - title: ip(7) - Linux manual page
+        url: https://man7.org/linux/man-pages/man7/ip.7.html
+      - title: RFC 9293 - Transmission Control Protocol (TCP)
+        url: https://www.rfc-editor.org/rfc/rfc9293
+
+  - id: net.hol-blocking-quic
+    name: 헤드 오브 라인 블로킹과 QUIC
+    aliases: [Head-of-Line Blocking, QUIC Streams, QUIC 스트림, Connection Migration, 연결 마이그레이션]
+    depth: 3
+    summary: HTTP/2는 요청을 한 연결에 다중화하지만 TCP 위에서는 패킷 하나가 손실되면 뒤따르는 모든 스트림이 기다린다. QUIC은 스트림별로만 순서를 보장해 이 지연을 줄이고, 연결 ID로 네트워크가 바뀌어도 연결을 유지할 수 있다.
+    objectives:
+      - HTTP/1.1·HTTP/2(TCP)·HTTP/3(QUIC)에서 HOL 블로킹이 각각 어느 계층에서 생기는지 구분한다
+      - QUIC의 스트림 독립성·연결 ID·전송 계층 암호화가 TCP와 TLS 조합과 다른 점을 설명한다
+      - 손실률·꼬리 지연 지표와 프로토콜별 요청 비율을 보고 HTTP/3 도입 효과를 판단하고 UDP 차단 시 폴백 여부를 확인한다
+    prerequisites: [net.http2-http3, net.udp]
+    practical_cases:
+      - 모바일 사용자 비중이 큰 서비스에서 손실 구간의 이미지 로딩 꼬리 지연이 HTTP/2 단일 연결에 몰린 사례
+      - 사내망 방화벽이 UDP 443을 막아 브라우저가 HTTP/3 대신 HTTP/2로 폴백하는 것을 확인
+    doc_links:
+      - title: RFC 9000 - QUIC
+        url: https://www.rfc-editor.org/rfc/rfc9000
+      - title: RFC 9114 - HTTP/3
+        url: https://www.rfc-editor.org/rfc/rfc9114
+
+  - id: net.nagle-delayed-ack
+    name: Nagle과 지연 ACK
+    aliases: [Nagle's Algorithm, Nagle 알고리즘, 네이글 알고리즘, Delayed ACK, 지연 ACK, TCP_NODELAY, TCP_QUICKACK]
+    depth: 3
+    summary: Nagle 알고리즘은 확인받지 않은 데이터가 있으면 작은 세그먼트를 모아 보내고, 지연 ACK는 ACK를 잠시 미뤄 합친다. 둘이 맞물리면 작은 쓰기를 나눠 보내는 요청·응답 프로토콜에서 요청마다 수십 ms의 지연이 생길 수 있다.
+    objectives:
+      - Nagle 알고리즘과 지연 ACK가 각각 줄이려는 비용을 설명한다
+      - 쓰기-쓰기-읽기 패턴에서 두 기법이 맞물려 지연이 생기는 과정을 설명한다
+      - 패킷 캡처의 세그먼트 간격을 보고 TCP_NODELAY 설정과 쓰기 합치기 중 무엇을 적용할지 결정한다
+    prerequisites: [net.tcp, os.socket]
+    practical_cases:
+      - 헤더와 본문을 따로 write하는 클라이언트에서 요청마다 일정한 수십 ms 지연이 생긴 사례
+    doc_links:
+      - title: RFC 896 - Congestion Control in IP/TCP Internetworks
+        url: https://www.rfc-editor.org/rfc/rfc896
+      - title: tcp(7) - Linux manual page
+        url: https://man7.org/linux/man-pages/man7/tcp.7.html
+
+  - id: net.anycast-bgp
+    name: 애니캐스트와 BGP 기초
+    aliases: [Anycast, 애니캐스트, BGP, Border Gateway Protocol, Autonomous System, 자율 시스템, 경로 광고]
+    depth: 3
+    summary: BGP는 자율 시스템(AS)끼리 어떤 IP 대역으로 가는 경로를 알리는 프로토콜이다. 애니캐스트는 같은 IP를 여러 위치에서 광고해 사용자를 네트워크상 가까운 곳으로 보내며, CDN과 공용 DNS가 이 방식을 쓴다.
+    objectives:
+      - AS·경로 광고·경로 선택으로 BGP가 인터넷 경로를 정하는 방식을 설명한다
+      - 애니캐스트의 가까움이 지리가 아니라 BGP 경로로 정해지는 이유와 경로 변경 시 연결이 끊길 수 있는 점을 설명한다
+      - traceroute 결과와 CDN 응답 헤더의 PoP 정보를 보고 사용자가 예상 밖 지역으로 라우팅되는지 판단한다
+    prerequisites: [net.ip-and-routing, net.http-caching-cdn]
+    practical_cases:
+      - 잘못된 BGP 경로 광고로 대형 서비스 전체가 인터넷에서 사라진 장애
+      - 국내 사용자가 해외 CDN PoP로 붙어 지연이 늘어난 사례
+    doc_links:
+      - title: RFC 4271 - A Border Gateway Protocol 4 (BGP-4)
+        url: https://www.rfc-editor.org/rfc/rfc4271
+      - title: RFC 4786 - Operation of Anycast Services
+        url: https://www.rfc-editor.org/rfc/rfc4786

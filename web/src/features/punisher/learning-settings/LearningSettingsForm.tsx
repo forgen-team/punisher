@@ -1,16 +1,27 @@
 import { ErrorState, Field, ListSkeleton, Select, Spinner, Switch } from "@/src/shared/ui/kit";
-import { describeSettingsError, useLearningSettings, useSaveLearningSettings } from "@/src/entities/punisher";
-import { describePunisherError, type ExampleLanguage, type LabOS, type LearningSettingsPatch } from "@/src/shared/api/punisher";
+import { READER_LEVEL_LABELS_BY_LOCALE, describeSettingsError, useLearningSettings, useSaveLearningSettings } from "@/src/entities/punisher";
+import {
+  READER_LEVELS,
+  describePunisherError,
+  type ChosenReaderLevel,
+  type ExampleLanguage,
+  type LabOS,
+  type LearningSettingsPatch,
+} from "@/src/shared/api/punisher";
 import { ReviewSettingsFields } from "./ReviewSettingsFields";
 import type { SettingsField } from "./reviewSettings";
-import { DEFAULT_LOCALE, LOCALES, isLocale, useT } from "@/src/shared/i18n";
+import { DEFAULT_LOCALE, LOCALES, isLocale, useLocale, useT } from "@/src/shared/i18n";
 import { LANGUAGE_LABEL, LAB_OS_LABELS, LOCALE_NAMES, messages } from "./i18n";
 
 const DAILY_MINUTE_OPTIONS = [15, 30, 45, 60] as const;
 const LAB_OS_OPTIONS: readonly LabOS[] = ["macos", "linux", "none"];
 
+function isReaderLevel(value: string): value is ChosenReaderLevel {
+  return (READER_LEVELS as readonly string[]).includes(value);
+}
+
 /**
- * 학습 설정 — 언어 · 예시 코드 언어 · 하루 학습량 · 숙달 기준 · 복습 간격 · 하루 복습 시간 · 복습 채점 방식 · 예측 질문.
+ * 학습 설정 — 언어 · 설명 수준 · 예시 코드 언어 · 하루 학습량 · 숙달 기준 · 복습 간격 · 하루 복습 시간 · 복습 채점 방식 · 예측 질문.
  * 바꾸면 그 필드만 바로 저장된다(PUT /me/settings 부분 업데이트). 예시 언어는 이후 생성되는 강의·질문 답변·
  * "이 부분 설명"에 적용된다(이미 만든 강의는 다시 만들지 않는다). 저장 오류는 그 필드 옆에(400 은 code 별 안내).
  */
@@ -19,6 +30,7 @@ export function LearningSettingsForm() {
   const save = useSaveLearningSettings();
   const t = useT(messages);
   const labOsLabels = useT(LAB_OS_LABELS);
+  const readerLevelLabels = READER_LEVEL_LABELS_BY_LOCALE[useLocale()];
 
   if (settings.isLoading) { return <ListSkeleton rows={6} />; }
   if (settings.error || !settings.data) {
@@ -54,6 +66,24 @@ export function LearningSettingsForm() {
             {LOCALES.map((l) => (
               <option key={l} value={l}>
                 {LOCALE_NAMES[l]}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label={t.readerLevel} hint={t.readerLevelHint} error={fieldError("readerLevel")}>
+          <Select
+            value={shown.readerLevel ?? ""}
+            disabled={save.isPending}
+            onChange={(event) => { if (isReaderLevel(event.target.value)) { saveField({ readerLevel: event.target.value }); } }}
+          >
+            {!shown.readerLevel && (
+              <option value="" disabled>
+                {t.readerLevelUnset}
+              </option>
+            )}
+            {READER_LEVELS.map((level) => (
+              <option key={level} value={level}>
+                {readerLevelLabels[level]}
               </option>
             ))}
           </Select>

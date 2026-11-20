@@ -44,11 +44,15 @@ func (h *LearnHandler) InstantCreate(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, r, "instant lecture", err)
 		return
 	}
-	status := http.StatusOK
-	if resp.Status == services.InstantStarted || resp.Status == services.InstantAttached {
-		status = http.StatusAccepted
+	writeJSON(w, instantStatus(resp), resp)
+}
+
+// instantStatus is the HTTP status of an instant start: 202 when a job runs, else 200.
+func instantStatus(resp services.InstantResponse) int {
+	if resp.Status == services.InstantStarted || resp.Status == services.InstantAttached || resp.Status == services.InstantInquiry {
+		return http.StatusAccepted
 	}
-	writeJSON(w, status, resp)
+	return http.StatusOK
 }
 
 // InstantStream handles GET /v1/lectures/instant/{jobId}/stream as SSE.

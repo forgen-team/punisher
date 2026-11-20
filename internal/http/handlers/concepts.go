@@ -48,6 +48,11 @@ func (h *ConceptsHandler) List(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusInternalServerError, ErrorInternal, "failed to list concepts")
 		return
 	}
+	if h.foundationsHidden(r, userID) {
+		for i := range concepts {
+			concepts[i].HiddenByDefault = concepts[i].Area == curriculum.AreaFoundations
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"concepts": concepts})
 }
 
@@ -90,7 +95,7 @@ func (h *ConceptsHandler) Graph(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusInternalServerError, ErrorInternal, "failed to load graph")
 		return
 	}
-	graph := buildGraph(data, area)
+	graph := buildGraph(data, area, h.foundationsHidden(r, userID))
 	chapters, err := h.Store.ListChapters(r.Context(), userID)
 	if err != nil {
 		log.Printf("list chapters: %v", err)
@@ -104,7 +109,8 @@ func (h *ConceptsHandler) Graph(w http.ResponseWriter, r *http.Request) {
 }
 
 // Frontier handles GET /v1/me/frontier?limit= — concepts whose prerequisites
-// are all completed/known but which are not themselves completed/known.
+// are all completed/known but which are not themselves completed/known, minus
+// the ones the caller marked '필요 없음'.
 func (h *ConceptsHandler) Frontier(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
@@ -131,12 +137,21 @@ func (h *ConceptsHandler) Frontier(w http.ResponseWriter, r *http.Request) {
 	for _, c := range data.Concepts {
 		byID[c.ID] = c
 	}
+	hideFoundations := h.foundationsHidden(r, userID)
 	items := make([]models.FrontierItem, 0, limit)
+	total := 0
 	for _, f := range analysis.Frontier {
-		if len(items) == limit {
-			break
-		}
 		c := byID[f.ID]
+		if hideFoundations && c.Area == curriculum.AreaFoundations {
+			continue // 숨김 수준에는 0단계 개념을 다음 개념으로 내놓지 않는다.
+		}
+		if c.Dismissed {
+			continue // '필요 없음'으로 뺀 개념은 다음 개념으로 내놓지 않는다(지도에는 흐리게 남는다).
+		}
+		total++
+		if len(items) == limit {
+			continue
+		}
 		items = append(items, models.FrontierItem{
 			ID: c.ID, Name: c.Name, Area: c.Area, Depth: c.Depth, Summary: c.Summary,
 			State: f.State, Unlocks: f.Unlocks,
@@ -144,7 +159,7 @@ func (h *ConceptsHandler) Frontier(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"items": items,
-		"total": len(analysis.Frontier),
+		"total": total,
 	})
 }
 
@@ -171,9 +186,22 @@ func analyze(data *models.GraphData) learning.Analysis {
 	return learning.Analyze(nodes, prereqs, data.States)
 }
 
-func buildGraph(data *models.GraphData, area string) models.Graph {
+// foundationsHidden: whether the caller's reader level collapses the foundations
+// track by default. A settings read failure is logged and treated as hidden
+// (the default for an unset level).
+func (h *ConceptsHandler) foundationsHidden(r *http.Request, userID string) bool {
+	st, err := h.Store.GetLearningSettings(r.Context(), userID)
+	if err != nil {
+		log.Printf("learning settings for %s: %v (foundations hidden)", userID, err)
+		return true
+	}
+	return learning.FoundationsHidden(st.ReaderLevel)
+}
+
+func buildGraph(data *models.GraphData, area string, hideFoundations bool) models.Graph {
 	analysis := analyze(data)
 	graph := models.Graph{
+		FoundationsHidden: hideFoundations,
 		CurriculumVersion: data.CurriculumVersion,
 		Nodes:             []models.GraphNode{},
 		Edges:             []models.Edge{},
@@ -215,9 +243,11 @@ func buildGraph(data *models.GraphData, area string) models.Graph {
 		included[c.ID] = true
 		graph.Nodes = append(graph.Nodes, models.GraphNode{
 			ID: c.ID, Name: c.Name, Area: c.Area, Depth: c.Depth, Status: c.Status,
-			State: a.State, Locked: a.Locked, Frontier: a.Frontier, Unlocks: a.Unlocks, Requests: requests,
-			Inquiries: inquiriesByConcept[c.ID],
-			ChapterID: c.ChapterID,
+			State: a.State, Locked: a.Locked, Frontier: a.Frontier && !c.Dismissed, Unlocks: a.Unlocks, Requests: requests,
+			Inquiries:       inquiriesByConcept[c.ID],
+			ChapterID:       c.ChapterID,
+			HiddenByDefault: hideFoundations && c.Area == curriculum.AreaFoundations,
+			Dismissed:       c.Dismissed,
 		})
 	}
 	for _, e := range data.Edges {

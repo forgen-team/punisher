@@ -61,25 +61,30 @@ func (s *Service) planLecture(ctx context.Context, userID, conceptID string, dep
 	}
 	plan, err := learning.PlanLecture(conceptID, refs, done, depth)
 	plan.Language = lang
+	plan.ReaderLevel = s.Store.ReaderLevelFor(ctx, userID) // 새로 만드는 강의는 사용자 수준(learner-level ①).
 	return concept, plan, err
 }
 
 // TargetForLecture rebuilds the generation target of an existing lecture (same
-// concept, objectives, depth and language) regardless of what the user already
-// learned. lang "" keeps the lecture's language; '다시 만들기' passes the user's
-// (RegenerateLecture), so names, objectives and the output rule follow it.
-func (s *Service) TargetForLecture(ctx context.Context, userID string, lec models.Lecture, lang string) (Target, error) {
+// concept, objectives, depth, language and reader level) regardless of what the
+// user already learned. lang / level "" keep the lecture's; '다시 만들기' passes
+// the user's (RegenerateLecture), so names, objectives, the output rule and the
+// reader section follow them.
+func (s *Service) TargetForLecture(ctx context.Context, userID string, lec models.Lecture, lang, level string) (Target, error) {
 	if lang == "" {
 		lang = lec.Language
 	}
-	lang = learning.NormalizeLocale(lang)
+	if level == "" {
+		level = lec.ReaderLevel
+	}
+	lang, level = learning.NormalizeLocale(lang), learning.EffectiveReaderLevel(level)
 	concept, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID, lang)
 	if err != nil {
 		return Target{}, err
 	}
 	plan := learning.LecturePlan{
 		ConceptID: lec.ConceptID, ObjectiveIDs: lec.ObjectiveIDs,
-		ObjectiveKey: learning.ObjectiveKey(lec.ObjectiveIDs), Depth: lec.Depth, Language: lang,
+		ObjectiveKey: learning.ObjectiveKey(lec.ObjectiveIDs), Depth: lec.Depth, Language: lang, ReaderLevel: level,
 	}
 	return s.targetForPlan(ctx, userID, concept, plan, "")
 }
@@ -103,6 +108,7 @@ func (s *Service) targetForPlan(ctx context.Context, userID string, concept mode
 		ConceptID: concept.ID, ConceptName: concept.Name, Area: concept.Area, Depth: plan.Depth,
 		Summary: concept.Summary, PracticalCases: concept.PracticalCases, StyleHint: prompts.StyleHintFor(feedback),
 		Query: query, ExampleLanguage: s.exampleLanguageName(ctx, userID), Glossary: s.glossaryRefs(lang),
+		Reader: prompts.Reader{Level: learning.EffectiveReaderLevel(plan.ReaderLevel), Locale: lang},
 	}
 	for _, d := range concept.DocLinks {
 		pc.DocLinks = append(pc.DocLinks, prompts.DocLink{Title: d.Title, URL: d.URL})
@@ -155,6 +161,11 @@ func (s *Service) targetForPlan(ctx context.Context, userID string, concept mode
 			AllowedObjectiveIDs: allowed,
 		},
 	}, nil
+}
+
+// readerFor is the reader section input for the user's effective level in output language lang.
+func (s *Service) readerFor(ctx context.Context, userID, lang string) prompts.Reader {
+	return prompts.Reader{Level: s.Store.ReaderLevelFor(ctx, userID), Locale: learning.NormalizeLocale(lang)}
 }
 
 // exampleLanguageName is the display name of the user's example-code language.

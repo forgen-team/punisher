@@ -1,21 +1,22 @@
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/src/shared/ui/kit";
-import { useAppStatus } from "@/src/shared/api/status";
+import { selectedProviderStatus, useAppStatus } from "@/src/shared/api/status";
 import { useT } from "@/src/shared/i18n";
-import { messages, statusText } from "./i18n";
+import { isRateLimitedCode, messages, statusText } from "./i18n";
 
 /**
- * Claude Code(로컬 claude CLI)를 쓸 수 없을 때만 보이는 안내 배너.
+ * 고른 AI(설정 › AI 연결: claude·codex·agy 로컬 CLI)를 쓸 수 없을 때만 보이는 안내 배너.
  * 미설치 · 미로그인 · 사용 한도 각각 고치는 방법을 화면 언어로 보여 준다.
- * 이미 만든 강의·지도·기록은 Claude 없이도 계속 볼 수 있다.
+ * 이미 만든 강의·지도·기록은 AI 없이도 계속 볼 수 있다.
  */
 export function ClaudeStatusBanner() {
   const t = useT(messages);
   const status = useAppStatus();
   const data = status.data;
-  if (!data || !data.claude.code) { return null; }
-  const text = statusText(t, data.claude.code, data.message, data.steps);
-  const blocking = data.claude.code !== "claude_rate_limited";
+  const code = data ? selectedProviderStatus(data)?.code : undefined;
+  if (!data || !code) { return null; }
+  const text = statusText(t, code, data.message, data.steps);
+  const blocking = !isRateLimitedCode(code);
 
   return (
     <section
@@ -58,9 +59,11 @@ export function ClaudeStatusBanner() {
   );
 }
 
-/** Renders `claude`·URL·명령 부분을 코드체로. */
+/** 명령(claude·codex login·agy·설치 명령)·/login 부분을 코드체로. */
+const COMMAND = /(curl -fsSL \S+ \| bash|npm install -g @openai\/codex|brew install codex|\bcodex login(?: status)?|\bclaude\b(?! Code)|\bagy\b|\/login)/g;
+
 function StepText({ text }: { text: string }) {
-  const parts = text.split(/(curl -fsSL \S+ \| bash|\bclaude\b(?! Code)|\/login)/g);
+  const parts = text.split(COMMAND);
   return (
     <>
       {parts.map((part, i) =>

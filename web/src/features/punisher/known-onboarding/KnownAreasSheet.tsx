@@ -1,11 +1,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { BottomSheet, Button, ErrorState, ListSkeleton, Section } from "@/src/shared/ui/kit";
-import { areaLabel, useConcepts } from "@/src/entities/punisher";
+import { areaLabel, useBatchMarkKnown, useConcepts } from "@/src/entities/punisher";
 import { PUNISHER_AREAS, describePunisherError, type Concept } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
-import { useBatchMarkKnown } from "./useKnownOnboarding";
 
 interface AreaGroup {
   area: string;

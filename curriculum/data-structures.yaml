@@ -252,3 +252,53 @@ concepts:
     prerequisites: [ds.complexity, ds.array]
     practical_cases:
       - 큰 맵이 재해싱되는 순간 p99 지연이 튀는 현상
+
+  - id: ds.skip-list
+    name: 스킵 리스트
+    aliases: [Skip List, Skiplist, 스킵리스트, Sorted Set, 정렬 집합, ZSET]
+    depth: 3
+    summary: 스킵 리스트는 정렬된 연결 리스트 위에 무작위로 고른 노드만 잇는 여러 층을 얹어 평균 O(log n) 탐색·삽입을 제공한다. 회전 없이 구현이 단순해 Redis 정렬 집합과 여러 LSM 엔진의 memtable에 쓰인다.
+    objectives:
+      - 노드의 층 높이를 확률로 정하는 방식과 위층에서 아래층으로 내려가며 탐색하는 과정을 설명한다
+      - 균형 트리와 비교해 기대 복잡도·최악 경우·동시성 구현 난이도의 차이를 설명한다
+      - 순위·범위 조회 요구사항을 보고 Redis 정렬 집합(ZADD·ZRANGE·ZRANK)으로 해결할 수 있는지 판단한다
+    prerequisites: [ds.linked-list, ds.balanced-tree]
+    practical_cases:
+      - 게임 리더보드의 실시간 순위 조회를 Redis 정렬 집합으로 구현한 사례
+    doc_links:
+      - title: Redis sorted sets
+        url: https://redis.io/docs/latest/develop/data-types/sorted-sets/
+
+  - id: ds.cache-eviction-policies
+    name: 캐시 교체 정책(LRU·LFU·ARC)
+    aliases: [Cache Eviction Policy, Cache Replacement Policy, 캐시 축출 정책, LFU, Least Frequently Used, ARC, Adaptive Replacement Cache, maxmemory-policy]
+    depth: 3
+    summary: 캐시가 가득 찼을 때 무엇을 버리느냐가 적중률을 결정한다. LRU는 오래 안 쓴 것을, LFU는 적게 쓴 것을 버리고, ARC 같은 적응형 정책은 최근성과 빈도의 비중을 스스로 조절해 일회성 스캔에 캐시가 쓸려 나가는 것을 줄인다.
+    objectives:
+      - 해시 테이블과 이중 연결 리스트로 O(1) LRU를 구현하는 방식을 설명한다
+      - LRU가 순차 스캔에 약하고 LFU가 과거 인기 항목에 묶이는 이유와 ARC·근사 LRU의 절충을 설명한다
+      - 적중률과 축출 수 지표(Redis INFO의 keyspace_hits·keyspace_misses·evicted_keys 등)를 읽고 교체 정책이나 캐시 크기를 바꿀지 결정한다
+    prerequisites: [ds.hash-table, ds.linked-list, dist.caching]
+    practical_cases:
+      - 야간 전체 조회 배치가 캐시를 쓸어내 아침 적중률이 급락한 사례
+      - TTL 없는 키가 대부분이라 volatile 계열 정책에서 축출할 키가 없어 쓰기 오류가 난 Redis
+    doc_links:
+      - title: Redis key eviction
+        url: https://redis.io/docs/latest/develop/reference/eviction/
+
+  - id: ds.probabilistic-structures
+    name: 확률적 자료구조(HyperLogLog·Count-Min Sketch)
+    aliases: [HyperLogLog, HLL, 하이퍼로그로그, Count-Min Sketch, 카운트 민 스케치, 고유값 개수 추정, Approximate Counting]
+    depth: 3
+    summary: 확률적 자료구조는 작은 고정 메모리로 근사 답을 준다. HyperLogLog는 해시값의 앞자리 0의 개수 패턴으로 고유 항목 수를 추정하고, Count-Min Sketch는 여러 해시 카운터의 최솟값으로 항목별 빈도를 과대 추정 방향으로만 틀리게 센다.
+    objectives:
+      - HyperLogLog가 해시값 패턴으로 고유 항목 수를 추정하는 원리와 오차가 사용하는 메모리에 따라 정해지는 점을 설명한다
+      - Count-Min Sketch의 구조와 오차가 과대 추정 한쪽으로만 생기는 이유, 블룸 필터와의 쓰임 차이를 설명한다
+      - 정확한 COUNT(DISTINCT)와 근사 추정의 메모리·오차를 비교해 순방문자 집계나 인기 항목 탐지에 근사를 써도 되는지 결정한다
+    prerequisites: [ds.hash-table, ds.bloom-filter]
+    practical_cases:
+      - 일별 순방문자 수를 사용자 ID 집합 대신 Redis HyperLogLog로 집계해 메모리를 크게 줄인 사례
+      - 요청 상위 IP를 Count-Min Sketch로 실시간 추적해 레이트 리밋 대상을 고른 사례
+    doc_links:
+      - title: Redis PFCOUNT
+        url: https://redis.io/docs/latest/commands/pfcount/

@@ -1,8 +1,8 @@
 import { defineMessages } from "@/src/shared/i18n";
 
 /**
- * 단독판 Claude Code(로컬 claude CLI) 상태 안내. 서버 /v1/status 의 message·steps 는 한국어라
- * 화면은 code 로 이 카탈로그를 쓴다(모르는 code 면 서버 문구). 단계는 줄바꿈으로 나눈다.
+ * 단독판 로컬 AI CLI(claude·codex·agy) 상태 안내. 서버 /v1/status 의 message·steps 는 한국어라
+ * 화면은 고른 AI 의 code 로 이 카탈로그를 쓴다(모르는 code 면 서버 문구). 단계는 줄바꿈으로 나눈다.
  */
 export const messages = defineMessages({
   ko: {
@@ -16,6 +16,30 @@ export const messages = defineMessages({
     ].join("\n"),
     "steps_claude_not_logged_in": ["터미널에서 claude 를 실행합니다.", "안내에 따라 로그인(/login)을 마칩니다.", "이 화면을 새로고침합니다."].join("\n"),
     "steps_claude_rate_limited": "",
+    "codex_unavailable": "Codex(codex 명령)를 찾을 수 없어요. Codex CLI를 설치한 뒤 터미널에서 codex login 으로 로그인하고 다시 시도해 주세요.",
+    "codex_not_logged_in": "Codex에 로그인되어 있지 않아요. 터미널에서 codex login 을 실행해 로그인한 뒤 다시 시도해 주세요.",
+    "codex_rate_limited": "Codex 사용 한도에 도달했어요. 한도가 풀린 뒤 다시 시도해 주세요. 이미 만든 강의는 계속 읽을 수 있어요.",
+    "steps_codex_unavailable": [
+      "Codex CLI를 설치합니다: 터미널에서 npm install -g @openai/codex (또는 brew install codex)",
+      "터미널에서 codex login 을 실행해 로그인합니다.",
+      "이 화면을 새로고침합니다(Punisher를 다시 켤 필요는 없습니다).",
+    ].join("\n"),
+    "steps_codex_not_logged_in": [
+      "터미널에서 codex login 을 실행합니다.",
+      "안내에 따라 로그인을 마칩니다(codex login status 로 확인할 수 있습니다).",
+      "이 화면을 새로고침합니다.",
+    ].join("\n"),
+    "steps_codex_rate_limited": "",
+    "agy_unavailable": "Antigravity CLI(agy 명령)를 찾을 수 없어요. Antigravity CLI를 설치한 뒤 터미널에서 agy 를 한 번 실행해 로그인하고 다시 시도해 주세요.",
+    "agy_not_logged_in": "Antigravity에 로그인되어 있지 않아요. 터미널에서 agy 를 실행해 로그인한 뒤 다시 시도해 주세요.",
+    "agy_rate_limited": "Antigravity(Gemini) 사용 한도에 도달했어요. 한도가 풀린 뒤 다시 시도해 주세요. 이미 만든 강의는 계속 읽을 수 있어요.",
+    "steps_agy_unavailable": [
+      "Antigravity CLI(agy)를 설치합니다: antigravity.google 의 안내를 따릅니다.",
+      "터미널에서 agy 를 한 번 실행해 로그인합니다.",
+      "이 화면을 새로고침합니다(Punisher를 다시 켤 필요는 없습니다).",
+    ].join("\n"),
+    "steps_agy_not_logged_in": ["터미널에서 agy 를 실행합니다.", "안내에 따라 로그인을 마칩니다.", "이 화면을 새로고침합니다."].join("\n"),
+    "steps_agy_rate_limited": "",
     readOnlyNote: "이미 만든 강의 · 지도 · 기록은 그대로 볼 수 있어요. 새 강의 만들기와 질문만 잠시 안 돼요.",
     recheck: "다시 확인",
   },
@@ -30,15 +54,81 @@ export const messages = defineMessages({
     ].join("\n"),
     "steps_claude_not_logged_in": ["Run claude in a terminal.", "Finish signing in (/login) as prompted.", "Refresh this page."].join("\n"),
     "steps_claude_rate_limited": "",
+    "codex_unavailable": "Can't find Codex (the codex command). Install the Codex CLI, sign in with codex login in a terminal, then try again.",
+    "codex_not_logged_in": "You're not signed in to Codex. Run codex login in a terminal, sign in, then try again.",
+    "codex_rate_limited": "You've hit the Codex usage limit. Try again after it resets. Lectures you already have stay readable.",
+    "steps_codex_unavailable": [
+      "Install the Codex CLI: in a terminal, run npm install -g @openai/codex (or brew install codex)",
+      "Run codex login in a terminal to sign in.",
+      "Refresh this page (no need to restart Punisher).",
+    ].join("\n"),
+    "steps_codex_not_logged_in": [
+      "Run codex login in a terminal.",
+      "Finish signing in as prompted (codex login status shows whether you're signed in).",
+      "Refresh this page.",
+    ].join("\n"),
+    "steps_codex_rate_limited": "",
+    "agy_unavailable": "Can't find the Antigravity CLI (the agy command). Install the Antigravity CLI, run agy once in a terminal and sign in, then try again.",
+    "agy_not_logged_in": "You're not signed in to Antigravity. Run agy once in a terminal and sign in, then try again.",
+    "agy_rate_limited": "You've hit the Antigravity (Gemini) usage limit. Try again after it resets. Lectures you already have stay readable.",
+    "steps_agy_unavailable": [
+      "Install the Antigravity CLI (agy): follow the instructions at antigravity.google.",
+      "Run agy once in a terminal and sign in.",
+      "Refresh this page (no need to restart Punisher).",
+    ].join("\n"),
+    "steps_agy_not_logged_in": ["Run agy in a terminal.", "Finish signing in as prompted.", "Refresh this page."].join("\n"),
+    "steps_agy_rate_limited": "",
     readOnlyNote: "Lectures, the map and history stay available. Only new lectures and questions are paused.",
     recheck: "Check again",
   },
 });
 
-type StatusCode = "claude_unavailable" | "claude_not_logged_in" | "claude_rate_limited";
+/** 설정 › AI 연결 화면 문구(제공자 이름은 shared/api/status AI_PROVIDER_NAMES). */
+export const panelMessages = defineMessages({
+  ko: {
+    legend: "강의 생성·검수·질문 답·채점에 쓸 AI",
+    connected: (name: string) => `연결됨 — 강의 생성·질문에 내 ${name} 계정을 사용해요.`,
+    selected: "사용 중",
+    installed: "설치됨",
+    notInstalled: "설치 안 됨",
+    loggedIn: "로그인됨",
+    loggedOut: "로그인 필요",
+    loginUnknown: "로그인 확인 전",
+    statusLoadFailed: "상태를 불러오지 못했어요.",
+    activeJobs: "진행 중 생성",
+    activeCount: (active: number, queued: number) => `${active}개${queued > 0 ? ` · 대기 ${queued}개` : ""}`,
+    dataDir: "데이터 위치",
+    version: "Punisher 버전",
+  },
+  en: {
+    legend: "AI used to write and review lectures, answer questions and grade checks",
+    connected: (name: string) => `Connected — lectures and questions use your ${name} account.`,
+    selected: "In use",
+    installed: "Installed",
+    notInstalled: "Not installed",
+    loggedIn: "Signed in",
+    loggedOut: "Sign-in needed",
+    loginUnknown: "Sign-in not checked yet",
+    statusLoadFailed: "Couldn't load the status.",
+    activeJobs: "Generating now",
+    activeCount: (active: number, queued: number) => `${active}${queued > 0 ? ` · ${queued} queued` : ""}`,
+    dataDir: "Data folder",
+    version: "Punisher version",
+  },
+});
+
+type Provider = "claude" | "codex" | "agy";
+type StatusCode = `${Provider}_${"unavailable" | "not_logged_in" | "rate_limited"}`;
+
+const STATUS_CODE = /^(claude|codex|agy)_(unavailable|not_logged_in|rate_limited)$/;
 
 function isStatusCode(code: string | undefined): code is StatusCode {
-  return code === "claude_unavailable" || code === "claude_not_logged_in" || code === "claude_rate_limited";
+  return code !== undefined && STATUS_CODE.test(code);
+}
+
+/** 사용 한도 code(생성이 잠시 멈출 뿐 막히지는 않는다). */
+export function isRateLimitedCode(code: string | undefined): boolean {
+  return code?.endsWith("_rate_limited") ?? false;
 }
 
 /** 상태 code 의 안내 문구와 고치는 단계 — 모르는 code 면 서버가 보낸 문구 그대로. */

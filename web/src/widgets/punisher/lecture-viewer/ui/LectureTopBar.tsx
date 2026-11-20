@@ -1,8 +1,9 @@
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Link } from "@/src/shared/lib/router";
 import { useRouter } from "@/src/shared/lib/router";
 import { canGoBack } from "@/src/shared/lib/in-app-history";
+import { useCollapsingAppHeader } from "@/src/shared/lib/appHeaderCollapse";
 import { ArrowLeft, ListOrdered, MessagesSquare } from "lucide-react";
 import { IconButton, Menu, cn, iconButtonVariants, type MenuItem } from "@/src/shared/ui/kit";
 import { useT } from "@/src/shared/i18n";
@@ -42,6 +43,8 @@ interface LectureTopBarProps {
   onOpenToc?: () => void;
   /** 질문·메모 시트 열기 */
   onOpenAssist?: () => void;
+  /** 질문 아이콘 위 개수 표시(스레드 수) */
+  assistBadge?: ReactNode;
   menuItems?: MenuItem[];
 }
 
@@ -51,14 +54,16 @@ interface LectureTopBarProps {
  * 제목 중복 방지: 본문 큰 제목이 보이는 동안 여기 제목은 숨기고(자리는 유지 → 레이아웃 시프트 없음), 스크롤로 지나가면 나타난다.
  * 뒤로: 단독판 셸 상단 바에는 [←]가 없으므로 모든 폭에서 보인다(witems 는 lg 이상만 — docs/SYNC.md).
  * 질문·메모를 하단 FAB이 아니라 여기 두어 하단 탭 바와 겹치지 않게 한다.
+ * 휴대폰: 아래로 읽는 동안 셸 상단 바가 숨고 이 바만 맨 위에 남는다(위로 되돌아가면 셸 바가 다시 보인다).
  */
-export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, menuItems }: LectureTopBarProps) {
+export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, assistBadge, menuItems }: LectureTopBarProps) {
   const router = useRouter();
   const t = useT(messages);
   const barRef = useRef<HTMLDivElement>(null);
   const titleAway = useTitleScrolledAway(barRef, title);
+  useCollapsingAppHeader();
   return (
-    <div ref={barRef} className="sticky top-[var(--app-header-offset)] z-nav -mx-4 flex h-12 items-center gap-1 border-b border-line bg-canvas px-2 fold:-mx-6 fold:px-4 lg:-mx-8 lg:px-6">
+    <div ref={barRef} data-lecture-topbar="" className="sticky top-[var(--app-header-offset)] z-nav -mx-4 flex h-12 transition-[top] duration-base ease-standard items-center gap-1 border-b border-line bg-canvas px-2 fold:-mx-6 fold:px-4 lg:-mx-8 lg:px-6">
       <Link
         href={backHref}
         onClick={(event) => {
@@ -84,8 +89,9 @@ export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, 
         </IconButton>
       )}
       {onOpenAssist && (
-        <IconButton aria-label={t.questionsAndNotes} onClick={onOpenAssist} className="xl:hidden">
+        <IconButton aria-label={t.questionsAndNotes} onClick={onOpenAssist} className="relative xl:hidden">
           <MessagesSquare aria-hidden="true" />
+          {assistBadge}
         </IconButton>
       )}
       {menuItems && menuItems.length > 0 && <Menu items={menuItems} label={t.lectureMenu} />}

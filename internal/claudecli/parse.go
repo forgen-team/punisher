@@ -3,38 +3,30 @@ package claudecli
 import (
 	"bytes"
 	"encoding/json"
-	"net/http"
 	"sort"
 	"strings"
+
+	"github.com/forgen-team/punisher/internal/clicore"
 )
 
 // Error codes returned to clients.
 const (
-	CodeUnauthorized  = "unauthorized"
-	CodeInvalid       = "invalid_request"
-	CodeQueueFull     = "queue_full"
-	CodeDailyCap      = "daily_cap_reached"
-	CodeNotLoggedIn   = "claude_not_logged_in"
-	CodeRateLimited   = "claude_rate_limited"
-	CodeTimeout       = "claude_timeout"
-	CodeCLIError      = "claude_error"
-	CodeCLIMissing    = "claude_unavailable"
-	CodeClientGone    = "client_disconnected"
-	maxErrMessageRune = 300
+	CodeUnauthorized = clicore.CodeUnauthorized
+	CodeInvalid      = clicore.CodeInvalid
+	CodeQueueFull    = clicore.CodeQueueFull
+	CodeDailyCap     = clicore.CodeDailyCap
+	CodeNotLoggedIn  = "claude_not_logged_in"
+	CodeRateLimited  = "claude_rate_limited"
+	CodeTimeout      = "claude_timeout"
+	CodeCLIError     = "claude_error"
+	CodeCLIMissing   = "claude_unavailable"
+	CodeClientGone   = clicore.CodeClientGone
 )
 
 // APIError is an error with an HTTP status and a stable code.
-type APIError struct {
-	Status  int    `json:"-"`
-	Code    string `json:"code"`
-	Message string `json:"message"`
-}
+type APIError = clicore.APIError
 
-func (e *APIError) Error() string { return e.Code + ": " + e.Message }
-
-func apiErr(status int, code, msg string) *APIError {
-	return &APIError{Status: status, Code: code, Message: truncate(msg, maxErrMessageRune)}
-}
+func apiErr(status int, code, msg string) *APIError { return clicore.NewError(status, code, msg) }
 
 // Usage mirrors the CLI's token accounting.
 type Usage struct {
@@ -194,6 +186,7 @@ func (p *StreamParser) Feed(line []byte) error {
 		}
 		p.done = true
 		p.result, p.err = r.toResult(p.FallbackModel)
+		return clicore.ErrStop // the result is the last message: stop reading, end the process group
 	}
 	return nil
 }
@@ -210,33 +203,8 @@ func (p *StreamParser) Finish(rawTail string) (Result, error) {
 	return p.result, p.err
 }
 
-var authMarkers = []string{
-	"not logged in", "please run /login", "/login", "invalid api key", "oauth token",
-	"authentication_error", "authentication failed", "unauthorized", "401", "credentials",
-	"token has expired", "token expired", "invalid bearer",
-}
-
-var rateMarkers = []string{
-	"usage limit", "rate limit", "rate_limit", "limit reached", "hit your limit", "429",
-	"too many requests", "quota", "overloaded", "529",
-}
-
 // classifyFailure maps CLI failure text to an APIError.
-func classifyFailure(text string) *APIError {
-	lower := strings.ToLower(text)
-	for _, m := range authMarkers {
-		if strings.Contains(lower, m) {
-			return apiErr(http.StatusUnauthorized, CodeNotLoggedIn,
-				"claude CLI is not logged in or its credentials expired (run `claude` once in a terminal to log in): "+text)
-		}
-	}
-	for _, m := range rateMarkers {
-		if strings.Contains(lower, m) {
-			return apiErr(http.StatusTooManyRequests, CodeRateLimited, "claude usage/rate limit: "+text)
-		}
-	}
-	return apiErr(http.StatusBadGateway, CodeCLIError, text)
-}
+func classifyFailure(text string) *APIError { return codes.Classify(text) }
 
 // StripCodeFence removes a surrounding ```json ... ``` block.
 func StripCodeFence(s string) string {
@@ -250,13 +218,4 @@ func StripCodeFence(s string) string {
 		return s
 	}
 	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(s), "```"))
-}
-
-func truncate(s string, maxRunes int) string {
-	s = strings.TrimSpace(s)
-	r := []rune(s)
-	if len(r) <= maxRunes {
-		return s
-	}
-	return string(r[:maxRunes]) + "…"
 }

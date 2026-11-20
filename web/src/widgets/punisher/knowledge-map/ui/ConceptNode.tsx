@@ -26,6 +26,8 @@ export interface ConceptNodeData extends Record<string, unknown> {
   inquiries: number;
   /** 숙달한 개념 — 상태 색은 그대로 두고 테두리 링만 더한다 */
   mastered: boolean;
+  /** '필요 없음'으로 뺀 개념 — 흐리게 그리고 작은 표시를 단다(누를 수는 있다). */
+  dismissed: boolean;
   dimmed: boolean;
   highlighted: boolean;
   selected: boolean;
@@ -33,6 +35,12 @@ export interface ConceptNodeData extends Record<string, unknown> {
 }
 
 export type ConceptFlowNode = Node<ConceptNodeData, "concept">;
+
+/** 목표 경로 강조 밖이면 0.3, '필요 없음'이면 0.6(흐리지만 읽힌다). */
+function nodeOpacity(data: Pick<ConceptNodeData, "dimmed" | "dismissed">): number {
+  if (data.dimmed) { return 0.3; }
+  return data.dismissed ? 0.6 : 1;
+}
 
 function ConceptNodeImpl({ id, data }: NodeProps<ConceptFlowNode>) {
   const style = MAP_STATE_STYLES[data.displayState];
@@ -45,14 +53,14 @@ function ConceptNodeImpl({ id, data }: NodeProps<ConceptFlowNode>) {
         type="button"
         onClick={() => data.onSelect(id)}
         aria-pressed={data.selected}
-        aria-label={`${data.name}, ${MAP_STATE_LABELS[data.displayState]}${recommended ? t.nodeUnlocks(data.unlocks) : ""}${data.requested > 0 ? t.nodeRequested : ""}${data.proposed ? t.nodeProposed : ""}${data.inquiries > 0 ? t.nodeInquiries(data.inquiries) : ""}${data.mastered ? t.nodeMastered : ""}`}
+        aria-label={`${data.name}, ${MAP_STATE_LABELS[data.displayState]}${recommended ? t.nodeUnlocks(data.unlocks) : ""}${data.requested > 0 ? t.nodeRequested : ""}${data.proposed ? t.nodeProposed : ""}${data.inquiries > 0 ? t.nodeInquiries(data.inquiries) : ""}${data.mastered ? t.nodeMastered : ""}${data.dismissed ? t.nodeDismissed : ""}`}
         style={{
           width: nodeWidth(data.depth),
           height: NODE_HEIGHT,
           borderColor: style.border,
-          background: style.background,
+          background: data.dismissed ? MAP_STATE_STYLES.locked.background : style.background,
           borderStyle: style.borderStyle,
-          opacity: data.dimmed ? 0.3 : 1,
+          opacity: nodeOpacity(data),
         }}
         className={cn(
           "flex flex-col items-start justify-center rounded-md px-2.5 text-left text-xs text-fg",
@@ -67,6 +75,9 @@ function ConceptNodeImpl({ id, data }: NodeProps<ConceptFlowNode>) {
           <span className="truncate">{data.name}</span>
         </span>
         <span className="flex w-full items-center gap-1 text-xs text-fg-secondary">
+          {data.dismissed && (
+            <span className="shrink-0 rounded-sm border border-line px-1 font-medium text-fg-muted">{t.dismissedBadge}</span>
+          )}
           {data.requested > 0 && (
             <span className="shrink-0 rounded-sm bg-accent-solid px-1 font-semibold text-accent-on">{t.requestedBadge}</span>
           )}

@@ -1,0 +1,256 @@
+# 0단계 기초 — 개발을 처음 접하는 사람을 위한 바탕(설계 docs/plans/2026-11-learner-level-design.md ②)
+# depth 0 은 이 영역에만 허용된다. 다른 영역 개념은 이 트랙을 선행으로 삼지 않는다(실무자·숙련자를 막지 않도록).
+# 개념 순서가 곧 기본 경로 순서다(internal/curriculum FoundationsTrack 과 같아야 한다).
+# 근거: The Odin Project Foundations, roadmap.sh Internet, MIT Missing Semester, CS50 앞부분.
+area: foundations
+title: 0단계 기초
+concepts:
+  - id: found.running-programs
+    name: 컴퓨터가 프로그램을 실행한다는 것
+    aliases: [프로그램 실행, 프로그램이란, 소스 코드와 실행 파일, How Programs Run]
+    depth: 0
+    summary: 프로그램은 컴퓨터가 차례대로 따라 하는 명령의 목록이다. 사람이 읽기 쉽게 쓴 소스 코드를 컴퓨터가 실행할 수 있는 형태로 바꾸고, 실행하면 메모리에 올라가 CPU가 한 줄씩 처리한다.
+    objectives:
+      - 프로그램이 정해진 순서대로 실행되는 명령의 목록이라는 점을 설명한다
+      - 소스 코드와 실제로 실행되는 프로그램의 관계(번역·해석)를 설명한다
+      - 프로그램을 실행하면 CPU·메모리·저장 장치가 각각 무엇을 하는지 설명한다
+    practical_cases:
+      - 휴대폰 앱 아이콘을 누르면 잠깐 뒤에 화면이 뜨는 동안 기기 안에서 일어나는 일 이해하기
+      - 같은 앱이라도 설치 파일과 실행 중인 앱이 왜 다른 것인지 구분하기
+    doc_links:
+      - title: CS50x - Introduction to Computer Science (Harvard)
+        url: https://cs50.harvard.edu/x/
+      - title: Python Tutorial - Using the Python Interpreter
+        url: https://docs.python.org/3/tutorial/interpreter.html
+
+  - id: found.code-basics
+    name: 코드의 기본 재료(변수·조건·반복·함수)
+    aliases: [프로그래밍 기초, 변수와 함수, 조건문과 반복문, Programming Building Blocks]
+    depth: 0
+    summary: 거의 모든 코드는 값을 이름 붙여 담는 변수, 상황에 따라 갈라지는 조건, 같은 일을 되풀이하는 반복, 자주 쓰는 일을 묶어 이름 붙인 함수로 이루어진다. 이 네 가지를 알아보면 처음 보는 코드도 흐름을 따라갈 수 있다.
+    objectives:
+      - 변수가 값을 이름으로 담아 두었다가 다시 쓰는 방법이라는 점을 설명한다
+      - 조건(if)과 반복(for·while)이 실행 흐름을 어떻게 바꾸는지 짧은 코드로 따라간다
+      - 함수가 입력을 받아 일을 하고 결과를 돌려주는 묶음이라는 점을 설명한다
+    prerequisites: [found.running-programs]
+    practical_cases:
+      - 장보기 목록을 하나씩 확인하며 '이미 있으면 건너뛰기'를 하는 과정을 조건과 반복으로 적어 보기
+      - 엑셀 수식 =IF(A1>100, "많음", "적음") 을 코드의 조건문과 같은 생각으로 읽기
+    doc_links:
+      - title: MDN - Control flow and error handling (JavaScript Guide)
+        url: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Control_flow_and_error_handling
+      - title: MDN - Loops and iteration (JavaScript Guide)
+        url: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Loops_and_iteration
+      - title: MDN - Functions (JavaScript Guide)
+        url: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions
+
+  - id: found.data-shapes
+    name: 데이터를 담는 형태(숫자·문자열·리스트·사전)
+    aliases: [자료형 기초, 데이터 타입 기초, 문자열과 리스트, Basic Data Types]
+    depth: 0
+    summary: 프로그램이 다루는 값에는 형태가 있다. 숫자와 글자(문자열) 같은 낱개 값, 여러 값을 순서대로 늘어놓은 리스트, 이름표(키)로 값을 찾는 사전이 기본이며, 형태를 알아야 어떤 계산과 꺼내기가 가능한지 안다.
+    objectives:
+      - 숫자와 문자열의 차이와, "10"과 10이 다르게 다뤄지는 이유를 설명한다
+      - 리스트가 순서 있는 값의 묶음이고 번호(인덱스)로 꺼낸다는 점을 설명한다
+      - 사전(키-값)이 이름표로 값을 찾는 묶음이라는 점과 리스트와의 쓰임 차이를 설명한다
+    prerequisites: [found.code-basics]
+    practical_cases:
+      - 연락처 앱의 한 사람 정보(이름·전화번호·이메일)를 사전으로, 연락처 전체를 리스트로 생각해 보기
+      - 쇼핑몰 장바구니 합계가 '1000' 문자열끼리 붙어 '10001000'으로 보이는 실수 이해하기
+    doc_links:
+      - title: MDN - Grammar and types (JavaScript Guide)
+        url: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Grammar_and_types
+      - title: Python Tutorial - Data Structures
+        url: https://docs.python.org/3/tutorial/datastructures.html
+
+  - id: found.files-and-paths
+    name: 파일·폴더·경로
+    aliases: [파일과 폴더, 파일 경로, 절대 경로와 상대 경로, Files Folders and Paths]
+    depth: 0
+    summary: 컴퓨터의 자료는 파일에 담기고, 파일은 폴더(디렉터리) 안에 나무 모양으로 정리된다. 경로는 그 나무에서 파일까지 가는 주소이며, 맨 위에서부터 적는 절대 경로와 지금 위치에서부터 적는 상대 경로가 있다.
+    objectives:
+      - 파일·폴더가 나무 모양 구조로 정리된다는 점과 확장자의 역할을 설명한다
+      - 절대 경로와 상대 경로를 구분하고 같은 파일을 두 방식으로 적는다
+      - 숨김 파일과 대소문자·공백이 경로 문제를 일으키는 경우를 설명한다
+    prerequisites: [found.running-programs]
+    practical_cases:
+      - 다운로드 폴더에 받은 파일을 찾지 못할 때 파일 탐색기의 주소 표시줄에서 경로 확인하기
+      - 웹 페이지의 이미지가 안 보일 때 이미지 경로가 페이지 기준 상대 경로로 맞는지 확인하기
+    doc_links:
+      - title: MDN - Dealing with files
+        url: https://developer.mozilla.org/en-US/docs/Learn_web_development/Getting_started/Environment_setup/Dealing_with_files
+      - title: MIT Missing Semester - Course overview + the shell
+        url: https://missing.csail.mit.edu/2020/course-shell/
+
+  - id: found.terminal-and-shell
+    name: 터미널과 셸 명령
+    aliases: [터미널 기초, 셸 명령, 명령줄 기초, Terminal and Shell Basics]
+    depth: 0
+    summary: 터미널은 글자로 컴퓨터에 명령하는 창이고, 셸은 그 명령을 받아 실행해 주는 프로그램이다. 현재 위치 확인(pwd), 이동(cd), 목록 보기(ls) 같은 몇 가지 명령만 알아도 개발 도구 설명서를 따라 할 수 있다.
+    objectives:
+      - 터미널과 셸의 관계와, 명령·옵션·인자로 이루어진 명령 한 줄을 읽는다
+      - pwd·cd·ls·mkdir 로 현재 위치를 확인하고 폴더를 오가며 만든다
+      - 명령이 실패했을 때 출력된 메시지와 종료 상태로 무엇이 틀렸는지 짐작한다
+    prerequisites: [found.files-and-paths]
+    practical_cases:
+      - 설치 안내에 적힌 명령을 복사해 붙여 넣기 전에 각 부분이 무엇을 하는지 읽어 보기
+      - 명령을 찾을 수 없다(command not found)는 메시지를 보고 오타인지 설치가 안 된 것인지 가르기
+    doc_links:
+      - title: MIT Missing Semester - Course overview + the shell
+        url: https://missing.csail.mit.edu/2020/course-shell/
+      - title: MDN - Command line crash course
+        url: https://developer.mozilla.org/en-US/docs/Learn_web_development/Getting_started/Environment_setup/Command_line
+      - title: MIT Missing Semester - Shell Tools and Scripting
+        url: https://missing.csail.mit.edu/2020/shell-tools/
+
+  - id: found.internet-and-web
+    name: 인터넷과 웹(클라이언트·서버·URL·도메인)
+    aliases: [인터넷의 동작, 클라이언트와 서버, URL과 도메인, How the Internet Works]
+    depth: 0
+    summary: 인터넷은 전 세계 컴퓨터를 잇는 연결망이고, 웹은 그 위에서 문서와 서비스를 주고받는 방식이다. 요청하는 쪽(클라이언트)과 응답하는 쪽(서버)이 있고, URL은 원하는 자원의 주소, 도메인은 서버를 사람이 기억하기 쉬운 이름으로 부르는 방법이다.
+    objectives:
+      - 인터넷(연결망)과 웹(그 위의 서비스)의 차이를 설명한다
+      - 클라이언트와 서버가 요청과 응답을 주고받는 관계를 설명한다
+      - URL을 프로토콜·도메인·경로·쿼리로 나누어 읽고, 도메인이 서버 주소로 바뀐다는 점을 설명한다
+    prerequisites: [found.running-programs]
+    practical_cases:
+      - 공유받은 링크가 어느 사이트의 어떤 페이지인지 URL을 부분별로 나눠 읽기
+      - 와이파이는 연결돼 있는데 특정 사이트만 안 열릴 때 '내 쪽 문제인지 서버 쪽 문제인지' 생각해 보기
+    doc_links:
+      - title: MDN - How does the Internet work?
+        url: https://developer.mozilla.org/en-US/docs/Learn_web_development/Howto/Web_mechanics/How_does_the_Internet_work
+      - title: MDN - How the web works
+        url: https://developer.mozilla.org/en-US/docs/Learn_web_development/Getting_started/Web_standards/How_the_web_works
+      - title: MDN - What is a URL?
+        url: https://developer.mozilla.org/en-US/docs/Learn_web_development/Howto/Web_mechanics/What_is_a_URL
+      - title: MDN - What is a domain name?
+        url: https://developer.mozilla.org/en-US/docs/Learn_web_development/Howto/Web_mechanics/What_is_a_domain_name
+
+  - id: found.what-browsers-do
+    name: 브라우저가 하는 일(HTML·CSS·JS)
+    aliases: [웹 페이지의 구성, HTML CSS JavaScript, 브라우저 동작 기초, What a Browser Does]
+    depth: 0
+    summary: 브라우저는 서버에서 받은 파일을 읽어 화면을 그리는 프로그램이다. HTML은 내용과 구조, CSS는 모양, JavaScript는 동작을 맡고, 브라우저는 이 셋을 받아 해석해 우리가 보는 페이지로 만든다.
+    objectives:
+      - HTML·CSS·JavaScript가 각각 구조·모양·동작을 맡는다는 점을 설명한다
+      - 브라우저가 파일을 받아 해석하고 화면에 그리기까지의 순서를 설명한다
+      - 브라우저 개발자 도구로 페이지의 HTML과 불러온 파일 목록을 확인한다
+    prerequisites: [found.internet-and-web]
+    practical_cases:
+      - 같은 글인데 글꼴·색만 바뀐 사이트 개편을 보고 CSS가 바뀐 것이라고 짐작하기
+      - 버튼을 눌러도 아무 반응이 없을 때 개발자 도구 콘솔에 빨간 오류가 있는지 열어 보기
+    doc_links:
+      - title: MDN - Populating the page - how browsers work
+        url: https://developer.mozilla.org/en-US/docs/Web/Performance/Guides/How_browsers_work
+
+  - id: found.http-first-look
+    name: HTTP 요청과 응답 맛보기
+    aliases: [HTTP 맛보기, 요청과 응답 기초, HTTP 첫걸음, HTTP for Beginners]
+    depth: 0
+    summary: HTTP는 브라우저나 앱이 서버에 무엇을 원하는지 말하고(요청) 서버가 답하는(응답) 약속이다. 요청에는 무엇을 할지(메서드)와 어디에(URL), 응답에는 결과 번호(상태 코드)와 내용이 담긴다.
+    objectives:
+      - 요청이 메서드(GET·POST)·URL·헤더·본문으로, 응답이 상태 코드·헤더·본문으로 이루어진다는 점을 설명한다
+      - 200·404·500 같은 대표 상태 코드가 누구 쪽 문제를 뜻하는지 구분한다
+      - 브라우저 개발자 도구의 네트워크 탭에서 요청 하나의 메서드·상태 코드·응답을 확인한다
+    prerequisites: [found.internet-and-web]
+    practical_cases:
+      - 링크를 눌렀더니 '404 Not Found'가 뜰 때 주소가 틀렸는지, 페이지가 없어진 것인지 생각해 보기
+      - 회원가입 버튼을 누를 때 입력한 내용이 POST 요청으로 서버에 보내진다는 점을 네트워크 탭에서 보기
+    doc_links:
+      - title: MDN - Overview of HTTP
+        url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Overview
+
+  - id: found.json-and-api
+    name: JSON과 API
+    aliases: [JSON, JSON 기초, API 기초, What is an API]
+    depth: 0
+    summary: API는 프로그램끼리 정해진 방식으로 일을 부탁하고 결과를 받는 창구이고, JSON은 그때 데이터를 주고받는 가장 흔한 글자 형식이다. JSON은 사전과 리스트를 글자로 적은 것이라 사람도 읽을 수 있다.
+    objectives:
+      - API가 프로그램 사이의 약속된 요청·응답 창구라는 점을 예로 설명한다
+      - JSON의 객체·배열·문자열·숫자·참거짓·null을 읽고 사전·리스트와 대응시킨다
+      - 공개 API 응답 JSON에서 원하는 값을 찾아 경로(예 data.items[0].name)로 적는다
+    prerequisites: [found.data-shapes, found.http-first-look]
+    practical_cases:
+      - 날씨 앱이 기상 서비스 API에 지역을 보내고 JSON으로 기온을 받아 화면에 보여 주는 흐름 따라가기
+      - 노코드 자동화 도구에서 'JSON 응답에서 이 값을 꺼내 쓰기' 설정을 할 때 경로 적기
+    doc_links:
+      - title: MDN - Working with JSON
+        url: https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/JSON
+      - title: Introducing JSON (json.org)
+        url: https://www.json.org/json-en.html
+
+  - id: found.tables-and-sql
+    name: 표와 SQL 맛보기
+    aliases: [SQL 맛보기, 표로 된 데이터, 데이터베이스 첫걸음, SQL for Beginners]
+    depth: 0
+    summary: 많은 서비스는 데이터를 엑셀 시트처럼 행과 열로 된 표에 저장한다. SQL은 그 표에서 '어떤 조건의 행을, 어떤 순서로' 달라고 말하는 언어이며, SELECT 한 줄로 원하는 데이터를 꺼내 볼 수 있다.
+    objectives:
+      - 표(테이블)·행·열과 각 행을 구분하는 번호(기본 키)를 설명한다
+      - SELECT·WHERE·ORDER BY로 조건에 맞는 행을 골라 정렬하는 쿼리를 읽고 쓴다
+      - 스프레드시트의 필터·정렬과 SQL 쿼리가 같은 일을 다른 방식으로 한다는 점을 설명한다
+    prerequisites: [found.data-shapes]
+    practical_cases:
+      - 엑셀에서 '서울 고객만 걸러 가입일 순 정렬'을 SQL 한 줄로 바꿔 적어 보기
+      - 사내 데이터 대시보드의 쿼리 창에서 동료가 남긴 SELECT 문이 무엇을 보여 주는지 읽기
+    doc_links:
+      - title: PostgreSQL Tutorial - The SQL Language
+        url: https://www.postgresql.org/docs/current/tutorial-sql.html
+      - title: SQLite - SELECT
+        url: https://www.sqlite.org/lang_select.html
+
+  - id: found.git-version-control
+    name: git으로 버전 관리하기
+    aliases: [git, 깃, 버전 관리 기초, 커밋과 브랜치, Version Control with git]
+    depth: 0
+    summary: 버전 관리는 파일이 언제 누구에 의해 어떻게 바뀌었는지 기록해 두고 필요하면 예전 상태로 돌아가는 방법이다. git은 가장 널리 쓰이는 도구로, 변경을 커밋으로 저장하고 브랜치로 따로 작업한 뒤 합친다.
+    objectives:
+      - 파일 이름에 최종_진짜최종을 붙여 가는 방식과 비교해 버전 관리가 해결하는 문제를 설명한다
+      - 저장소·커밋·브랜치·원격 저장소(GitHub 등)가 각각 무엇인지 설명한다
+      - git status·add·commit·log 로 변경을 기록하고 기록을 확인한다
+    prerequisites: [found.terminal-and-shell]
+    practical_cases:
+      - 공동 문서를 여러 사람이 고치다 누가 무엇을 바꿨는지 몰라 헤매는 상황을 커밋 기록으로 푼다고 생각해 보기
+      - GitHub 프로젝트 페이지의 커밋 목록에서 최근에 무엇이 바뀌었는지 읽기
+    doc_links:
+      - title: Pro Git - About Version Control
+        url: https://git-scm.com/book/en/v2/Getting-Started-About-Version-Control
+      - title: MIT Missing Semester - Version Control (Git)
+        url: https://missing.csail.mit.edu/2020/version-control/
+
+  - id: found.hosting-and-deploy
+    name: 호스팅과 배포
+    aliases: [웹 호스팅, 배포 첫걸음, 사이트 공개하기, Hosting and Deployment Basics]
+    depth: 0
+    summary: 내 컴퓨터에서만 돌던 웹사이트를 다른 사람도 접속하게 하려면 늘 켜져 있는 서버에 올려야 한다. 서버 자리를 빌리는 것이 호스팅, 새 버전을 그 서버에 올려 실제로 바꾸는 일이 배포다.
+    objectives:
+      - 내 컴퓨터(로컬)에서 보는 것과 인터넷에 공개된 것의 차이를 설명한다
+      - 호스팅·도메인 연결·배포가 각각 무슨 일인지 순서대로 설명한다
+      - 정적 사이트 호스팅(GitHub Pages 등)으로 페이지 하나를 공개하는 흐름을 설명한다
+    prerequisites: [found.http-first-look, found.git-version-control]
+    practical_cases:
+      - 내 컴퓨터에서는 되는데 링크를 보내면 안 열리는 일이 localhost 주소를 보내서 생겼음을 알아보기
+      - 회사 홈페이지 수정이 '배포가 나가야 반영된다'는 말을 듣고 무슨 과정인지 이해하기
+    doc_links:
+      - title: MDN - Publishing your website
+        url: https://developer.mozilla.org/en-US/docs/Learn_web_development/Getting_started/Your_first_website/Publishing_your_website
+      - title: GitHub Docs - What is GitHub Pages?
+        url: https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages
+
+  - id: found.reading-errors
+    name: 에러 메시지 읽기와 디버깅 첫걸음
+    aliases: [에러 메시지 읽기, 디버깅 첫걸음, 오류 메시지 해석, Debugging for Beginners]
+    depth: 0
+    summary: 에러 메시지는 프로그램이 '어디서, 무엇 때문에' 멈췄는지 알려 주는 단서다. 메시지의 종류와 파일·줄 번호를 읽고, 한 번에 하나씩 바꿔 가며 확인하는 습관이 디버깅의 시작이다.
+    objectives:
+      - 에러 메시지에서 오류 종류·설명·파일 이름·줄 번호를 찾아 읽는다
+      - 여러 줄로 된 오류 기록(스택 트레이스)에서 내 코드가 나오는 줄을 찾는다
+      - 재현하기·한 가지씩 바꾸기·값 출력해 보기로 원인을 좁히는 순서를 설명한다
+    prerequisites: [found.code-basics, found.terminal-and-shell]
+    practical_cases:
+      - 엑셀 셀에 뜬 오류 표시(DIV/0, N/A)를 보고 어느 칸 때문인지 거꾸로 찾아가기
+      - 오류 메시지를 검색하거나 동료에게 물을 때 전체 메시지와 재현 방법을 함께 전하기
+    doc_links:
+      - title: MDN - What went wrong? Troubleshooting JavaScript
+        url: https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/What_went_wrong
+      - title: MIT Missing Semester - Debugging and Profiling
+        url: https://missing.csail.mit.edu/2020/debugging-profiling/

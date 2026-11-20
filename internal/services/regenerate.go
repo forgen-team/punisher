@@ -21,8 +21,8 @@ func (s *Service) RegenerateLecture(ctx context.Context, userID, lectureID strin
 	if err != nil {
 		return InstantResponse{}, err
 	}
-	// 다시 만들기는 사용자 언어의 새 버전(i18n §1.2).
-	t, err := s.TargetForLecture(ctx, userID, lec, s.Store.LocaleFor(ctx, userID))
+	// 다시 만들기는 사용자 언어·수준의 새 버전(i18n §1.2, learner-level ①).
+	t, err := s.TargetForLecture(ctx, userID, lec, s.Store.LocaleFor(ctx, userID), s.Store.ReaderLevelFor(ctx, userID))
 	if err != nil {
 		return InstantResponse{}, err
 	}
@@ -45,7 +45,7 @@ func (s *Service) RegenerateLecture(ctx context.Context, userID, lectureID strin
 	job, _, err := s.Store.CreateJob(ctx, store.NewJob{
 		IdempotencyKey: fmt.Sprintf("%s:regen:%s:%s", learning.JobInstant, target, store.RandomToken()),
 		Kind:           learning.JobInstant, UserID: userID, ConceptID: lec.ConceptID,
-		ObjectiveKey: t.Plan.ObjectiveKey, Depth: t.Plan.Depth, Reason: "regenerate", Language: t.Plan.Language,
+		ObjectiveKey: t.Plan.ObjectiveKey, Depth: t.Plan.Depth, Reason: "regenerate", Language: t.Plan.Language, ReaderLevel: t.Plan.ReaderLevel,
 	})
 	if errors.Is(err, store.ErrJobActive) {
 		return InstantResponse{}, ErrTargetBusy

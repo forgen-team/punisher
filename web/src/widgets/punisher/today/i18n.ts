@@ -51,6 +51,9 @@ export const messages = defineMessages({
     areaMinutes: (area: string, minutes: number) => `${area} · 약 ${minutes}분`,
     sheetDescription: (kind: string, area: string, depth: number, minutes: number) => `${kind} · ${area} · 깊이 ${depth} · 약 ${minutes}분`,
     viewOnMap: "지도에서 보기",
+    // 필요 없음(learner-level ③): 추천에서 바로 뺀다. 지도에서 되돌릴 수 있다.
+    dismiss: "필요 없음",
+    dismissHint: "필요 없으면 추천에서 뺄 수 있어요. 지도에서 언제든 되돌릴 수 있어요.",
     openLecture: "강의 열기",
     startLecture: "강의 시작",
     lectureTitle: "강의 제목",
@@ -114,6 +117,8 @@ export const messages = defineMessages({
     areaMinutes: (area: string, minutes: number) => `${area} · about ${minutes} min`,
     sheetDescription: (kind: string, area: string, depth: number, minutes: number) => `${kind} · ${area} · depth ${depth} · about ${minutes} min`,
     viewOnMap: "View on map",
+    dismiss: "Not needed",
+    dismissHint: "Not needed? Drop it from your recommendations. You can undo it on the map anytime.",
     openLecture: "Open lecture",
     startLecture: "Start lecture",
     lectureTitle: "Lecture title",

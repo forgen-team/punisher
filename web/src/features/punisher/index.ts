@@ -7,6 +7,7 @@ export * from "./goal-manage";
 export * from "./known-onboarding";
 export * from "./resume-dismiss";
 export * from "./reading-assist";
+export * from "./level-suggestion";
 export * from "./learning-settings";
 export * from "./prompt-edit";
 export * from "./check-start";

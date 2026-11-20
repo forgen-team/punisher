@@ -3,6 +3,9 @@ import { defineMessages } from "@/src/shared/i18n";
 
 export const messages = defineMessages({
   ko: {
+    readerLevel: "설명 수준",
+    readerLevelHint: "새로 만드는 강의·설명을 얼마나 풀어 쓸지 정해요. 가르치는 내용은 같아요. 이미 만든 강의는 바뀌지 않아요.",
+    readerLevelUnset: "아직 고르지 않음",
     exampleLanguage: "예시 코드 언어",
     exampleLanguageHint: "강의·질문 답변·'이 부분 설명'의 코드 예시를 이 언어로 써요. 셸 명령·SQL·설정 파일은 원래 형식 그대로예요. 이미 만든 강의는 바뀌지 않아요.",
     dailyMinutes: "하루 학습량",
@@ -26,6 +29,9 @@ export const messages = defineMessages({
     intervalsIncreasing: "간격은 점점 커져야 해요.",
   },
   en: {
+    readerLevel: "Explanation level",
+    readerLevelHint: "How much new lectures and explanations spell things out. What they teach stays the same. Existing lectures don't change.",
+    readerLevelUnset: "Not chosen yet",
     exampleLanguage: "Example code language",
     exampleLanguageHint: "Code examples in lectures, question answers, and 'Explain this' use this language. Shell commands, SQL, and config files keep their own format. Existing lectures don't change.",
     dailyMinutes: "Daily study time",

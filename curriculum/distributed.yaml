@@ -240,3 +240,20 @@ concepts:
     prerequisites: [db.replication, ds.hash-table]
     practical_cases:
       - 날짜를 샤드 키로 써서 오늘 데이터가 한 노드에 몰린 문제
+
+  - id: dist.consistent-hashing
+    name: 일관된 해싱과 가상 노드
+    aliases: [Hash Ring, 해시 링, Consistent Hash Ring, Virtual Nodes, 가상 노드, vnode, Rendezvous Hashing, 랑데부 해싱, HRW Hashing]
+    depth: 3
+    summary: 일관된 해싱은 노드와 키를 같은 해시 링 위에 놓고 키를 시계 방향 다음 노드에 배정해, 노드가 추가·제거될 때 그 주변 키만 옮기게 한다. 노드마다 가상 노드를 여러 개 두어 부하 쏠림을 줄이며, 단순 모듈러 해싱과 달리 증설할 때 대부분의 캐시가 한꺼번에 무효화되지 않는다.
+    objectives:
+      - hash(key) mod N 방식이 노드 수가 바뀔 때 대부분의 키를 옮기는 이유와 해시 링이 이동량을 약 1/N로 줄이는 원리를 설명한다
+      - 가상 노드·복제본 배치·랑데부 해싱 같은 변형이 부하 균형과 장애 시 재분배에 주는 영향을 설명한다
+      - 노드별 키 수와 요청량 분포를 보고 가상 노드 수 조정이나 핫 키 별도 처리가 필요한지 판단한다
+    prerequisites: [dist.sharding, ds.hash-table]
+    practical_cases:
+      - 캐시 서버 한 대를 추가했더니 모듈러 분배 때문에 적중률이 급락해 DB가 과부하된 사례
+      - 해시 기반 세션 고정을 쓰는 로드밸런서가 백엔드 증설 때 대부분 사용자의 세션을 다른 서버로 옮긴 사례
+    doc_links:
+      - title: Apache Cassandra - Dynamo (Consistent Hashing using a Token Ring)
+        url: https://cassandra.apache.org/doc/latest/cassandra/architecture/dynamo.html

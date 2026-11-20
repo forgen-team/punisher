@@ -135,7 +135,7 @@ func parseNewConcepts(head string, known map[string]bool, limit int) []models.Pr
 			continue
 		}
 		p := models.ProposedConcept{ID: strings.ToLower(parts[0]), Name: parts[1], Area: parts[2], Depth: 2}
-		if !slugRe.MatchString(p.ID) || known[p.ID] || seen[p.ID] || p.Name == "" || !curriculum.IsValidArea(p.Area) {
+		if !slugRe.MatchString(p.ID) || known[p.ID] || seen[p.ID] || p.Name == "" || !curriculum.IsProposalArea(p.Area) {
 			continue
 		}
 		if len(parts) > 3 && known[parts[3]] {

@@ -352,3 +352,77 @@ concepts:
     doc_links:
       - title: A Guide to the Go Garbage Collector
         url: https://go.dev/doc/gc-guide
+
+  - id: os.mmap-page-fault
+    name: mmap과 페이지 폴트
+    aliases: [메모리 맵 파일, 메이저 폴트, 마이너 폴트, Demand Paging]
+    depth: 3
+    summary: mmap은 파일이나 익명 메모리를 프로세스 주소 공간에 매핑하고, 실제 페이지는 처음 접근할 때 페이지 폴트로 채운다. 페이지 캐시에 이미 있으면 마이너 폴트, 디스크를 읽어야 하면 메이저 폴트라서 지연이 크게 다르다.
+    objectives:
+      - mmap 매핑과 요구 페이징으로 페이지가 처음 접근 시점에 채워지는 과정을 설명한다
+      - 마이너·메이저 폴트의 차이와 read() 호출과 mmap 파일 접근의 트레이드오프를 설명한다
+      - ps -o min_flt,maj_flt나 perf stat의 page-faults 값으로 폴트 수를 읽고 지연이 메이저 폴트 때문인지 판단한다
+    prerequisites: [os.virtual-memory, os.page-cache]
+    practical_cases:
+      - 재시작 직후 mmap 기반 저장소가 메이저 폴트로 느렸다가 워밍업 뒤 빨라진 사례
+      - 컨테이너 메모리 limit 근처에서 매핑 파일 페이지가 계속 회수되어 메이저 폴트가 폭증한 사례
+    doc_links:
+      - title: mmap(2) - Linux manual page
+        url: https://man7.org/linux/man-pages/man2/mmap.2.html
+
+  - id: os.ebpf-tracing
+    name: eBPF와 커널 추적
+    aliases: [eBPF, BPF, Extended BPF, bpftrace, BCC, Kernel Tracing, 커널 추적, kprobe, tracepoint, uprobe]
+    depth: 3
+    summary: eBPF는 검증기를 통과한 작은 프로그램을 커널 이벤트(시스템 콜·kprobe·tracepoint 등)에 붙여 실행하는 기능이다. 애플리케이션을 바꾸거나 재시작하지 않고 운영 중인 시스템의 지연과 호출 분포를 낮은 오버헤드로 관찰할 수 있다.
+    objectives:
+      - eBPF 프로그램이 검증기·훅·맵을 거쳐 커널에서 실행되고 결과를 사용자 공간에 넘기는 구조를 설명한다
+      - kprobe·tracepoint·uprobe의 차이와 커널 버전 간 안정성, 운영 환경 오버헤드를 설명한다
+      - BCC·bpftrace 도구(execsnoop·biolatency·runqlat 등)의 히스토그램 출력을 읽고 지연이 디스크와 CPU 실행 대기 중 어디서 오는지 판단한다
+    prerequisites: [os.kernel-and-syscall, os.scheduling]
+    practical_cases:
+      - 원인 모를 간헐 지연을 runqlat로 확인해 CPU 실행 대기 때문임을 찾은 사례
+      - 컨테이너 안에서 짧게 떴다 사라지는 프로세스를 execsnoop으로 찾아낸 사례
+    doc_links:
+      - title: BPF Documentation - The Linux Kernel documentation
+        url: https://docs.kernel.org/bpf/
+      - title: What is eBPF? (ebpf.io)
+        url: https://ebpf.io/what-is-ebpf/
+
+  - id: os.epoll-c10k
+    name: epoll 내부와 C10K
+    aliases: [C10K, C10K 문제, C10K Problem, Edge-triggered, 엣지 트리거, Level-triggered, 레벨 트리거, EPOLLEXCLUSIVE, SO_REUSEPORT]
+    depth: 3
+    summary: epoll은 관심 fd 집합을 커널에 한 번 등록하고 준비된 fd만 돌려받아, 전체 연결 수가 늘어도 호출 비용이 활성 연결 수에 비례한다. 레벨·엣지 트리거 차이와 여러 워커가 같은 소켓을 기다릴 때의 깨움 문제를 알아야 만 단위 동시 연결 서버를 제대로 다룬다.
+    objectives:
+      - select·poll이 호출마다 전체 fd를 훑는 비용과 epoll의 관심 목록·준비 목록 구조를 비교해 설명한다
+      - 레벨 트리거와 엣지 트리거의 차이, 엣지 트리거에서 EAGAIN이 나올 때까지 읽어야 하는 이유를 설명한다
+      - 연결 수·fd 한도(ulimit -n)·워커별 연결 분포를 보고 SO_REUSEPORT나 EPOLLEXCLUSIVE 적용 여부를 판단한다
+    prerequisites: [os.io-models, os.event-loop, os.file-descriptor]
+    practical_cases:
+      - 엣지 트리거로 바꾼 뒤 소켓 버퍼를 끝까지 읽지 않아 일부 연결이 멈춘 버그
+      - 여러 워커 프로세스가 같은 리슨 소켓을 기다려 연결이 일부 워커에 몰린 사례
+    doc_links:
+      - title: epoll(7) - Linux manual page
+        url: https://man7.org/linux/man-pages/man7/epoll.7.html
+      - title: epoll_ctl(2) - Linux manual page
+        url: https://man7.org/linux/man-pages/man2/epoll_ctl.2.html
+
+  - id: os.memory-allocator-fragmentation
+    name: 메모리 할당자와 단편화
+    aliases: [Memory Allocator, 메모리 할당자, malloc, glibc malloc, jemalloc, tcmalloc, Memory Fragmentation, 메모리 단편화, Heap Fragmentation, 힙 단편화, MALLOC_ARENA_MAX]
+    depth: 3
+    summary: malloc 같은 할당자는 커널에서 큰 덩어리를 받아 잘게 나눠 주므로, 해제한 메모리가 곧바로 OS에 돌아가지 않고 조각난 채 RSS로 남을 수 있다. 스레드별 아레나·크기 클래스 설계에 따라 같은 프로그램도 할당자만 바꿔 메모리 사용량이 크게 달라진다.
+    objectives:
+      - 할당자가 brk·mmap으로 받은 메모리를 크기 클래스와 아레나로 관리하는 방식을 설명한다
+      - 내부·외부 단편화와 해제 후에도 RSS가 줄지 않는 이유를 설명한다
+      - 애플리케이션이 보고하는 힙 사용량과 RSS의 차이를 비교해 단편화를 의심하고, 아레나 수 제한이나 할당자 교체를 검토할지 결정한다
+    prerequisites: [os.virtual-memory, os.memory-metrics, os.gc-memory-management]
+    practical_cases:
+      - 멀티스레드 서비스의 RSS가 힙 사용량보다 훨씬 커져 OOMKilled된 문제를 아레나 수 제한으로 완화한 사례
+      - 오래 도는 프로세스의 메모리가 계속 늘어 누수로 의심했으나 단편화였던 사례
+    doc_links:
+      - title: malloc(3) - Linux manual page
+        url: https://man7.org/linux/man-pages/man3/malloc.3.html
+      - title: mallopt(3) - Linux manual page
+        url: https://man7.org/linux/man-pages/man3/mallopt.3.html

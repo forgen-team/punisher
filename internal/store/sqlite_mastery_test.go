@@ -264,7 +264,7 @@ func TestUpgradeFromV040(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := old.tx(ctx, func(c conn) error { return applySeedPre017(ctx, c, seed) }); err != nil {
+	if err := old.tx(ctx, func(c conn) error { return applySeedPre017(ctx, c, preFoundationsSeed(t, seed)) }); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := old.c().exec(ctx, `INSERT INTO user_learning_settings (user_id, example_language, daily_minutes) VALUES ($1, 'go', 45)`, testUser); err != nil {

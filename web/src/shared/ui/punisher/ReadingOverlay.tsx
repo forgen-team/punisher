@@ -28,6 +28,8 @@ interface ReadingOverlayProps {
   description?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
+  /** 모바일 시트 높이 — fit: 내용만큼(최대 85dvh) · half: 화면 절반쯤(위에 고른 문장이 보이게) */
+  sheetSize?: "fit" | "half";
 }
 
 const POPOVER_WIDTH = 380;
@@ -103,7 +105,7 @@ function OverlayBody({ scrollRef, contentRef, labelId, children }: { scrollRef: 
  * BottomSheet 와 달리 body 스크롤 잠금(position:fixed)을 쓰지 않아 열고 닫아도 window.scrollY 가 그대로다.
  * 포커스 이동·복귀는 preventScroll 로만 한다(useFocusTrap).
  */
-export function ReadingOverlay({ open, onClose, anchor, title, description, children, footer }: ReadingOverlayProps) {
+export function ReadingOverlay({ open, onClose, anchor, title, description, children, footer, sheetSize = "fit" }: ReadingOverlayProps) {
   const t = useT(messages);
   const desktop = useMediaQuery("(min-width: 768px)");
   const panelRef = useRef<HTMLDivElement>(null);
@@ -209,7 +211,8 @@ export function ReadingOverlay({ open, onClose, anchor, title, description, chil
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          "relative flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-xl border-t border-line",
+          "relative flex w-full flex-col overflow-hidden rounded-t-xl border-t border-line",
+          sheetSize === "half" ? "h-[55dvh]" : "max-h-[85dvh]",
           "bg-canvas-elevated text-fg shadow-overlay outline-none pb-safe-bottom animate-sheet-up motion-reduce:animate-none",
         )}
       >
