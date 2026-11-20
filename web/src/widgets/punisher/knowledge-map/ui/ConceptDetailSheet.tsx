@@ -152,7 +152,7 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
           {c.locked && (
             <p className="flex items-center gap-1.5 text-sm text-fg-secondary">
               <Lock className="size-4" aria-hidden="true" />
-              {c.prerequisites.some(isDismissedBlocker) ? t.dismissedPrereqHint : t.lockedHint}
+              {c.prerequisites.some((link) => isDismissedBlocker(link)) ? t.dismissedPrereqHint : t.lockedHint}
             </p>
           )}
           {requests.length > 0 && (

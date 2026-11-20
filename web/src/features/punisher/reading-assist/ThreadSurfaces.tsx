@@ -105,7 +105,7 @@ export function PassageMarkers({ anchor }: { anchor: string }) {
           title={p.quote}
           aria-label={t.openThread(p.exchanges, p.quote)}
           onClick={(event) => {
-            const newest = p.threads.find(isLiveThread) ?? p.threads[0];
+            const newest = p.threads.find((thread) => isLiveThread(thread)) ?? p.threads[0];
             if (!newest) { return; }
             // 모바일 절반 시트에서도 대화의 시작 구절이 시트 위에 보이게 올린다.
             const block = event.currentTarget.closest("[data-lecture-anchor]");
