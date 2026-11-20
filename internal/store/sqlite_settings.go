@@ -27,7 +27,7 @@ func defaultLearningSettings() models.LearningSettings {
 		ReviewMinutes: learning.DefaultReviewMinutes, ReviewGrader: learning.DefaultReviewGrader,
 		PretestEnabled: learning.DefaultPretestEnabled, LabOS: defaultLabOS(),
 		AdaptiveIntervals: learning.DefaultAdaptiveIntervals, Locale: defaultLocale(),
-		AreaFamiliarity: map[string]string{}, AIProvider: llm.DefaultProvider,
+		AreaFamiliarity: map[string]string{}, AIProvider: defaultAIProvider,
 	}
 }
 
@@ -238,6 +238,16 @@ func (s *SQLiteStore) LocaleFor(ctx context.Context, userID string) string {
 		return defaultLocale()
 	}
 	return st.Locale
+}
+
+// defaultAIProvider is the AI for users who have not saved settings yet. The
+// standalone app sets it at start from the installed CLIs (SetDefaultAIProvider):
+// someone with only Codex should not first meet a "Claude Code not found" screen.
+var defaultAIProvider = llm.DefaultProvider
+
+// SetDefaultAIProvider sets defaultAIProvider; unknown values keep claude.
+func SetDefaultAIProvider(p string) {
+	defaultAIProvider = llm.NormalizeProvider(p)
 }
 
 // lastAIProvider remembers each store's last successfully read provider per

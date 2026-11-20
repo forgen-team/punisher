@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <strong>Thirty minutes of CS fundamentals a day, written for you by Claude Code.</strong><br/>
-  Runs on your own computer (macOS or Linux), and generates lectures with your own Claude Code login.
+  <strong>Thirty minutes of CS fundamentals a day, written for you by your own AI coding CLI.</strong><br/>
+  Runs on your own computer (macOS or Linux), and generates lectures with your own Claude Code, Codex or Antigravity login.
 </p>
 
 <p align="center">
@@ -34,23 +34,27 @@
 
 Punisher is a personal learning app for computer-science fundamentals, in English or Korean.
 
-- **Today's lecture.** It recommends the next concept to study and writes a ~30-minute lecture on it, streamed live as Claude writes.
-- **Read actively.** Tap a term for a short gloss, select a passage for "explain this part", ask questions, take notes. "Go deeper" lectures stay linked under the lecture you came from.
+- **Today's lecture.** It recommends the next concept to study and writes a ~30-minute lecture on it, streamed live as your AI writes.
+- **Your level.** On first start it asks how much you have coded (new to coding · some code · web developer · solid CS) and how well you know each area. Explanations get denser or plainer to match — the facts taught stay the same — and newcomers start with a 13-concept Foundations track.
+- **Read actively.** Tap a term for a short gloss (easier · ask more · read later). Select a passage (tap a sentence on a phone) for easier · deeper · ask · note; each passage keeps its own conversation with follow-ups, and a conversation can become a deeper lecture. "Go deeper" lectures stay linked under the lecture you came from.
+- **Skip what you don't need.** Mark a concept "not needed" to drop it from recommendations (undo any time).
 - **Practice while reading.** "Try it yourself" exercises ask for your answer before showing the solution, with a one-line tutor comment. Some lectures add a lab: one read-only command to run in your own terminal (`lsof`, `dig`, `curl -I` …); paste the output and the tutor reads it with you.
 - **Check and review.** After a lecture, answer a few short questions; a tutor narrows the question instead of giving the answer. Say how sure you are before answering — a confident wrong answer is called out as a misconception. Each learning objective builds a mastery level, and spaced reviews (1, 7, 30 days by default, adjusted per objective) bring it back.
 - **Weekly synthesis.** Once you have checked a few concepts, a weekly problem mixes 3–4 of them in one realistic scene.
 - **Lectures that improve.** Where you got stuck (missed exercises, labs, questions) shows up as "Things to fix", and remaking the lecture uses it.
 - **Reviewed lectures.** Every lecture passes a factual review before it is published; generation shows only the writing → review → fix stages.
-- **Knowledge map.** 168 concepts across 8 areas (data structures, computer architecture, OS, network/web, databases, distributed systems, infra/ops, security/design) with your progress and goals.
+- **Knowledge map.** 214 concepts — a Foundations track plus 8 areas (data structures, computer architecture, OS, network/web, databases, distributed systems, infra/ops, security/design) with your progress and goals.
 - **Study requests.** Write down a topic; Punisher finds the concept and prepares its lecture in advance.
 - **Your prompts.** Every instruction block (outline → lecture → review → gloss → Q&A → explain) can be viewed and edited, with preview and history.
 - **English or Korean.** Settings → Learning → "언어 / Language" switches the UI and the language of new lectures, questions and tutor replies (existing lectures keep theirs). The first start follows the OS language (`LANG`, or the macOS system language): Korean if it is Korean, English otherwise. `PUNISHER_LOCALE=en punisher` sets it explicitly.
-- **Local only.** One binary serves the web UI on `127.0.0.1`, stores everything in one SQLite file, and calls the `claude` CLI you are already logged in to. No server, Docker, database, API key or account.
+- **Local only.** One binary serves the web UI on `127.0.0.1`, stores everything in one SQLite file, and calls the AI CLI you are already logged in to (`claude`, `codex` or `agy`). No server, Docker, database, API key or account.
 
 ## Requirements
 
 - macOS (Apple Silicon or Intel) or Linux (amd64 / arm64)
-- [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and logged in. With the install script, download it and read it before running it:
+- **One** AI coding CLI installed and logged in — any of these. Punisher picks the installed one on first start (Claude Code → Codex → Antigravity); change it in Settings → AI connection, or start with `PUNISHER_AI_PROVIDER=codex punisher`.
+
+  **[Claude Code](https://docs.claude.com/en/docs/claude-code).** With the install script, download it and read it before running it:
   ```sh
   curl -fsSL https://claude.ai/install.sh -o claude-install.sh
   less claude-install.sh      # read what it does
@@ -58,6 +62,10 @@ Punisher is a personal learning app for computer-science fundamentals, in Englis
   claude                      # run once, log in, then /exit
   ```
   `claude auth status` should report `"loggedIn": true`. Usage counts against your Claude subscription.
+
+  **[Codex](https://developers.openai.com/codex).** `npm install -g @openai/codex`, then `codex login`; `codex login status` should say you are logged in. Codex sends a long built-in prompt with every call, so the same work uses more of your quota.
+
+  **[Antigravity CLI](https://antigravity.google/docs/cli/headless)** (`agy`, Gemini). Install it and run `agy` once in a terminal to sign in. (Since June 2026, Gemini subscriptions use the Antigravity CLI instead of the Gemini CLI.)
 
 ## Install
 
