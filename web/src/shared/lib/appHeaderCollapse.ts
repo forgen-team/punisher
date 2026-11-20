@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { isWitems } from "@/src/shared/config/runtime";
 
 // 휴대폰 강의 화면의 고정 바를 하나로(⑤ 모바일): 아래로 읽어 내려가면 셸 상단 바([data-app-header])를 위로 숨기고,
 // 위로 되돌아가면 다시 보인다. 강의 바([data-lecture-topbar])는 늘 보이고 --app-header-offset 을 따라 맨 위로 붙는다.
@@ -49,6 +50,8 @@ export const APP_HEADER_STATE_ATTR = "data-app-header-state";
 
 /** 셸 바 숨김 표시를 <html> 에 달거나 뗀다. */
 export function setAppHeaderHidden(hidden: boolean): void {
+  // Witems 앱 모드: <html> 은 셸의 것이라 쓰지 않는다(docs/WITEMS-APP.md). 셸 바도 셸이 관리한다.
+  if (isWitems()) { return; }
   const root = document.documentElement;
   if (hidden) { root.setAttribute(APP_HEADER_STATE_ATTR, "hidden"); } else { root.removeAttribute(APP_HEADER_STATE_ATTR); }
 }
@@ -56,6 +59,7 @@ export function setAppHeaderHidden(hidden: boolean): void {
 /** 강의 바가 있는 화면에서 부른다. 화면을 떠나면 셸 바를 다시 보인다. */
 export function useCollapsingAppHeader(): void {
   useEffect(() => {
+    if (isWitems()) { return undefined; }
     const phone = window.matchMedia(PHONE_QUERY);
     let state: HeaderScrollState = { hidden: false, anchorY: window.scrollY };
     let frame = 0;
