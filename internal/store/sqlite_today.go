@@ -81,7 +81,9 @@ func (s *SQLiteStore) LoadToday(ctx context.Context, userID string, now time.Tim
 		SELECT l.id, l.concept_id, l.title, p.anchor, p.percent, l.estimated_minutes, `+parentLectureSQL("l.id")+`,
 		       CASE WHEN l.minutes_estimated THEN NULL ELSE l.content END
 		FROM user_lecture_progress p
-		JOIN lectures l ON l.id = p.lecture_id
+		-- Only a lecture this user can open (GetLecture's rule): an older one made for another
+		-- identity is gone from 학습 and must not be recommended.
+		JOIN lectures l ON l.id = p.lecture_id AND (l.kind = 'library' OR l.requested_by = p.user_id)
 		WHERE p.user_id = $1 AND p.completed_at IS NULL AND p.dismissed_at IS NULL AND p.percent < 100
 		  AND NOT (l.language <> `+userLocaleSQL("$1")+` AND EXISTS (`+resumeInUserLanguage+`))
 		ORDER BY p.last_seen_at DESC LIMIT 200`, userID), func(row rowScanner) (learning.ResumeItem, error) {
@@ -244,7 +246,9 @@ func (s *SQLiteStore) uncheckedLectures(ctx context.Context, userID string) ([]l
 	rows, err := collect(s.c().query(ctx, `
 		SELECT l.id, l.concept_id, l.title
 		FROM user_lecture_progress p
-		JOIN lectures l ON l.id = p.lecture_id
+		-- Only a lecture this user can open (GetLecture's rule): checking one that is gone from 학습
+		-- answered 404 ('요청한 항목을 찾을 수 없어요').
+		JOIN lectures l ON l.id = p.lecture_id AND (l.kind = 'library' OR l.requested_by = p.user_id)
 		WHERE p.user_id = $1 AND p.completed_at IS NOT NULL
 		  AND NOT EXISTS (SELECT 1 FROM user_objective_mastery m WHERE m.user_id = $1 AND m.concept_id = l.concept_id)
 		  AND NOT EXISTS (
