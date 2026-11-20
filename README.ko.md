@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <strong>매일 30분, Claude Code로 만드는 나만의 CS 기본기 강의.</strong><br/>
-  내 컴퓨터(macOS·Linux)에서만 돌아가고, 내 Claude Code 계정으로 강의를 만듭니다.
+  <strong>매일 30분, 내 AI 코딩 도구로 만드는 나만의 CS 기본기 강의.</strong><br/>
+  내 컴퓨터(macOS·Linux)에서만 돌아가고, 내 Claude Code·Codex·Antigravity 계정으로 강의를 만듭니다.
 </p>
 
 <p align="center">
@@ -21,12 +21,13 @@
 
 ---
 
-Claude Code로 나만의 CS 기본기 강의를 만들어 읽는 학습 앱입니다.
+Claude Code·Codex·Antigravity(Gemini) 중 내가 쓰는 AI 코딩 도구로 나만의 CS 기본기 강의를 만들어 읽는 학습 앱입니다.
 오늘 공부할 개념을 추천받고, 강의를 실시간으로 생성해 읽고, 모르는 용어나 문장을 바로 물어볼 수 있어요.
 지식 지도에서 8개 영역(자료구조 · 컴퓨터구조 · OS · 네트워크/웹 · DB · 분산 · 인프라 · 보안/설계), 168개 개념의 진도를 한눈에 봅니다.
 
 - 내 컴퓨터에서만 돌아갑니다. 서버·Docker·DB 설치나 API 키, 회원가입은 필요 없어요.
-- 강의 생성과 질문 답변에는 **내 컴퓨터에 로그인된 Claude Code**(`claude` 명령)를 씁니다. 사용량은 내 Claude 구독에서 차감돼요.
+- 강의 생성과 질문 답변에는 **내 컴퓨터에 로그인된 AI CLI** 하나를 씁니다: Claude Code(`claude`), Codex(`codex`), Antigravity(`agy`, Gemini). 사용량은 그 도구의 내 구독에서 차감돼요. 처음에는 설치된 것을 자동으로 고르고(Claude Code → Codex → Antigravity 순), 설정 › AI 연결에서 바꿀 수 있어요.
+- 처음 열면 개발 경험(처음 · 코드 조금 · 웹 실무 · CS 탄탄)과 영역별로 아는 정도를 물어요. 답에 맞춰 설명을 얼마나 풀어 쓸지와 어디서부터 시작할지가 정해져요(개발이 처음이면 0단계 기초 트랙부터).
 - 처음 설치하면 맛보기 강의 몇 편이 들어 있어서, 구독을 쓰지 않고 먼저 읽어 볼 수 있어요(확인하기 문항을 새로 만들 때는 구독을 써요).
 
 > **AI가 만든 강의라 틀릴 수 있어요.** 모든 강의는 사실 오류 검수를 통과해야 발행되지만, 출처와 검수 표시를 확인하고 수치·버전에 따라 다른 내용은 한 번 더 확인하세요.
@@ -41,7 +42,9 @@ Claude Code로 나만의 CS 기본기 강의를 만들어 읽는 학습 앱입�
 ## 1. 준비물
 
 1. macOS (Apple Silicon / Intel) 또는 Linux (amd64 / arm64)
-2. **Claude Code** 설치 + 로그인 ([공식 안내](https://docs.claude.com/en/docs/claude-code)). 설치 스크립트는 받아서 내용을 확인한 뒤 실행하세요.
+2. AI 코딩 CLI **하나**를 설치하고 로그인합니다. 셋 중 무엇이든 돼요.
+
+   **Claude Code** ([공식 안내](https://docs.claude.com/en/docs/claude-code)) — 설치 스크립트는 받아서 내용을 확인한 뒤 실행하세요.
    ```sh
    curl -fsSL https://claude.ai/install.sh -o claude-install.sh
    less claude-install.sh      # 무엇을 하는지 확인
@@ -49,6 +52,10 @@ Claude Code로 나만의 CS 기본기 강의를 만들어 읽는 학습 앱입�
    claude                      # 처음 한 번 실행해서 안내대로 로그인한 뒤 /exit 로 나오기
    ```
    `claude auth status` 를 실행했을 때 `"loggedIn": true` 가 나오면 준비 끝입니다.
+
+   **Codex** ([공식 안내](https://developers.openai.com/codex)) — `npm install -g @openai/codex` 후 `codex login`. `codex login status` 가 로그인됨을 보여 주면 준비 끝입니다. Codex 는 호출마다 자체 지시문이 길어 같은 작업에도 사용량이 더 들어요.
+
+   **Antigravity CLI** (`agy`, Gemini — [공식 안내](https://antigravity.google/docs/cli/headless)) — 설치 후 터미널에서 `agy` 를 한 번 실행해 로그인하세요. (2026-06 부터 Gemini 구독은 Gemini CLI 대신 Antigravity CLI 를 써요.)
 
 ## 2. 설치
 
@@ -86,7 +93,8 @@ punisher
 ## 4. 사용법
 
 - **강의** 탭: 오늘의 추천을 누르고 `강의 시작` → 강의가 실시간으로 써지고, 다 되면 저장돼요. 위 입력창에 궁금한 것(예: "Pod가 죽었다")을 써도 됩니다.
-- 강의 안에서 밑줄 친 **용어**를 누르면 짧은 설명이, 문장을 **드래그해 선택**하면 `이 부분 설명` 버튼이 나옵니다. 오른쪽 위 말풍선에서 질문·메모를 남길 수 있어요.
+- 강의 안에서 밑줄 친 **용어**를 누르면 짧은 설명이 나와요(`더 쉽게` · `이어서 묻기` · `나중에 읽기`). 문장을 **드래그해 선택**(폰에서는 **탭**)하면 `쉽게 · 깊게 · 질문 · 메모`가 나오고, 그 구절에 대한 대화가 이어져요. 대화에서 `이 대화로 심화 강의 만들기`도 돼요. 대화가 있는 구절에는 `대화 n` 표시가 붙어요.
+- 필요 없는 개념은 지도·추천에서 `필요 없음`으로 뺄 수 있어요(되돌리기 가능).
 - 다 읽으면 맨 아래 `완료` (이미 아는 내용이면 `이미 앎`). 용어 설명의 `이 개념 더 깊게`로 연 강의는 원 강의 아래에 이어져 보여요.
 - **학습 요청**(강의 탭 오른쪽/아래 카드): 공부하고 싶은 주제를 적고 `추가` → 개념을 찾아 그 강의를 미리 만들어 둬요. `시작`(주제부터) 또는 `기초부터`(모르는 선행 개념부터). 주제 강의를 끝내면 `완료 N`으로 접히고, ⋯ 메뉴로 목록에서 뺄 수 있어요.
 - **지도** 탭: 전체 개념 지도와 영역별 진도, 다음에 공부하면 좋은 개념. 목표를 정하면 거기까지의 경로를 보여 줘요.
@@ -98,7 +106,7 @@ punisher
 - **고칠 곳**(강의 메뉴): 내가 막힌 섹션(틀리거나 건너뛴 연습, 예상과 다른 실습, 질문이 몰린 곳)이 보여요. `이 내용으로 다시 만들기`를 누르면 그 내용을 반영해 새 버전을 만들어요.
 - **기록** 탭: 완료한 강의 · 개념 · 질문 · 메모, 확인·복습 기록과 기억 유지 지표.
 - **언어 / Language**(설정 > 학습 맨 위): 한국어·English. 화면 문구와 새로 만드는 강의·문항·튜터 답의 언어가 함께 바뀌어요(이미 만든 강의는 그 언어 그대로). 처음에는 OS 언어(`LANG`, macOS 는 시스템 언어)가 한국어면 한국어, 아니면 영어로 시작하고, `PUNISHER_LOCALE=ko punisher` 로 정할 수도 있어요.
-- **설정**(오른쪽 위 톱니바퀴): 예시 코드 언어(TypeScript · JavaScript · Go · Java · Kotlin · Python), 하루 학습량, 숙달 기준·복습 간격·복습 간격 자동 조절·하루 복습 시간·복습 채점 방식, 실습 환경(macOS·Linux·쓰지 않음), 강의 전 예측 질문, 화면 테마, Claude Code 연결 상태, 데이터 위치.
+- **설정**(오른쪽 위 톱니바퀴): 예시 코드 언어(TypeScript · JavaScript · Go · Java · Kotlin · Python), 하루 학습량, 숙달 기준·복습 간격·복습 간격 자동 조절·하루 복습 시간·복습 채점 방식, 실습 환경(macOS·Linux·쓰지 않음), 강의 전 예측 질문, 화면 테마, 설명 수준, AI 연결(Claude Code · Codex · Antigravity), 데이터 위치.
 - **설정 > 고급 > 강의 프롬프트**: 강의를 만드는 지시문을 단계별로 보고 고쳐요(기본값 비교 · 미리보기 · 이력 20개). 고친 뒤 강의 메뉴의 `새 프롬프트로 다시 만들기`로 지금 강의의 새 버전을 만들 수 있어요.
 
 강의는 사실 오류 검수를 통과해야 발행돼요. 생성 중에는 '작성 → 검수 → 고침' 단계만 보이고, 보통 4~7분 걸려요.
@@ -132,6 +140,9 @@ Linux: ~/.local/share/punisher/punisher.db   ($XDG_DATA_HOME 이 있으면 그 �
 | 화면 위에 "Claude Code(claude 명령)를 찾을 수 없습니다" | Claude Code 설치(1번) 후 화면의 `다시 확인`. 특이한 위치에 설치했다면 `PUNISHER_CLAUDE_BIN=/경로/claude punisher` |
 | "Claude Code에 로그인되어 있지 않습니다" | 터미널에서 `claude` 실행 → 로그인 → 화면의 `다시 확인` |
 | "Claude 사용 한도에 도달했습니다" | 구독 사용량 한도입니다. 몇 시간 뒤 다시 시도. 이미 만든 강의는 계속 읽을 수 있어요 |
+| "Codex(codex 명령)를 찾을 수 없습니다" / 로그인 안내 | Codex 설치 후 `codex login`, 화면의 `다시 확인`. 특이한 위치면 `PUNISHER_CODEX_BIN=/경로/codex punisher` |
+| "Antigravity CLI(agy 명령)를 찾을 수 없습니다" | Antigravity CLI 설치 후 `agy` 로 로그인, `다시 확인`. 특이한 위치면 `PUNISHER_AGY_BIN=/경로/agy punisher` |
+| 다른 AI 로 쓰고 싶음 | 설정 › AI 연결에서 바꾸거나 처음 켤 때 `PUNISHER_AI_PROVIDER=codex punisher` |
 | `punisher: command not found` | 새 터미널 창을 열거나 `~/bin/punisher` 로 실행 |
 | "확인되지 않은 개발자" 경고로 안 열림 | `xattr -d com.apple.quarantine ~/bin/punisher` 또는 시스템 설정 → 개인정보 보호 및 보안 → "그래도 열기" |
 | 강의 생성이 오래 걸림 | 작성과 검수까지 보통 4~7분, 검수에서 고칠 곳이 나오면 더 걸려요. 화면을 닫아도 생성은 계속되고, 다시 열면 이어서 보여요 |

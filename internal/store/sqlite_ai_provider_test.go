@@ -121,3 +121,24 @@ func TestUpgradeFromV021AIProvider(t *testing.T) {
 		t.Fatalf("save after upgrade: %+v (%v)", st, err)
 	}
 }
+
+// A user who never saved settings gets the detected default AI, and the first
+// save keeps it (a Codex-only install must not start on claude).
+func TestDefaultAIProviderForUnsavedUser(t *testing.T) {
+	SetDefaultAIProvider("codex")
+	t.Cleanup(func() { SetDefaultAIProvider("claude") })
+	s, _ := newTestStore(t)
+	ctx := context.Background()
+	if got := s.AIProviderFor(ctx, "fresh-user"); got != "codex" {
+		t.Fatalf("unsaved user provider = %q, want codex", got)
+	}
+	level := "practitioner"
+	got, err := s.UpdateLearningSettings(ctx, "fresh-user", LearningSettingsPatch{ReaderLevel: &level})
+	if err != nil || got.AIProvider != "codex" {
+		t.Fatalf("first save = %q (%v), want codex kept", got.AIProvider, err)
+	}
+	SetDefaultAIProvider("bogus")
+	if defaultAIProvider != "claude" {
+		t.Fatalf("unknown default must fall back to claude, got %q", defaultAIProvider)
+	}
+}

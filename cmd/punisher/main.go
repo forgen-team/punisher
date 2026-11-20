@@ -196,6 +196,9 @@ func run(cfg config.Config) error {
 	defer st.Close()
 	// 설정을 저장한 적 없는 사용자의 언어는 OS 로캘(PUNISHER_LOCALE 로 덮어쓰기)을 따른다.
 	store.SetDefaultLocale(cfg.Locale)
+	if !cfg.Witems.Enabled {
+		store.SetDefaultAIProvider(detectProvider(cfg))
+	}
 	if err := st.Migrate(ctx, migrations.Files); err != nil {
 		return fmt.Errorf("migrations: %w", err)
 	}
@@ -483,4 +486,21 @@ func syncCurriculum(ctx context.Context, cfg config.Config, st store.Store) erro
 			seed.Version[:12], len(seed.Concepts), len(seed.Edges), len(seed.Aliases))
 	}
 	return nil
+}
+
+// detectProvider is the AI for a user who has not chosen one: PUNISHER_AI_PROVIDER
+// when valid, else the first installed CLI of claude, codex, agy (claude if none).
+func detectProvider(cfg config.Config) string {
+	if p := strings.ToLower(strings.TrimSpace(os.Getenv("PUNISHER_AI_PROVIDER"))); llm.ValidProvider(p) {
+		return p
+	}
+	switch {
+	case claudecli.ResolveBin(cfg.ClaudeBin) != "":
+		return llm.ProviderClaude
+	case codexcli.ResolveBin(cfg.CodexBin) != "":
+		return llm.ProviderCodex
+	case agycli.ResolveBin(cfg.AgyBin) != "":
+		return llm.ProviderAgy
+	}
+	return llm.ProviderClaude
 }

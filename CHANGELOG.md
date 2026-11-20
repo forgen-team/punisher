@@ -1,10 +1,19 @@
 # 바뀐 점
 
-## 다음 버전 (작업 중)
+## v0.10.0 (2026-11-20)
 
-- **Witems 앱 모드**(`PUNISHER_MODE=witems`, `docs/WITEMS-APP.md`): Witems 셸 안의 `/apps/punisher` 로 뜨는 컨테이너. Witems 로그인(오너 계정만), 생성은 claude-gateway, 화면은 Module Federation remote(Shadow DOM). Witems 안에서만 RSS 연동(오늘의 글 해설·최근 읽은 글·RSS 에서 강의 시작·챕터 제안 신호).
-- 이미지 `ghcr.io/forgen-team/punisher`(CI), Witems PostgreSQL 기록을 옮기는 `punisher-witems-import`.
-- 단독판은 바뀌지 않아요(지식 지도 스타일을 전역 CSS 로 옮긴 것 외).
+실행하면 DB 가 자동으로 업그레이드됩니다(마이그레이션 018~022, 기존 강의·진도·복습은 그대로).
+
+- **AI 선택**: Claude Code 말고도 **Codex**(`codex`)와 **Antigravity CLI**(`agy`, Gemini)로 강의를 만들 수 있어요. 처음에는 설치된 것을 자동으로 고르고(Claude Code → Codex → Antigravity), 설정 › AI 연결에서 바꿔요(`PUNISHER_AI_PROVIDER` 로도). Codex 는 읽기 전용 샌드박스·셸 끔·내 설정 무시로 돌려요.
+- **설명 수준**: 처음 열면 개발 경험과 영역별로 아는 정도를 물어요. 강의·검수·질문 답이 그 수준에 맞춰 설명 밀도를 바꾸고(가르치는 사실은 같음), '설명 가능'한 영역은 깊이 1 을 이미 앎으로 두고 깊이 2 부터 추천해요. 설정 › 학습에서 바꿀 수 있어요. 기존 강의는 '웹 실무' 수준으로 남고, 다른 수준을 고르면 새로 여는 강의부터 그 수준으로 만들어요.
+- **0단계 기초 트랙** 13개(컴퓨터·코드 기초부터 HTTP·JSON·SQL·git·배포까지): 개발이 처음이면 여기서 시작, 실무자에게는 지도에서 숨김(펼치기 가능).
+- **깊이 3 심화 개념 33개** 추가(14 → 47): 네트워크·인프라·보안 각 6, DB 5, OS 4, 자료구조 3, 컴퓨터구조 2, 분산 1. 지식 지도는 214개.
+- **읽다가 바로 묻기**: 문장을 드래그(폰은 탭)하면 쉽게 · 깊게 · 질문 · 메모. 구절마다 대화가 남고 이어 물을 수 있어요. `이 대화로 심화 강의 만들기`. '쉽게'를 자주 누르면 설명 수준을 낮출지 한 번 물어봐요.
+- **필요 없음**: 개념을 추천·진도·복습에서 뺄 수 있어요(지도에는 흐리게 남고 되돌리기 가능).
+- 폰: 스크롤하면 위쪽 바가 한 줄로, 지도는 목록 보기가 기본, 용어 터치 영역을 넓혔어요.
+- **Witems 앱 모드**(`PUNISHER_MODE=witems`, `docs/WITEMS-APP.md`): Witems 셸 안의 `/apps/punisher` 로 뜨는 컨테이너. Witems 로그인(오너 계정만), 생성은 claude-gateway, 화면은 Module Federation remote(Shadow DOM). 이미지 `ghcr.io/forgen-team/punisher`, 옛 기록을 옮기는 `punisher-witems-import`.
+
+English: Generate lectures with Claude Code, **Codex** or the **Antigravity CLI** (Gemini) — the installed one is picked on first start; switch in Settings → AI connection. A first-run setup asks your coding experience and per-area familiarity, and lectures, reviews and answers adjust their explanation density to it (the facts taught stay the same). New: a 13-concept Foundations track for newcomers, 33 more depth-3 concepts (214 in total), reading conversations on any passage (easier · deeper · ask · note, follow-ups, turn a conversation into a deeper lecture), "not needed" for concepts, and phone polish. The database upgrades automatically (migrations 018–022).
 
 ## v0.9.1 (2026-11-17)
 
