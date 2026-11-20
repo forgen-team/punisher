@@ -10,6 +10,7 @@ import { describePunisherError, type InstantResponse, type Recommendation } from
 import { useLocale, useT } from "@/src/shared/i18n";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { AddStudyRequestForm } from "@/src/features/punisher/study-request-add";
+import { FirstSetup } from "@/src/features/punisher/first-setup";
 import { messages } from "./i18n";
 import { todayRows, type TodayRow } from "./lib/recheck";
 import { reviewCardState } from "./lib/reviewCard";
@@ -181,6 +182,7 @@ export function TodayWidget() {
       </div>
 
       <RecommendationSheet item={detail} starting={isPending} onClose={() => setDetail(null)} onStart={(id) => start(id)} />
+      <FirstSetup />
     </div>
   );
 }

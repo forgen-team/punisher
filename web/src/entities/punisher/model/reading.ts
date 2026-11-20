@@ -61,14 +61,6 @@ export function describeSettingsError(error: unknown): string {
   return describePunisherError(error);
 }
 
-/** "이 부분 설명" — 선택 구절을 섹션 맥락으로 설명(저장하지 않음). */
-export function useExplainSelection(lectureId: string) {
-  return useMutation({
-    mutationFn: ({ anchor, selection }: { anchor: string; selection: string }) =>
-      punisherApi.explainSelection(lectureId, anchor, selection),
-  });
-}
-
 /** "이 개념 더 깊게"로 이어진 원 강의(parents)·심화 강의(children). */
 export function useLectureLinks(lectureId: string) {
   return useQuery({

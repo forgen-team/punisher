@@ -12,6 +12,7 @@ import {
   type StudyRequestStatus,
   type UserConceptState,
   type ReviewGrader,
+  type ChosenReaderLevel,
 } from "@/src/shared/api/punisher";
 import { getLocale, translate, type Locale } from "@/src/shared/i18n";
 import { liveLabels } from "./liveLabels";
@@ -19,6 +20,7 @@ import { messages } from "../i18n";
 
 export const AREA_LABELS_BY_LOCALE: Record<Locale, Record<PunisherArea, string>> = {
   ko: {
+    foundations: "0단계 기초",
     "data-structures": "자료구조",
     "computer-architecture": "컴퓨터구조",
     os: "운영체제",
@@ -29,6 +31,7 @@ export const AREA_LABELS_BY_LOCALE: Record<Locale, Record<PunisherArea, string>>
     "security-design": "보안/설계",
   },
   en: {
+    foundations: "Foundations",
     "data-structures": "Data structures",
     "computer-architecture": "Computer architecture",
     os: "Operating systems",
@@ -272,5 +275,12 @@ export const REVIEW_GRADER_LABELS_BY_LOCALE: Record<Locale, Record<ReviewGrader,
   en: { self: "Self-grading", llm: "Tutor grading" },
 };
 export const REVIEW_GRADER_LABELS = liveLabels(REVIEW_GRADER_LABELS_BY_LOCALE);
+
+/** 설명 수준 이름(처음 설정 설문·설정 › 학습 선택지가 같은 문구). */
+export const READER_LEVEL_LABELS_BY_LOCALE: Record<Locale, Record<ChosenReaderLevel, string>> = {
+  ko: { beginner: "개발은 처음이에요", novice: "코드를 조금 써 봤어요", practitioner: "웹 개발을 실무로 해요", advanced: "CS 기본기는 탄탄해요" },
+  en: { beginner: "I'm new to development", novice: "I've written a little code", practitioner: "I build for the web at work", advanced: "My CS fundamentals are solid" },
+};
+export const READER_LEVEL_LABELS = liveLabels(READER_LEVEL_LABELS_BY_LOCALE);
 
 export { CHECK_ERROR_MESSAGES, SETTINGS_ERROR_MESSAGES, type CheckErrorCode, type SettingsErrorCode } from "./errorMessages";

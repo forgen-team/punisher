@@ -9,10 +9,26 @@ import {
   MapStateIcon,
   STUDY_REQUEST_SOURCE_LABELS,
   areaLabel,
+  type MapNodeState,
 } from "@/src/entities/punisher";
 import type { AreaCoverage, FrontierItem, MapRequest } from "@/src/shared/api/punisher";
 import { translate, useLocale, useT, type Locale } from "@/src/shared/i18n";
 import { messages } from "../i18n";
+
+/** 상태 견본(노드와 같은 색·테두리 모양·아이콘) — 범례와 지도 목록 보기의 행 앞에 쓴다. */
+export function MapStateSwatch({ state }: { state: MapNodeState }) {
+  const style = MAP_STATE_STYLES[state];
+  return (
+    <span
+      aria-hidden="true"
+      // ListRow 의 leading 은 아이콘을 20px 로 키운다 — 견본 안 아이콘은 노드와 같은 14px 로 고정.
+      className="inline-flex size-6 shrink-0 items-center justify-center rounded-md border-2 text-fg [&_svg]:!size-3.5"
+      style={{ borderColor: style.border, background: style.background, borderStyle: style.borderStyle }}
+    >
+      <MapStateIcon state={state} />
+    </span>
+  );
+}
 
 /** 범례 시트 — 색 + 테두리 모양 + 아이콘 + 텍스트(색만으로 구분하지 않음). */
 export function MapLegendSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -20,21 +36,12 @@ export function MapLegendSheet({ open, onClose }: { open: boolean; onClose: () =
   return (
     <BottomSheet open={open} onClose={onClose} title={t.legend} desktop="dialog">
       <ul className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-        {MAP_STATE_ORDER.map((state) => {
-          const style = MAP_STATE_STYLES[state];
-          return (
-            <li key={state} className="flex items-center gap-2 text-fg-secondary">
-              <span
-                aria-hidden="true"
-                className="inline-flex size-6 shrink-0 items-center justify-center rounded-md border-2 text-fg"
-                style={{ borderColor: style.border, background: style.background, borderStyle: style.borderStyle }}
-              >
-                <MapStateIcon state={state} />
-              </span>
-              {MAP_STATE_LABELS[state]}
-            </li>
-          );
-        })}
+        {MAP_STATE_ORDER.map((state) => (
+          <li key={state} className="flex items-center gap-2 text-fg-secondary">
+            <MapStateSwatch state={state} />
+            {MAP_STATE_LABELS[state]}
+          </li>
+        ))}
       </ul>
       <p className="mt-4 text-xs text-fg-muted">{t.legendNote}</p>
     </BottomSheet>

@@ -1,14 +1,19 @@
 
 import { Info } from "lucide-react";
-import { IconButton, Menu, Select, type MenuItem } from "@/src/shared/ui/kit";
+import { IconButton, Menu, SegmentedTabs, Select, type MenuItem } from "@/src/shared/ui/kit";
 import { AREA_LABELS, GOAL_STATUS_LABELS } from "@/src/entities/punisher";
 import { PUNISHER_AREAS, type AreaCoverage, type Goal, type GraphChapter } from "@/src/shared/api/punisher";
 import { translate, useLocale } from "@/src/shared/i18n";
 import { areaSignals } from "./MapPanels";
 import { messages } from "../i18n";
 
+/** 지도 보기 방식 — URL ?view= (없으면 휴대폰은 목록, 그 밖은 그래프). */
+export type MapView = "graph" | "list";
+
 interface MapControlsProps {
   area: string;
+  view: MapView;
+  onViewChange: (view: MapView) => void;
   goalId: string;
   goals: Goal[];
   /** 내 챕터(영역 선택지에 '새 챕터: <이름>'으로) */
@@ -27,9 +32,9 @@ interface MapControlsProps {
 /** 영역 선택값 중 챕터를 뜻하는 접두사(값 = chapter:<id>). */
 export const CHAPTER_OPTION_PREFIX = "chapter:";
 
-/** 지도 컨트롤 한 줄: 영역 · 목표 경로 · 범례 · ⋯(목표 관리, 아는 개념 표시). */
+/** 지도 컨트롤 한 줄: 영역 · 목표 경로 · 그래프|목록 · 범례 · ⋯(목표 관리, 아는 개념 표시). */
 export function MapControls({
-  area, chapters, goalId, goals, coverage, onAreaChange, onOpenChapter, onGoalChange, onOpenLegend, onOpenGoals, onOpenKnown,
+  area, view, onViewChange, chapters, goalId, goals, coverage, onAreaChange, onOpenChapter, onGoalChange, onOpenLegend, onOpenGoals, onOpenKnown,
 }: MapControlsProps) {
   const locale = useLocale();
   const t = translate(messages, locale);
@@ -84,6 +89,16 @@ export function MapControls({
             </Select>
           )}
         </div>
+        <SegmentedTabs
+          aria-label={t.viewLabel}
+          value={view}
+          onChange={onViewChange}
+          items={[
+            { value: "graph", label: t.viewGraph },
+            { value: "list", label: t.viewList },
+          ]}
+          className="shrink-0"
+        />
         <IconButton aria-label={t.legend} onClick={onOpenLegend}>
           <Info aria-hidden="true" />
         </IconButton>

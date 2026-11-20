@@ -1,13 +1,17 @@
 import type { GraphChapter, NextChapterPrompt } from "./chapterTypes";
 import type { MapInquiry } from "./inquiryTypes";
-import type { MapRequest } from "./learningTypes";
+import type { MapRequest, ReaderLevel } from "./learningTypes";
 import type { RecheckCard } from "./misconceptionTypes";
 import type { TodayReview } from "./reviewTypes";
 
 // DTOs mirrored from apps/punisher-server/internal/{models,learning,services,lecture,store}.
 // Keep in sync with the Go json tags; the server rejects unknown request fields.
 
+/** 0단계 기초 트랙(learner-level ②): depth 0, 수준에 따라 기본 숨김. */
+export const FOUNDATIONS_AREA = "foundations";
+
 export const PUNISHER_AREAS = [
+  FOUNDATIONS_AREA,
   "data-structures",
   "computer-architecture",
   "os",
@@ -18,6 +22,12 @@ export const PUNISHER_AREAS = [
   "security-design",
 ] as const;
 export type PunisherArea = (typeof PUNISHER_AREAS)[number];
+
+/** 처음 설정 2단계(영역별 아는 정도)에 묻는 영역 — 0단계 기초는 묻지 않는다. */
+export const FAMILIARITY_AREAS = PUNISHER_AREAS.filter(
+  (a): a is Exclude<PunisherArea, typeof FOUNDATIONS_AREA> => a !== FOUNDATIONS_AREA,
+);
+export type FamiliarityArea = (typeof FAMILIARITY_AREAS)[number];
 
 export type UserConceptState = "not_started" | "in_progress" | "completed" | "known";
 
@@ -40,6 +50,10 @@ export interface Concept {
   objectiveCount: number;
   userState: UserConceptState;
   updatedAt: string;
+  /** 0단계 기초 개념이고 내 수준에서 기본으로 숨김(GET /v1/concepts) */
+  hiddenByDefault?: boolean;
+  /** '필요 없음'으로 뺐다(이미 앎·완료와 별개 — 선행 잠금은 그대로). */
+  dismissed?: boolean;
 }
 
 export interface Objective {
@@ -56,6 +70,8 @@ export interface ConceptLink {
   area: string;
   kind: string;
   userState: UserConceptState;
+  /** '필요 없음'으로 뺀 이웃(뺀 선행 개념도 여전히 잠금). */
+  dismissed?: boolean;
 }
 
 export interface ConceptDetail extends Concept {
@@ -83,6 +99,10 @@ export interface GraphNode {
   inquiries?: MapInquiry[];
   /** 내 챕터 개념이면 그 챕터 id */
   chapterId?: string;
+  /** 0단계 기초 개념이고 내 수준(실무자·숙련자·미설정)에서 기본으로 접혀 있음 */
+  hiddenByDefault?: boolean;
+  /** '필요 없음' — 지도에 흐리게, 다음 개념(frontier) 아님. */
+  dismissed?: boolean;
 }
 
 export interface GraphEdge {
@@ -110,6 +130,8 @@ export interface Graph {
   pendingRequests: MapRequest[];
   /** 내 챕터(새 챕터: <이름> 묶음) */
   chapters: GraphChapter[];
+  /** 내 수준에서 0단계 기초가 기본으로 접혀 있음(노드는 hiddenByDefault) */
+  foundationsHidden: boolean;
 }
 
 export interface FrontierItem {
@@ -207,6 +229,8 @@ export interface PathStep {
   locked: boolean;
   isTarget: boolean;
   isNext: boolean;
+  /** '필요 없음' — 경로에는 남는다(다음 단계를 여전히 막는다). */
+  dismissed?: boolean;
 }
 
 export interface Resolution {
@@ -219,7 +243,7 @@ export interface Resolution {
   error?: string;
 }
 
-export type InstantStatus = "existing" | "started" | "attached" | "needs_selection" | "already_learned";
+export type InstantStatus = "existing" | "started" | "attached" | "needs_selection" | "already_learned" | "inquiry";
 
 export interface InstantRequest {
   conceptId?: string;
@@ -238,6 +262,8 @@ export interface InstantResponse {
   jobId?: string;
   streamUrl?: string;
   resolution?: Resolution;
+  /** status "inquiry": 읽던 강의와 같은 개념이라 질문 해설로 대신 만든 경우 */
+  inquiryId?: string;
 }
 
 export type BlockType =
@@ -323,6 +349,10 @@ export interface Lecture {
   reviewState?: LectureReviewState;
   /** 생성에 쓴 프롬프트 버전 — 내 프롬프트를 썼으면 '+u:<해시8>' 가 붙는다 */
   promptVersion?: string;
+  /** 이 강의를 쓴 설명 수준 — 없으면 예전 응답(practitioner 로 본다) */
+  readerLevel?: ReaderLevel;
+  /** 이 강의를 쓴 AI(claude|codex|agy) — 없으면 예전 응답(claude) */
+  provider?: string;
   estimatedMinutes: number;
   createdAt: string;
   publishedAt?: string;
@@ -369,6 +399,28 @@ export interface Question {
   proposedConcepts: ProposedConcept[] | null;
   createdAt: string;
   answeredAt?: string;
+  /** 읽기 스레드(④): 고른 구절 — 예전 질문·재설명 요청은 "" */
+  quote?: string;
+  /** 이어 묻기면 루트 질문 id, 루트면 "" */
+  parentId?: string;
+  mode?: ThreadMode;
+}
+
+/** 읽기 스레드 요청 종류 — easier·deeper 는 구절만으로, question 은 질문 문장이 필요하다. */
+export type ThreadMode = "easier" | "deeper" | "question";
+
+/** POST /lectures/{id}/threads */
+export interface ThreadStartInput {
+  anchor: string;
+  quote: string;
+  mode: ThreadMode;
+  question?: string;
+}
+
+/** POST /questions/{id}/followups — mode easier·deeper 는 "직전 답을 더 쉽게/깊게" */
+export interface ThreadFollowupInput {
+  question?: string;
+  mode?: ThreadMode;
 }
 
 export interface Note {

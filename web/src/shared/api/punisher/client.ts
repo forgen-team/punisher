@@ -17,14 +17,17 @@ export class PunisherApiError extends Error {
   readonly requestId?: string;
   /** 검증 실패 상세(예: CHAPTER_INVALID 의 problems) */
   readonly problems: string[];
+  /** 파싱한 응답 본문 그대로 — 실패해도 결과를 함께 보내는 응답(예: 스레드 502 {question}) 용 */
+  readonly body: unknown;
 
-  constructor(status: number, code: string, message: string, requestId?: string, problems: string[] = []) {
+  constructor(status: number, code: string, message: string, requestId?: string, problems: string[] = [], body: unknown = undefined) {
     super(message);
     this.name = "PunisherApiError";
     this.status = status;
     this.code = code;
     this.requestId = requestId;
     this.problems = problems;
+    this.body = body;
   }
 }
 
@@ -33,14 +36,15 @@ interface ErrorEnvelope {
 }
 
 async function parseError(res: Response): Promise<PunisherApiError> {
-  let envelope: ErrorEnvelope = {};
+  let body: unknown;
   try {
-    envelope = (await res.json()) as ErrorEnvelope;
+    body = await res.json();
   } catch {
-    envelope = {};
+    body = undefined;
   }
+  const envelope: ErrorEnvelope = body !== null && typeof body === "object" ? (body as ErrorEnvelope) : {};
   const err = envelope.error ?? {};
-  return new PunisherApiError(res.status, err.code ?? "HTTP_ERROR", err.message ?? `HTTP ${res.status}`, err.requestId, err.problems ?? []);
+  return new PunisherApiError(res.status, err.code ?? "HTTP_ERROR", err.message ?? `HTTP ${res.status}`, err.requestId, err.problems ?? [], body);
 }
 
 export interface PunisherRequestInit extends Omit<RequestInit, "body"> {
@@ -81,12 +85,12 @@ export function describePunisherError(error: unknown): string {
       return t.alreadyGenerating;
     case 429:
       if (error.code === "BUDGET_EXCEEDED") { return t.budgetExceeded; }
-      // LLM_RATE_LIMITED: 로컬 Claude 사용 한도 — 서버가 한국어 안내를 보낸다(ko 일 때만 그대로).
+      // LLM_RATE_LIMITED: 고른 로컬 AI(claude·codex·agy) 사용 한도 — 서버가 한국어 안내를 보낸다(ko 일 때만 그대로).
       return error.code === "LLM_RATE_LIMITED" ? localServerText(error.message, t.claudeRateLimited) : t.tooManyRequests;
     case 502:
       return localServerText(error.message, t.aiFailed(""));
     case 503:
-      // GENERATION_UNAVAILABLE: Claude Code 미설치/미로그인 — 서버가 고치는 방법을 한국어로 보낸다.
+      // GENERATION_UNAVAILABLE: 고른 AI CLI 미설치/미로그인 — 서버가 고치는 방법을 한국어로 보낸다.
       return localServerText(error.message, t.claudeUnavailable);
     default:
       return error.status >= 500 ? t.serverError : error.message;

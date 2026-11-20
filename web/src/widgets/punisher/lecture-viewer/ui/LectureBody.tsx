@@ -3,6 +3,7 @@ import type { LectureContent, LectureSection } from "@/src/shared/api/punisher";
 import { SECTION_KIND_LABELS } from "@/src/entities/punisher";
 import { anchorElementId } from "@/src/features/punisher/lecture-progress";
 import type { DeeperOrigin } from "@/src/features/punisher/term-popover";
+import { PassageMarkers } from "@/src/features/punisher/reading-assist";
 import { groupBlocks, type BlockGroup } from "../lib/blockGroups";
 import { sectionMinutes } from "../lib/sectionMinutes";
 import { BlockGroupRenderer } from "./blocks";
@@ -27,11 +28,11 @@ interface LectureBodyProps {
   sectionNote?: (section: LectureSection) => ReactNode;
 }
 
-/** 강의 본문 — 16px / 행간 1.7 (모바일·데스크톱 동일), 읽기 폭은 부모 열이 제한한다. */
+/** 강의 본문 — 16px(--text-md) / 행간 1.75 (모바일·데스크톱 동일, 문단·목록·강조 상자가 물려받는다), 읽기 폭은 부모 열이 제한한다. */
 export function LectureBody({ content, onBeforeDeeper, sectionNote }: LectureBodyProps) {
   const t = useT(messages);
   return (
-    <div className="flex flex-col gap-10 text-base leading-[1.7] text-fg">
+    <div className="flex flex-col gap-10 text-base leading-[1.75] text-fg">
       {content.sections.map((section, index) => (
         <section
           key={section.anchor || index}
@@ -48,6 +49,7 @@ export function LectureBody({ content, onBeforeDeeper, sectionNote }: LectureBod
               {section.title || SECTION_KIND_LABELS[section.kind] || section.kind}
             </h2>
           </header>
+          <PassageMarkers anchor={section.anchor} />
           {sectionNote?.(section)}
           {groupBlocks(section.blocks).map((group, gi) => {
             const [first, second] = groupAnchors(group);
@@ -55,6 +57,7 @@ export function LectureBody({ content, onBeforeDeeper, sectionNote }: LectureBod
               <div key={first || gi} {...anchorProps(first)} className="scroll-mt-28">
                 <BlockGroupRenderer group={group} onBeforeDeeper={onBeforeDeeper} />
                 {second && <span {...anchorProps(second)} className="block scroll-mt-28" />}
+                <PassageMarkers anchor={first} />
               </div>
             );
           })}

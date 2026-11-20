@@ -23,10 +23,12 @@ import type {
   Page,
   Question,
   StudyRequest,
+  ThreadFollowupInput,
+  ThreadStartInput,
   TodayResponse,
   UserConceptState,
 } from "./types";
-import type { LearningSettingsPatch, LearningSettingsResponse, LectureLinks, SelectionExplanation } from "./learningTypes";
+import type { LearningSettingsPatch, LearningSettingsResponse, LectureLinks } from "./learningTypes";
 import type { PromptHistoryEntry, PromptPreview, PromptSaveResponse, PromptsResponse } from "./promptTypes";
 import type { ChapterDraftResponse, ChapterSuggestionsResponse } from "./chapterTypes";
 import type { CompletedArea, CompletedItem, Inquiry, InquiryFollowup } from "./inquiryTypes";
@@ -36,6 +38,12 @@ import type { Misconception, MisconceptionStatus } from "./misconceptionTypes";
 import type { ExerciseAttempt, ExerciseInput, LectureExercises } from "./exerciseTypes";
 
 const enc = encodeURIComponent;
+
+type QuestionEnvelope = { question: Question } | Question;
+
+function unwrapQuestion(res: QuestionEnvelope): Question {
+  return "question" in res && typeof res.question === "object" ? res.question : (res as Question);
+}
 
 function query(params: Record<string, string | number | undefined>): string {
   const search = new URLSearchParams();
@@ -67,6 +75,11 @@ export const punisherApi = {
       method: "POST",
       json: options.queueVerify ? { queueVerify: true } : undefined,
     }),
+  /** '필요 없음' — 추천·다음 개념·복습에서 뺀다(지도에는 흐리게 남음). DELETE 가 되돌리기. */
+  dismissConcept: (id: string) =>
+    punisherFetch<{ conceptId: string; dismissed: boolean }>(`/concepts/${enc(id)}/dismiss`, { method: "POST" }),
+  restoreConcept: (id: string) =>
+    punisherFetch<{ conceptId: string; dismissed: boolean }>(`/concepts/${enc(id)}/dismiss`, { method: "DELETE" }),
   getGloss: (conceptId: string) =>
     punisherFetch<{ conceptId: string; gloss: string; cached: boolean; term?: string; relatedConceptId?: string }>(
       `/terms/${enc(conceptId)}/gloss`,
@@ -124,11 +137,6 @@ export const punisherApi = {
   restoreLecture: (id: string) =>
     punisherFetch<{ lectureId: string; dismissed: boolean }>(`/lectures/${enc(id)}/dismiss`, { method: "DELETE" }),
   getLectureLinks: (id: string) => punisherFetch<LectureLinks>(`/lectures/${enc(id)}/links`),
-  explainSelection: (lectureId: string, anchor: string, selection: string) =>
-    punisherFetch<SelectionExplanation>(`/lectures/${enc(lectureId)}/explain`, {
-      method: "POST",
-      json: { anchor, selection },
-    }),
   listExercises: (lectureId: string) => punisherFetch<LectureExercises>(`/lectures/${enc(lectureId)}/exercises`),
   submitExercise: (lectureId: string, input: ExerciseInput) =>
     punisherFetch<{ attempt: ExerciseAttempt }>(`/lectures/${enc(lectureId)}/exercises`, { method: "POST", json: input }).then(
@@ -138,6 +146,14 @@ export const punisherApi = {
     punisherFetch<void>(`/lectures/${enc(lectureId)}/exercises/${enc(attemptId)}`, { method: "DELETE" }),
   getQuestion: (id: string) =>
     punisherFetch<{ question: Question }>(`/questions/${enc(id)}`).then((r) => r.question),
+  // 읽기 스레드(④) — 답은 동기로 온다(질문하기와 같다, 201 {question} · LLM 실패는 502).
+  startThread: (lectureId: string, input: ThreadStartInput) =>
+    punisherFetch<QuestionEnvelope>(`/lectures/${enc(lectureId)}/threads`, { method: "POST", json: input }).then(unwrapQuestion),
+  followupThread: (rootId: string, input: ThreadFollowupInput) =>
+    punisherFetch<QuestionEnvelope>(`/questions/${enc(rootId)}/followups`, { method: "POST", json: input }).then(unwrapQuestion),
+  /** 스레드(구절 + 대화)로 심화 즉석 강의 시작 — 응답·코드는 POST /lectures/instant 와 같다. */
+  startDeepLecture: (rootId: string) =>
+    punisherFetch<InstantResponse>(`/questions/${enc(rootId)}/deep-lecture`, { method: "POST" }),
 
   // History (cross-lecture)
   listMyQuestions: (params: { conceptId?: string; limit?: number; cursor?: string } = {}) =>
@@ -153,6 +169,8 @@ export const punisherApi = {
   getLearningSettings: () => punisherFetch<LearningSettingsResponse>("/me/settings"),
   saveLearningSettings: (patch: LearningSettingsPatch) =>
     punisherFetch<LearningSettingsResponse>("/me/settings", { method: "PUT", json: patch }),
+  /** 수준 보정 제안 닫기(7일) — 204. */
+  dismissLevelSuggestion: () => punisherFetch<void>("/me/level-suggestion/dismiss", { method: "POST" }),
 
   // Inquiries ('이 질문에 답하기')
   createInquiry: (question: string) => punisherFetch<Inquiry>("/inquiries", { method: "POST", json: { question } }),

@@ -1,15 +1,18 @@
 
 import { usePathname, useRouter, useSearchParams } from "@/src/shared/lib/router";
 import { Suspense, lazy, useCallback, useMemo, useState } from "react";
-import { BottomSheet, EmptyState, ErrorState, Skeleton } from "@/src/shared/ui/kit";
+import { BottomSheet, EmptyState, ErrorState, ListSkeleton, Skeleton, useIsSplitLayout } from "@/src/shared/ui/kit";
 import { useFrontier, useGoalPath, useGoals, useGraph, useMasteryBatch, useToday } from "@/src/entities/punisher";
 import { GoalsManager } from "@/src/features/punisher/goal-manage";
 import { KnownAreasSheet, KnownOnboardingPrompt, useKnownOnboardingPrompt } from "@/src/features/punisher/known-onboarding";
-import { describePunisherError } from "@/src/shared/api/punisher";
+import { FOUNDATIONS_AREA, describePunisherError } from "@/src/shared/api/punisher";
 import { useWideLayout } from "@/src/shared/lib/useWideLayout";
 import { ConceptDetailSheet } from "./ui/ConceptDetailSheet";
-import { CHAPTER_OPTION_PREFIX, MapControls } from "./ui/MapControls";
+import { CHAPTER_OPTION_PREFIX, MapControls, type MapView } from "./ui/MapControls";
+import { MapConceptList } from "./ui/MapConceptList";
 import { chapterView } from "./lib/chapterView";
+import { FOUNDATIONS_SHOWN, hiddenFoundationsCount, visibleFoundations } from "./lib/foundationsView";
+import { FoundationsToggle } from "./ui/FoundationsToggle";
 import { messages } from "./i18n";
 import { useT } from "@/src/shared/i18n";
 
@@ -31,7 +34,8 @@ const DEFAULT_AREA = "all";
 
 /**
  * 지식 지도: 모바일은 컨트롤 한 줄 + 전체 폭 캔버스, 그 아래 "다음에 공부하면 좋은 것"·커버리지.
- * 노드 상세·범례·목표 관리·아는 개념 표시는 시트. URL 상태(?area=&goal=&concept=&request=&panel=goals).
+ * 노드 상세·범례·목표 관리·아는 개념 표시는 시트. URL 상태(?area=&goal=&concept=&request=&panel=goals&view=).
+ * 보기: 그래프 | 목록(깊이 층별) — ?view= 가 없으면 휴대폰(fold 미만)은 목록, 그 밖은 그래프.
  * 그래프는 항상 전체를 한 번 받아(약 170개) 영역은 클라이언트에서 거른다 — 영역 요약(학습·요청 수)도 함께 쓴다.
  */
 export function KnowledgeMapWidget() {
@@ -45,6 +49,11 @@ export function KnowledgeMapWidget() {
   const goalsOpen = params.get("panel") === "goals";
   const chapterParam = params.get("chapter");
   const areaFilter = goalId || chapterParam || areaParam === "all" ? null : areaParam;
+  // 0단계 기초: 내 수준에서 기본 숨김이면 ?foundations=shown 으로 펼친다(목표·챕터 보기에는 끼지 않는다).
+  const foundationsExpanded = params.get("foundations") === FOUNDATIONS_SHOWN;
+  const split = useIsSplitLayout();
+  const viewParam = params.get("view");
+  const view: MapView = viewParam === "graph" || viewParam === "list" ? viewParam : split ? "graph" : "list";
 
   const graph = useGraph();
   // ?request=<학습 요청 id> (RSS "지도에서 보기") → 그 요청이 붙은 개념을 연다.
@@ -100,10 +109,19 @@ export function KnowledgeMapWidget() {
     if (pathIds) { visible = all.filter((n) => pathIds.has(n.id)); }
     else if (chapterParam) { visible = chapterView(all, graph.data?.edges ?? [], chapterParam); }
     else if (areaFilter) { visible = all.filter((n) => n.area === areaFilter); }
+    if (!pathIds && !chapterParam) { visible = visibleFoundations(visible, foundationsExpanded, areaFilter); }
     const ids = new Set(visible.map((n) => n.id));
     const prereq = (graph.data?.edges ?? []).filter((edge) => edge.kind === "prerequisite" && ids.has(edge.from) && ids.has(edge.to));
     return { nodes: visible, edges: prereq };
-  }, [graph.data, pathIds, areaFilter, chapterParam]);
+  }, [graph.data, pathIds, areaFilter, chapterParam, foundationsExpanded]);
+  const foundationsCount = useMemo(() => hiddenFoundationsCount(graph.data?.nodes ?? []), [graph.data]);
+  // 0단계가 내 수준에서 숨김이고 펼치지 않았으면 영역 요약에서도 뺀다(지도와 같은 기준).
+  const coverageRows = useMemo(() => {
+    const rows = graph.data?.coverage ?? [];
+    const hideFoundations = Boolean(graph.data?.foundationsHidden) && !foundationsExpanded;
+    return hideFoundations ? rows.filter((c) => c.area !== FOUNDATIONS_AREA) : rows;
+  }, [graph.data, foundationsExpanded]);
+  const showFoundationsToggle = foundationsCount > 0 && !goalId && !chapterParam && areaFilter === null;
   const selectedRequests = useMemo(
     () => graph.data?.nodes.find((n) => n.id === selectedId)?.requests ?? [],
     [graph.data, selectedId],
@@ -111,7 +129,7 @@ export function KnowledgeMapWidget() {
 
   function renderCanvas() {
     if (graph.isLoading || (goalId && goalPath.isLoading)) {
-      return <Skeleton variant="block" className="h-full rounded-none" />;
+      return view === "list" ? <ListSkeleton rows={6} /> : <Skeleton variant="block" className="h-full rounded-none" />;
     }
     if (graph.error || goalPath.error) {
       return (
@@ -127,6 +145,9 @@ export function KnowledgeMapWidget() {
     }
     if (nodes.length === 0) {
       return <EmptyState compact title={t.emptyTitle} description={t.emptyDescription} />;
+    }
+    if (view === "list") {
+      return <MapConceptList nodes={nodes} selectedId={selectedId} showArea={!areaFilter && !chapterParam} onSelect={onSelect} />;
     }
     return (
       <MapCanvas
@@ -146,6 +167,8 @@ export function KnowledgeMapWidget() {
     <div className="flex w-full flex-col gap-3 lg:h-[calc(100dvh-14rem)] lg:min-h-[28rem]">
       <MapControls
         area={chapterParam ? `${CHAPTER_OPTION_PREFIX}${chapterParam}` : areaParam}
+        view={view}
+        onViewChange={(v) => setParams({ view: v })}
         chapters={graph.data?.chapters ?? []}
         goalId={goalId}
         goals={goals.data ?? []}
@@ -163,13 +186,25 @@ export function KnowledgeMapWidget() {
       />
       {onboarding.show && <KnownOnboardingPrompt onStart={() => setKnownOpen(true)} onDismiss={onboarding.dismiss} />}
       {goalId && <p className="text-xs text-fg-muted">{t.goalPathHint}</p>}
+      {showFoundationsToggle && (
+        <FoundationsToggle
+          count={foundationsCount}
+          expanded={foundationsExpanded}
+          onToggle={() => setParams({ foundations: foundationsExpanded ? null : FOUNDATIONS_SHOWN })}
+        />
+      )}
 
       {/* lg: 캔버스 | 18rem 목록, 상세는 오른쪽 시트. xl: 캔버스 | 22rem(2xl 26rem) 열 — 개념을 고르면 그 열이 상세 패널로 바뀐다(캔버스 폭 그대로).
           lg+: 이 줄이 남은 높이를 채우고(안내 줄이 있으면 그만큼 줄어든다), xl 오른쪽 열은 그 높이를 넘지 않고 넘치면 세로로만 스크롤한다. */}
       <div className="grid gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_18rem] lg:grid-rows-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
-        <div className="-mx-4 h-[60dvh] min-h-80 overflow-hidden border-y border-line fold:mx-0 fold:rounded-lg fold:border lg:h-full lg:min-h-0">
-          {renderCanvas()}
-        </div>
+        {view === "list" ? (
+          // 목록: 높이를 고정하지 않고 페이지와 함께 스크롤(lg+ 는 캔버스 자리 안에서 스크롤).
+          <div className="min-w-0 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-3">{renderCanvas()}</div>
+        ) : (
+          <div className="-mx-4 h-[60dvh] min-h-80 overflow-hidden border-y border-line fold:mx-0 fold:rounded-lg fold:border lg:h-full lg:min-h-0">
+            {renderCanvas()}
+          </div>
+        )}
         <div className="flex min-w-0 flex-col gap-6 xl:max-h-full xl:self-start xl:overflow-y-auto xl:overflow-x-hidden xl:pr-3">
           {wide && selectedId ? (
             <ConceptDetailSheet variant="panel" conceptId={selectedId} requests={selectedRequests} onClose={closeDetail} onSelect={onSelect} />
@@ -177,7 +212,7 @@ export function KnowledgeMapWidget() {
             <>
               <PendingRequestList requests={graph.data?.pendingRequests ?? []} highlightId={requestId} />
               <FrontierList items={frontier.data?.items ?? []} onSelect={onSelect} />
-              <CoverageList coverage={graph.data?.coverage ?? []} />
+              <CoverageList coverage={coverageRows} />
             </>
           )}
         </div>

@@ -1,8 +1,10 @@
 
 import { Link } from "@/src/shared/lib/router";
+import { useEffect } from "react";
 import { BookOpen, PlayCircle } from "lucide-react";
 import { BottomSheet, Button, ListRow, buttonVariants } from "@/src/shared/ui/kit";
-import { RECOMMENDATION_KIND_LABELS_BY_LOCALE, areaLabel, recommendationReason } from "@/src/entities/punisher";
+import { RECOMMENDATION_KIND_LABELS_BY_LOCALE, areaLabel, recommendationReason, useConceptDismiss } from "@/src/entities/punisher";
+import { InlineError } from "@/src/shared/ui/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import type { Recommendation } from "@/src/shared/api/punisher";
 import { useLocale, useT } from "@/src/shared/i18n";
@@ -48,10 +50,19 @@ interface RecommendationSheetProps {
   onStart: (conceptId: string) => void;
 }
 
-/** 추천 상세: 왜 오늘 · 이해하게 될 실무 상황 · 분량 + 강의 열기/시작. */
+/** 추천 상세: 왜 오늘 · 이해하게 될 실무 상황 · 분량 + 강의 열기/시작 · 필요 없음(빼면 닫히고 목록이 새로 읽힌다). */
 export function RecommendationSheet({ item, starting, onClose, onStart }: RecommendationSheetProps) {
   const locale = useLocale();
   const t = useT(messages);
+  const dismiss = useConceptDismiss();
+  const conceptId = item?.conceptId;
+  const { reset } = dismiss;
+  // 다른 추천을 열면 앞 추천의 '필요 없음' 오류·진행 표시를 지운다.
+  useEffect(() => {
+    reset();
+  }, [conceptId, reset]);
+  const dismissItem = (conceptId: string) =>
+    dismiss.mutate({ conceptId, dismissed: true }, { onSuccess: () => { dismiss.reset(); onClose(); } });
   const title = item ? item.conceptName || item.title : "";
   return (
     <BottomSheet
@@ -65,7 +76,11 @@ export function RecommendationSheet({ item, starting, onClose, onStart }: Recomm
       }
       footer={
         item ? (
-          <>
+          // 390px 폭에서 버튼 셋이 넘치지 않게 줄을 바꿔 오른쪽 정렬한다.
+          <div className="flex w-full flex-wrap items-center justify-end gap-2">
+            <Button variant="ghost" loading={dismiss.isPending} onClick={() => dismissItem(item.conceptId)}>
+              {t.dismiss}
+            </Button>
             <Link href={mapHref(item.conceptId)} className={buttonVariants({ variant: "ghost" })}>
               {t.viewOnMap}
             </Link>
@@ -79,29 +94,33 @@ export function RecommendationSheet({ item, starting, onClose, onStart }: Recomm
                 {t.startLecture}
               </Button>
             )}
-          </>
+          </div>
         ) : null
       }
     >
       {item && (
-        <dl className="flex flex-col gap-3 text-sm">
-          {item.title && item.title !== item.conceptName && (
+        <div className="flex flex-col gap-3 text-sm">
+          <dl className="flex flex-col gap-3">
+            {item.title && item.title !== item.conceptName && (
+              <div>
+                <dt className="text-xs font-medium text-fg-muted">{t.lectureTitle}</dt>
+                <dd className="text-fg">{item.title}</dd>
+              </div>
+            )}
             <div>
-              <dt className="text-xs font-medium text-fg-muted">{t.lectureTitle}</dt>
-              <dd className="text-fg">{item.title}</dd>
+              <dt className="text-xs font-medium text-fg-muted">{t.whyToday}</dt>
+              <dd className="text-fg">{recommendationReason(item)}</dd>
             </div>
-          )}
-          <div>
-            <dt className="text-xs font-medium text-fg-muted">{t.whyToday}</dt>
-            <dd className="text-fg">{recommendationReason(item)}</dd>
-          </div>
-          {item.practicalSituation && (
-            <div>
-              <dt className="text-xs font-medium text-fg-muted">{t.practicalSituation}</dt>
-              <dd className="text-fg">{item.practicalSituation}</dd>
-            </div>
-          )}
-        </dl>
+            {item.practicalSituation && (
+              <div>
+                <dt className="text-xs font-medium text-fg-muted">{t.practicalSituation}</dt>
+                <dd className="text-fg">{item.practicalSituation}</dd>
+              </div>
+            )}
+          </dl>
+          <p className="text-xs text-fg-muted">{t.dismissHint}</p>
+          <InlineError error={dismiss.error} />
+        </div>
       )}
     </BottomSheet>
   );

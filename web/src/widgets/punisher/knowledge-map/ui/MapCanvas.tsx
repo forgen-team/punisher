@@ -77,6 +77,7 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, mast
           proposed: n.status === "proposed",
           inquiries: n.inquiries?.length ?? 0,
           mastered: masteredIds.has(n.id),
+          dismissed: Boolean(n.dismissed),
           dimmed: highlightIds !== null && !highlightIds.has(n.id),
           highlighted: highlightIds?.has(n.id) ?? false,
           selected: n.id === selectedId,
@@ -162,7 +163,11 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, mast
           aria-label={t.mapLabel}
         >
           <Background />
-          <Controls showInteractive={false} />
+          {/* 휴대폰(fold 미만): 확대·축소·맞춤 버튼을 터치 크기(44px)로, 아이콘도 조금 크게. */}
+          <Controls
+            showInteractive={false}
+            className="max-fold:[&_button]:size-touch max-fold:[&_svg]:!max-h-4 max-fold:[&_svg]:!max-w-4"
+          />
           {/* 작게(기본 200×150 → 144×96), 바탕·바깥 가림은 토큰 색 — 다크에서 밝은 덩어리로 보이지 않게. 지금 보는 범위는 액센트 테두리. */}
           <MiniMap
             pannable

@@ -1,9 +1,10 @@
 
 import { Link } from "@/src/shared/lib/router";
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { Layers } from "lucide-react";
 import { BottomSheet, List, ListRow, SegmentedTabs, Section } from "@/src/shared/ui/kit";
 import { lectureHref } from "@/src/features/punisher/instant-start";
+import { useReadingThreads } from "@/src/features/punisher/reading-assist";
 import type { DeeperOrigin } from "@/src/features/punisher/term-popover";
 import type { LinkedLecture } from "@/src/shared/api/punisher";
 import type { LectureTerm } from "../lib/lectureTerms";
@@ -82,6 +83,12 @@ export function LectureAssistPanel({ lectureId, conceptId, getAnchor, terms, onB
   const t = useT(messages);
   const [tab, setTab] = useState<PanelTab>("questions");
   const panelId = useId();
+  // 본문에서 새 스레드를 열 때만(쉽게·깊게·질문·대화 n) '질문' 탭으로 돌아가 그 스레드를 펼친다 —
+  // 답이 오거나 닫는 등 focus 가 바뀔 때마다 탭을 빼앗지 않는다.
+  const openSeq = useReadingThreads()?.openSeq ?? 0;
+  useEffect(() => {
+    if (openSeq > 0) { setTab("questions"); }
+  }, [openSeq]);
   return (
     <div className="flex flex-col gap-6">
       <section aria-label={t.panelSection} className="flex flex-col gap-3">

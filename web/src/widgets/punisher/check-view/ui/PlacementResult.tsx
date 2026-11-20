@@ -2,7 +2,7 @@
 import { Link } from "@/src/shared/lib/router";
 import { forwardRef, useState } from "react";
 import { Button, Section, buttonVariants } from "@/src/shared/ui/kit";
-import { useBatchMarkKnown } from "@/src/features/punisher/known-onboarding";
+import { useBatchMarkKnown } from "@/src/entities/punisher";
 import type { PlacementResult as Placement } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";

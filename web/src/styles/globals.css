@@ -46,6 +46,19 @@
     color: var(--color-accent-text);
   }
 
+  /* 읽기 스레드(④): 탭한 문장 · 대화가 달린 구절 — CSS Custom Highlight API(본문 DOM 을 바꾸지 않는다) */
+  ::highlight(punisher-sentence) {
+    background: var(--color-accent-subtle);
+    color: var(--color-accent-text);
+  }
+
+  ::highlight(punisher-thread) {
+    text-decoration: underline;
+    text-decoration-color: var(--color-accent);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+
   :focus-visible {
     outline: 2px solid var(--color-focus-ring);
     outline-offset: 2px;
@@ -93,4 +106,21 @@
   --app-topbar-h: 48px;
   --app-header-offset: calc(var(--app-topbar-h) + var(--safe-top));
   --app-bottom-offset: var(--safe-bottom);
+}
+
+/* 휴대폰(fold 600px 미만) 강의 화면: 아래로 읽는 동안 셸 바를 숨겨 고정 바를 강의 바 하나로
+ * (shared/lib/appHeaderCollapse). 안전 영역 띠는 남기고, 강의 바는 offset 을 따라 맨 위로 붙는다. */
+@media (max-width: 599.98px) {
+  [data-app-header] {
+    transition: transform var(--duration-base) var(--ease-standard);
+  }
+
+  /* 바 안에 포커스가 있으면(키보드로 메뉴·검색 등) 숨기지 않는다 — offset 도 그대로 둔다. */
+  :root[data-app-header-state="hidden"]:not(:has([data-app-header]:focus-within)) {
+    --app-header-offset: var(--safe-top);
+  }
+
+  :root[data-app-header-state="hidden"] [data-app-header]:not(:focus-within) {
+    transform: translateY(calc(-100% + var(--safe-top)));
+  }
 }
