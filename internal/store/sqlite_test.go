@@ -209,14 +209,14 @@ func TestLectureVersionsCoveringAndComplete(t *testing.T) {
 		t.Fatalf("lecture round trip: %+v", v1)
 	}
 
-	got, err := s.PublishedLectureCovering(ctx, testUser, c.ID, v1.Depth, v1.ObjectiveIDs, "ko", LangExact)
+	got, err := s.PublishedLectureCovering(ctx, testUser, c.ID, v1.Depth, v1.ObjectiveIDs, "ko", "", LangExact)
 	if err != nil || got.ID != v2.ID {
 		t.Fatalf("covering = %v %v, want v2", got.ID, err)
 	}
-	if _, err := s.PublishedLectureCovering(ctx, testUser, c.ID, v1.Depth, []string{"nope#1"}, "ko", LangExact); !errors.Is(err, ErrNotFound) {
+	if _, err := s.PublishedLectureCovering(ctx, testUser, c.ID, v1.Depth, []string{"nope#1"}, "ko", "", LangExact); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("covering missing objective = %v", err)
 	}
-	latest, err := s.LatestLectureForTarget(ctx, "library", c.ID, v1.ObjectiveKey, v1.Depth, "ko", []string{"published"})
+	latest, err := s.LatestLectureForTarget(ctx, "library", c.ID, v1.ObjectiveKey, v1.Depth, "ko", "", []string{"published"})
 	if err != nil || latest.ID != v2.ID {
 		t.Fatalf("latest = %v %v", latest.ID, err)
 	}

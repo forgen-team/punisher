@@ -6,7 +6,7 @@ import (
 )
 
 // InquiryVersion tags explanations generated with InquiryTask (stored per answer).
-const InquiryVersion = "punisher-inquiry-2026-11-13.3"
+const InquiryVersion = "punisher-inquiry-2026-11-20.1"
 
 // InquiryContext is the input of one "이 질문에 답하기" explanation.
 type InquiryContext struct {
@@ -22,6 +22,8 @@ type InquiryContext struct {
 	Areas          []string
 	// Revisions: problems of the previous output to fix (rewrite).
 	Revisions []string
+	// Reader: the reader level section (ReaderProfile).
+	Reader Reader
 }
 
 // InquiryTask is the fixed instruction (the system prompt is the teacher block,
@@ -103,6 +105,7 @@ func Inquiry(c InquiryContext) string {
 	writeMisconceptions(&b, c.Misconceptions)
 	b.WriteString("\n## 영역 id\n" + strings.Join(c.Areas, ", ") + "\n")
 	b.WriteString(InquiryTask)
+	writeReaderProfile(&b, c.Reader)
 	writeFactualRules(&b)
 	if len(c.Revisions) > 0 {
 		b.WriteString("\n\n## 직전 출력의 문제(모두 고쳐서 처음부터 다시 출력)\n")
@@ -136,6 +139,8 @@ type FollowupContext struct {
 	Areas          []string
 	// Revisions: problems of the previous output to fix (rewrite).
 	Revisions []string
+	// Reader: the reader level section (ReaderProfile).
+	Reader Reader
 }
 
 // Context budgets (runes): a long thread keeps recent turns whole and shrinks the rest.
@@ -215,6 +220,7 @@ func InquiryFollowup(c FollowupContext) string {
 	writeMisconceptions(&b, c.Misconceptions)
 	b.WriteString("\n## 영역 id\n" + strings.Join(c.Areas, ", ") + "\n")
 	b.WriteString(FollowupTask)
+	writeReaderProfile(&b, c.Reader)
 	writeFactualRules(&b)
 	if len(c.Revisions) > 0 {
 		b.WriteString("\n\n## 직전 출력의 문제(모두 고쳐서 처음부터 다시 출력)\n")

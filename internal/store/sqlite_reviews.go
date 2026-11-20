@@ -12,10 +12,13 @@ import (
 )
 
 // reviewScope joins a mastery row `m` (user $1) to its active objective and a
-// non-retired concept visible to the user (design §2.5, §5 P2).
+// non-retired concept visible to the user (design §2.5, §5 P2) that the user
+// has not marked '필요 없음' — its reviews pause (rows and dates are kept, so
+// undoing the dismissal resumes them; a date that passed meanwhile is due at once).
 var reviewScope = `
 	JOIN objectives o ON o.id = m.objective_id AND o.status = 'active'
-	JOIN concepts c ON c.id = m.concept_id AND c.status <> 'retired' AND ` + visibleTo("c", "$1")
+	JOIN concepts c ON c.id = m.concept_id AND c.status <> 'retired' AND ` + visibleTo("c", "$1") + `
+	  AND NOT ` + conceptDismissedSQL("m.concept_id", "$1")
 
 // ReviewQueue returns the user's due objectives (design §5 P2): reviewed by
 // now, not waiting (queued), not graduated, on an active concept/objective.

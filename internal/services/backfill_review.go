@@ -84,7 +84,7 @@ func (s *Service) backfillOne(ctx context.Context, apiKey, owner string, lec mod
 	if userID == "" {
 		userID = owner
 	}
-	t, err := s.TargetForLecture(ctx, userID, lec, "")
+	t, err := s.TargetForLecture(ctx, userID, lec, "", "")
 	if errors.Is(err, store.ErrNotFound) { // 개념이 지도에서 빠진 강의: 대기열을 막지 않도록 기록하고 표시한다.
 		return false, s.recordBackfill(ctx, lec.ID, ReviewOutcome{Verdict: "fail", Summary: reasonUnreviewable}, "", reasonUnreviewable)
 	}

@@ -56,13 +56,14 @@ func (s *SQLiteStore) LoadToday(ctx context.Context, userID string, now time.Tim
 		           AND NOT EXISTS (
 		             SELECT 1 FROM user_objective_states us
 		             WHERE us.user_id = $1 AND us.objective_id = o.id AND us.depth = o.depth
-		               AND us.state IN ('completed', 'known')))
+		               AND us.state IN ('completed', 'known'))),
+		       `+conceptDismissedSQL("c.id", "$1")+`
 		FROM concepts c
 		LEFT JOIN user_concept_states st ON st.concept_id = c.id AND st.user_id = $1
 		WHERE c.status IN ('active', 'proposed') AND `+visibleTo("c", "$1"), userID), func(row rowScanner) (learning.TodayConcept, error) {
 		var c learning.TodayConcept
 		err := row.Scan(&c.ID, &c.Name, &c.Area, &c.Depth, &c.Summary, &c.PracticalCase, &c.State, &c.Proposed,
-			&c.Private, &c.PendingDepths)
+			&c.Private, &c.PendingDepths, &c.Dismissed)
 		c.HasPending = c.PendingDepths > 0
 		return c, err
 	})

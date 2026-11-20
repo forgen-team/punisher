@@ -167,7 +167,7 @@ func (s *Service) CreateChapterDraft(ctx context.Context, userID string, req Cha
 }
 
 func (s *Service) chapterPromptContext(ctx context.Context, userID string, req ChapterRequest, lang string) (prompts.ChapterContext, chapter.Context, error) {
-	pc := prompts.ChapterContext{FreeText: req.FreeText, Areas: curriculum.Areas}
+	pc := prompts.ChapterContext{FreeText: req.FreeText, Areas: curriculum.ProposalAreas}
 	if len(req.SuggestionIDs) > 0 {
 		suggestions, err := s.SuggestChapters(ctx, userID)
 		if err != nil {
@@ -190,7 +190,7 @@ func (s *Service) chapterPromptContext(ctx context.Context, userID string, req C
 	if err != nil {
 		return pc, cctx, err
 	}
-	cctx.Areas = curriculum.Areas
+	cctx.Areas = curriculum.ProposalAreas
 	catalog, err := s.Store.ConceptCatalog(ctx, userID, lang)
 	if err != nil {
 		return pc, cctx, err
@@ -223,7 +223,7 @@ func (s *Service) ApplyChapterDraft(ctx context.Context, userID, draftID string)
 	if err != nil {
 		return "", err
 	}
-	cctx.Areas = curriculum.Areas
+	cctx.Areas = curriculum.ProposalAreas
 	d, problems := chapter.Validate(d, cctx)
 	if len(problems) > 0 {
 		return "", &ChapterDesignError{Problems: problems}

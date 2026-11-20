@@ -159,6 +159,7 @@ func (s *Service) runSynthesisItems(ctx context.Context, apiKey, userID, session
 		pc.Objectives = append(pc.Objectives, prompts.DiagnosticObjective{ID: o.ID, ConceptName: o.ConceptName, Text: o.Text})
 	}
 	lang := s.Store.LocaleFor(ctx, userID)
+	pc.Reader = s.readerFor(ctx, userID, lang)
 	items, u, _, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.checkModel(), attempts: synthesisAttempts,
 		priority: llm.PriorityInteractive, system: set.Text(prompts.BlockCheckSynthesis, nil), language: lang},
 		func(revisions []string) string { pc.Revisions = revisions; return prompts.Synthesis(pc) },

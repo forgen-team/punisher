@@ -99,16 +99,16 @@ func TestLectureLookupLanguageModes(t *testing.T) {
 	}
 	ids := []string{objectiveID}
 
-	if _, err := s.LatestLectureForTarget(ctx, learning.JobInstant, conceptID, objectiveID, 1, learning.LocaleEN, []string{"published"}); !errors.Is(err, ErrNotFound) {
+	if _, err := s.LatestLectureForTarget(ctx, learning.JobInstant, conceptID, objectiveID, 1, learning.LocaleEN, "", []string{"published"}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("en dedup must not see the ko lecture: %v", err)
 	}
-	if got, err := s.LatestLectureForTarget(ctx, learning.JobInstant, conceptID, objectiveID, 1, learning.LocaleKO, []string{"published"}); err != nil || got.ID != ko.ID {
+	if got, err := s.LatestLectureForTarget(ctx, learning.JobInstant, conceptID, objectiveID, 1, learning.LocaleKO, "", []string{"published"}); err != nil || got.ID != ko.ID {
 		t.Fatalf("ko dedup: %v %v", got.ID, err)
 	}
-	if _, err := s.PublishedLectureCovering(ctx, user, conceptID, 1, ids, learning.LocaleEN, LangExact); !errors.Is(err, ErrNotFound) {
+	if _, err := s.PublishedLectureCovering(ctx, user, conceptID, 1, ids, learning.LocaleEN, "", LangExact); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("en instant reuse must not reuse the ko lecture: %v", err)
 	}
-	if got, err := s.PublishedLectureCovering(ctx, user, conceptID, 1, ids, learning.LocaleEN, LangPrefer); err != nil || got.ID != ko.ID {
+	if got, err := s.PublishedLectureCovering(ctx, user, conceptID, 1, ids, learning.LocaleEN, "", LangPrefer); err != nil || got.ID != ko.ID {
 		t.Fatalf("prefer falls back to another language: %v %v", got.ID, err)
 	}
 
@@ -116,13 +116,13 @@ func TestLectureLookupLanguageModes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, err := s.PublishedLectureCovering(ctx, user, conceptID, 1, ids, learning.LocaleEN, LangPrefer); err != nil || got.ID != en.ID {
+	if got, err := s.PublishedLectureCovering(ctx, user, conceptID, 1, ids, learning.LocaleEN, "", LangPrefer); err != nil || got.ID != en.ID {
 		t.Fatalf("en prefer: %v %v", got.ID, err)
 	}
-	if got, err := s.PublishedLectureCovering(ctx, user, conceptID, 1, ids, learning.LocaleKO, LangPrefer); err != nil || got.ID != ko.ID {
+	if got, err := s.PublishedLectureCovering(ctx, user, conceptID, 1, ids, learning.LocaleKO, "", LangPrefer); err != nil || got.ID != ko.ID {
 		t.Fatalf("ko prefer must keep the ko lecture: %v %v", got.ID, err)
 	}
-	if got, err := s.PublishedLectureCovering(ctx, user, conceptID, 1, ids, learning.LocaleEN, LangExact); err != nil || got.ID != en.ID {
+	if got, err := s.PublishedLectureCovering(ctx, user, conceptID, 1, ids, learning.LocaleEN, "", LangExact); err != nil || got.ID != en.ID {
 		t.Fatalf("en exact: %v %v", got.ID, err)
 	}
 
@@ -193,10 +193,10 @@ func TestActiveJobPerLanguage(t *testing.T) {
 	if !errors.Is(err, ErrJobActive) || dup.ID != en.ID {
 		t.Fatalf("second en job must be blocked by the en job: %v %v", dup.ID, err)
 	}
-	if got, err := s.ActiveJobForTarget(ctx, objectiveID, 1, learning.LocaleKO); err != nil || got.ID != ko.ID {
+	if got, err := s.ActiveJobForTarget(ctx, objectiveID, 1, learning.LocaleKO, ""); err != nil || got.ID != ko.ID {
 		t.Fatalf("active ko: %v %v", got.ID, err)
 	}
-	if got, err := s.ActiveJobForTarget(ctx, objectiveID, 1, learning.LocaleEN); err != nil || got.ID != en.ID {
+	if got, err := s.ActiveJobForTarget(ctx, objectiveID, 1, learning.LocaleEN, ""); err != nil || got.ID != en.ID {
 		t.Fatalf("active en: %v %v", got.ID, err)
 	}
 }
@@ -462,7 +462,7 @@ func TestUpgradeFromV016(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := old.tx(ctx, func(c conn) error { return applySeedPre017(ctx, c, seed) }); err != nil {
+	if err := old.tx(ctx, func(c conn) error { return applySeedPre017(ctx, c, preFoundationsSeed(t, seed)) }); err != nil {
 		t.Fatal(err)
 	}
 	// v0.8's seed version had no English overlay in its hash.

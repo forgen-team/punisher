@@ -128,9 +128,10 @@ func (s *Service) CheckBudget(ctx context.Context, userID string, lecture bool) 
 
 // usage accumulates token usage across calls of one job.
 type usage struct {
-	model  string
-	input  int
-	output int
+	model    string
+	provider string // the AI that ran the calls (Router sets MessagesResult.Provider)
+	input    int
+	output   int
 }
 
 func (u *usage) add(r llm.MessagesResult) {
@@ -139,10 +140,13 @@ func (u *usage) add(r llm.MessagesResult) {
 	if r.Model != "" {
 		u.model = r.Model
 	}
+	if r.Provider != "" {
+		u.provider = r.Provider
+	}
 }
 
 func (u usage) outcome(status, reason string, err error, lectureID string) store.JobOutcome {
-	o := store.JobOutcome{Status: status, Reason: reason, LectureID: lectureID, Model: u.model,
+	o := store.JobOutcome{Status: status, Reason: reason, LectureID: lectureID, Model: u.model, Provider: u.provider,
 		InputTokens: u.input, OutputTokens: u.output}
 	if err != nil {
 		o.Error = err.Error()
@@ -177,7 +181,8 @@ func (s *Service) complete(ctx context.Context, apiKey string, req llm.MessagesR
 	return res.Text, nil
 }
 
-// Stable CLI failure codes (see internal/claudecli) used for user messages.
+// Stable CLI failure codes (see internal/clicore): the claude ones; codex
+// and agy use the same suffixes (codex_unavailable, agy_not_logged_in, …).
 const (
 	codeCLIMissing  = "claude_unavailable"
 	codeNotLoggedIn = "claude_not_logged_in"
@@ -194,6 +199,12 @@ var (
 	MsgClaudeLoggedOut = i18n.ReasonKo(i18n.ReasonClaudeLoggedOut)
 )
 
+// ProviderMessage is the stored (Korean) text of a failure kind (missing,
+// logged_out, rate_limited, …) of provider (claude | codex | agy).
+func ProviderMessage(provider, kind string) string {
+	return i18n.ReasonKo(i18n.ProviderReason(provider, kind))
+}
+
 // checkErrorText is the stored error of a failed check step (shown on the
 // check screen): the Korean local-CLI guidance for generation failures.
 func checkErrorText(err error) string {
@@ -205,6 +216,7 @@ func checkErrorText(err error) string {
 
 // DescribeLLMError returns the stored (Korean) text of a generation failure
 // ("" when err is not a generation error); LLMErrorReason gives its code.
+// The text names the AI that failed ("Codex(codex 명령)를 찾을 수 없습니다").
 func DescribeLLMError(err error) string {
 	if code := LLMErrorReason(err); code != "" {
 		return i18n.ReasonKo(code)
@@ -212,35 +224,55 @@ func DescribeLLMError(err error) string {
 	return ""
 }
 
+// failureKind is the reason kind of a CLI code of provider ("" = none):
+// <provider>_unavailable → missing, _not_logged_in → logged_out, …
+func failureKind(provider, code string) string {
+	switch code {
+	case "":
+		return ""
+	case codeQueueFull:
+		return "queue_full"
+	case codeDailyCap:
+		return "daily_cap"
+	case provider + "_unavailable":
+		return "missing"
+	case provider + "_not_logged_in":
+		return "logged_out"
+	case provider + "_rate_limited":
+		return "rate_limited"
+	case provider + "_timeout":
+		return "timeout"
+	}
+	return ""
+}
+
 // LLMErrorReason is the i18n reason code of a generation failure ("" when err
-// is not a generation error). The CLI's own message of an unclassified
-// failure is logged, not shown.
+// is not a generation error), for the provider that failed (LLMError.Provider;
+// "" = claude, as from claude-gateway). The CLI's own message of an
+// unclassified failure is logged, not shown.
 func LLMErrorReason(err error) string {
 	var le *llm.LLMError
-	code := ""
+	code, provider := "", llm.ProviderClaude
 	if errors.As(err, &le) {
 		code = le.Code
+		if le.Provider != "" {
+			provider = le.Provider
+		}
+	}
+	reason := func(kind string) string { return i18n.ProviderReason(provider, kind) }
+	if kind := failureKind(provider, code); kind != "" {
+		return reason(kind)
 	}
 	switch {
-	case code == codeCLIMissing:
-		return i18n.ReasonClaudeMissing
-	case code == codeNotLoggedIn:
-		return i18n.ReasonClaudeLoggedOut
-	case code == codeRateLimited:
-		return i18n.ReasonClaudeRateLimited
-	case code == codeQueueFull:
-		return i18n.ReasonClaudeQueueFull
-	case code == codeDailyCap:
-		return i18n.ReasonClaudeDailyCap
-	case code == codeTimeout || errors.Is(err, llm.ErrTimeout):
-		return i18n.ReasonClaudeTimeout
+	case errors.Is(err, llm.ErrTimeout):
+		return reason("timeout")
 	case errors.Is(err, llm.ErrGenerationUnavailable):
-		return i18n.ReasonClaudeLoggedOut
+		return reason("logged_out")
 	case errors.Is(err, ErrUnusableOutput):
-		return i18n.ReasonClaudeBadOutput
+		return reason("bad_output")
 	case le != nil:
-		logf("claude call failed: %s", le.Message)
-		return i18n.ReasonClaudeFailed
+		logf("%s call failed: %s", provider, le.Message)
+		return reason("failed")
 	}
 	return ""
 }

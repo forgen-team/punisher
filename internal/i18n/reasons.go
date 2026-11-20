@@ -26,6 +26,21 @@ const (
 	ReasonClaudeTimeout     = "claude.timeout"
 	ReasonClaudeBadOutput   = "claude.bad_output"
 	ReasonClaudeFailed      = "claude.failed"
+	// The other AI CLIs (learner-level design ⑥): "<provider>.<kind>" with the
+	// kinds missing | logged_out | rate_limited | daily_cap | timeout | failed
+	// (ProviderReason). queue_full and bad_output name no AI and stay claude.*.
+	ReasonCodexMissing     = "codex.missing"
+	ReasonCodexLoggedOut   = "codex.logged_out"
+	ReasonCodexRateLimited = "codex.rate_limited"
+	ReasonCodexDailyCap    = "codex.daily_cap"
+	ReasonCodexTimeout     = "codex.timeout"
+	ReasonCodexFailed      = "codex.failed"
+	ReasonAgyMissing       = "agy.missing"
+	ReasonAgyLoggedOut     = "agy.logged_out"
+	ReasonAgyRateLimited   = "agy.rate_limited"
+	ReasonAgyDailyCap      = "agy.daily_cap"
+	ReasonAgyTimeout       = "agy.timeout"
+	ReasonAgyFailed        = "agy.failed"
 	// reviewPrefix + review finding kind (factual_error, structure, …).
 	reviewPrefix = "review."
 )
@@ -49,6 +64,18 @@ var reasonKo = map[string]string{
 	ReasonClaudeTimeout:                "Claude 응답이 너무 오래 걸려 중단했습니다. 다시 시도해 주세요.",
 	ReasonClaudeBadOutput:              "AI가 만든 강의 형식이 올바르지 않아 저장하지 못했습니다. 다시 시도해 주세요.",
 	ReasonClaudeFailed:                 "Claude 호출에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+	ReasonCodexMissing:                 "Codex(codex 명령)를 찾을 수 없습니다. Codex CLI를 설치한 뒤 터미널에서 `codex login`으로 로그인하고 다시 시도해 주세요.",
+	ReasonCodexLoggedOut:               "Codex에 로그인되어 있지 않습니다. 터미널에서 `codex login`을 실행해 로그인한 뒤 다시 시도해 주세요.",
+	ReasonCodexRateLimited:             "Codex 사용 한도에 도달했습니다. 한도가 풀린 뒤 다시 시도해 주세요.",
+	ReasonCodexDailyCap:                "오늘 설정한 Codex 호출 한도를 모두 사용했습니다. 내일 다시 시도해 주세요.",
+	ReasonCodexTimeout:                 "Codex 응답이 너무 오래 걸려 중단했습니다. 다시 시도해 주세요.",
+	ReasonCodexFailed:                  "Codex 호출에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+	ReasonAgyMissing:                   "Antigravity(agy 명령)를 찾을 수 없습니다. Antigravity CLI를 설치한 뒤 터미널에서 `agy`를 한 번 실행해 로그인하고 다시 시도해 주세요.",
+	ReasonAgyLoggedOut:                 "Antigravity에 로그인되어 있지 않습니다. 터미널에서 `agy`를 실행해 로그인한 뒤 다시 시도해 주세요.",
+	ReasonAgyRateLimited:               "Antigravity(Gemini) 사용 한도에 도달했습니다. 한도가 풀린 뒤 다시 시도해 주세요.",
+	ReasonAgyDailyCap:                  "오늘 설정한 Antigravity 호출 한도를 모두 사용했습니다. 내일 다시 시도해 주세요.",
+	ReasonAgyTimeout:                   "Antigravity 응답이 너무 오래 걸려 중단했습니다. 다시 시도해 주세요.",
+	ReasonAgyFailed:                    "Antigravity 호출에 실패했습니다. 잠시 후 다시 시도해 주세요.",
 	reviewPrefix + "factual_error":     "사실과 다르거나 확인이 필요한 설명이 있었어요",
 	reviewPrefix + "structure":         "핵심 정의나 논지 등 강의 구성에 문제가 있었어요",
 	reviewPrefix + "pedagogy":          "손계산·예측·연습 같은 학습 활동이 부족했어요",
@@ -67,6 +94,18 @@ var codeOfKo = func() map[string]string {
 	}
 	return m
 }()
+
+// ProviderReason is the reason code of a generation failure kind (missing |
+// logged_out | rate_limited | queue_full | daily_cap | timeout | bad_output |
+// failed) of provider (claude | codex | agy; anything else = claude).
+func ProviderReason(provider, kind string) string {
+	if provider == "codex" || provider == "agy" {
+		if code := provider + "." + kind; reasonKo[code] != "" {
+			return code
+		}
+	}
+	return "claude." + kind
+}
 
 // ReasonKo is the Korean text of a reason code ("" when unknown).
 func ReasonKo(code string) string { return reasonKo[code] }

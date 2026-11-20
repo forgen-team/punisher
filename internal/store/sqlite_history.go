@@ -56,7 +56,8 @@ func (s *SQLiteStore) ListMyQuestions(ctx context.Context, userID, conceptID str
 	items, err := collect(s.c().query(ctx, `
 		SELECT q.id, COALESCE(q.lecture_id, ''), COALESCE(q.concept_id, l.concept_id, ''), q.anchor, q.kind,
 			q.question, q.answer, q.status, q.model, q.error, q.linked_concept_ids, q.proposed_concepts,
-			q.created_at, q.answered_at, COALESCE(l.title, ''), COALESCE(`+locName("c", userLocaleSQL("$1"))+`, '')
+			q.created_at, q.answered_at, q.quote, COALESCE(q.parent_id, ''), q.mode,
+			COALESCE(l.title, ''), COALESCE(`+locName("c", userLocaleSQL("$1"))+`, '')
 		FROM lecture_questions q
 		LEFT JOIN lectures l ON l.id = q.lecture_id
 		LEFT JOIN concepts c ON c.id = COALESCE(q.concept_id, l.concept_id)
@@ -68,7 +69,7 @@ func (s *SQLiteStore) ListMyQuestions(ctx context.Context, userID, conceptID str
 		q := &m.Question
 		err := row.Scan(&q.ID, &q.LectureID, &q.ConceptID, &q.Anchor, &q.Kind, &q.Question, &q.Answer, &q.Status,
 			&q.Model, &q.Error, strs(&q.LinkedConceptIDs), rawJSON(&q.ProposedConcepts), ts(&q.CreatedAt), nts(&q.AnsweredAt),
-			&m.LectureTitle, &m.ConceptName)
+			&q.Quote, &q.ParentID, &q.Mode, &m.LectureTitle, &m.ConceptName)
 		return m, err
 	})
 	if err != nil {

@@ -79,7 +79,7 @@ func (s *Service) runInstant(apiKey, userID, jobID string, t Target, emit func(E
 		fail(JobReasonReviewFailed, nil, userReasons(result.Attempts[len(result.Attempts)-1]))
 		return
 	}
-	saved, err := s.storeAttempts(ctx, t, jobID, result, u.model)
+	saved, err := s.storeAttempts(ctx, t, jobID, result, u.model, u.provider)
 	if err != nil {
 		fail(JobReasonStoreError, err, []string{ReasonGenerationError})
 		return

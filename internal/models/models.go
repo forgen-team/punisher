@@ -23,6 +23,12 @@ type Concept struct {
 	UpdatedAt         time.Time       `json:"updatedAt"`
 	// ChapterID: the user's chapter this concept belongs to ("" = shared curriculum).
 	ChapterID string `json:"chapterId,omitempty"`
+	// HiddenByDefault: a foundations (0단계 기초) concept the caller's reader level
+	// collapses by default (practitioner/advanced/unset); set by the concepts API.
+	HiddenByDefault bool `json:"hiddenByDefault,omitempty"`
+	// Dismissed: the caller marked this concept '필요 없음' (separate from userState;
+	// it is not learned and still locks its dependents).
+	Dismissed bool `json:"dismissed,omitempty"`
 }
 
 // Objective is a learning objective with the caller's state at its depth.
@@ -41,6 +47,8 @@ type ConceptLink struct {
 	Area      string `json:"area"`
 	Kind      string `json:"kind"`
 	UserState string `json:"userState"`
+	// Dismissed: the caller marked this neighbour '필요 없음' (a dismissed prerequisite still locks).
+	Dismissed bool `json:"dismissed,omitempty"`
 }
 
 // ConceptDetail is the payload of GET /v1/concepts/{id}.
@@ -80,6 +88,11 @@ type GraphNode struct {
 	Inquiries []MapInquiry `json:"inquiries,omitempty"`
 	// ChapterID: the caller's chapter this concept belongs to (map grouping).
 	ChapterID string `json:"chapterId,omitempty"`
+	// HiddenByDefault: foundations concept collapsed by default for the caller's
+	// reader level (the map shows it after "0단계 기초 · 펼치기").
+	HiddenByDefault bool `json:"hiddenByDefault,omitempty"`
+	// Dismissed: the caller marked it '필요 없음' — drawn dimmed, never Frontier.
+	Dismissed bool `json:"dismissed,omitempty"`
 }
 
 // MapRequest is a pending study request shown on the knowledge map.
@@ -120,6 +133,9 @@ type Graph struct {
 	PendingRequests []MapRequest `json:"pendingRequests"`
 	// Chapters: the caller's own chapters (새 챕터: <이름> 묶음).
 	Chapters []GraphChapter `json:"chapters"`
+	// FoundationsHidden: the caller's reader level collapses the foundations
+	// area by default (learning.FoundationsHidden); its nodes carry HiddenByDefault.
+	FoundationsHidden bool `json:"foundationsHidden"`
 }
 
 // GraphChapter is one of the caller's chapters on the map.

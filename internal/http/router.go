@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"mime"
 	"net"
 	"net/http"
@@ -20,6 +21,10 @@ type RouterDependencies struct {
 	Services *services.Service
 	// Claude reports the local claude CLI status for the UI banner.
 	Claude handlers.ClaudeStatusSource
+	// AIProviders are the selectable AI CLIs by id (nil = claude only) and
+	// SelectedAI the owner's choice (nil = claude), for GET /v1/status.
+	AIProviders map[string]handlers.ClaudeStatusSource
+	SelectedAI  func(ctx context.Context) string
 	// UI serves the embedded web app for every non-API path (may be nil in tests).
 	UI http.Handler
 	// AppVersion and DataDir are shown on the settings screen.
@@ -47,7 +52,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 	}
 
 	healthHandler := &handlers.HealthHandler{Store: deps.Store}
-	statusHandler := &handlers.StatusHandler{Claude: deps.Claude, AppVersion: deps.AppVersion, DataDir: deps.DataDir}
+	statusHandler := &handlers.StatusHandler{Claude: deps.Claude, Providers: deps.AIProviders, Selected: deps.SelectedAI, AppVersion: deps.AppVersion, DataDir: deps.DataDir}
 	conceptsHandler := &handlers.ConceptsHandler{Store: deps.Store}
 	progressHandler := &handlers.ProgressHandler{Store: deps.Store}
 	studyRequestsHandler := &handlers.StudyRequestsHandler{Store: deps.Store, Svc: deps.Services}
@@ -72,6 +77,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Get("/me/lectures", learn.ListMyLectures)
 		r.Get("/me/settings", learn.GetSettings)
 		r.Put("/me/settings", learn.PutSettings)
+		r.Post("/me/level-suggestion/dismiss", learn.DismissLevelSuggestion)
 		r.Get("/me/prompts", learn.ListPrompts)
 		r.Put("/me/prompts/{id}", learn.SavePrompt)
 		r.Delete("/me/prompts/{id}", learn.ResetPrompt)
@@ -99,6 +105,8 @@ func NewRouter(deps RouterDependencies) http.Handler {
 
 		r.Get("/today", learn.Today)
 		r.Post("/concepts/{id}/known", learn.MarkKnown)
+		r.Post("/concepts/{id}/dismiss", learn.DismissConcept)
+		r.Delete("/concepts/{id}/dismiss", learn.RestoreConcept)
 		r.Get("/terms/{conceptId}/gloss", learn.Gloss)
 
 		r.Post("/lectures/instant", learn.InstantCreate)
@@ -118,7 +126,10 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Post("/lectures/{id}/regenerate", learn.Regenerate)
 		r.Get("/lectures/{id}/questions", learn.ListQuestions)
 		r.Post("/lectures/{id}/questions", learn.Ask)
+		r.Post("/lectures/{id}/threads", learn.CreateThread)
 		r.Get("/questions/{id}", learn.GetQuestion)
+		r.Post("/questions/{id}/followups", learn.CreateQuestionFollowup)
+		r.Post("/questions/{id}/deep-lecture", learn.DeepLecture)
 
 		r.Get("/notes", learn.ListNotes)
 		r.Post("/notes", learn.CreateNote)

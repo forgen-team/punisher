@@ -49,6 +49,15 @@ type Config struct {
 	CheckModel           string
 	CheckRegradeModel    string
 	DailyCheckTokenLimit int
+	// Other AI CLIs (settings › AI 연결, learner-level design ⑥). Executables
+	// ("" = auto-detect) and their lecture/fast tier models ("" = the CLI's
+	// default model). Check grading follows the lecture tier, regrade the fast tier.
+	CodexBin          string
+	CodexLectureModel string
+	CodexFastModel    string
+	AgyBin            string
+	AgyLectureModel   string
+	AgyFastModel      string
 	// BackfillReviewEnabled: the scheduler reviews stored lectures without a
 	// pass review (lecture quality design v2.2 §2.2; also the lectures already
 	// in a user's database). Runs only when SchedulerEnabled.
@@ -112,6 +121,13 @@ func Load() Config {
 		DailyCheckTokenLimit: readInt("PUNISHER_DAILY_CHECK_TOKEN_LIMIT", 0),
 
 		BackfillReviewEnabled: readEnv("PUNISHER_BACKFILL_REVIEW_ENABLED", "true") != "false",
+
+		CodexBin:          strings.TrimSpace(os.Getenv("PUNISHER_CODEX_BIN")),
+		CodexLectureModel: strings.TrimSpace(os.Getenv("PUNISHER_CODEX_LECTURE_MODEL")),
+		CodexFastModel:    strings.TrimSpace(os.Getenv("PUNISHER_CODEX_FAST_MODEL")),
+		AgyBin:            strings.TrimSpace(os.Getenv("PUNISHER_AGY_BIN")),
+		AgyLectureModel:   strings.TrimSpace(os.Getenv("PUNISHER_AGY_LECTURE_MODEL")),
+		AgyFastModel:      strings.TrimSpace(os.Getenv("PUNISHER_AGY_FAST_MODEL")),
 
 		Witems: loadWitems(),
 	}

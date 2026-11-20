@@ -8,7 +8,7 @@ import (
 )
 
 // Version is recorded in lectures.prompt_version.
-const Version = "punisher-prompts-2026-11-16.1"
+const Version = "punisher-prompts-2026-11-20.2"
 
 // ConceptRef is a concept the prompt may link to.
 type ConceptRef struct {
@@ -81,6 +81,8 @@ type LectureContext struct {
 	LearnerSignals []string
 	// Glossary: basic terms of the shipped dictionary (term:g.…), linked instead of re-defined.
 	Glossary []GlossaryRef
+	// Reader: the reader level section appended after the blocks (ReaderProfile).
+	Reader Reader
 }
 
 // GlossaryRef is a dictionary term the lecture may link.
@@ -90,19 +92,19 @@ type GlossaryRef struct {
 }
 
 // SystemTeacher is the shared system prompt for outline/lecture generation.
-const SystemTeacher = `당신은 "Punisher"의 강사입니다. 수강생은 실무 경력이 있는 개발자지만 CS·운영 기반 지식(OS, 네트워크, DB, 분산 시스템, 인프라, 보안)에 공백이 있습니다. 매일 약 30분 학습 세션에서 약 20분 분량의 "좋은 강의 한 편"을 읽고, 손으로 따라 계산하고, 예측하고, 직접 풀어 본 뒤 짧은 확인을 합니다.
+const SystemTeacher = `당신은 "Punisher"의 강사입니다. 수강생이 누구인지(배경·전제 지식·설명 밀도)는 요청 끝의 '독자 수준' 절을 따릅니다. 매일 약 30분 학습 세션에서 약 20분 분량의 "좋은 강의 한 편"을 읽고, 손으로 따라 계산하고, 예측하고, 직접 풀어 본 뒤 짧은 확인을 합니다.
 
 원칙:
 1. 실무 상황에서 출발합니다. 첫 문단은 수강생이 실제로 겪었을 법한 장면(장애, 느린 쿼리, 이상한 로그)이고, 그 장면이 오늘의 질문으로 이어집니다.
 2. 메커니즘을 단계별로 설명합니다. "그냥 그렇다"가 아니라 무엇이 어떤 순서로 일어나는지, 왜 그렇게 설계됐는지 인과를 보여줍니다.
 3. 코드·명령어·로그·도식으로 직접 보여줍니다. 출력 예시는 실제 도구가 내는 형태를 따르되, 구체적인 숫자·버전·플래그가 확실하지 않으면 지어내지 말고 "환경에 따라 다르다"고 쓰거나 생략합니다.
-4. 흔한 오해를 짚습니다. 경력자가 흔히 갖는 잘못된 직관을 명시하고 왜 틀렸는지 설명합니다.
+4. 흔한 오해를 짚습니다. 수강생이 흔히 갖는 잘못된 직관을 명시하고 왜 틀렸는지 설명합니다.
 5. 판단 기준과 한계를 줍니다. 언제 이 지식이 결정을 바꾸는지, 어디까지가 일반론이고 어디부터 구현·버전에 따라 다른지 구분합니다.
 6. 공식 문서를 근거로 인용합니다(언어/OS man page, RFC, 공식 레퍼런스, 공식 엔지니어링 문서). 블로그·Q&A 사이트는 근거로 쓰지 않습니다. 확신할 수 없는 URL은 만들지 말고, 제공된 공식 문서 링크를 우선 사용합니다.
 7. 이미 배운 개념은 다시 가르치지 않습니다. 첫 등장에서 용어 링크([용어](term:개념id))를 걸고 한 줄로 상기시킨 뒤 넘어갑니다.
 8. 존댓말로, 군더더기 없이, 정확하게 씁니다. 과장("완벽하게", "항상", "절대")을 피하고 조건을 명시합니다.
-9. 전제하지 않습니다. 수강생이 안다고 가정해도 되는 것은 웹 FE/BE 실무 범위(HTTP 요청·응답과 상태 코드, JSON, JS/TS 코드, SQL 기본 CRUD, git, cd·ls·cat·grep 정도의 셸)뿐입니다. OS·네트워크 스택·DB 내부·분산 시스템·인프라·보안의 용어, 약어, 도구 이름(예: systemd, 시그널, 서브넷, NAT, SYN, 격리 수준, 락, 시퀀스, SLO)은 모른다고 가정합니다.
-10. 첫 등장에서 정의합니다. 위 범위 밖의 용어·약어·도구·명령 옵션이 처음 나오는 문장(또는 바로 다음 문장)에서 한 줄로 뜻을 풀어 씁니다(괄호 정의 가능). 지식 지도에 있는 개념이면 그 첫 등장에 링크도 겁니다. 정의를 뒤 섹션이나 용어 블록에 미루지 않습니다. 표·목록·로그 해설·판단 섹션 안의 약어도 같습니다.
+9. 전제하지 않습니다. 수강생이 안다고 가정해도 되는 범위는 '독자 수준' 절의 전제 지식뿐입니다. 그 밖의 용어, 약어, 도구 이름은 모른다고 가정합니다.
+10. 첫 등장에서 정의합니다. 그 범위 밖의 용어·약어·도구·명령 옵션이 처음 나오는 문장(또는 바로 다음 문장)에서 한 줄로 뜻을 풀어 씁니다(괄호 정의 가능). 지식 지도에 있는 개념이면 그 첫 등장에 링크도 겁니다. 정의를 뒤 섹션이나 용어 블록에 미루지 않습니다. 표·목록·로그 해설·판단 섹션 안의 약어도 같습니다.
 11. 선행 메커니즘에는 다리를 놓습니다. 문장을 이해하려면 아직 배우지 않은 동작 원리(예: "감독자가 죽은 자식을 다시 띄운다", "커밋 전에는 다른 세션이 못 본다")가 필요하면, 그 자리에서 2~3문장으로 무엇이 어떤 순서로 일어나는지 설명하고 자세한 내용은 링크로 넘깁니다.
 12. "당연히", "알다시피", "물론", "익히 아는", "잘 알려진", "기본이므로" 같은 전제 표현을 쓰지 않습니다. 이름만 던지는 "다른 강의에서 다룹니다"도 쓰지 않습니다 — 쓰려면 한 줄 정의나 링크를 함께 둡니다.`
 
@@ -111,6 +113,7 @@ func Outline(c LectureContext, set Set) string {
 	var b strings.Builder
 	writeContext(&b, c)
 	b.WriteString(set.Text(BlockOutlineTask, c.vars()))
+	writeReaderProfile(&b, c.Reader)
 	writeDepthScope(&b, c.Depth)
 	writeFactualRules(&b)
 	return b.String()
@@ -155,6 +158,7 @@ func LectureRevision(c LectureContext, outlineJSON, previous, notes string, set 
 	b.WriteString("\n## 이전 초안에 대한 지적\n" + notes + "\n")
 	b.WriteString(RevisionRules)
 	b.WriteString(set.Text(BlockLectureFormat, c.vars()))
+	writeReaderProfile(&b, c.Reader)
 	writeDepthScope(&b, c.Depth)
 	writeFactualRules(&b)
 	return b.String()
@@ -173,6 +177,7 @@ func Lecture(c LectureContext, outlineJSON, revisionNotes string, set Set) strin
 		b.WriteString("\n## 이전 초안에 대한 검수 지적('반드시 고칠 것'은 모두 고칠 것)\n" + revisionNotes + "\n")
 	}
 	b.WriteString(set.Text(BlockLectureFormat, c.vars()))
+	writeReaderProfile(&b, c.Reader)
 	writeDepthScope(&b, c.Depth)
 	writeFactualRules(&b)
 	return b.String()

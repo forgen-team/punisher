@@ -8,9 +8,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// AreaFoundations is the 0단계 기초 track (learner-level design ②): the only
+// area whose concepts have depth 0. No other area lists its concepts as
+// prerequisites, so it never blocks practitioners; it is recommended and shown
+// by reader level (learning.FoundationsHidden / FoundationsOrder).
+const AreaFoundations = "foundations"
+
 // Areas is the fixed set of knowledge areas (design §3.1). Each seed file
 // declares exactly one of these.
 var Areas = []string{
+	AreaFoundations,
 	"data-structures",
 	"computer-architecture",
 	"os",
@@ -21,8 +28,52 @@ var Areas = []string{
 	"security-design",
 }
 
+// ProposalAreas are the areas new (proposed) concepts may be filed under:
+// every area except the curated foundations track.
+var ProposalAreas = func() []string {
+	out := make([]string, 0, len(Areas))
+	for _, a := range Areas {
+		if a != AreaFoundations {
+			out = append(out, a)
+		}
+	}
+	return out
+}()
+
+// IsProposalArea reports whether a proposed concept may use area.
+func IsProposalArea(area string) bool {
+	return area != AreaFoundations && IsValidArea(area)
+}
+
+// FoundationsTrack is the foundations concepts in path order (the order of
+// foundations.yaml; a test keeps the two equal).
+var FoundationsTrack = []string{
+	"found.running-programs",
+	"found.code-basics",
+	"found.data-shapes",
+	"found.files-and-paths",
+	"found.terminal-and-shell",
+	"found.internet-and-web",
+	"found.what-browsers-do",
+	"found.http-first-look",
+	"found.json-and-api",
+	"found.tables-and-sql",
+	"found.git-version-control",
+	"found.hosting-and-deploy",
+	"found.reading-errors",
+}
+
+// MinDepth is the lowest concept/objective depth allowed in area (0 only for foundations).
+func MinDepth(area string) int {
+	if area == AreaFoundations {
+		return 0
+	}
+	return 1
+}
+
 // AreaTitles 는 영역 표시 이름(각 seed YAML 의 title 과 같다). 사용자 문구에 slug 를 노출하지 않기 위해 쓴다.
 var AreaTitles = map[string]string{
+	AreaFoundations:         "0단계 기초",
 	"data-structures":       "자료구조와 알고리즘",
 	"computer-architecture": "컴퓨터구조",
 	"os":                    "운영체제",
@@ -35,6 +86,7 @@ var AreaTitles = map[string]string{
 
 // AreaTitlesEn are the English area names (i18n/en/*.yaml title).
 var AreaTitlesEn = map[string]string{
+	AreaFoundations:         "Foundations",
 	"data-structures":       "Data Structures and Algorithms",
 	"computer-architecture": "Computer Architecture",
 	"os":                    "Operating Systems",

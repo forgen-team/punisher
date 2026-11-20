@@ -33,7 +33,11 @@ type Lecture struct {
 	EstimatedMinutes int    `json:"estimatedMinutes"`
 	GenerationJobID  string `json:"generationJobId,omitempty"`
 	// Language: ko|en — the lecture's language (i18n §1).
-	Language    string           `json:"language"`
+	Language string `json:"language"`
+	// ReaderLevel: the reader level the lecture was written for (learner-level ①; older lectures = practitioner).
+	ReaderLevel string `json:"readerLevel"`
+	// Provider: the AI that wrote it (claude | codex | agy; older lectures = claude).
+	Provider    string           `json:"provider"`
 	CreatedAt   time.Time        `json:"createdAt"`
 	PublishedAt *time.Time       `json:"publishedAt,omitempty"`
 	Progress    *LectureProgress `json:"progress,omitempty"`
@@ -101,6 +105,7 @@ type GenerationJob struct {
 	OutputTokens   int             `json:"outputTokens"`
 	Input          json.RawMessage `json:"input"`
 	Language       string          `json:"language"`
+	ReaderLevel    string          `json:"readerLevel"`
 	StartedAt      *time.Time      `json:"startedAt,omitempty"`
 	FinishedAt     *time.Time      `json:"finishedAt,omitempty"`
 	CreatedAt      time.Time       `json:"createdAt"`
@@ -122,6 +127,12 @@ type Question struct {
 	ProposedConcepts json.RawMessage `json:"proposedConcepts"`
 	CreatedAt        time.Time       `json:"createdAt"`
 	AnsweredAt       *time.Time      `json:"answeredAt,omitempty"`
+	// Quote: the passage a reading thread is about (roots; "" for follow-ups and plain questions).
+	Quote string `json:"quote"`
+	// ParentID: the thread's root question for a follow-up ("" = a root).
+	ParentID string `json:"parentId"`
+	// Mode: easier | deeper | question (learner-level ④).
+	Mode string `json:"mode"`
 }
 
 // Note is an anchor-based note or highlight.
@@ -157,6 +168,8 @@ type PathStep struct {
 	Locked    bool   `json:"locked"`
 	IsTarget  bool   `json:"isTarget"`
 	IsNext    bool   `json:"isNext"`
+	// Dismissed: the caller marked it '필요 없음'; kept on the path (it still gates the next steps).
+	Dismissed bool `json:"dismissed,omitempty"`
 }
 
 // ConceptInfo is a concept with its active objectives, for generation.

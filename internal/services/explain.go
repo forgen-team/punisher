@@ -66,18 +66,9 @@ func (s *Service) ExplainSelection(ctx context.Context, userID string, lec model
 	if err != nil {
 		return Explanation{}, err
 	}
-	var content lecture.Content
-	if err := json.Unmarshal(lec.Content, &content); err != nil {
-		return Explanation{}, fmt.Errorf("decode lecture content: %w", err)
-	}
-	section := SectionForAnchor(content, anchor)
-	pc := prompts.ExplainContext{
-		ConceptID: lec.ConceptID, LectureTitle: lec.Title, SectionTitle: section.Title,
-		SectionText: RenderSection(section), ExampleLanguage: s.exampleLanguageName(ctx, userID),
-	}
-	lang := learning.NormalizeLocale(lec.Language) // 구절 설명은 강의 언어(i18n §1.1)
-	if info, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID, lang); err == nil {
-		pc.ConceptName = info.Name
+	pc, lang, err := s.explainContext(ctx, userID, lec, anchor)
+	if err != nil {
+		return Explanation{}, err
 	}
 	if err := s.CheckBudget(ctx, userID, false); err != nil {
 		return Explanation{}, err
@@ -86,21 +77,48 @@ func (s *Service) ExplainSelection(ctx context.Context, userID string, lec model
 	if err != nil {
 		return Explanation{}, err
 	}
+	text, model, err := s.explainWithKey(ctx, userID, apiKey, lec.ConceptID, pc, lang, prompts.ExplainSelection(pc, selection))
+	if err != nil {
+		return Explanation{}, err
+	}
+	return Explanation{Selection: selection, SectionTitle: pc.SectionTitle, Explanation: text, Model: model}, nil
+}
+
+// explainContext is the section context of a passage explanation; lang is the
+// lecture's language (passage answers follow it, i18n §1.1).
+func (s *Service) explainContext(ctx context.Context, userID string, lec models.Lecture, anchor string) (prompts.ExplainContext, string, error) {
+	var content lecture.Content
+	if err := json.Unmarshal(lec.Content, &content); err != nil {
+		return prompts.ExplainContext{}, "", fmt.Errorf("decode lecture content: %w", err)
+	}
+	section := SectionForAnchor(content, anchor)
+	pc := prompts.ExplainContext{
+		ConceptID: lec.ConceptID, LectureTitle: lec.Title, SectionTitle: section.Title,
+		SectionText: RenderSection(section), ExampleLanguage: s.exampleLanguageName(ctx, userID),
+	}
+	lang := learning.NormalizeLocale(lec.Language) // 구절 설명은 강의 언어(i18n §1.1)
+	pc.Reader = s.readerFor(ctx, userID, lang)     // 설명 밀도는 지금 읽는 사용자의 수준(learner-level ①)
+	if info, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID, lang); err == nil {
+		pc.ConceptName = info.Name
+	}
+	return pc, lang, nil
+}
+
+// explainWithKey runs a passage-explanation prompt on the explain block and the
+// short lane; returns the trimmed markdown and the model (usage is recorded).
+func (s *Service) explainWithKey(ctx context.Context, userID, apiKey, conceptID string, pc prompts.ExplainContext, lang, user string) (string, string, error) {
 	var u usage
 	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{
 		Model: s.Cfg.LectureModel,
 		System: prompts.WithOutputLanguage(s.UserPrompts(ctx, userID).Text(prompts.BlockExplainSystem,
 			map[string]string{"concept_name": pc.ConceptName, "example_language": pc.ExampleLanguage}), lang),
-		User:      prompts.ExplainSelection(pc, selection),
+		User:      user,
 		MaxTokens: 2000, Timeout: 90 * time.Second, Priority: llm.ShortUnlessBackground(ctx),
 	}, &u)
 	text = strings.TrimSpace(text)
 	if err == nil && text == "" {
 		err = errors.New("model returned an empty explanation")
 	}
-	s.recordUsage(ctx, userID, "explain", lec.ConceptID, u, err)
-	if err != nil {
-		return Explanation{}, err
-	}
-	return Explanation{Selection: selection, SectionTitle: section.Title, Explanation: text, Model: u.model}, nil
+	s.recordUsage(ctx, userID, "explain", conceptID, u, err)
+	return text, u.model, err
 }

@@ -14,7 +14,7 @@ var (
 	ErrInvalidRequest = errors.New("INVALID_REQUEST")
 	ErrTimeout        = errors.New("TIMEOUT")
 	ErrServerError    = errors.New("SERVER_ERROR")
-	// ErrGenerationUnavailable: the local claude CLI is missing or not logged in.
+	// ErrGenerationUnavailable: the selected local AI CLI is missing or not logged in.
 	// Callers record a failure; there is no fallback provider.
 	ErrGenerationUnavailable = errors.New("GENERATION_UNAVAILABLE")
 )
@@ -24,8 +24,10 @@ type LLMError struct {
 	StatusCode int
 	Message    string
 	Err        error
-	// Code is the CLI failure code (claude_not_logged_in, claude_unavailable, ...).
+	// Code is the CLI failure code (claude_not_logged_in, codex_unavailable, ...).
 	Code string
+	// Provider is the AI CLI that failed (claude | codex | agy; "" = claude).
+	Provider string
 }
 
 func (e *LLMError) Error() string {
@@ -55,7 +57,20 @@ type MessagesRequest struct {
 	Timeout     time.Duration // whole-call timeout; default client timeout
 	// Priority is the scheduling lane. Empty = taken from ctx (WithPriority), else interactive.
 	Priority Priority
+	// Tier is the model tier (TierLecture | TierFast) the Router maps onto a
+	// non-claude provider's models. Empty = inferred from Model (Router).
+	// The Router sets the resolved tier on the request it passes on.
+	Tier Tier
 }
+
+// Tier is a model tier: lecture-quality or fast/cheap.
+type Tier string
+
+// Model tiers.
+const (
+	TierLecture Tier = "lecture"
+	TierFast    Tier = "fast"
+)
 
 // Usage is the token accounting reported by the CLI.
 type Usage struct {
@@ -73,6 +88,8 @@ type MessagesResult struct {
 	StopReason string // end_turn | max_tokens | ...
 	Usage      Usage
 	LatencyMs  int64
+	// Provider is the AI CLI that generated it (set by Router; "" = claude).
+	Provider string
 }
 
 // Truncated reports whether generation stopped because max_tokens was reached.

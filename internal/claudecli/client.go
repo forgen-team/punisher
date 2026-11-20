@@ -8,16 +8,14 @@ package claudecli
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/forgen-team/punisher/internal/clicore"
 	"github.com/forgen-team/punisher/internal/llm"
 )
 
@@ -27,6 +25,9 @@ type Config struct {
 	Bin string
 	// TempBase holds per-call empty working directories.
 	TempBase string
+	// Gate is the shared admission gate (lanes, timeouts, daily cap). nil =
+	// a private gate built from the fields below.
+	Gate *clicore.Gate
 	// Concurrency is the total number of parallel CLI processes (1..4,
 	// default 3). From 3 one slot is kept for short conversational calls
 	// (pretest, tutor, Q&A, glossary): long generations never take it.
@@ -46,67 +47,32 @@ type Config struct {
 	DailyLimit int
 }
 
-func (c Config) normalized() Config {
-	if c.Concurrency < 1 {
-		c.Concurrency = 3
-	}
-	if c.Concurrency > 4 {
-		c.Concurrency = 4
-	}
-	if c.BackgroundConcurrency < 1 {
-		c.BackgroundConcurrency = 1
-	}
-	if c.BackgroundConcurrency > c.Concurrency {
-		c.BackgroundConcurrency = c.Concurrency
-	}
-	if c.InteractiveQueue <= 0 {
-		c.InteractiveQueue = 4
-	}
-	if c.ShortQueue <= 0 {
-		c.ShortQueue = 4
-	}
-	if c.BackgroundQueue <= 0 {
-		c.BackgroundQueue = 8
-	}
-	if c.InteractiveQueueWait <= 0 {
-		c.InteractiveQueueWait = 45 * time.Second
-	}
-	if c.BackgroundQueueWait <= 0 {
-		c.BackgroundQueueWait = 5 * time.Minute
-	}
-	if c.DefaultModel == "" {
-		c.DefaultModel = "sonnet"
-	}
-	if c.DefaultTimeout <= 0 {
-		c.DefaultTimeout = 180 * time.Second
-	}
-	if c.MaxTimeout < c.DefaultTimeout {
-		c.MaxTimeout = 600 * time.Second
-	}
-	if c.TempBase == "" {
-		c.TempBase = filepath.Join(os.TempDir(), "punisher-claude")
-	}
-	return c
+// GateConfig is the admission part of the config.
+func (c Config) GateConfig() clicore.GateConfig {
+	return clicore.GateConfig{Concurrency: c.Concurrency, BackgroundConcurrency: c.BackgroundConcurrency,
+		InteractiveQueue: c.InteractiveQueue, ShortQueue: c.ShortQueue, BackgroundQueue: c.BackgroundQueue,
+		InteractiveQueueWait: c.InteractiveQueueWait, BackgroundQueueWait: c.BackgroundQueueWait,
+		DefaultTimeout: c.DefaultTimeout, MaxTimeout: c.MaxTimeout, DailyLimit: c.DailyLimit}
 }
+
+// codes are claude's stable failure codes.
+var codes = clicore.CodesFor("claude", "run `claude` once in a terminal to log in")
 
 // Client implements the services.LLM interface on top of the local CLI.
 type Client struct {
 	cfg     Config
+	gate    *clicore.Gate
 	limiter *Limiter
+	runners *clicore.BinCache[*Runner]
+	fails   clicore.Tracker
 
-	mu          sync.Mutex
-	runner      *Runner
-	lastFailure *Failure
-	dayKey      string
-	dayCalls    int
-	auth        authCache
+	mu      sync.Mutex
+	auth    authCache
+	version clicore.StatusCache // `claude --version`, reused for authCacheTTL
 }
 
 // Failure is the most recent auth/rate failure seen on a real call.
-type Failure struct {
-	Code string    `json:"code"`
-	At   time.Time `json:"at"`
-}
+type Failure = clicore.Failure
 
 type authCache struct {
 	at       time.Time
@@ -117,67 +83,43 @@ type authCache struct {
 // New builds a client. It does not fail when claude is missing: calls (and
 // Status) report claude_unavailable until the CLI is installed.
 func New(cfg Config) *Client {
-	cfg = cfg.normalized()
-	return &Client{cfg: cfg, limiter: NewLimiter(LimiterConfig{
-		Total: cfg.Concurrency, BackgroundMax: cfg.BackgroundConcurrency,
-		InteractiveQueue: cfg.InteractiveQueue, BackgroundQueue: cfg.BackgroundQueue, ShortQueue: cfg.ShortQueue,
-	})}
+	if cfg.DefaultModel == "" {
+		cfg.DefaultModel = "sonnet"
+	}
+	if cfg.TempBase == "" {
+		cfg.TempBase = filepath.Join(os.TempDir(), "punisher-claude")
+	}
+	gate := cfg.Gate
+	if gate == nil {
+		gate = clicore.NewGate(cfg.GateConfig())
+	}
+	return &Client{cfg: cfg, gate: gate, limiter: gate.Limiter(), runners: &clicore.BinCache[*Runner]{}}
 }
 
 // ResolveBin finds the claude executable: an explicit path/name first, then
 // PATH, then the usual install locations (a GUI-launched process may have a
 // minimal PATH). Returns "" when nothing is found.
 func ResolveBin(explicit string) string {
-	if explicit != "" {
-		if p, err := exec.LookPath(explicit); err == nil {
-			return p
-		}
-		return ""
-	}
-	if p, err := exec.LookPath("claude"); err == nil {
-		return p
-	}
 	home, _ := os.UserHomeDir()
-	candidates := []string{
-		filepath.Join(home, ".local", "bin", "claude"),
-		filepath.Join(home, ".claude", "local", "claude"),
-		"/opt/homebrew/bin/claude",
-		"/usr/local/bin/claude",
-		filepath.Join(home, ".npm-global", "bin", "claude"),
-		filepath.Join(home, ".volta", "bin", "claude"),
-		filepath.Join(home, "bin", "claude"),
-	}
-	if matches, err := filepath.Glob(filepath.Join(home, ".nvm", "versions", "node", "*", "bin", "claude")); err == nil {
-		candidates = append(candidates, matches...)
-	}
-	for _, c := range candidates {
-		if fi, err := os.Stat(c); err == nil && !fi.IsDir() && fi.Mode()&0o111 != 0 {
-			return c
-		}
-	}
-	return ""
+	common := clicore.CommonBinCandidates("claude")
+	candidates := append([]string{common[0], filepath.Join(home, ".claude", "local", "claude")}, common[1:]...)
+	return clicore.ResolveBin(explicit, "claude", candidates)
 }
 
 // runnerFor returns the cached runner, (re)detecting the CLI when it was not
 // found before or has been removed since.
 func (c *Client) runnerFor(ctx context.Context) (*Runner, *APIError) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.runner != nil {
-		if _, err := os.Stat(c.runner.Bin); err == nil {
-			return c.runner, nil
-		}
-		c.runner = nil
-	}
-	bin := ResolveBin(c.cfg.Bin)
-	if bin == "" {
+	r, err := c.runners.Get(func() string { return ResolveBin(c.cfg.Bin) },
+		func(bin string) (*Runner, bool, error) {
+			r, err := NewRunner(ctx, bin, c.cfg.TempBase)
+			return r, err == nil && r.probeErr == nil, err
+		})
+	if clicore.IsBinNotFound(err) {
 		return nil, apiErr(http.StatusServiceUnavailable, CodeCLIMissing, "claude CLI not found on PATH")
 	}
-	r, err := NewRunner(ctx, bin, c.cfg.TempBase)
 	if err != nil {
 		return nil, apiErr(http.StatusServiceUnavailable, CodeCLIMissing, err.Error())
 	}
-	c.runner = r
 	return r, nil
 }
 
@@ -197,7 +139,7 @@ func (c *Client) Stream(ctx context.Context, _ string, req llm.MessagesRequest, 
 
 func (c *Client) call(ctx context.Context, req llm.MessagesRequest, onDelta func(string) error) (llm.MessagesResult, error) {
 	start := time.Now()
-	prompt := promptFrom(req)
+	prompt := clicore.PromptFrom(req)
 	if strings.TrimSpace(prompt) == "" {
 		return llm.MessagesResult{}, toLLMError(apiErr(http.StatusBadRequest, CodeInvalid, "empty prompt"))
 	}
@@ -212,35 +154,21 @@ func (c *Client) call(ctx context.Context, req llm.MessagesRequest, onDelta func
 	if aerr != nil {
 		return llm.MessagesResult{}, toLLMError(aerr)
 	}
-	timeout := c.cfg.DefaultTimeout
-	if req.Timeout > 0 {
-		timeout = req.Timeout
-	}
-	if timeout > c.cfg.MaxTimeout {
-		timeout = c.cfg.MaxTimeout
-	}
-	priority := req.Priority
-	if priority == "" {
-		priority = llm.PriorityFromContext(ctx)
-	}
-	lane := ParseLane(string(priority))
-
-	runCtx, cancel, release, aerr := c.admit(ctx, lane, timeout)
+	runCtx, done, aerr := c.gate.Admit(ctx, req, codes)
 	if aerr != nil {
 		return llm.MessagesResult{}, toLLMError(aerr)
 	}
-	defer cancel()
-	defer release()
+	defer done()
 
 	cliReq := Request{System: req.System, Prompt: prompt}
 	var res Result
 	if onDelta == nil {
 		stdout, stderr, runErr := runner.Run(runCtx, runner.Args(cliReq, model, false), prompt, nil)
-		res, aerr = finishRun(runCtx, ctx, runErr, stderr, func() (Result, error) { return ParseJSONOutput(stdout, model) })
+		res, aerr = clicore.Finish(runCtx, ctx, codes, runErr, stderr, func() (Result, error) { return ParseJSONOutput(stdout, model) })
 	} else {
 		parser := &StreamParser{FallbackModel: model, OnDelta: onDelta}
 		tail, stderr, runErr := runner.Run(runCtx, runner.Args(cliReq, model, true), prompt, parser.Feed)
-		res, aerr = finishRun(runCtx, ctx, runErr, stderr, func() (Result, error) { return parser.Finish(string(tail)) })
+		res, aerr = clicore.Finish(runCtx, ctx, codes, runErr, stderr, func() (Result, error) { return parser.Finish(string(tail)) })
 	}
 	c.recordOutcome(aerr)
 	if aerr != nil {
@@ -256,178 +184,28 @@ func (c *Client) call(ctx context.Context, req llm.MessagesRequest, onDelta func
 	return out, nil
 }
 
-// promptFrom flattens a multi-turn request into one stdin prompt.
-func promptFrom(req llm.MessagesRequest) string {
-	if len(req.Messages) == 0 {
-		return req.User
-	}
-	var b strings.Builder
-	for _, m := range req.Messages {
-		fmt.Fprintf(&b, "[%s]\n%s\n\n", m.Role, m.Content)
-	}
-	if req.User != "" {
-		fmt.Fprintf(&b, "[user]\n%s\n", req.User)
-	}
-	return strings.TrimSpace(b.String())
-}
-
-// admit waits for a lane slot and applies the optional daily cap.
-//   - short / interactive: queue wait counts against the call timeout and is capped by
-//     InteractiveQueueWait, so a user call fails fast behind other work;
-//   - background: queue wait (BackgroundQueueWait) is separate and the call
-//     timeout starts once a slot is granted.
-func (c *Client) admit(parent context.Context, lane Lane, timeout time.Duration) (context.Context, context.CancelFunc, func(), *APIError) {
-	wait := c.cfg.InteractiveQueueWait
-	var runCtx context.Context
-	var runCancel context.CancelFunc
-	queueParent := parent
-	if lane == LaneBackground {
-		wait = c.cfg.BackgroundQueueWait
-	} else {
-		runCtx, runCancel = context.WithTimeout(parent, timeout)
-		queueParent = runCtx
-	}
-	fail := func(e *APIError) (context.Context, context.CancelFunc, func(), *APIError) {
-		if runCancel != nil {
-			runCancel()
-		}
-		return nil, nil, nil, e
-	}
-	qctx, qcancel := context.WithTimeout(queueParent, wait)
-	release, err := c.limiter.Acquire(qctx, lane)
-	qcancel()
-	if errors.Is(err, ErrQueueFull) {
-		return fail(apiErr(http.StatusTooManyRequests, CodeQueueFull, fmt.Sprintf("%s queue is full", lane)))
-	}
-	if err != nil {
-		if parent.Err() != nil {
-			return fail(apiErr(499, CodeClientGone, "caller gave up while queued"))
-		}
-		return fail(apiErr(http.StatusGatewayTimeout, CodeTimeout, fmt.Sprintf("timed out waiting in %s queue", lane)))
-	}
-	if !c.reserveDaily() {
-		release()
-		return fail(apiErr(http.StatusTooManyRequests, CodeDailyCap, fmt.Sprintf("daily call cap (%d) reached", c.cfg.DailyLimit)))
-	}
-	if runCtx == nil {
-		runCtx, runCancel = context.WithTimeout(parent, timeout)
-	}
-	return runCtx, runCancel, release, nil
-}
-
-func (c *Client) reserveDaily() bool {
-	if c.cfg.DailyLimit <= 0 {
-		return true
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	key := time.Now().Format("2006-01-02")
-	if c.dayKey != key {
-		c.dayKey, c.dayCalls = key, 0
-	}
-	if c.dayCalls >= c.cfg.DailyLimit {
-		return false
-	}
-	c.dayCalls++
-	return true
-}
-
-// finishRun turns a process outcome into a Result or APIError. A parsed CLI
-// result (even on non-zero exit) is preferred because it carries the reason.
-func finishRun(ctx, callerCtx context.Context, runErr error, stderr string, parse func() (Result, error)) (Result, *APIError) {
-	if callerCtx.Err() != nil {
-		return Result{}, apiErr(499, CodeClientGone, "caller gave up")
-	}
-	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		return Result{}, apiErr(http.StatusGatewayTimeout, CodeTimeout, "claude call exceeded timeout; process group killed")
-	}
-	var execErr *exec.Error
-	if errors.As(runErr, &execErr) {
-		return Result{}, apiErr(http.StatusServiceUnavailable, CodeCLIMissing, "claude executable not runnable: "+execErr.Error())
-	}
-	var pathErr *os.PathError
-	if errors.As(runErr, &pathErr) {
-		return Result{}, apiErr(http.StatusServiceUnavailable, CodeCLIMissing, "claude executable not runnable: "+pathErr.Error())
-	}
-	res, err := parse()
-	if err == nil && runErr == nil {
-		return res, nil
-	}
-	var ae *APIError
-	if err != nil && errors.As(err, &ae) && (ae.Code != CodeCLIError || runErr == nil) {
-		return Result{}, ae
-	}
-	detail := strings.TrimSpace(stderr)
-	if detail == "" && err != nil {
-		detail = err.Error()
-	}
-	if detail == "" && runErr != nil {
-		detail = runErr.Error()
-	}
-	return Result{}, classifyFailure(detail)
-}
-
 func (c *Client) recordOutcome(aerr *APIError) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	switch {
-	case aerr == nil:
-		c.lastFailure = nil
-	case aerr.Code == CodeNotLoggedIn || aerr.Code == CodeRateLimited || aerr.Code == CodeCLIMissing:
-		c.lastFailure = &Failure{Code: aerr.Code, At: time.Now()}
-		if aerr.Code == CodeNotLoggedIn {
-			c.auth = authCache{} // re-check login on the next status call
-		}
+	if c.fails.Record(aerr, codes) {
+		c.mu.Lock()
+		c.auth = authCache{} // re-check login on the next status call
+		c.mu.Unlock()
 	}
 }
 
 // toLLMError maps CLI error codes onto the llm sentinel errors.
-func toLLMError(ae *APIError) error {
-	if ae.Status == 499 {
-		return context.Canceled
-	}
-	sentinel := llm.ErrServerError
-	switch ae.Code {
-	case CodeNotLoggedIn, CodeCLIMissing:
-		sentinel = llm.ErrGenerationUnavailable
-	case CodeRateLimited, CodeQueueFull, CodeDailyCap:
-		sentinel = llm.ErrRateLimited
-	case CodeTimeout:
-		sentinel = llm.ErrTimeout
-	case CodeInvalid:
-		sentinel = llm.ErrInvalidRequest
-	}
-	return &llm.LLMError{StatusCode: ae.Status, Code: ae.Code, Message: "claude: " + ae.Code + ": " + ae.Message, Err: sentinel}
-}
+func toLLMError(ae *APIError) error { return codes.ToLLMError(ae) }
 
 // ErrorCode returns the CLI error code carried by err ("" if none).
-func ErrorCode(err error) string {
-	var le *llm.LLMError
-	if errors.As(err, &le) {
-		return le.Code
-	}
-	return ""
-}
+func ErrorCode(err error) string { return clicore.ErrorCode(err) }
 
 // Status is the CLI readiness shown in the UI.
-type Status struct {
-	// Ready is true when the CLI is installed and not known to be logged out.
-	Ready     bool   `json:"ready"`
-	Installed bool   `json:"installed"`
-	Version   string `json:"version,omitempty"`
-	// LoggedIn is nil when the CLI cannot report it (older versions).
-	LoggedIn    *bool    `json:"loggedIn"`
-	Code        string   `json:"code,omitempty"`
-	LastFailure *Failure `json:"lastFailure,omitempty"`
-	Active      int      `json:"active"`
-	Queued      int      `json:"queued"`
-}
+type Status = clicore.Status
 
 const authCacheTTL = 30 * time.Second
 
 // Status reports whether the CLI is installed and logged in. It runs
-// `claude --version` and `claude auth status --json` (cached for 30s); it
-// never makes a model call.
+// `claude --version` and `claude auth status --json` (each cached for 30s);
+// it never makes a model call.
 func (c *Client) Status(ctx context.Context) Status {
 	var st Status
 	st.Active, st.Queued = c.limiter.Stats()
@@ -437,26 +215,21 @@ func (c *Client) Status(ctx context.Context) Status {
 		return st
 	}
 	st.Installed = true
-	version, err := runner.Version(ctx)
-	if err != nil {
+	probe, ok := c.version.Get(runner.Bin, authCacheTTL)
+	if !ok {
+		version, err := runner.Version(ctx)
+		probe = clicore.StatusProbe{Version: version, Broken: err != nil}
+		if ctx.Err() == nil {
+			c.version.Put(runner.Bin, probe)
+		}
+	}
+	if probe.Broken {
 		st.Code = CodeCLIMissing
 		return st
 	}
-	st.Version = version
+	st.Version = probe.Version
 	st.LoggedIn = c.loggedIn(ctx, runner)
-
-	c.mu.Lock()
-	st.LastFailure = c.lastFailure
-	c.mu.Unlock()
-	switch {
-	case st.LoggedIn != nil && !*st.LoggedIn:
-		st.Code = CodeNotLoggedIn
-	case st.LastFailure != nil && st.LastFailure.Code == CodeNotLoggedIn && st.LoggedIn == nil:
-		st.Code = CodeNotLoggedIn
-	case st.LastFailure != nil && st.LastFailure.Code == CodeRateLimited && time.Since(st.LastFailure.At) < 15*time.Minute:
-		st.Code = CodeRateLimited
-	}
-	st.Ready = st.Code == "" || st.Code == CodeRateLimited
+	c.fails.Finish(&st, codes)
 	return st
 }
 
@@ -468,7 +241,7 @@ func (c *Client) loggedIn(ctx context.Context, runner *Runner) *bool {
 		return cached.loggedIn
 	}
 	var result *bool
-	out, err := runner.output(ctx, 15*time.Second, "auth", "status", "--json")
+	out, err := runner.Output(ctx, 15*time.Second, "auth", "status", "--json")
 	if err == nil || out != "" {
 		var parsed struct {
 			LoggedIn *bool `json:"loggedIn"`

@@ -261,7 +261,7 @@ func (s *Service) inquiryContext(ctx context.Context, userID, question, lang str
 	if err != nil {
 		return prompts.InquiryContext{}, nil, err
 	}
-	ic := prompts.InquiryContext{Question: question, Areas: curriculum.Areas}
+	ic := prompts.InquiryContext{Question: question, Areas: curriculum.ProposalAreas, Reader: s.readerFor(ctx, userID, lang)}
 	known := make(map[string]bool, len(catalog))
 	for _, c := range catalog {
 		known[c.ID] = true
@@ -425,6 +425,7 @@ func followupContext(q models.Inquiry, f models.InquiryFollowup, ic prompts.Inqu
 	fc := prompts.FollowupContext{
 		Question: f.Question, Quote: f.Quote, Original: q.Question,
 		Catalog: ic.Catalog, Learned: ic.Learned, Revisit: ic.Revisit, Misconceptions: ic.Misconceptions, Areas: ic.Areas,
+		Reader: ic.Reader,
 	}
 	for _, s := range content.Sections {
 		fc.Sections = append(fc.Sections, inquiry.SectionText(s))

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/forgen-team/punisher/internal/curriculum"
 	"github.com/forgen-team/punisher/internal/learning"
 	"github.com/forgen-team/punisher/internal/lecture"
 	"github.com/forgen-team/punisher/internal/llm"
@@ -84,7 +85,7 @@ func (s *Service) generateLibrary(ctx context.Context, owner string, candidates 
 			return rep, err
 		}
 		plan := target.Plan
-		if _, err := s.Store.LatestLectureForTarget(ctx, learning.JobLibrary, plan.ConceptID, plan.ObjectiveKey, plan.Depth, plan.Language, libraryStatuses); err == nil {
+		if _, err := s.Store.LatestLectureForTarget(ctx, learning.JobLibrary, plan.ConceptID, plan.ObjectiveKey, plan.Depth, plan.Language, plan.ReaderLevel, libraryStatuses); err == nil {
 			rep.Ready++
 			continue
 		} else if !errors.Is(err, store.ErrNotFound) {
@@ -97,7 +98,7 @@ func (s *Service) generateLibrary(ctx context.Context, owner string, candidates 
 		job, created, err := s.Store.CreateJob(ctx, store.NewJob{
 			IdempotencyKey: learning.LibraryJobKey(plan, day), Kind: learning.JobLibrary, UserID: owner,
 			ConceptID: plan.ConceptID, ObjectiveKey: plan.ObjectiveKey, Depth: plan.Depth,
-			Reason: reason, Input: input, Language: plan.Language,
+			Reason: reason, Input: input, Language: plan.Language, ReaderLevel: plan.ReaderLevel,
 		})
 		if errors.Is(err, store.ErrJobActive) || (err == nil && !created) {
 			rep.Skipped = append(rep.Skipped, plan.ObjectiveKey)
@@ -129,6 +130,8 @@ func (s *Service) libraryCandidates(ctx context.Context, userID string) ([]strin
 		return nil, err
 	}
 	in := todayInput(data, 20)
+	in.ReaderLevel = s.Store.ReaderLevelFor(ctx, userID)
+	hideFoundations := learning.FoundationsHidden(in.ReaderLevel)
 	today := learning.BuildToday(in)
 	seen := map[string]bool{}
 	out := []string{}
@@ -145,7 +148,11 @@ func (s *Service) libraryCandidates(ctx context.Context, userID string) ([]strin
 		states[c.ID] = c.State
 	}
 	for _, f := range learning.Analyze(nodes, data.Edges, states).Frontier {
-		if c := data.Concepts[f.ID]; !seen[f.ID] && c.HasPending && !c.Proposed && !c.Private {
+		c := data.Concepts[f.ID]
+		if hideFoundations && c.Area == curriculum.AreaFoundations {
+			continue // 숨김 수준에는 0단계 강의를 미리 만들지 않는다.
+		}
+		if !seen[f.ID] && c.HasPending && !c.Proposed && !c.Private && !c.Dismissed {
 			seen[f.ID] = true
 			out = append(out, f.ID)
 		}
@@ -190,7 +197,7 @@ func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Tar
 		return fail(err)
 	}
 
-	final, err := s.storeAttempts(ctx, t, jobID, result, u.model)
+	final, err := s.storeAttempts(ctx, t, jobID, result, u.model, u.provider)
 	if err != nil {
 		return fail(fmt.Errorf("store lecture: %w", err))
 	}
@@ -204,7 +211,7 @@ func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Tar
 
 // storeAttempts saves every parsed attempt as an immutable version (earlier
 // ones archived) with its review; the final one is published/needs_revision.
-func (s *Service) storeAttempts(ctx context.Context, t Target, jobID string, res LoopResult, model string) (models.Lecture, error) {
+func (s *Service) storeAttempts(ctx context.Context, t Target, jobID string, res LoopResult, model, provider string) (models.Lecture, error) {
 	var final models.Lecture
 	// The final attempt is saved last so it is the newest version of the target.
 	order := make([]int, 0, len(res.Attempts))
@@ -226,7 +233,7 @@ func (s *Service) storeAttempts(ctx context.Context, t Target, jobID string, res
 		if t.Owner != "" {
 			kind = learning.JobInstant
 		}
-		saved, err := s.saveLecture(ctx, t, a.Content, kind, status, t.Owner, jobID, model, false, "")
+		saved, err := s.saveLecture(ctx, t, a.Content, kind, status, t.Owner, jobID, model, provider)
 		if err != nil {
 			return final, err
 		}
@@ -248,7 +255,7 @@ func (s *Service) storeAttempts(ctx context.Context, t Target, jobID string, res
 	return final, nil
 }
 
-func (s *Service) saveLecture(ctx context.Context, t Target, c lecture.Content, kind, status, requestedBy, jobID, model string, flagged bool, flagReason string) (models.Lecture, error) {
+func (s *Service) saveLecture(ctx context.Context, t Target, c lecture.Content, kind, status, requestedBy, jobID, model, provider string) (models.Lecture, error) {
 	c.EstimatedMinutes = learning.EstimateMinutes(c) // 표시 시간은 본문 분량으로 계산한다(섹션 minutes 아님, v2.2 §5).
 	hash, err := lecture.Hash(c)
 	if err != nil {
@@ -266,8 +273,8 @@ func (s *Service) saveLecture(ctx context.Context, t Target, c lecture.Content, 
 		ConceptID: t.Plan.ConceptID, ObjectiveIDs: t.Plan.ObjectiveIDs, ObjectiveKey: t.Plan.ObjectiveKey,
 		Depth: t.Plan.Depth, Kind: kind, Status: status, Title: c.Title, Content: content, ContentHash: hash,
 		Sources: sources, Model: model, PromptVersion: t.promptVersion(), RequestedBy: requestedBy,
-		Flagged: flagged, FlagReason: flagReason, EstimatedMinutes: c.EstimatedMinutes, GenerationJobID: jobID,
-		Language: t.Plan.Language,
+		EstimatedMinutes: c.EstimatedMinutes, GenerationJobID: jobID,
+		Language: t.Plan.Language, ReaderLevel: t.Plan.ReaderLevel, Provider: provider,
 	})
 }
 

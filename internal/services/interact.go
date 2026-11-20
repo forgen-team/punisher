@@ -36,8 +36,10 @@ func (s *Service) Gloss(ctx context.Context, userID, conceptID string) (gloss st
 	if shipped := s.Glossary.ConceptGlossIn(conceptID, lang); shipped != "" && !custom {
 		return shipped, true, nil // 사전 설명이 있으면 늘 같은 설명(프롬프트를 고친 사용자만 따로 만든다).
 	}
-	private := custom || lang == learning.LocaleEN
-	hash := userGlossKey(set.Hash(prompts.BlockGlossSystem), lang)
+	reader := s.readerFor(ctx, userID, lang)
+	// 공유 캐시는 기본 프롬프트·한국어·practitioner 만. 다른 수준은 수준별 개인 캐시(learner-level ①).
+	private := custom || lang == learning.LocaleEN || reader.Level != learning.DefaultReaderLevel
+	hash := userGlossKey(set.Hash(prompts.BlockGlossSystem), lang) + learning.ReaderLevelSuffix(reader.Level)
 	if private {
 		gloss, err = s.Store.UserGloss(ctx, userID, conceptID, hash)
 	} else {
@@ -63,7 +65,7 @@ func (s *Service) Gloss(ctx context.Context, userID, conceptID string) (gloss st
 	var u usage
 	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{
 		Model: s.Cfg.FastModel, System: prompts.WithOutputLanguage(set.Text(prompts.BlockGlossSystem, map[string]string{"concept_name": concept.Name}), lang),
-		User: prompts.Gloss(concept.Name, concept.Area, concept.Summary), MaxTokens: 400, Timeout: 30 * time.Second,
+		User: prompts.Gloss(concept.Name, concept.Area, concept.Summary, reader), MaxTokens: 400, Timeout: 30 * time.Second,
 		Priority: llm.ShortUnlessBackground(ctx),
 	}, &u)
 	s.recordUsage(ctx, userID, "gloss", conceptID, u, err)
@@ -156,13 +158,38 @@ func (s *Service) RequestAltExplanation(ctx context.Context, userID string, lec 
 
 func (s *Service) answer(ctx context.Context, userID string, q models.Question, qc qaCtx, prompt string) (models.Question, error) {
 	if err := s.CheckBudget(ctx, userID, false); err != nil {
-		return s.Store.FailQuestion(ctx, q.ID, "", questionFailText(err))
+		return s.failQuestion(ctx, q.ID, "", err)
 	}
 	apiKey, err := s.Keys.RequestKey(ctx, userID)
 	if err != nil {
-		return s.Store.FailQuestion(ctx, q.ID, "", questionFailText(err))
+		return s.failQuestion(ctx, q.ID, "", err)
 	}
 	return s.answerWithKey(ctx, userID, apiKey, q, qc, prompt)
+}
+
+// questionWriteTimeout bounds the final write of a synchronous answer.
+const questionWriteTimeout = 10 * time.Second
+
+// finalWriteCtx outlives the request: a synchronous answer runs on the request
+// context, and when the client disconnects (the LLM call is cancelled) the
+// failure — or a finished answer — must still be stored, or the entry stays
+// pending forever. Bounded so a stuck DB cannot hold the handler.
+func finalWriteCtx(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), questionWriteTimeout)
+}
+
+// failQuestion stores err as the entry's failure even if ctx is cancelled.
+func (s *Service) failQuestion(ctx context.Context, id, model string, err error) (models.Question, error) {
+	wctx, cancel := finalWriteCtx(ctx)
+	defer cancel()
+	return s.Store.FailQuestion(wctx, id, model, questionFailText(err))
+}
+
+// saveAnswer stores a finished answer even if ctx is cancelled.
+func (s *Service) saveAnswer(ctx context.Context, id, answer, model string, linked []string, proposed json.RawMessage) (models.Question, error) {
+	wctx, cancel := finalWriteCtx(ctx)
+	defer cancel()
+	return s.Store.AnswerQuestion(wctx, id, answer, model, linked, proposed)
 }
 
 func (s *Service) answerWithKey(ctx context.Context, userID, apiKey string, q models.Question, qc qaCtx, prompt string) (models.Question, error) {
@@ -179,9 +206,9 @@ func (s *Service) answerWithKey(ctx context.Context, userID, apiKey string, q mo
 			err = fmt.Errorf("model returned an empty answer")
 		}
 	}
-	s.recordUsage(ctx, userID, "question", q.ConceptID, u, err)
+	s.recordUsage(context.WithoutCancel(ctx), userID, "question", q.ConceptID, u, err)
 	if err != nil {
-		return s.Store.FailQuestion(ctx, q.ID, u.model, questionFailText(err))
+		return s.failQuestion(ctx, q.ID, u.model, err)
 	}
 	linked := []string{}
 	for _, id := range out.LinkedConceptIDs {
@@ -190,7 +217,7 @@ func (s *Service) answerWithKey(ctx context.Context, userID, apiKey string, q mo
 		}
 	}
 	proposed, _ := json.Marshal(out.ProposedConcepts)
-	return s.Store.AnswerQuestion(ctx, q.ID, out.Answer, u.model, linked, proposed)
+	return s.saveAnswer(ctx, q.ID, out.Answer, u.model, linked, proposed)
 }
 
 type qaCtx struct {
@@ -211,6 +238,7 @@ func (s *Service) qaContext(ctx context.Context, userID string, lec models.Lectu
 		ExampleLanguage: s.exampleLanguageName(ctx, userID),
 	}
 	lang := learning.NormalizeLocale(lec.Language)
+	pc.Reader = s.readerFor(ctx, userID, lang) // 답의 설명 밀도는 묻는 사용자의 수준(learner-level ①)
 	if info, err := s.Store.ConceptInfo(ctx, userID, lec.ConceptID, lang); err == nil {
 		pc.ConceptName = info.Name
 	}
@@ -238,7 +266,7 @@ func (s *Service) qaContext(ctx context.Context, userID string, lec models.Lectu
 			return qaCtx{}, err
 		}
 		for _, p := range prev {
-			if p.Status == "answered" && p.Kind == "question" {
+			if p.Status == "answered" && isPlainQuestion(p) {
 				pc.History = append(pc.History, prompts.QATurn{Question: p.Question, Answer: p.Answer})
 			}
 		}
@@ -247,6 +275,14 @@ func (s *Service) qaContext(ctx context.Context, userID string, lec models.Lectu
 		}
 	}
 	return qaCtx{prompt: pc, known: known, lang: lang}, nil
+}
+
+// isPlainQuestion: a question asked with the lecture's ask box — not an alt
+// explanation and not a reading-thread entry (those carry their own passage
+// and history, and must not leak into the lecture-wide Q&A history).
+func isPlainQuestion(q models.Question) bool {
+	return q.Kind == "question" && q.ParentID == "" && q.Quote == "" &&
+		(q.Mode == "" || q.Mode == learning.ThreadQuestion)
 }
 
 // SectionForAnchor finds the section of a section/block anchor

@@ -1,5 +1,7 @@
 package learning
 
+import "github.com/forgen-team/punisher/internal/curriculum"
+
 // DefaultExampleLanguage is used when the user has not chosen one.
 const DefaultExampleLanguage = "typescript"
 
@@ -115,4 +117,70 @@ func NormalizeLocale(l string) string {
 		return l
 	}
 	return DefaultLocale
+}
+
+// Reader levels (user_learning_settings.reader_level, learner-level design ①):
+// how densely generated text explains. The facts and objectives taught are the
+// same at every level. "" = not chosen yet (the web shows the first setup).
+const (
+	ReaderBeginner     = "beginner"
+	ReaderNovice       = "novice"
+	ReaderPractitioner = "practitioner"
+	ReaderAdvanced     = "advanced"
+	// DefaultReaderLevel: what generation assumes when the user has not chosen
+	// (the reader every lecture was written for before levels existed).
+	DefaultReaderLevel = ReaderPractitioner
+)
+
+// ReaderLevels is the display order of the reader levels.
+var ReaderLevels = []string{ReaderBeginner, ReaderNovice, ReaderPractitioner, ReaderAdvanced}
+
+// ValidReaderLevel reports one of the four chosen levels ("" is not valid here).
+func ValidReaderLevel(level string) bool {
+	switch level {
+	case ReaderBeginner, ReaderNovice, ReaderPractitioner, ReaderAdvanced:
+		return true
+	}
+	return false
+}
+
+// EffectiveReaderLevel is the level generation uses: "" or unknown → practitioner.
+func EffectiveReaderLevel(level string) string {
+	if ValidReaderLevel(level) {
+		return level
+	}
+	return DefaultReaderLevel
+}
+
+// ReaderLevelSuffix is the key suffix of a level: "" for practitioner (keys made
+// before levels stay valid), "~<level>" otherwise.
+func ReaderLevelSuffix(level string) string {
+	level = EffectiveReaderLevel(level)
+	if level == DefaultReaderLevel {
+		return ""
+	}
+	return "~" + level
+}
+
+// Area familiarity (user_learning_settings.area_familiarity): the first-setup
+// self-assessment per knowledge area.
+const (
+	FamiliarityNew        = "new"
+	FamiliarityHeard      = "heard"
+	FamiliarityCanExplain = "can_explain"
+)
+
+// ValidFamiliarity reports a known familiarity value.
+func ValidFamiliarity(f string) bool {
+	return f == FamiliarityNew || f == FamiliarityHeard || f == FamiliarityCanExplain
+}
+
+// ValidAreaFamiliarity: every key is a known area and every value a known familiarity (empty is valid).
+func ValidAreaFamiliarity(m map[string]string) bool {
+	for area, f := range m {
+		if !curriculum.IsValidArea(area) || !ValidFamiliarity(f) {
+			return false
+		}
+	}
+	return true
 }

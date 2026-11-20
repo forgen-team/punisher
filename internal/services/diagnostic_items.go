@@ -35,6 +35,7 @@ func (s *Service) runDiagnosticItems(ctx context.Context, apiKey, userID, sessio
 		priority = llm.ShortUnlessBackground(ctx)
 	}
 	lang := s.Store.LocaleFor(ctx, userID) // 강의에 묶이지 않은 문항은 만든 사용자의 언어(i18n §1.2).
+	dc.Reader = s.readerFor(ctx, userID, lang)
 	items, u, _, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.diagnosticModel(plan.kind), attempts: plan.attempts,
 		priority: priority, system: set.Text(prompts.BlockCheckPretest, s.interactionVars(ctx, userID, conceptID, lang)), language: lang},
 		func(revisions []string) string { dc.Revisions = revisions; return prompts.Diagnostic(dc) },

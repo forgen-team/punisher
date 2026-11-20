@@ -11,22 +11,23 @@ import (
 	"time"
 
 	"github.com/forgen-team/punisher/internal/learning"
+	"github.com/forgen-team/punisher/internal/llm"
 	"github.com/forgen-team/punisher/internal/models"
 )
 
 // ErrJobActive means another pending/running job already targets the same
-// (objective_key, depth, language) — concurrent generation is blocked.
+// (objective_key, depth, language, reader_level) — concurrent generation is blocked.
 var ErrJobActive = errors.New("a generation job for this target is already active")
 
 const jobColumns = `id, idempotency_key, kind, COALESCE(user_id, ''), COALESCE(concept_id, ''),
 	objective_key, COALESCE(depth, 0), status, reason, error, attempts, COALESCE(lecture_id, ''),
-	model, input_tokens, output_tokens, input, started_at, finished_at, created_at, language`
+	model, input_tokens, output_tokens, input, started_at, finished_at, created_at, language, reader_level`
 
 func scanJob(row rowScanner) (models.GenerationJob, error) {
 	var j models.GenerationJob
 	err := row.Scan(&j.ID, &j.IdempotencyKey, &j.Kind, &j.UserID, &j.ConceptID, &j.ObjectiveKey, &j.Depth,
 		&j.Status, &j.Reason, &j.Error, &j.Attempts, &j.LectureID, &j.Model, &j.InputTokens, &j.OutputTokens,
-		rawJSON(&j.Input), nts(&j.StartedAt), nts(&j.FinishedAt), ts(&j.CreatedAt), &j.Language)
+		rawJSON(&j.Input), nts(&j.StartedAt), nts(&j.FinishedAt), ts(&j.CreatedAt), &j.Language, &j.ReaderLevel)
 	return j, err
 }
 
@@ -42,6 +43,8 @@ type NewJob struct {
 	Input          json.RawMessage
 	// Language: the lecture language of a library/instant job (ko|en); "" = ko.
 	Language string
+	// ReaderLevel: the lecture's reader level (learning.ReaderLevels); "" = practitioner.
+	ReaderLevel string
 }
 
 // CreateJob inserts a pending job. When the idempotency key already exists the
@@ -52,23 +55,25 @@ func (s *SQLiteStore) CreateJob(ctx context.Context, j NewJob) (models.Generatio
 	if j.ConceptID != "" {
 		conceptID = j.ConceptID
 	}
-	if j.Depth > 0 {
+	// Lecture jobs always store their depth (0 = foundations, learner-level ②) so the
+	// active-target index and ActiveJobForTarget match; other kinds keep NULL when unset.
+	if j.Depth > 0 || j.Kind == learning.JobLibrary || j.Kind == learning.JobInstant {
 		depth = j.Depth
 	}
 	job, err := scanJob(s.c().row(ctx, `
-		INSERT INTO generation_jobs (id, idempotency_key, kind, user_id, concept_id, objective_key, depth, reason, input, language)
-		VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8, $9, $10)
+		INSERT INTO generation_jobs (id, idempotency_key, kind, user_id, concept_id, objective_key, depth, reason, input, language, reader_level)
+		VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8, $9, $10, $11)
 		ON CONFLICT (idempotency_key) DO NOTHING
 		RETURNING `+jobColumns,
 		NewID(), j.IdempotencyKey, j.Kind, j.UserID, conceptID, j.ObjectiveKey, depth, j.Reason, nonNullJSON(j.Input, "{}"),
-		learning.NormalizeLocale(j.Language)))
+		learning.NormalizeLocale(j.Language), learning.EffectiveReaderLevel(j.ReaderLevel)))
 	if err == nil {
 		return job, true, nil
 	}
 	if isUniqueViolation(err) {
 		// The only other unique constraint is the partial index
 		// generation_jobs_one_active_target (one active job per target).
-		active, aerr := s.ActiveJobForTarget(ctx, j.ObjectiveKey, j.Depth, j.Language)
+		active, aerr := s.ActiveJobForTarget(ctx, j.ObjectiveKey, j.Depth, j.Language, j.ReaderLevel)
 		if aerr != nil {
 			return models.GenerationJob{}, false, ErrJobActive
 		}
@@ -85,12 +90,13 @@ func (s *SQLiteStore) CreateJob(ctx context.Context, j NewJob) (models.Generatio
 	return existing, false, nil
 }
 
-// ActiveJobForTarget returns the pending/running lecture job for a target in a language.
-func (s *SQLiteStore) ActiveJobForTarget(ctx context.Context, objectiveKey string, depth int, language string) (models.GenerationJob, error) {
+// ActiveJobForTarget returns the pending/running lecture job for a target in a language and reader level.
+func (s *SQLiteStore) ActiveJobForTarget(ctx context.Context, objectiveKey string, depth int, language, readerLevel string) (models.GenerationJob, error) {
 	j, err := scanJob(s.c().row(ctx, `
 		SELECT `+jobColumns+` FROM generation_jobs
-		WHERE objective_key = $1 AND depth = $2 AND language = $3 AND status IN ('pending', 'running') AND kind IN ('library', 'instant')
-		LIMIT 1`, objectiveKey, depth, learning.NormalizeLocale(language)))
+		WHERE objective_key = $1 AND depth = $2 AND language = $3 AND reader_level = $4
+		  AND status IN ('pending', 'running') AND kind IN ('library', 'instant')
+		LIMIT 1`, objectiveKey, depth, learning.NormalizeLocale(language), learning.EffectiveReaderLevel(readerLevel)))
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.GenerationJob{}, ErrNotFound
 	}
@@ -125,6 +131,8 @@ type JobOutcome struct {
 	Model        string
 	InputTokens  int
 	OutputTokens int
+	// Provider: the AI that ran the calls ("" = keep the column, default claude).
+	Provider string
 	// Attempts: per-attempt record of multi-attempt jobs (nil = keep the column as is).
 	Attempts []AttemptRecord
 }
@@ -173,9 +181,10 @@ func (s *SQLiteStore) FinishJob(ctx context.Context, jobID string, o JobOutcome)
 			error = $4, lecture_id = $5, model = $6, input_tokens = input_tokens + $7,
 			output_tokens = output_tokens + $8, finished_at = NOW(), updated_at = NOW(),
 			attempt_log = COALESCE($9, attempt_log),
-			attempts = CASE WHEN $9 IS NULL THEN attempts ELSE json_array_length($9) END
+			attempts = CASE WHEN $9 IS NULL THEN attempts ELSE json_array_length($9) END,
+			provider = CASE WHEN $10 = '' THEN provider ELSE $10 END
 		WHERE id = $1`, jobID, o.Status, o.Reason, truncateText(o.Error, 2000), lectureID, o.Model,
-		o.InputTokens, o.OutputTokens, attemptLog)
+		o.InputTokens, o.OutputTokens, attemptLog, o.Provider)
 	return err
 }
 
@@ -188,10 +197,10 @@ func (s *SQLiteStore) RecordUsage(ctx context.Context, userID, kind, conceptID s
 	}
 	_, err := s.c().exec(ctx, `
 		INSERT INTO generation_jobs (id, idempotency_key, kind, user_id, concept_id, status, reason, error,
-			model, input_tokens, output_tokens, attempts, started_at, finished_at)
-		VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8, $9, $10, $11, 1, NOW(), NOW())`,
+			model, input_tokens, output_tokens, attempts, started_at, finished_at, provider)
+		VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8, $9, $10, $11, 1, NOW(), NOW(), $12)`,
 		NewID(), kind+":"+RandomToken(), kind, userID, concept, o.Status, o.Reason, truncateText(o.Error, 2000),
-		o.Model, o.InputTokens, o.OutputTokens)
+		o.Model, o.InputTokens, o.OutputTokens, llm.NormalizeProvider(o.Provider))
 	return err
 }
 

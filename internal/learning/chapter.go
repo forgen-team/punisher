@@ -24,11 +24,11 @@ const SessionMinutesPerLecture = 30
 
 // RemainingMinutes estimates what is left to learn: one study session
 // (SessionMinutesPerLecture) per depth that still has a pending objective, over
-// concepts that are learnable (not completed/known, not merely proposed).
+// concepts that are learnable (not completed/known/dismissed, not merely proposed).
 func RemainingMinutes(concepts map[string]TodayConcept) int {
 	total := 0
 	for _, c := range concepts {
-		if c.Proposed || IsDone(NormalizeState(c.State)) {
+		if c.Proposed || c.Dismissed || IsDone(NormalizeState(c.State)) {
 			continue
 		}
 		total += c.PendingDepths * SessionMinutesPerLecture

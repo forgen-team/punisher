@@ -79,8 +79,19 @@ type LearningSettings struct {
 	// AdaptiveIntervals: per-objective interval scale (ease) on.
 	AdaptiveIntervals bool `json:"adaptiveIntervals"`
 	// Locale: screen and generation language (ko|en).
-	Locale    string     `json:"locale"`
-	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
+	Locale string `json:"locale"`
+	// ReaderLevel: explanation density of generated text (beginner|novice|practitioner|advanced);
+	// "" = not chosen yet (the web shows the first setup; generation uses practitioner).
+	ReaderLevel string `json:"readerLevel"`
+	// AreaFamiliarity: first-setup self-assessment per area (new|heard|can_explain); never nil ({}).
+	AreaFamiliarity map[string]string `json:"areaFamiliarity"`
+	// AIProvider: the AI used for every generation (claude | codex | agy; default claude).
+	AIProvider string     `json:"aiProvider"`
+	UpdatedAt  *time.Time `json:"updatedAt,omitempty"`
+	// LevelSuggestionDismissedAt: when the lower-level suggestion was last closed (nil = never; not sent).
+	LevelSuggestionDismissedAt *time.Time `json:"-"`
+	// ReaderLevelChangedAt: when ReaderLevel last changed (nil = never saved; not sent).
+	ReaderLevelChangedAt *time.Time `json:"-"`
 }
 
 // CompletedItem is one entry of the "completed by area" history: a completed

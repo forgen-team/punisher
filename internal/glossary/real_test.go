@@ -56,3 +56,35 @@ func TestRealGlossaryEnglish(t *testing.T) {
 		t.Fatal("English concept gloss not applied")
 	}
 }
+
+// TestDeeperConceptLinks: terms that now have a dedicated depth-3 concept open
+// that concept from '이 개념 더 깊게' — in both locales (the English overlay
+// keeps the base term's concept).
+func TestDeeperConceptLinks(t *testing.T) {
+	g, err := Load(seedfiles.Glossary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"g.lru": "ds.cache-eviction-policies", "g.cache-eviction": "ds.cache-eviction-policies",
+		"g.tlb": "arch.tlb-huge-pages", "g.mmu-tlb": "arch.tlb-huge-pages",
+		"g.simd": "arch.simd-vectorization",
+		"g.mmap": "os.mmap-page-fault", "g.page-fault": "os.mmap-page-fault",
+		"g.hpa": "infra.autoscaling-feedback-loop", "g.sidecar": "infra.service-mesh-sidecar",
+		"g.cpu-throttling": "infra.cfs-cpu-throttling", "g.eviction": "infra.scheduling-preemption-eviction",
+		"g.graceful-shutdown": "infra.graceful-shutdown-draining", "g.prestop-hook": "infra.graceful-shutdown-draining",
+		"g.connection-draining": "infra.graceful-shutdown-draining",
+		"g.congestion-control":  "net.tcp-congestion-control", "g.hol-blocking": "net.hol-blocking-quic",
+		"g.listen-backlog": "net.tcp-accept-backlog", "g.ephemeral-port": "net.time-wait-port-exhaustion",
+		"g.autovacuum": "db.vacuum-bloat", "g.dead-tuple": "db.vacuum-bloat", "g.table-bloat": "db.vacuum-bloat",
+		"g.planner-statistics": "db.query-optimizer-statistics",
+	}
+	for id, concept := range want {
+		for _, loc := range []string{"ko", "en"} {
+			term, ok := g.TermIn(id, loc)
+			if !ok || term.Concept != concept {
+				t.Errorf("%s (%s): concept %q, want %q", id, loc, term.Concept, concept)
+			}
+		}
+	}
+}

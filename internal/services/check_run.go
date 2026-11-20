@@ -155,7 +155,7 @@ func (s *Service) tutorReply(ctx context.Context, apiKey, userID, conceptID stri
 	tc := prompts.CheckTutorContext{ConceptName: vars["concept_name"],
 		Objective: s.objectiveText(ctx, userID, conceptID, item.ObjectiveID, lang), Prompt: item.Prompt, Material: materialText(item),
 		Must: item.Rubric.Must, Nice: item.Rubric.Nice, Misconceptions: item.Rubric.Misconceptions, Answer: item.Rubric.Answer,
-		LearnerAnswer: learner, Allowed: stage.AllowedMoves()}
+		LearnerAnswer: learner, Allowed: stage.AllowedMoves(), Reader: s.readerFor(ctx, userID, lang)}
 	for _, t := range p.dialogue() {
 		tc.Dialogue = append(tc.Dialogue, prompts.CheckTurnRef{Role: t.Role, Move: t.Move, Text: t.Text})
 	}

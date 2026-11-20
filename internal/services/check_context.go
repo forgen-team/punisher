@@ -5,13 +5,16 @@ import (
 	"strings"
 
 	"github.com/forgen-team/punisher/internal/check"
+	"github.com/forgen-team/punisher/internal/learning"
 	"github.com/forgen-team/punisher/internal/lecture"
 	"github.com/forgen-team/punisher/internal/prompts"
 )
 
 // checkItemsContext renders the lecture body with its anchors for the item prompt.
 func checkItemsContext(cl checkLecture) (prompts.CheckItemsContext, check.SetContext) {
-	ic := prompts.CheckItemsContext{ConceptName: cl.info.Name, LectureTitle: cl.lec.Title}
+	// 문항은 강의에 묶여 저장되므로 강의를 쓴 수준·언어로 만든다(learner-level ①, i18n §1.1).
+	ic := prompts.CheckItemsContext{ConceptName: cl.info.Name, LectureTitle: cl.lec.Title,
+		Reader: prompts.Reader{Level: learning.EffectiveReaderLevel(cl.lec.ReaderLevel), Locale: learning.NormalizeLocale(cl.lec.Language)}}
 	sc := check.SetContext{ObjectiveIDs: cl.objectiveIDs(), Anchors: map[string]bool{}}
 	for _, o := range cl.objectives {
 		ic.Objectives = append(ic.Objectives, prompts.CheckObjective{ID: o.ID, Text: o.Text})
