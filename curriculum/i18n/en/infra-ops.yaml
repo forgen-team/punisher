@@ -258,3 +258,62 @@ concepts:
       - Explain what a runbook should contain (symptoms, diagnostic commands, mitigation procedures, escalation)
     practical_cases:
       - A team that created runbooks and alerting criteria only after the same incident had happened three times
+  infra.cfs-cpu-throttling:
+    name: CFS Quota and CPU Throttling
+    summary: Container CPU limits are implemented with CFS bandwidth control, so once a container uses up its quota for a period it stops running for the rest of that period. Even with low average CPU usage, bursts across many threads get throttled and tail latency grows.
+    objectives:
+      - Explain how a CPU limit is translated into the cgroup cpu.max setting (quota and period) and enforced
+      - Explain, using thread count and period length, why throttling happens even when average usage is low
+      - Read nr_throttled and throttled_usec in cpu.stat or the container_cpu_cfs_throttled_periods_total metric and decide whether to adjust or remove the limit or change the runtime's thread count
+    practical_cases:
+      - A runtime started as many threads as the node had cores, so a container with a 1-CPU limit was throttled every period and p99 spiked
+  infra.scheduling-preemption-eviction:
+    name: Scheduling, Priority, Preemption and Eviction
+    summary: The scheduler uses the sum of requests to decide whether a node has room, and when there is none it may preempt lower-priority Pods for higher-priority ones. When a node runs short of memory or disk, the kubelet evicts Pods based on their QoS class and usage.
+    objectives:
+      - Explain how the scheduler picks a node using requests, taints and tolerations, and affinity
+      - Explain when PriorityClass preemption and node-pressure eviction each happen, and how the QoS classes (Guaranteed, Burstable, BestEffort) affect eviction order
+      - Read Pod events and status (FailedScheduling, Evicted and Preempted reasons) and decide whether to adjust requests, set priorities or add nodes
+    practical_cases:
+      - Batch Pods started without requests were the first to be evicted under node memory pressure
+      - New-version Pods stuck in Pending because the cluster had no room, which stalled a rolling update
+  infra.autoscaling-feedback-loop:
+    name: Autoscaling and Feedback Loops
+    summary: The HPA is a feedback controller that computes the desired replica count from the ratio between an observed metric and its target. If metric delay, Pod startup time and stabilization windows are ignored, it scales too late or keeps scaling up and down (flapping).
+    objectives:
+      - Explain how the HPA computes the replica count from the current versus target metric value, and that CPU utilization is measured against requests
+      - Explain how metric delay, startup time and the scale-down stabilization window cause oscillation and slow reactions
+      - Read the current and target metrics and events in kubectl describe hpa and decide on the metric, the minimum replicas and the behavior settings
+    practical_cases:
+      - During a traffic spike, existing Pods failed Readiness from overload before new Pods were ready, so the number of available Pods actually dropped
+      - Scaling workers bottlenecked on queue length with a CPU-based HPA had no effect
+  infra.performance-methodology:
+    name: Performance Analysis Methodology (USE, Flame Graphs)
+    summary: The USE method checks Utilization, Saturation and Errors for each resource in turn, narrowing bottleneck candidates without gaps. A flame graph merges sampled call stacks to show, by width, which code paths consume CPU time.
+    objectives:
+      - Build a checklist that separates utilization, saturation and error metrics for CPU, memory, disk and network
+      - Explain how a sampling profiler builds a flame graph and what width and height mean (not time order)
+      - Find wide plateaus at the top of a flame graph to pick functions to optimize, and judge whether on-CPU or off-CPU analysis is needed
+    practical_cases:
+      - Checking a slow API with low CPU usage using USE and finding saturated disk queues
+      - Finding in a flame graph that JSON serialization took a large share of CPU time and improving it
+  infra.service-mesh-sidecar:
+    name: Service Mesh and Sidecars
+    summary: A service mesh has sidecar (or per-node) proxies intercept service-to-service traffic to apply retries, timeouts, mTLS and metrics consistently outside the code. In exchange, extra hops cost latency and resources, and proxy configuration and startup/shutdown order become new failure points.
+    objectives:
+      - Explain the path by which a sidecar proxy intercepts Pod traffic and applies policy
+      - Compare the benefits of a mesh (mTLS, retries, observability) with its costs (latency, memory, startup and shutdown ordering problems)
+      - Check retry and timeout settings in both the mesh and the application to judge the risk of retry amplification, and consolidate them in one place
+    practical_cases:
+      - The app container started before its sidecar, so outbound calls failed right after startup
+      - The app and the mesh each retried, multiplying the number of calls during an outage
+  infra.graceful-shutdown-draining:
+    name: Zero-Downtime Deployment and Connection Draining
+    summary: When a Pod terminates, sending SIGTERM and removing it from Service endpoints happen concurrently, so the process can exit while the load balancer is still sending it traffic. Waiting in preStop, stopping new accepts, finishing in-flight requests and closing keep-alive connections close this gap so deployments produce no 5xx errors.
+    objectives:
+      - Explain the Pod termination sequence (endpoint removal, preStop, SIGTERM, grace period, SIGKILL) and the races between these steps
+      - Explain how a server, on SIGTERM, stops accepting new connections and then finishes in-flight requests and keep-alive connections
+      - Use 5xx and connection-reset metrics during deployments to set the preStop delay and terminationGracePeriodSeconds
+    practical_cases:
+      - Fixing a service that returned 502 for a few seconds on every deploy with a preStop delay and graceful shutdown
+      - Long-lived WebSocket connections that did not finish within the grace period and were cut by SIGKILL

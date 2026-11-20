@@ -192,3 +192,50 @@ concepts:
       - Explain the reasons for choosing NoSQL over a relational database and what you give up.
     practical_cases:
       - Explain why sessions and caches go in Redis while orders go in a relational database.
+  db.btree-vs-lsm:
+    name: B-Tree vs LSM Storage Engines
+    summary: B-Tree engines update pages in place, which keeps read costs predictable, while LSM engines collect writes in memory, flush them as sorted files using sequential writes and merge them later with background compaction. The difference between them is which of write, read and space amplification they save on.
+    objectives:
+      - Explain in-place updates in a B-Tree and the memtable, SSTable and compaction flow of an LSM tree.
+      - Explain the trade-offs between the two engines in terms of write, read and space amplification, and the role Bloom filters play in LSM reads.
+      - Use the workload's read/write ratio and metrics for pending compaction and disk usage to judge which engine fits and whether to change compaction settings.
+    practical_cases:
+      - In a write-heavy event store, compaction fell behind and read latency and disk usage grew together.
+  db.query-optimizer-statistics:
+    name: Query Optimizer and Statistics
+    summary: A cost-based optimizer uses table statistics (row counts, number of distinct values, value distribution) to estimate how many rows each step produces and picks the plan that looks cheapest. When statistics are stale or the optimizer does not know about correlations between columns, estimates go badly wrong and a bad plan is chosen.
+    objectives:
+      - Explain how the optimizer uses statistics to estimate selectivity and row counts and compares the cost of candidate plans.
+      - Explain how stale statistics, skewed data, correlated columns and differing bind values cause estimation errors.
+      - Compare estimated and actual row counts in EXPLAIN ANALYZE and judge whether running ANALYZE, adding extended statistics or rewriting the query is needed.
+    practical_cases:
+      - A batch job that slowed down because statistics were not refreshed after a bulk load, so a poor join strategy was chosen instead of the index.
+      - Data concentrated in one customer account made only that customer's queries slow.
+  db.vacuum-bloat:
+    name: VACUUM and Table Bloat (PostgreSQL)
+    summary: PostgreSQL keeps old row versions (dead tuples) created by UPDATE and DELETE until VACUUM cleans them up, so if cleanup cannot keep up with writes or a long transaction blocks it, tables and indexes bloat and slow down. Tuning autovacuum and preventing transaction ID wraparound are the operational tasks.
+    objectives:
+      - Explain how dead tuples arise and how VACUUM makes their space reusable, and the difference between VACUUM and VACUUM FULL.
+      - Explain why long transactions, idle transactions and replication slots block cleanup, and the risk of transaction ID wraparound.
+      - Read n_dead_tup and last_autovacuum in pg_stat_user_tables and decide whether to adjust per-table autovacuum thresholds.
+    practical_cases:
+      - A single session left idle in transaction for hours made a job queue table bloat severely.
+  db.gap-next-key-lock:
+    name: Gap Locks and Next-Key Locks (InnoDB)
+    summary: To prevent phantoms under REPEATABLE READ, InnoDB locks not only index records but also the gaps between them, and a next-key lock is a record lock combined with a lock on the gap before it. Without a suitable index on the condition column, or with range conditions, a wider range than expected gets locked, blocking INSERTs or causing deadlocks.
+    objectives:
+      - Explain on an index the range locked by record locks, gap locks and next-key locks.
+      - Explain how the isolation level (REPEATABLE READ versus READ COMMITTED) and whether the condition column is indexed change the locked range.
+      - Read the latest deadlock record in SHOW ENGINE INNODB STATUS or the LOCK_MODE values in performance_schema.data_locks and decide whether to fix it by adding an index or changing the isolation level.
+    practical_cases:
+      - Code that checked for a missing row with SELECT ... FOR UPDATE and then inserted it caused deadlocks under concurrent requests.
+  db.replication-lag-consistency:
+    name: Replication Lag and Read Consistency
+    summary: With asynchronous replication, replicas trail the primary, so reading just-written data from a replica may not show it, or values may flip back and forth on each refresh. Guarantees such as read-your-writes and monotonic reads have to be built yourself as read-routing rules.
+    objectives:
+      - Explain the causes of replication lag (write bursts, replaying large transactions, the network, load on the replica).
+      - Explain the situations that break read-your-writes and monotonic reads, and alternatives such as reading from the primary right after a write, waiting for a replication position and session pinning.
+      - Read replay_lag in pg_stat_replication or the delay value in MySQL replication status and decide which reads to move from replicas to the primary.
+    practical_cases:
+      - Fixing stale values shown right after a profile update by reading from the primary for a short time after each write.
+      - Replication lag grew to minutes during a batch job, so screens reading from replicas showed outdated stock.

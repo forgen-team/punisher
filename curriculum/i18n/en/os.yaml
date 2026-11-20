@@ -224,3 +224,43 @@ concepts:
       - Explain how to find the source of GC pressure with an allocation profile
     practical_cases:
       - A server whose response latency spikes when traffic surges because GC runs frequently
+  os.mmap-page-fault:
+    name: mmap and Page Faults
+    summary: mmap maps a file or anonymous memory into a process's address space, and the actual pages are filled in by page faults on first access. A fault is minor if the page is already in the page cache and major if it must be read from disk, and their latencies differ greatly.
+    objectives:
+      - Explain how mmap mappings and demand paging fill in pages at the time of first access
+      - Explain the difference between minor and major faults and the trade-offs between read() calls and mmap file access
+      - Read fault counts with ps -o min_flt,maj_flt or the page-faults value from perf stat and judge whether latency is caused by major faults
+    practical_cases:
+      - An mmap-based store that was slow right after a restart because of major faults and became fast after warming up
+      - Near a container memory limit, mapped file pages were reclaimed again and again and major faults exploded
+  os.ebpf-tracing:
+    name: eBPF and Kernel Tracing
+    summary: eBPF runs small programs that have passed a verifier attached to kernel events (system calls, kprobes, tracepoints and more). It lets you observe latency and call distributions on a running system with low overhead, without changing or restarting the application.
+    objectives:
+      - Explain how an eBPF program runs in the kernel through the verifier, hooks and maps and hands results to user space
+      - Explain the differences between kprobes, tracepoints and uprobes, their stability across kernel versions and their overhead in production
+      - Read the histogram output of BCC and bpftrace tools (execsnoop, biolatency, runqlat and others) and judge whether latency comes from disk or from waiting for CPU
+    practical_cases:
+      - Confirming with runqlat that unexplained intermittent latency came from waiting in the CPU run queue
+      - Using execsnoop to find short-lived processes that appeared and vanished inside a container
+  os.epoll-c10k:
+    name: epoll Internals and C10K
+    summary: epoll registers the set of file descriptors of interest with the kernel once and returns only the ready ones, so the cost of each call scales with active connections even as total connections grow. To run servers with tens of thousands of concurrent connections well, you need to know the difference between level and edge triggering and the wake-up problem when many workers wait on the same socket.
+    objectives:
+      - Compare the cost of select and poll scanning every descriptor on each call with epoll's interest list and ready list structure
+      - Explain the difference between level-triggered and edge-triggered mode and why edge-triggered mode requires reading until EAGAIN
+      - Use the connection count, the descriptor limit (ulimit -n) and the per-worker connection distribution to judge whether to apply SO_REUSEPORT or EPOLLEXCLUSIVE
+    practical_cases:
+      - A bug where some connections stalled after switching to edge-triggered mode because socket buffers were not read to the end
+      - Several worker processes waiting on the same listening socket, so connections piled up on a few workers
+  os.memory-allocator-fragmentation:
+    name: Memory Allocators and Fragmentation
+    summary: Allocators such as malloc take large chunks from the kernel and hand them out in small pieces, so freed memory may not return to the OS right away and can remain in RSS as fragments. Depending on per-thread arenas and size-class design, the same program can use very different amounts of memory just by switching allocators.
+    objectives:
+      - Explain how an allocator manages memory obtained through brk and mmap with size classes and arenas
+      - Explain internal and external fragmentation and why RSS does not shrink after memory is freed
+      - Compare the heap usage the application reports with RSS to suspect fragmentation, and decide whether to consider limiting the number of arenas or switching allocators
+    practical_cases:
+      - A multithreaded service whose RSS grew far beyond its heap usage until it was OOMKilled, mitigated by limiting the number of arenas
+      - Memory in a long-running process kept growing and was suspected to be a leak, but it turned out to be fragmentation

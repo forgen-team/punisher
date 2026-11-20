@@ -16,7 +16,9 @@ concepts:
   arch.multicore: Multicore means multiple cores in one CPU truly running different tasks at the same time. Shared data and serial sections keep performance from scaling with core count, which matters when predicting the gain from adding vCPUs.
   arch.numa: NUMA is a design in multi-socket servers where each CPU has near and far memory with different access costs. It is a candidate cause when DB or JVM latency becomes erratic after moving to a large, many-core server.
   arch.pipeline-branch-prediction: Pipelining overlaps instruction stages to raise throughput; branch prediction guesses a conditional's outcome to keep execution going. When predictions are frequently wrong, the cost of discarding speculatively executed work adds up, so whether the data is sorted alone can change the same loop's speed.
+  arch.simd-vectorization: SIMD is a CPU feature that computes several values at once with a single instruction, and vectorization is turning loops into such instructions. Code that repeats the same operation over contiguous arrays can become several times faster.
   arch.storage-devices: SSDs and HDDs are persistent storage devices; HDDs must move a head, making random access especially slow, while SSDs access data electronically. For DB performance, distinguish IOPS, throughput, and latency, and check cloud volume IOPS limits too.
+  arch.tlb-huge-pages: The TLB is a small CPU cache of virtual-to-physical address translations. Huge pages let one TLB entry cover more memory and speed up large-memory work, but automatic huge pages (THP) can cause latency spikes in some databases.
 terms:
   g.twos-complement:
     name: Two's complement

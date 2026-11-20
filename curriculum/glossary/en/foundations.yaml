@@ -1,0 +1,16 @@
+# English overlay for ../foundations.yaml — same ids.
+area: foundations
+concepts:
+  found.running-programs: A program is a list of instructions the computer follows in order. Source code written by people is turned into a form the computer can run, and when it runs it is loaded into memory and the CPU works through it step by step.
+  found.code-basics: Code is made of variables that hold values under a name, conditions that branch by situation, loops that repeat work, and functions that bundle common work. Once you recognize these four, you can follow the flow of code you have never seen.
+  found.data-shapes: Values have shapes. The basics are single values like numbers and strings, lists that line values up in order, and dictionaries that find values by a label (key). Just as "10" and 10 behave differently, the shape decides what you can do with a value.
+  found.files-and-paths: Data lives in files, and files are arranged in folders shaped like a tree. A path is the address of a file in that tree; an absolute path starts from the top and a relative path starts from where you are now.
+  found.terminal-and-shell: A terminal is a window for giving text commands, and the shell is the program that runs them. Knowing a few commands such as pwd, cd and ls is enough to read and follow the install guide of a developer tool.
+  found.internet-and-web: The internet is the network linking computers, and the web is a way of exchanging documents and services on top of it. Clients ask and servers answer; a URL is the address of a resource and a domain is the name of a server.
+  found.what-browsers-do: A browser is a program that interprets the files it gets from a server and draws the screen. HTML carries content and structure, CSS the look, and JavaScript the behavior.
+  found.http-first-look: HTTP is the agreement by which a client asks for what it wants and a server answers. A request carries a method and a URL; a response carries a status code such as 200, 404 or 500 and the content.
+  found.json-and-api: An API is a window through which programs ask each other for work in an agreed way and get results, and JSON is the most common text format for that data. It is dictionaries and lists written as text, so people can read it too.
+  found.tables-and-sql: Many services store data in tables of rows and columns. SQL is the language for asking a table for the rows that match a condition in the order you want, the same work as spreadsheet filters and sorting.
+  found.git-version-control: Version control records when, by whom and how files changed so you can return to an earlier state. git saves changes as commits and lets you work separately on branches and merge them later.
+  found.hosting-and-deploy: For others to reach a site, it has to live on a server that is always on. Renting that space is hosting, and putting a new version on the server so it actually changes is deployment.
+  found.reading-errors: An error message is a clue that tells you where and why a program stopped. Reading the error type and the file and line number, and changing one thing at a time to check, is where debugging starts.

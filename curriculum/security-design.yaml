@@ -282,3 +282,105 @@ concepts:
     doc_links:
       - title: SLSA - Supply-chain Levels for Software Artifacts
         url: https://slsa.dev/
+
+  - id: sec.threat-modeling-stride
+    name: 위협 모델링(STRIDE)
+    aliases: [STRIDE, STRIDE 위협 모델, STRIDE Threat Model, Data Flow Diagram, 데이터 흐름도, 위협 분석]
+    depth: 3
+    summary: 위협 모델링은 데이터 흐름도에 신뢰 경계를 그리고 각 요소에서 위장·변조·부인·정보 노출·서비스 거부·권한 상승(STRIDE)을 따져 대응을 정하는 설계 단계 활동이다. 코드가 나오기 전에 할수록 고치는 비용이 싸다.
+    objectives:
+      - STRIDE 6개 위협 범주를 각각 지켜야 할 보안 속성(인증·무결성·부인 방지·기밀성·가용성·인가)과 연결해 설명한다
+      - 기능 하나의 데이터 흐름도를 그리고 신뢰 경계를 넘는 흐름마다 위협을 나열한다
+      - 찾은 위협을 영향과 가능성으로 우선순위를 매겨 완화·수용·이전 중 무엇을 할지 결정하고 기록한다
+    prerequisites: [sec.trust-boundary, sec.authorization]
+    practical_cases:
+      - 파일 업로드 기능 설계 리뷰에서 STRIDE로 업로드 URL 변조와 악성 파일 배포 위험을 미리 찾은 사례
+      - 관리자 기능에 감사 로그가 없는 것을 부인(Repudiation) 위협으로 찾아 보완한 사례
+    doc_links:
+      - title: OWASP Threat Modeling Cheat Sheet
+        url: https://cheatsheetseries.owasp.org/cheatsheets/Threat_Modeling_Cheat_Sheet.html
+
+  - id: sec.zero-trust
+    name: 제로 트러스트
+    aliases: [Zero Trust, Zero Trust Architecture, ZTA, 제로 트러스트 아키텍처, 제로트러스트, BeyondCorp]
+    depth: 3
+    summary: 제로 트러스트는 네트워크 위치(사내망·VPN)를 신뢰 근거로 쓰지 않고, 요청마다 사용자·기기·서비스의 신원과 상황을 확인해 최소 권한으로 접근을 허용하는 보안 모델이다. 경계 하나가 뚫려도 내부 이동을 어렵게 만드는 것이 목적이다.
+    objectives:
+      - 경계 기반 보안의 가정과 그것이 깨지는 상황(내부자·탈취된 기기·측면 이동)을 설명한다
+      - NIST SP 800-207의 정책 결정 지점(PDP)·정책 집행 지점(PEP) 구조와 요청 단위 인가를 설명한다
+      - 사내 서비스 하나의 접근 경로에서 네트워크 위치만으로 허용하는 지점을 찾아 신원 기반 인가와 서비스 간 mTLS 중 무엇을 적용할지 결정한다
+    prerequisites: [sec.trust-boundary, sec.least-privilege, sec.tls-certificates]
+    practical_cases:
+      - VPN 계정 하나가 탈취되어 내부 관리 도구 전체가 노출된 뒤 신원 인지 프록시로 전환한 사례
+      - 클러스터 내부 서비스 호출에 mTLS와 서비스 신원 기반 인가를 도입한 사례
+    doc_links:
+      - title: NIST SP 800-207 - Zero Trust Architecture
+        url: https://csrc.nist.gov/pubs/sp/800/207/final
+
+  - id: sec.tls13-handshake-0rtt
+    name: TLS 1.3 핸드셰이크와 0-RTT 위험
+    aliases: [TLS 1.3, TLS 1.3 Handshake, TLS 1.3 핸드셰이크, 0-RTT, Early Data, 조기 데이터, 0-RTT Replay, 재전송 공격, Replay Attack]
+    depth: 3
+    summary: TLS 1.3은 키 교환을 첫 메시지에 합쳐 1-RTT로 핸드셰이크를 마치고, 이전 세션의 PSK로 재개할 때는 첫 요청을 0-RTT 조기 데이터로 보낼 수 있다. 조기 데이터는 재전송 공격을 막지 못하므로 재실행돼도 안전한 요청에만 허용해야 한다.
+    objectives:
+      - TLS 1.2와 1.3의 핸드셰이크 왕복 수와 전방 비밀성 기본 적용 차이를 설명한다
+      - 0-RTT 조기 데이터가 재전송 공격에 노출되는 이유와 서버·프록시 쪽 완화(안전한 메서드로 제한, 425 Too Early)를 설명한다
+      - 로드밸런서·CDN의 0-RTT 설정과 Early-Data 헤더 전달 여부를 확인해 상태 변경 API에서 조기 데이터를 막을지 결정한다
+    prerequisites: [net.tls, sec.tls-certificates]
+    practical_cases:
+      - CDN에서 0-RTT를 켠 뒤 상태 변경 요청이 조기 데이터로 원본에 도달할 수 있는지 점검해 안전한 메서드에만 허용한 사례
+    doc_links:
+      - title: RFC 8446 - The Transport Layer Security (TLS) Protocol Version 1.3
+        url: https://www.rfc-editor.org/rfc/rfc8446
+      - title: RFC 8470 - Using Early Data in HTTP
+        url: https://www.rfc-editor.org/rfc/rfc8470
+
+  - id: sec.timing-attack
+    name: 타이밍 공격과 상수 시간 비교
+    aliases: [Timing Attack, 타이밍 공격, Side-channel Attack, 부채널 공격, Constant-time Comparison, 상수 시간 비교, ConstantTimeCompare]
+    depth: 3
+    summary: 비교나 검증에 걸리는 시간이 비밀 값에 따라 달라지면, 공격자는 응답 시간을 여러 번 재서 비밀을 조금씩 추측할 수 있다. 토큰·서명·HMAC 비교는 일치 여부와 관계없이 같은 시간이 걸리는 상수 시간 비교로 해야 한다.
+    objectives:
+      - 첫 불일치에서 멈추는 문자열 비교가 비밀 정보를 처리 시간으로 흘리는 원리를 설명한다
+      - 네트워크 잡음이 있어도 반복 측정과 통계로 공격이 가능한 이유와, 로그인 응답 시간 차이로 계정 존재 여부가 드러나는 것도 같은 문제임을 설명한다
+      - 코드에서 비밀 값을 일반 등호로 비교하는 지점을 찾아 crypto/subtle.ConstantTimeCompare나 hmac.Equal 같은 상수 시간 비교로 바꿀지 판단한다
+    prerequisites: [sec.cryptography-basics, sec.authentication]
+    practical_cases:
+      - 웹훅 서명 검증을 일반 문자열 비교로 구현해 보안 리뷰에서 지적된 사례
+      - 없는 계정이면 비밀번호 해시 계산을 건너뛰어 응답이 빨라지는 바람에 계정 존재 여부가 드러난 로그인 API
+    doc_links:
+      - title: Go crypto/subtle package
+        url: https://pkg.go.dev/crypto/subtle
+
+  - id: sec.refresh-token-rotation
+    name: 리프레시 토큰 회전과 탈취 탐지
+    aliases: [Refresh Token Rotation, 리프레시 토큰 회전, 토큰 회전, Token Rotation, Refresh Token Reuse Detection, 토큰 재사용 탐지, Token Family]
+    depth: 3
+    summary: 리프레시 토큰 회전은 갱신할 때마다 새 리프레시 토큰을 발급하고 이전 것을 무효화한다. 이미 쓴 토큰이 다시 제시되면 탈취로 보고 같은 계열 토큰 전체를 폐기해, 오래 사는 토큰이 새어 나갔을 때의 피해 기간을 줄인다.
+    objectives:
+      - 액세스 토큰과 리프레시 토큰의 수명·저장 위치를 나누는 이유를 설명한다
+      - 회전과 재사용 탐지로 공격자와 정상 사용자 중 누가 먼저 쓰든 탈취가 드러나는 원리를 설명한다
+      - 동시 요청·네트워크 재시도로 정상 사용자가 탈취로 오탐되는 경우를 보고 짧은 유예 시간 허용 여부와 폐기 범위를 결정한다
+    prerequisites: [sec.session-vs-token, sec.oauth-oidc]
+    practical_cases:
+      - 모바일 앱에서 여러 API 호출이 동시에 토큰 갱신을 시도해 재사용 탐지에 걸려 사용자가 강제 로그아웃된 문제를 갱신 단일화로 해결
+    doc_links:
+      - title: RFC 9700 - Best Current Practice for OAuth 2.0 Security
+        url: https://www.rfc-editor.org/rfc/rfc9700
+
+  - id: sec.toctou
+    name: TOCTOU와 경쟁 조건 보안 결함
+    aliases: [TOCTOU, Time-of-check to Time-of-use, 검사 시점과 사용 시점, Race Condition Vulnerability, 경쟁 조건 취약점, Double Spending, 이중 사용]
+    depth: 3
+    summary: 검사(권한·잔액·파일 경로)와 사용 사이에 상태가 바뀔 수 있으면, 공격자는 그 틈에 동시 요청이나 링크 교체로 검사를 우회한다. 검사와 변경을 원자적 연산·조건부 갱신·잠금으로 묶어야 막을 수 있다.
+    objectives:
+      - 검사와 사용 사이의 틈이 보안 결함이 되는 대표 형태(쿠폰·잔액 이중 사용, 심볼릭 링크 교체)를 설명한다
+      - 조건부 UPDATE·유니크 제약·행 잠금·심볼릭 링크를 따르지 않는 파일 열기 같은 원자적 대안을 설명한다
+      - 같은 요청을 동시에 수십 개 보내는 테스트로 한 번만 허용 규칙이 지켜지는지 확인하고 수정 방식을 결정한다
+    prerequisites: [os.race-condition, sec.authorization, db.locking]
+    practical_cases:
+      - 1회용 쿠폰이 동시 요청으로 여러 번 사용된 문제를 조건부 UPDATE로 해결한 사례
+      - 업로드 파일 경로를 검사한 뒤 여는 사이 심볼릭 링크로 바뀌어 다른 파일이 노출된 사례
+    doc_links:
+      - title: CWE-367 - Time-of-check Time-of-use (TOCTOU) Race Condition
+        url: https://cwe.mitre.org/data/definitions/367.html
