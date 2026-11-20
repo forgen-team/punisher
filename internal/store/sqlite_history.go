@@ -105,7 +105,7 @@ func (s *SQLiteStore) ListMyLectures(ctx context.Context, userID, status string,
 			p.percent, p.started_at, p.last_seen_at, p.completed_at, `+parentLectureSQL("l.id")+`, `+sortCol+`,
 			CASE WHEN l.minutes_estimated THEN NULL ELSE l.content END
 		FROM user_lecture_progress p
-		JOIN lectures l ON l.id = p.lecture_id AND (l.kind = 'library' OR l.requested_by = p.user_id)
+		JOIN lectures l ON l.id = p.lecture_id AND `+openableLecture("l", "p.user_id")+`
 		JOIN concepts c ON c.id = l.concept_id
 		WHERE p.user_id = $1 AND `+where+` AND (`+sortCol+`, l.id) < ($2, $3)
 		ORDER BY `+sortCol+` DESC, l.id DESC LIMIT $4`,

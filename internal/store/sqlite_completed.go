@@ -24,7 +24,7 @@ var completedItemsSQL = `
 			l.depth AS depth, l.kind AS lecture_kind, ` + parentLectureSQL("l.id") + ` AS parent_id, 0 AS followups,
 			p.last_seen_at AS activity_at, l.title || ' ' || c.name || ' ' || c.name_en AS search
 		FROM user_lecture_progress p
-		JOIN lectures l ON l.id = p.lecture_id AND (l.kind = 'library' OR l.requested_by = p.user_id)
+		JOIN lectures l ON l.id = p.lecture_id AND ` + openableLecture("l", "p.user_id") + `
 		JOIN concepts c ON c.id = l.concept_id
 		WHERE p.user_id = $1 AND p.completed_at IS NOT NULL
 		UNION ALL
