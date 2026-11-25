@@ -42,6 +42,8 @@ export const messages = defineMessages({
     "steps_agy_rate_limited": "",
     readOnlyNote: "이미 만든 강의 · 지도 · 기록은 그대로 볼 수 있어요. 새 강의 만들기와 질문만 잠시 안 돼요.",
     recheck: "다시 확인",
+    witemsUnavailable: "Witems AI 연결에 닿지 못했어요. 잠시 뒤 다시 확인해 주세요.",
+    witemsNotLoggedIn: "Witems 서버의 Claude 로그인이 풀렸어요. 서버에서 다시 로그인해야 해요.",
   },
   en: {
     "claude_unavailable": "Can't find Claude Code (the claude command). Install Claude Code, run claude once in a terminal to sign in, then try again.",
@@ -80,6 +82,8 @@ export const messages = defineMessages({
     "steps_agy_rate_limited": "",
     readOnlyNote: "Lectures, the map and history stay available. Only new lectures and questions are paused.",
     recheck: "Check again",
+    witemsUnavailable: "Couldn't reach the Witems AI connection. Check again in a moment.",
+    witemsNotLoggedIn: "Claude on the Witems server is signed out. It needs to be signed in again on the server.",
   },
 });
 
@@ -99,6 +103,7 @@ export const panelMessages = defineMessages({
     activeCount: (active: number, queued: number) => `${active}개${queued > 0 ? ` · 대기 ${queued}개` : ""}`,
     dataDir: "데이터 위치",
     version: "Punisher 버전",
+    witemsConnected: "Witems AI 연결을 써요(셸을 따름).",
   },
   en: {
     legend: "AI used to write and review lectures, answer questions and grade checks",
@@ -114,6 +119,7 @@ export const panelMessages = defineMessages({
     activeCount: (active: number, queued: number) => `${active}${queued > 0 ? ` · ${queued} queued` : ""}`,
     dataDir: "Data folder",
     version: "Punisher version",
+    witemsConnected: "Uses the Witems AI connection (follows the shell).",
   },
 });
 
@@ -141,4 +147,15 @@ export function statusText(
   if (!isStatusCode(code)) { return { message: serverMessage ?? "", steps: serverSteps ?? [] }; }
   const steps = t[`steps_${code}`];
   return { message: t[code], steps: steps ? steps.split("\n") : [] };
+}
+
+/**
+ * Witems 앱 모드: AI 는 호스트 claude-gateway 하나라 로컬 CLI 설치·로그인 단계는 해당이 없다.
+ * 사용 한도는 단독판과 같은 문구, 그 밖은 연결/로그인 두 가지로 줄인다.
+ */
+export function witemsStatusText(t: (typeof messages)["ko"], code: string | undefined): { message: string; steps: string[] } {
+  if (!code) { return { message: "", steps: [] }; }
+  if (isRateLimitedCode(code)) { return { message: t.claude_rate_limited, steps: [] }; }
+  if (code.endsWith("_not_logged_in")) { return { message: t.witemsNotLoggedIn, steps: [] }; }
+  return { message: t.witemsUnavailable, steps: [] };
 }

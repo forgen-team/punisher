@@ -15,6 +15,8 @@ export const messages = defineMessages({
     sectionScreen: "화면",
     sectionAi: "AI 연결",
     sectionAbout: "정보",
+    exportFailed: "내보내지 못했어요. 잠시 뒤 다시 시도해 주세요.",
+    exporting: "내보내는 중…",
   },
   en: {
     notFoundTitle: "Page not found",
@@ -29,5 +31,7 @@ export const messages = defineMessages({
     sectionScreen: "Display",
     sectionAi: "AI connection",
     sectionAbout: "About",
+    exportFailed: "Couldn't export. Try again in a moment.",
+    exporting: "Exporting…",
   },
 });
