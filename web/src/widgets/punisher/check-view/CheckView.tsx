@@ -129,7 +129,13 @@ export function CheckView({ checkId }: { checkId: string }) {
 
   return (
     <div className="flex w-full flex-col">
-      <LectureTopBar title={barTitle} backHref={backHref} menuItems={d ? menuItems : undefined} />
+      {/* ⋯ 대신 글자 버튼 — 셸 상단 바의 ⋯ 바로 아래라 헷갈리지 않게. 메뉴는 그만두기(배치 확인은 건너뛰기) 하나다. */}
+      <LectureTopBar
+        title={barTitle}
+        backHref={backHref}
+        menuItems={d ? menuItems : undefined}
+        menuText={kind === "placement" ? { full: t.menuSkip, short: t.menuSkipShort } : { full: t.menuStop, short: t.menuStopShort }}
+      />
       {/* Witems 는 셸이 화면 제목(h1)을 그린다. */}
       {isWitems() ? null : <h1 className="sr-only">{barTitle}</h1>}
       <LectureLayout sections={NO_SECTIONS} totalMinutes={0} activeAnchor="">

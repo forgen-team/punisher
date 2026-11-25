@@ -142,6 +142,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
         backHref={HOME}
         onOpenToc={hasContent ? () => setTocOpen(true) : undefined}
         menuItems={menuItems}
+        menuText={{ full: t.menuManage, short: t.menuManageShort }}
       />
       <LectureLayout sections={sections} totalMinutes={totalMinutes} activeAnchor={activeAnchor} assist={assist}>
         <StatusRow inquiry={q} hasContent={hasContent} unstable={Boolean(q && inquiry.error)} />

@@ -263,7 +263,21 @@ func (s *SQLiteStore) Search(ctx context.Context, userID, q string, limit int) (
 	if err != nil {
 		return nil, err
 	}
+	for i := range hits {
+		hits[i].Snippet = NormalizeSnippet(hits[i].Snippet)
+	}
 	return hits, s.fillSectionTitles(ctx, hits)
+}
+
+// NormalizeSnippet makes a search excerpt one line: the body keeps the
+// lecture's line breaks (and FTS snippet() keeps them), and a break right
+// before the trailing '…' left the ellipsis alone on its own line. Whitespace
+// runs become one space and the ellipsis is glued to its word with a no-break
+// space so it never wraps alone.
+func NormalizeSnippet(s string) string {
+	s = strings.Join(strings.Fields(s), " ")
+	s = strings.ReplaceAll(s, " …", "\u00a0…")
+	return strings.ReplaceAll(s, "… ", "…\u00a0")
 }
 
 // fillSectionTitles sets SectionTitle of lecture hits from the lecture's sections (one query per lecture).

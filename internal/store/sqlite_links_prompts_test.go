@@ -86,7 +86,7 @@ func TestDeeperLinksDirectAndViaJob(t *testing.T) {
 		t.Fatalf("links: %v", err)
 	}
 	if len(parents) != 0 || len(children) != 2 || children[0].ID != child || children[1].ID != child2 ||
-		children[0].Anchor != "principles-2" || children[1].LinkKind != LinkRegeneratedKind {
+		children[0].Anchor != "principles-2" || children[1].LinkKind != LinkRegeneratedKind || children[0].Version < 1 {
 		t.Fatalf("parent view: parents=%+v children=%+v", parents, children)
 	}
 	parents, _, err = s.LectureLinks(ctx, user, child2)

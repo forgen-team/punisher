@@ -110,6 +110,8 @@ export interface LinkedLecture {
   /** deeper: "이 개념 더 깊게" · regenerated: "새 프롬프트로 다시 만들기" */
   linkKind: "deeper" | "regenerated";
   promptVersion: string;
+  /** 강의 판 번호(다시 만든 판을 가른다) */
+  version: number;
 }
 
 export interface LectureLinks {

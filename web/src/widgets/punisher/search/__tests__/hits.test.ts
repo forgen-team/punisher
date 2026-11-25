@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupHits, hitCounts, hitHref, snippetParts } from "../lib/hits";
+import { groupHits, hitCounts, hitHref, normalizeSnippet, snippetParts } from "../lib/hits";
 
 describe("search hits", () => {
   it("links lectures to the section and inquiries to their screen", () => {
@@ -23,5 +23,15 @@ describe("search groups", () => {
     const groups = groupHits([lecture("a", "s1"), note, lecture("b", "s1"), lecture("a", "s2"), lecture("a", "s3")]);
     expect(groups.map((g) => (g.type === "lecture" ? `${g.lectureId}:${g.hits.length}` : g.hit.kind))).toEqual(["a:3", "note", "b:1"]);
     expect(hitCounts(groups)).toEqual({ lectures: 2, places: 4, others: 1 });
+  });
+});
+
+describe("snippet line", () => {
+  it("keeps the excerpt on one line and never leaves the ellipsis alone", () => {
+    expect(normalizeSnippet("…명령도 결국 비트열입니다\n…")).toBe("…명령도 결국 비트열입니다\u00a0…");
+    expect(normalizeSnippet("… 앞\n\n  뒤 …")).toBe("…\u00a0앞 뒤\u00a0…");
+    expect(snippetParts("[[비트열]]입니다\n…", "비트열")).toEqual([
+      { text: "비트열", match: true }, { text: "입니다\u00a0…", match: false },
+    ]);
   });
 });

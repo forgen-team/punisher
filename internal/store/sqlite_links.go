@@ -103,7 +103,7 @@ func (s *SQLiteStore) linkedLectures(ctx context.Context, q string, userID, lect
 	out, err := collect(s.c().query(ctx, `
 		WITH linked AS (`+q+`)
 		SELECT l.id, l.concept_id, `+locName("c", userLocaleSQL("$1"))+`, l.title, l.kind, l.status, l.created_at, x.created_at, x.anchor,
-			COALESCE(p.percent, 0), p.completed_at, x.kind, l.prompt_version
+			COALESCE(p.percent, 0), p.completed_at, x.kind, l.prompt_version, l.version
 		FROM linked x
 		JOIN lectures l ON l.id = x.child AND (l.kind = 'library' OR l.requested_by = $1)
 		JOIN concepts c ON c.id = l.concept_id
@@ -111,7 +111,7 @@ func (s *SQLiteStore) linkedLectures(ctx context.Context, q string, userID, lect
 		ORDER BY x.created_at, l.id`, userID, lectureID), func(r rowScanner) (models.LinkedLecture, error) {
 		var m models.LinkedLecture
 		err := r.Scan(&m.ID, &m.ConceptID, &m.ConceptName, &m.Title, &m.Kind, &m.Status, ts(&m.CreatedAt),
-			ts(&m.LinkedAt), &m.Anchor, &m.Percent, nts(&m.CompletedAt), &m.LinkKind, &m.PromptVersion)
+			ts(&m.LinkedAt), &m.Anchor, &m.Percent, nts(&m.CompletedAt), &m.LinkKind, &m.PromptVersion, &m.Version)
 		return m, err
 	})
 	if err != nil {
