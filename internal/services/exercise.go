@@ -80,8 +80,8 @@ func findExercise(c lecture.Content, anchor string) (exerciseBlock, bool) {
 			case lecture.BlockLab:
 				return exerciseBlock{kind: learning.AttemptLab, section: s.Kind, problem: b.Text}, true
 			case lecture.BlockPause:
-				out := ""
-				if i+1 < len(s.Blocks) {
+				out := "" // the output it hides — the screen pairs only a next code/log block (blockGroups.ts)
+				if i+1 < len(s.Blocks) && (s.Blocks[i+1].Type == lecture.BlockLog || s.Blocks[i+1].Type == lecture.BlockCode) {
 					out = s.Blocks[i+1].Text
 				}
 				return exerciseBlock{kind: learning.AttemptPause, section: s.Kind, problem: b.Text, solution: out}, true

@@ -191,6 +191,8 @@ export const messages = defineMessages({
 
 const KEYPOINT_KO: Record<string, string> = { definition: "정의", caution: "주의", rule: "규칙" };
 const KEYPOINT_EN: Record<string, string> = { definition: "Definition", caution: "Caution", rule: "Rule" };
+const EXERCISE_KIND_KO: Record<string, string> = { guided: "빈칸 채우기", why: "왜 그럴까", error: "오류 찾기", free: "혼자 풀기", modify: "바꿔 보기" };
+const EXERCISE_KIND_EN: Record<string, string> = { guided: "Fill in", why: "Why?", error: "Find the mistake", free: "On your own", modify: "Change it" };
 
 /** 구조 블록 라벨(설계 v2.2 §6) */
 export const blockMessages = defineMessages({
@@ -199,6 +201,8 @@ export const blockMessages = defineMessages({
     pause: "예상해 보세요",
     showOutput: "출력 보기",
     exercise: "직접 해 보기",
+    exerciseKind: (kind: string) => EXERCISE_KIND_KO[kind] ?? "",
+    recall: "방금 읽은 걸 떠올려 보기",
     showAnswer: "풀이 보기",
     nextStep: "다음 단계",
     traceTable: "손계산 표",
@@ -227,6 +231,8 @@ export const blockMessages = defineMessages({
     pause: "Make a guess",
     showOutput: "Show output",
     exercise: "Try it yourself",
+    exerciseKind: (kind: string) => EXERCISE_KIND_EN[kind] ?? "",
+    recall: "Recall what you just read",
     showAnswer: "Show solution",
     nextStep: "Next step",
     traceTable: "Trace table",
