@@ -13,8 +13,17 @@ export interface SnippetPart {
   match: boolean;
 }
 
+/**
+ * 발췌를 한 줄로: 줄바꿈·연속 공백은 공백 하나, 말줄임(…)은 붙은 낱말과 줄바꿈 없는 공백으로 이어 혼자 줄에 떨어지지 않게.
+ * 서버(store.NormalizeSnippet)도 같은 일을 한다 — 옛 서버 응답이 와도 화면이 같게.
+ */
+export function normalizeSnippet(text: string): string {
+  return text.replace(/\s+/g, " ").trim().replace(/ …/g, "\u00a0…").replace(/… /g, "…\u00a0");
+}
+
 /** 서버 스니펫의 [[ ]] 표지를 강조 조각으로 나눈다. 표지가 없으면(짧은 검색어) q 를 찾아 강조한다. */
-export function snippetParts(snippet: string, q: string): SnippetPart[] {
+export function snippetParts(raw: string, q: string): SnippetPart[] {
+  const snippet = normalizeSnippet(raw);
   if (snippet.includes("[[")) {
     return snippet.split(/(\[\[.*?\]\])/).filter(Boolean).map((part) =>
       part.startsWith("[[") && part.endsWith("]]") ? { text: part.slice(2, -2), match: true } : { text: part, match: false });

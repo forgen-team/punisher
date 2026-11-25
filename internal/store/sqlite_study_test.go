@@ -277,3 +277,16 @@ func TestUpgradeFromV022StudyFeatures(t *testing.T) {
 		t.Fatalf("existing notes are indexed: %+v (%v)", hits, err)
 	}
 }
+
+func TestNormalizeSnippet(t *testing.T) {
+	cases := map[string]string{
+		"…명령도 결국 비트열입니다\n…":      "…명령도 결국 비트열입니다\u00a0…",
+		"  [[비트열]]은\n\n  0과 1  ": "[[비트열]]은 0과 1",
+		"… 앞\t바꿈 …":              "…\u00a0앞 바꿈\u00a0…",
+	}
+	for in, want := range cases {
+		if got := NormalizeSnippet(in); got != want {
+			t.Errorf("NormalizeSnippet(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

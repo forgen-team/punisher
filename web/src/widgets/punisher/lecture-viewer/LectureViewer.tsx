@@ -230,7 +230,11 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
         <ReadingAssist containerRef={bodyRef} />
         <SourcesList sources={sources} title={t.sourcesTitle} />
         <DeeperLecturesSection ref={deeperRef} kind="deeper" lectures={deeperLectures} />
-        <DeeperLecturesSection kind="regenerated" lectures={regenerated} />
+        <DeeperLecturesSection
+          kind="regenerated"
+          lectures={regenerated}
+          current={{ id: lectureId, title: content.title || lecture.title, version: lecture.version, createdAt: lecture.createdAt, promptVersion: lecture.promptVersion ?? "" }}
+        />
         <div className="mt-10">
           <LectureWrapup
             ref={wrapupRef}

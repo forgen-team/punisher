@@ -42,6 +42,8 @@ type LinkedLecture struct {
 	// LinkKind: deeper ("이 개념 더 깊게") | regenerated ("새 프롬프트로 다시 만들기").
 	LinkKind      string `json:"linkKind"`
 	PromptVersion string `json:"promptVersion"`
+	// Version: the lecture's version number (같은 목표 묶음의 몇 번째 판) — 다시 만든 판을 구분해 보인다.
+	Version int `json:"version"`
 }
 
 // ConceptLecture is a readable lecture of a concept with the caller's progress.

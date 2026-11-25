@@ -3,7 +3,7 @@ import type { LinkedLecture } from "@/src/shared/api/punisher";
 import { latestPublished } from "../lib/newerVersion";
 
 function link(id: string, status: string, linkedAt: string): LinkedLecture {
-  return { id, conceptId: "c", conceptName: "", title: id, kind: "instant", status, createdAt: linkedAt, linkedAt, anchor: "", percent: 0, linkKind: "regenerated", promptVersion: "" };
+  return { id, conceptId: "c", conceptName: "", title: id, kind: "instant", status, createdAt: linkedAt, linkedAt, anchor: "", percent: 0, linkKind: "regenerated", promptVersion: "", version: 1 };
 }
 
 describe("latestPublished", () => {
