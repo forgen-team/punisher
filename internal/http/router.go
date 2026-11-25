@@ -197,6 +197,15 @@ func NewRouter(deps RouterDependencies) http.Handler {
 func localOnly(allowedHost, allowedLogin string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Requests without an Origin (another page's <img>, <iframe>, navigation)
+			// still carry Sec-Fetch-Site in browsers: the API refuses cross-site
+			// ones, and no page may frame the app (clickjacking).
+			w.Header().Set("X-Frame-Options", "DENY")
+			w.Header().Set("Content-Security-Policy", "frame-ancestors 'none'")
+			if isAPIPath(r.URL.Path) && r.Header.Get("Sec-Fetch-Site") == "cross-site" {
+				http.Error(w, "forbidden: cross-site request", http.StatusForbidden)
+				return
+			}
 			if reason := refuseReason(r, allowedHost, allowedLogin); reason != "" {
 				http.Error(w, reason, http.StatusForbidden)
 				return
@@ -204,6 +213,10 @@ func localOnly(allowedHost, allowedLogin string) func(http.Handler) http.Handler
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func isAPIPath(p string) bool {
+	return p == "/v1" || strings.HasPrefix(p, "/v1/")
 }
 
 func refuseReason(r *http.Request, allowedHost, allowedLogin string) string {
