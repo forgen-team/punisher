@@ -6,7 +6,7 @@ const day = (d: string, reviews = 0, lectures = 0, cards = 0) => ({ day: d, revi
 describe("study stats", () => {
   it("scores and levels activity", () => {
     expect(activityScore(day("2026-11-25", 2, 1, 1))).toBe(6);
-    expect([0, 1, 5, 12, 30].map(activityLevel)).toEqual([0, 1, 2, 3, 4]);
+    expect([0, 1, 5, 12, 30].map((n) => activityLevel(n))).toEqual([0, 1, 2, 3, 4]);
   });
   it("lays weeks from Sunday", () => {
     expect(weekday("2026-11-25")).toBe(3);
