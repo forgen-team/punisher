@@ -31,15 +31,15 @@ export function SectionToc({ sections, totalMinutes, onNavigate, hideHeading = f
         {sections.map((s, index) => (
           <li key={s.anchor || index}>
             <a
-              href={`#pa-${s.anchor}`}
+              // ?at= — 새 탭으로 열어도 그 자리로 간다(#해시는 Witems 셸이 앱에 넘기지 않는다). 보통 클릭은 이 화면 안에서 스크롤.
+              href={`?at=${encodeURIComponent(s.anchor)}`}
               aria-current={activeAnchor && s.anchor === activeAnchor ? "location" : undefined}
               onClick={(event) => {
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) { return; }
                 onNavigate?.();
                 // 시트가 닫히며 스크롤 잠금이 풀린 다음 프레임에 이동한다.
                 event.preventDefault();
-                requestAnimationFrame(() => {
-                  if (!scrollToAnchor(s.anchor)) { window.location.hash = `pa-${s.anchor}`; }
-                });
+                requestAnimationFrame(() => scrollToAnchor(s.anchor));
               }}
               className={cn(
                 // 두 줄 제목: 번호 칸을 따로 둬 둘째 줄이 제목 첫 글자에 맞춰지고(내어쓰기), 위아래 여백으로 항목 사이를 띄운다.

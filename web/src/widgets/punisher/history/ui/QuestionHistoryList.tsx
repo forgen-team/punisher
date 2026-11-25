@@ -3,7 +3,7 @@ import { Link } from "@/src/shared/lib/router";
 import { useState } from "react";
 import { BottomSheet, EmptyState, ErrorState, List, ListRow, ListSkeleton, buttonVariants } from "@/src/shared/ui/kit";
 import { QUESTION_STATUS_LABELS_BY_LOCALE, useMyQuestions } from "@/src/entities/punisher";
-import { lectureHref } from "@/src/features/punisher/instant-start";
+import { lectureAnchorHref } from "@/src/entities/punisher";
 import { describePunisherError, type MyQuestion } from "@/src/shared/api/punisher";
 import { useWideLayout } from "@/src/shared/lib/useWideLayout";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
@@ -33,7 +33,7 @@ function LectureLink({ question }: { question: MyQuestion }) {
   if (!question.lectureId) { return null; }
   return (
     <Link
-      href={`${lectureHref(question.lectureId)}${question.anchor ? `#pa-${question.anchor}` : ""}`}
+      href={lectureAnchorHref(question.lectureId, question.anchor)}
       className={buttonVariants({ variant: "secondary" })}
     >
       {question.conceptName ? t.viewInLectureNamed(question.conceptName) : t.viewInLecture}

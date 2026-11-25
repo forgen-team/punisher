@@ -5,7 +5,7 @@ import autoprefixer from "autoprefixer";
 import type { Plugin as PostcssPlugin, Root } from "postcss";
 import tailwindcss from "tailwindcss";
 import { defineConfig } from "vite";
-import { scopeSelector } from "./src/witems/scope";
+import { isShellOwnedDeclaration, scopeSelector } from "./src/witems/scope";
 
 /**
  * Witems app mode build (witems docs/APP-CONTRACT.md): a Module Federation
@@ -15,6 +15,8 @@ import { scopeSelector } from "./src/witems/scope";
  * The app renders inside the shell's Shadow DOM, where :root, html and body
  * never match. scopeToRoot rewrites them to the element mount() marks with
  * .punisher-root (and data-theme), so tokens, dark mode and base styles apply.
+ * Layout variables the shell owns (--app-header-offset …) are dropped so the
+ * shell's values reach the app unchanged.
  */
 function scopeToRoot(): PostcssPlugin {
   return {
@@ -24,6 +26,15 @@ function scopeToRoot(): PostcssPlugin {
         // keyframe steps (from/to/50%) are not selectors
         if (rule.parent?.type === "atrule" && /keyframes$/i.test((rule.parent as { name: string }).name)) { return; }
         rule.selectors = rule.selectors.map(scopeSelector);
+      });
+      root.walkDecls((decl) => {
+        if (isShellOwnedDeclaration(decl.prop)) { decl.remove(); }
+      });
+      root.walkRules((rule) => {
+        if (rule.nodes.length === 0) { rule.remove(); }
+      });
+      root.walkAtRules((rule) => {
+        if (rule.nodes && rule.nodes.length === 0) { rule.remove(); }
       });
     },
   };

@@ -1,5 +1,6 @@
 
 import { useEffect, useRef, type RefObject } from "react";
+import { activeAppElement } from "@/src/shared/lib/dom-root";
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -23,11 +24,13 @@ export function useFocusTrap(
     if (!active) return;
     const container = containerRef.current;
     if (!container) return;
-    const previouslyFocused = document.activeElement as HTMLElement | null;
+    // Shadow DOM 안에서는 document.activeElement 가 호스트다 — 컨테이너가 속한 루트의 activeElement 를 쓴다.
+    const focused = () => activeAppElement(container);
+    const previouslyFocused = focused();
 
     const focusables = () =>
       Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-        (el) => el.offsetParent !== null || el === document.activeElement
+        (el) => el.offsetParent !== null || el === focused()
       );
 
     const initial = container.querySelector<HTMLElement>("[data-autofocus]") ?? focusables()[0] ?? container;
@@ -47,10 +50,10 @@ export function useFocusTrap(
       }
       const first = items[0]!;
       const last = items[items.length - 1]!;
-      if (event.shiftKey && document.activeElement === first) {
+      if (event.shiftKey && focused() === first) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
+      } else if (!event.shiftKey && focused() === last) {
         event.preventDefault();
         first.focus();
       }

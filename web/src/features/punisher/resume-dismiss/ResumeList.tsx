@@ -1,7 +1,7 @@
 import { Link } from "@/src/shared/lib/router";
 import { PlayCircle } from "lucide-react";
 import { Button, List, ListRow, Menu, cn } from "@/src/shared/ui/kit";
-import { groupByParent, isReadThrough, lectureHref, readThroughLabel } from "@/src/entities/punisher";
+import { groupByParent, isReadThrough, lectureAnchorHref, readThroughLabel } from "@/src/entities/punisher";
 import type { Recommendation } from "@/src/shared/api/punisher";
 import { useLocale, useT } from "@/src/shared/i18n";
 import { DeeperGroup } from "@/src/shared/ui/punisher";
@@ -33,7 +33,7 @@ function ResumeRow({ item, onDismiss, dismissing }: ResumeRowProps) {
   const position = resumePosition(item.anchor, locale);
   return (
     <ListRow
-      href={`${lectureHref(item.lectureId)}${item.anchor ? `#pa-${item.anchor}` : ""}`}
+      href={lectureAnchorHref(item.lectureId, item.anchor)}
       linkAs={Link}
       emphasized
       leading={<PlayCircle aria-hidden="true" className="text-accent-text" />}

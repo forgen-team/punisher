@@ -1,6 +1,7 @@
 
 import { useEffect, useState, type RefObject } from "react";
 import { toOverlayAnchor, type OverlayAnchor } from "@/src/shared/ui/punisher";
+import { selectionRangeIn } from "@/src/shared/lib/dom-root";
 
 export interface TextSelectionSnapshot {
   text: string;
@@ -15,12 +16,11 @@ function closestAnchor(node: Node | null): string {
   return el?.closest<HTMLElement>("[data-lecture-anchor]")?.dataset.lectureAnchor ?? "";
 }
 
+/** Shadow DOM 안 선택은 브라우저마다 얻는 방법이 달라 selectionRangeIn 이 맞춰 준다(점검 26). */
 function readSelection(container: HTMLElement): TextSelectionSnapshot | null {
-  const sel = window.getSelection();
-  if (!sel || sel.isCollapsed || sel.rangeCount === 0) { return null; }
-  const range = sel.getRangeAt(0);
-  if (!container.contains(range.commonAncestorContainer)) { return null; }
-  const text = sel.toString().trim();
+  const range = selectionRangeIn(container);
+  if (!range) { return null; }
+  const text = range.toString().trim();
   if (!text) { return null; }
   const rect = range.getBoundingClientRect();
   if (rect.width === 0 && rect.height === 0) { return null; }

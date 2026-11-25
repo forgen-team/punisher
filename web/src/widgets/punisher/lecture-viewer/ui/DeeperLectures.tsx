@@ -5,6 +5,7 @@ import { ArrowLeft, Layers } from "lucide-react";
 import { List, ListRow, Section } from "@/src/shared/ui/kit";
 import { isReadThrough, readThroughLabel } from "@/src/entities/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
+import { lectureAnchorHref } from "@/src/entities/punisher";
 import type { LinkedLecture } from "@/src/shared/api/punisher";
 import { formatDate, getLocale, useLocale, useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
@@ -21,7 +22,7 @@ function progressLabel(l: LinkedLecture, t: T): string {
 /** 심화 강의 상단: "← 원 강의로" (더 깊게 누른 위치로 돌아간다). */
 export function ParentLectureLink({ parent }: { parent: LinkedLecture }) {
   const t = useT(messages);
-  const href = `${lectureHref(parent.id)}${parent.anchor ? `#pa-${parent.anchor}` : ""}`;
+  const href = lectureAnchorHref(parent.id, parent.anchor);
   return (
     <div className="border-b border-line py-1 text-sm">
       <Link href={href} className="inline-flex min-h-touch min-w-0 max-w-full items-center gap-1 text-accent-text">

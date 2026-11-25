@@ -3,16 +3,21 @@ import * as React from "react";
 import { cn } from "../lib/utils";
 import { useT } from "@/src/shared/i18n";
 import { kitMessages } from "../lib/messages";
+import { eventWithin } from "@/src/shared/lib/dom-root";
 import { IconButton } from "./button";
 
 export interface MenuItem {
   key: string;
   label: React.ReactNode;
-  onSelect: () => void;
+  /** 실행 항목. href 가 있으면 이동 항목(링크 — ⌘/Ctrl·가운데 클릭 새 탭) */
+  onSelect?: () => void;
+  href?: string;
   icon?: React.ReactNode;
-  /** 파괴적 동작(삭제 등) — danger 색 */
+  /** 파괴적 동작(삭제 등) — danger 색, 보통 맨 아래 구분선 뒤 */
   danger?: boolean;
   disabled?: boolean;
+  /** 이 항목 앞에 구분선(묶음 나누기: 상태 변경 / 이동·설정 / 위험) */
+  separatorBefore?: boolean;
 }
 
 export interface MenuProps {
@@ -24,6 +29,8 @@ export interface MenuProps {
   /** 트리거 아이콘 교체 (기본 ⋯) */
   icon?: React.ReactNode;
   className?: string;
+  /** href 항목을 그릴 링크 부품(앱 Link). 없으면 <a> */
+  linkAs?: React.ElementType;
 }
 
 function MoreIcon() {
@@ -40,13 +47,13 @@ function MoreIcon() {
  * Menu — 오버플로("⋯") 메뉴. role=menu/menuitem, ↑↓/Home/End, Esc 닫기 후 트리거로 포커스 복귀.
  * 행 안의 보조 동작은 여기에 모은다(행당 노출 버튼 최소화).
  */
-export function Menu({ items, label, align = "end", icon, className }: MenuProps) {
+export function Menu({ items, label, align = "end", icon, className, linkAs }: MenuProps) {
   const t = useT(kitMessages);
   const triggerLabel = label ?? t.more;
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
-  const itemRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
+  const itemRefs = React.useRef<Array<HTMLElement | null>>([]);
   const menuId = React.useId();
 
   const enabledIndexes = React.useMemo(
@@ -67,7 +74,8 @@ export function Menu({ items, label, align = "end", icon, className }: MenuProps
     if (!open) return;
     itemRefs.current[firstEnabledRef.current]?.focus();
     function handlePointerDown(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) close(false);
+      // Witems(Shadow DOM)에서는 document 에서 본 target 이 호스트라 contains 로는 항상 바깥이 된다 — composedPath 로 판정.
+      if (!eventWithin(event, rootRef.current)) close(false);
     }
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
@@ -128,32 +136,61 @@ export function Menu({ items, label, align = "end", icon, className }: MenuProps
             align === "end" ? "right-0" : "left-0"
           )}
         >
-          {items.map((item, index) => (
-            <button
-              key={item.key}
-              ref={(node) => {
-                itemRefs.current[index] = node;
-              }}
-              type="button"
-              role="menuitem"
-              tabIndex={-1}
-              disabled={item.disabled}
-              onKeyDown={(event) => handleMenuKeyDown(event, index)}
-              onClick={() => {
-                close(true);
-                item.onSelect();
-              }}
-              className={cn(
-                "flex min-h-touch w-full items-center gap-2 rounded-md px-2.5 text-left text-sm outline-none md:min-h-8",
-                "hover:bg-canvas-hover focus-visible:bg-canvas-hover disabled:opacity-50",
-                "[&_svg]:h-4 [&_svg]:w-4",
-                item.danger ? "text-danger" : "text-fg"
-              )}
-            >
-              {item.icon ? <span className="inline-flex text-fg-muted">{item.icon}</span> : null}
-              {item.label}
-            </button>
-          ))}
+          {items.map((item, index) => {
+            const itemClass = cn(
+              "flex min-h-touch w-full items-center gap-2 rounded-md px-2.5 text-left text-sm outline-none md:min-h-8",
+              "hover:bg-canvas-hover focus-visible:bg-canvas-hover disabled:opacity-50 aria-disabled:opacity-50",
+              "[&_svg]:h-4 [&_svg]:w-4",
+              item.danger ? "text-danger" : "text-fg"
+            );
+            const body = (
+              <>
+                {item.icon ? <span className="inline-flex text-fg-muted">{item.icon}</span> : null}
+                {item.label}
+              </>
+            );
+            const setRef = (node: HTMLElement | null) => {
+              itemRefs.current[index] = node;
+            };
+            const LinkTag: React.ElementType = linkAs ?? "a";
+            return (
+              <React.Fragment key={item.key}>
+                {item.separatorBefore && index > 0 ? <div role="separator" className="my-1 h-px bg-line" /> : null}
+                {item.href && !item.disabled ? (
+                  <LinkTag
+                    ref={setRef}
+                    href={item.href}
+                    role="menuitem"
+                    tabIndex={-1}
+                    onKeyDown={(event: React.KeyboardEvent) => handleMenuKeyDown(event, index)}
+                    onClick={() => {
+                      close(false);
+                      item.onSelect?.();
+                    }}
+                    className={itemClass}
+                  >
+                    {body}
+                  </LinkTag>
+                ) : (
+                  <button
+                    ref={setRef}
+                    type="button"
+                    role="menuitem"
+                    tabIndex={-1}
+                    disabled={item.disabled}
+                    onKeyDown={(event) => handleMenuKeyDown(event, index)}
+                    onClick={() => {
+                      close(true);
+                      item.onSelect?.();
+                    }}
+                    className={itemClass}
+                  >
+                    {body}
+                  </button>
+                )}
+              </React.Fragment>
+            );
+          })}
         </div>
       ) : null}
     </div>

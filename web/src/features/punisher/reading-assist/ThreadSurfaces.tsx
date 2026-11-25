@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { MessageCircle, X } from "lucide-react";
 import { IconButton, cn, focusRing, useMediaQuery } from "@/src/shared/ui/kit";
+import { eventWithin } from "@/src/shared/lib/dom-root";
 import { ReadingOverlay, toOverlayAnchor } from "@/src/shared/ui/punisher";
 import { useT } from "@/src/shared/i18n";
 import { useReadingThreads } from "./ReadingThreadsProvider";
@@ -255,7 +256,7 @@ export function PassageThreadList() {
     };
     const onPointer = (event: PointerEvent) => {
       const section = sectionRef.current;
-      if (section && event.target instanceof Node && !section.contains(event.target)) { close(); }
+      if (section && !eventWithin(event, section)) { close(); }
     };
     document.addEventListener("keydown", onKey);
     document.addEventListener("pointerdown", onPointer);

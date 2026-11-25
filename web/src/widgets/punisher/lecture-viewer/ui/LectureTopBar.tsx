@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from "rea
 import { Link } from "@/src/shared/lib/router";
 import { useRouter } from "@/src/shared/lib/router";
 import { canGoBack } from "@/src/shared/lib/in-app-history";
+import { getAppElementById } from "@/src/shared/lib/dom-root";
 import { useCollapsingAppHeader } from "@/src/shared/lib/appHeaderCollapse";
 import { ArrowLeft, ListOrdered, MessagesSquare } from "lucide-react";
 import { IconButton, Menu, cn, iconButtonVariants, type MenuItem } from "@/src/shared/ui/kit";
@@ -20,7 +21,7 @@ function useTitleScrolledAway(bar: RefObject<HTMLElement>, title: string): boole
   const [away, setAway] = useState(false);
   useEffect(() => {
     const update = () => {
-      const heading = document.getElementById(LECTURE_TITLE_ID);
+      const heading = getAppElementById(LECTURE_TITLE_ID, bar.current);
       const barEl = bar.current;
       const next = !heading || !barEl ? true : heading.getBoundingClientRect().bottom <= barEl.getBoundingClientRect().bottom;
       setAway((prev) => (prev === next ? prev : next));
@@ -94,7 +95,7 @@ export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, 
           {assistBadge}
         </IconButton>
       )}
-      {menuItems && menuItems.length > 0 && <Menu items={menuItems} label={t.lectureMenu} />}
+      {menuItems && menuItems.length > 0 && <Menu items={menuItems} label={t.lectureMenu} linkAs={Link} />}
     </div>
   );
 }
