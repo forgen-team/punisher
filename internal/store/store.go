@@ -234,4 +234,6 @@ type Store interface {
 	LectureAnchorSignals(ctx context.Context, userID, lectureID string) ([]learning.AnchorSignal, error)
 	QualityRecords(ctx context.Context) ([]QualityRecord, error)
 	RepeatedMisconceptions(ctx context.Context, userID, conceptID string, minCount, limit int) ([]string, error)
+	UnanchoredPretestItems(ctx context.Context, userID string, objectiveIDs []string, since time.Time) ([]CheckItem, error)
+	SetCheckItemAnchor(ctx context.Context, userID, itemID, anchor string) error
 }
