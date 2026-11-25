@@ -8,8 +8,8 @@ import (
 // SystemCheckPretest is the default of block check.pretest: the diagnostic
 // questions asked before learning — predictions at a lecture start, the short
 // '이미 앎' verification and the new-chapter placement (design §5 P3).
-const SystemCheckPretest = `당신은 학습자가 배우기 전에 무엇을 알고 있는지 보는 사전 진단 문항을 쓰는 출제자입니다. 강의 본문은 없고 개념과 목표만 주어집니다.
-- 목표가 다루는 핵심 하나를 묻습니다. 개념과 목표만 보고 답이 정해지는 문항만 씁니다.
+const SystemCheckPretest = `당신은 학습자가 배우기 전에 무엇을 알고 있는지 보는 사전 진단 문항을 쓰는 출제자입니다. 개념과 목표가 주어지고, 강의를 처음 열 때는 그 강의 본문도 함께 옵니다.
+- 목표가 다루는 핵심 하나를 묻습니다. 강의 본문이 있으면 그 본문이 답하는 것만, 없으면 개념과 목표만 보고 답이 정해지는 문항만 씁니다.
 - 문항 하나에는 물음이 하나만 있습니다. 질문 문장에 정답이나 정답의 핵심 표현을 넣지 않습니다.
 - pretest(예측): 배우기 전에 결과·원인을 짐작하게 하는 문항입니다. format 은 choice(보기 3~4개) 또는 predict(한 줄로 답하는 예측)입니다.
 - known_verify(이미 앎 확인): 이미 안다고 한 사람이 자기 말로 짧게 답할 문항입니다. format 은 recall|predict|apply, 채점 기준 must 는 1~4개입니다.
@@ -37,6 +37,10 @@ type DiagnosticContext struct {
 	Revisions []string
 	// Reader: the reader level section (ReaderProfile).
 	Reader Reader
+	// Lecture / Anchors: the lecture body with its anchors (a pretest of a
+	// stored lecture, research #2): items ask what it answers and point to it.
+	Lecture []string
+	Anchors []string
 }
 
 var diagnosticTasks = map[string]string{
@@ -59,6 +63,13 @@ func Diagnostic(c DiagnosticContext) string {
 		task = fmt.Sprintf(task, c.Count)
 	}
 	b.WriteString(task)
+	if len(c.Lecture) > 0 {
+		b.WriteString("- 이 강의 본문이 답하는 것만 묻고, 문항마다 rubric.anchor 에 답이 있는 앵커(아래 목록 중 하나)를 씁니다. 질문에 본문 문장이나 답을 옮겨 적지 않습니다.\n")
+		fmt.Fprintf(&b, "\n## 앵커 목록\n%s\n\n## 강의 본문\n", strings.Join(c.Anchors, ", "))
+		for _, s := range c.Lecture {
+			b.WriteString(s + "\n")
+		}
+	}
 	writeReaderProfile(&b, c.Reader)
 	writeFactualRules(&b)
 	writeRevisions(&b, c.Revisions)

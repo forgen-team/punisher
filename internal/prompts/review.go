@@ -72,25 +72,34 @@ const legacyReviewNote = `
 
 // Review asks a separate reviewer pass to critique a lecture draft.
 func Review(c LectureContext, markup string, set Set) string {
-	return review(c, markup, set, false)
+	return review(c, markup, set, false, ReviewEvidence{})
+}
+
+// ReviewChecked is Review with what the app computed on the draft (SQL runs,
+// recomputed arithmetic, independent solutions, broken links).
+func ReviewChecked(c LectureContext, markup string, set Set, ev ReviewEvidence) string {
+	return review(c, markup, set, false, ev)
 }
 
 // ReviewLegacy is Review for a stored lecture without material blocks (backfill review).
 func ReviewLegacy(c LectureContext, markup string, set Set) string {
-	return review(c, markup, set, true)
+	return review(c, markup, set, true, ReviewEvidence{})
 }
 
-func review(c LectureContext, markup string, set Set, legacy bool) string {
+func review(c LectureContext, markup string, set Set, legacy bool, ev ReviewEvidence) string {
 	var b strings.Builder
 	writeContext(&b, c)
 	b.WriteString("\n## 검수할 강의 초안\n<<<LECTURE\n" + markup + "\nLECTURE>>>\n")
 	b.WriteString(set.Text(BlockReviewTask, c.vars()))
 	writeReaderProfile(&b, c.Reader)
+	b.WriteString(LectureShape(c.Reader.Level, true))
 	writeDepthScope(&b, c.Depth)
 	if legacy {
 		b.WriteString(legacyReviewNote)
 	}
+	writeEvidence(&b, ev)
 	b.WriteString(BlockingRules)
+	b.WriteString(RubricRules())
 	writeFactualRules(&b)
 	return b.String()
 }

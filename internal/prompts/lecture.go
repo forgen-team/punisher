@@ -8,7 +8,7 @@ import (
 )
 
 // Version is recorded in lectures.prompt_version.
-const Version = "punisher-prompts-2026-11-20.2"
+const Version = "punisher-prompts-2026-11-25.1"
 
 // ConceptRef is a concept the prompt may link to.
 type ConceptRef struct {
@@ -114,6 +114,7 @@ func Outline(c LectureContext, set Set) string {
 	writeContext(&b, c)
 	b.WriteString(set.Text(BlockOutlineTask, c.vars()))
 	writeReaderProfile(&b, c.Reader)
+	b.WriteString(LectureShape(c.Reader.Level, false))
 	writeDepthScope(&b, c.Depth)
 	writeFactualRules(&b)
 	return b.String()
@@ -159,6 +160,7 @@ func LectureRevision(c LectureContext, outlineJSON, previous, notes string, set 
 	b.WriteString(RevisionRules)
 	b.WriteString(set.Text(BlockLectureFormat, c.vars()))
 	writeReaderProfile(&b, c.Reader)
+	b.WriteString(LectureShape(c.Reader.Level, false))
 	writeDepthScope(&b, c.Depth)
 	writeFactualRules(&b)
 	return b.String()
@@ -178,6 +180,7 @@ func Lecture(c LectureContext, outlineJSON, revisionNotes string, set Set) strin
 	}
 	b.WriteString(set.Text(BlockLectureFormat, c.vars()))
 	writeReaderProfile(&b, c.Reader)
+	b.WriteString(LectureShape(c.Reader.Level, false))
 	writeDepthScope(&b, c.Depth)
 	writeFactualRules(&b)
 	return b.String()
@@ -328,17 +331,19 @@ func writeRefs(b *strings.Builder, refs []ConceptRef) {
 	}
 }
 
-// StyleHintFor maps recent feedback to a generation adjustment.
+// StyleHintFor maps recent feedback to a generation adjustment: concrete
+// structure (definition count, hand calculations, exercise kinds, paragraph
+// length) rather than tone, so the machine checks can see it was followed.
 func StyleHintFor(feedback string) string {
 	switch feedback {
 	case "too_easy":
-		return "직전 강의가 너무 쉬웠다는 피드백이 있습니다. 기초 정의는 짧게 줄이고 내부 동작·경계 사례·트레이드오프 비중을 늘리세요."
+		return "직전 강의가 너무 쉬웠다는 피드백이 있습니다. 기초 정의는 한 줄로 줄이고, guided 연습은 첫 하나만 두고 나머지는 free·modify·error 로 냅니다. 내부 동작·경계 사례·트레이드오프 비중을 늘리세요."
 	case "too_hard":
-		return "직전 강의가 어려웠다는 피드백이 있습니다. 단계를 더 잘게 나누고, 각 단계마다 구체적인 예와 그림(mermaid)을 붙이세요. 전문 용어는 처음 나올 때 한 줄로 풀어 쓰세요."
+		return "직전 강의가 어려웠다는 피드백이 있습니다. 정의는 3개 이하로 두고 정의마다 바로 작은 값 손계산(@@trace)을 붙이세요. 첫 두 연습은 guided, 문단은 3문장 이하로 씁니다. 전문 용어는 처음 나올 때 한 줄로 풀어 쓰세요."
 	case "insufficient":
-		return "설명이 부족했다는 피드백이 있습니다. 같은 내용을 다른 비유·다른 예제로 한 번 더 보여주세요."
+		return "설명이 부족했다는 피드백이 있습니다. 같은 내용을 다른 예제로 한 번 더 보여 주고, 핵심 규칙 바로 뒤에 why 연습(왜 그런가요?)을 두세요(강의당 2개 이하)."
 	case "want_more":
-		return "더 알고 싶다는 피드백이 있습니다. judgment_next 에서 다음 심화 주제와 연결을 구체적으로 제시하세요."
+		return "더 알고 싶다는 피드백이 있습니다. judgment_next 에서 다음 심화 주제와 연결을 구체적으로 제시하고, 마지막 연습은 한 단계 더 나간 free 문제로 내세요."
 	}
 	return ""
 }

@@ -537,7 +537,7 @@ func RevisionNotes(a Attempt, advisory bool) string {
 	var improve []string
 	switch {
 	case errors.Is(a.ParseErr, lecture.ErrIncomplete):
-		must.WriteString("- [형식] 출력이 @@end 전에 끊겼습니다(출력 한도). 분량 규칙(본문 약 8,500자)을 지켜 줄이고 마지막 줄에 @@end 를 쓰세요.\n")
+		must.WriteString("- [형식] 출력이 @@end 전에 끊겼습니다(출력 한도). 분량 규칙(본문 약 7,000자)을 지켜 줄이고 마지막 줄에 @@end 를 쓰세요.\n")
 	case a.ParseErr != nil:
 		fmt.Fprintf(&must, "- [형식] 마크업을 해석할 수 없습니다: %v. 형식 규칙을 정확히 지키고 마지막 줄에 @@end 를 쓰세요.\n", a.ParseErr)
 	}
