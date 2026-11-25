@@ -25,6 +25,7 @@ export function mount(el: HTMLElement, ctx: AppContext): Unmount {
     setTitle: (title) => ctx.setTitle(title),
     // 구버전 셸에는 setActions 가 없다 — 그때는 undefined 로 두어 앱이 탭 옆 설정 링크로 폴백한다.
     setActions: typeof ctx.setActions === "function" ? (actions) => ctx.setActions?.(actions) : undefined,
+    setCommands: typeof ctx.setCommands === "function" ? (commands) => ctx.setCommands?.(commands) : undefined,
   };
   setWitemsRuntime(runtime);
 
@@ -62,6 +63,7 @@ export function mount(el: HTMLElement, ctx: AppContext): Unmount {
 
   return () => {
     runtime.setActions?.(null);
+    runtime.setCommands?.(null);
     offTheme();
     root.unmount();
     style.remove();

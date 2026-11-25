@@ -1,13 +1,18 @@
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { LocaleSync } from "@/src/entities/punisher";
-import { shellHasActions, witemsRuntime, type ShellAction } from "@/src/shared/config/runtime";
+import { shellHasActions, shellHasCommands, witemsRuntime, type ShellAction } from "@/src/shared/config/runtime";
+import { lectureHref, useStartReview, useToday } from "@/src/entities/punisher";
+import { checkHref } from "@/src/features/punisher/check-start";
+import { describePunisherError } from "@/src/shared/api/punisher";
+import { recommendationHref } from "@/src/widgets/punisher/today";
+import { buildCommands } from "./commands";
 import { useT } from "@/src/shared/i18n";
 import { useTrackInAppNavigation } from "@/src/shared/lib/in-app-history";
 import { actionsSignature, useScreenChrome } from "@/src/shared/lib/screen-chrome";
 import { useSearchShortcut } from "@/src/shared/lib/shortcuts";
 import { useRouter } from "@/src/shared/lib/router";
-import { FeedbackHost, ListSkeleton } from "@/src/shared/ui/kit";
+import { FeedbackHost, ListSkeleton, notify } from "@/src/shared/ui/kit";
 import { ClaudeStatusBanner } from "@/src/widgets/claude-status";
 import { LearnNav } from "@/src/widgets/punisher/nav";
 import { messages } from "@/src/app/i18n";
@@ -25,7 +30,8 @@ export function WitemsShell() {
   const chrome = useScreenChrome();
   const router = useRouter();
   useTrackInAppNavigation();
-  useSearchShortcut(() => router.push("/search"));
+  // ⌘K: 새 셸은 캡처 단계에서 통합 검색을 연다(명령은 setCommands 로 넣는다) — 그때는 앱이 키를 걸지 않는다.
+  useSearchShortcut(() => router.push("/search"), !shellHasCommands());
 
   const pathTitle = useMemo(() => {
     const key = titleKeyFor(pathname);
@@ -51,6 +57,33 @@ export function WitemsShell() {
     sent.current = signature;
     witemsRuntime()?.setActions?.(actions);
   }, [actions]);
+
+  // ⌘K 명령(APP-CONTRACT §3 "명령"): 셸이 setCommands 를 가지면 학습 명령을 넣는다. 구버전 셸이면 아무것도 하지 않는다.
+  const today = useToday();
+  const review = useStartReview();
+  const reviewRef = useRef(review);
+  reviewRef.current = review;
+  const next = (today.data?.items ?? []).find((item) => item.kind !== "resume");
+  const nextTitle = next ? next.conceptName || next.title : "";
+  const nextHref = next ? (next.lectureId ? lectureHref(next.lectureId) : recommendationHref(next.conceptId)) : "";
+  const commands = useMemo(
+    () => buildCommands(t, {
+      next: next ? { title: nextTitle, href: nextHref } : undefined,
+      startReview: () => reviewRef.current.mutate(undefined, {
+        onSuccess: (detail) => router.push(checkHref(detail.session.id)),
+        onError: (err) => notify(describePunisherError(err) || t.noReviews, { variant: "error" }),
+      }),
+    }),
+    [t, next, nextTitle, nextHref, router],
+  );
+  const sentCommands = useRef("");
+  useEffect(() => {
+    if (!shellHasCommands()) { return; }
+    const signature = JSON.stringify(commands.map(({ onSelect, ...rest }) => ({ ...rest, run: Boolean(onSelect) })));
+    if (signature === sentCommands.current) { return; }
+    sentCommands.current = signature;
+    witemsRuntime()?.setCommands?.(commands);
+  }, [commands]);
 
   return (
     <div className="flex min-w-0 flex-col gap-4">

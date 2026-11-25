@@ -18,6 +18,21 @@ export interface AppAction {
   danger?: boolean;
 }
 
+/**
+ * Command for the shell's ⌘K search (contract 1, optional — APP-CONTRACT §3 "명령"). Up to 50, replaced on
+ * every call, null clears; the shell drops invalid ones and clears them when the app leaves. href is basePath-relative.
+ */
+export interface AppCommand {
+  id: string;
+  label: string;
+  group?: string;
+  keywords?: string[];
+  href?: string;
+  onSelect?: () => void;
+  /** display only — the shell binds no key */
+  shortcut?: string;
+}
+
 export interface AppContext {
   contract: 1;
   app: string;
@@ -33,5 +48,7 @@ export interface AppContext {
   setTitle(title: string | null): void;
   /** Optional: older shells don't have it — the app then keeps its own settings link (LearnNav). */
   setActions?(actions: AppAction[] | null): void;
+  /** Optional: ⌘K commands. The shell owns ⌘K (captures it); older shells lack this and the app keeps its own ⌘K. */
+  setCommands?(commands: AppCommand[] | null): void;
   portal: HTMLElement;
 }

@@ -13,6 +13,19 @@ export interface WitemsRuntime {
   setTitle(title: string | null): void;
   /** shell page actions (ctx.setActions) — undefined when the shell predates it */
   setActions?: (actions: ShellAction[] | null) => void;
+  /** shell ⌘K commands (ctx.setCommands) — undefined when the shell predates it */
+  setCommands?: (commands: ShellCommand[] | null) => void;
+}
+
+/** Same shape as the contract's AppCommand (witems/contract.ts). */
+export interface ShellCommand {
+  id: string;
+  label: string;
+  group?: string;
+  keywords?: string[];
+  href?: string;
+  onSelect?: () => void;
+  shortcut?: string;
 }
 
 /** Same shape as the contract's AppAction (witems/contract.ts) — kept here so shared code doesn't import the mount. */
@@ -43,6 +56,11 @@ export function witemsRuntime(): WitemsRuntime | null {
 /** Does the shell draw page actions (ctx.setActions)? Standalone and older shells: false. */
 export function shellHasActions(): boolean {
   return typeof runtime?.setActions === "function";
+}
+
+/** Does the shell take ⌘K commands (ctx.setCommands)? Then the shell owns ⌘K and the app must not bind it. */
+export function shellHasCommands(): boolean {
+  return typeof runtime?.setCommands === "function";
 }
 
 /** API base without a trailing slash: "/v1" standalone, "/apps-api/punisher/v1" in Witems. */

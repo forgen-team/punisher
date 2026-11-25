@@ -36,11 +36,15 @@ export function useStudyShortcuts(map: Record<string, (() => void) | undefined>,
   return on;
 }
 
-/** ⌘K / Ctrl+K → 학습 자료 검색(셸 둘 다). 단축키 설정과 무관(조합키라 입력과 겹치지 않는다). */
-export function useSearchShortcut(open: () => void) {
+/**
+ * ⌘K / Ctrl+K → 학습 자료 검색. 단독판, 그리고 setCommands 가 없는 구버전 Witems 셸에서만(새 셸은 ⌘K 를 캡처해
+ * 통합 검색을 연다 — enabled=false). 단축키 설정과 무관(조합키라 입력과 겹치지 않는다).
+ */
+export function useSearchShortcut(open: () => void, enabled = true) {
   const latest = useRef(open);
   latest.current = open;
   useEffect(() => {
+    if (!enabled) { return undefined; }
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -49,5 +53,5 @@ export function useSearchShortcut(open: () => void) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [enabled]);
 }

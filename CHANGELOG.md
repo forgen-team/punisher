@@ -22,6 +22,7 @@
 - **학습 자료 검색**(/search, ⌘/Ctrl+K): 강의 섹션·메모·강의 중 질문·질문 해설 전문 검색(SQLite FTS5).
 - **오프라인 읽기**(단독판): 한 번 연 강의·해설·오늘 카드는 Mac 이 잠들어도 폰에서 읽을 수 있어요.
 - **복습 알림**(단독판 macOS): 정한 시각에 하루 한 번(쉬는 날 없음, 기본 끔). Witems 에서는 '강의' 탭 숫자로 알려요.
+- Witems: ⌘K 통합 검색에 학습 명령(오늘·지도·기록·다음 강의·복습 시작·카드·검색·설정 등)을 넣어요.
 
 English: Undo toasts for completing a lecture, "I already know this", "not needed" and stopping a check (three new undo endpoints, no schema change); in-app confirm dialogs (Cancel focused) instead of browser ones; drafts kept on this device and a warning before leaving unsaved prompt edits; screens live in the URL (recommendation sheet, history chips and filters, map sheet, prompt block) and tabs, chips and rows are real links; lecture anchors use `?at=`. Inside Witems the app works in the Shadow DOM (anchors, menus, focus, selection), leaves the shell's layout variables alone, hands its settings and navigation entries to the shell (`ctx.setActions`, with a fallback for older shells) and titles screens with the lecture title.
 

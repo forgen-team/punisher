@@ -61,6 +61,9 @@ nginx(Witems)가 `/apps-static/punisher/X` → `/static/X`, `/apps-api/punisher/
 - 화면 제목·← 는 셸이 그린다: Witems 모드에서 앱은 본문 h1(강의·해설 제목, 설정 제목)과 자기 ←(`BackLink`, 강의 상단 바 ←·제목)를 그리지 않는다.
 - API 의 401 은 "세션 없음"에만 쓴다(셸이 `/login?redirect=` 로 보낸다). 오너가 아닌 계정은 403, 로그인 확인 서버 장애는 503,
   AI 제공자 인증 실패(CLI·gateway 의 401)는 503 `GEN_UNAVAILABLE`, 그 밖의 AI 실패는 502(`handlers/status_codes_test.go`).
+- ⌘K 명령: 셸이 `ctx.setCommands` 를 가지면 WitemsShell 이 학습 명령(오늘·지도·기록·오늘의 다음 강의·복습 시작·복습 카드·학습 자료 검색·
+  다음 챕터·목표·기한·강의 프롬프트·학습 설정, `witems/commands.ts`)을 넣고 앱은 ⌘K 를 걸지 않는다(셸이 캡처 단계에서 통합 검색을 연다).
+  없는 구버전 셸이면 명령은 넣지 않고 앱의 ⌘K(학습 자료 검색)를 그대로 둔다. 단독판은 늘 앱의 ⌘K.
 - 오프라인 읽기(서비스 워커 `web/public/sw.js`)는 **단독판만** 켠다(`main.tsx` 가 등록, Witems 는 `mount.tsx` 로 들어와 등록하지 않는다).
   이유: 서비스 워커의 범위는 스크립트가 있는 경로 아래로만 넓힐 수 있어, `/apps-static/punisher/sw.js` 는 화면 묶음만 덮고
   `/apps/punisher/…` 화면 이동과 `/apps-api/punisher/…` API 를 덮지 못한다(오프라인 읽기가 되지 않는다). 셸 출처 루트에 등록하면
