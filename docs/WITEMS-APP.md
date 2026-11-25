@@ -51,6 +51,14 @@ nginx(Witems)가 `/apps-static/punisher/X` → `/static/X`, `/apps-api/punisher/
 - API 주소는 `punisherApiBase()` 로 만든다(`/v1` 을 직접 쓰지 않는다).
 - `<html>`(lang·data-theme)은 셸의 것이다 — 앱 모드에서 쓰지 않는다(읽기는 된다).
 - Witems 의 다른 화면(RSS 등)으로 가는 링크는 일반 `<a href>`(앱 라우터를 거치지 않음).
+- 화면은 Shadow DOM 안이다. `document.getElementById`·`querySelector`·`document.activeElement` 대신 `shared/lib/dom-root`
+  (`getAppElementById`·`queryApp(All)`·`activeAppElement`)를, document 에 단 리스너의 안/밖 판정은 `eventWithin`(composedPath)을,
+  선택 글자는 `selectionRangeIn` 을 쓴다(`shared/lib/__tests__/shadowDom.test.tsx`).
+- `window.location`(hash 포함)은 셸 주소다 — 앱 주소는 라우터(`useLocation`)로 읽고, 강의 안 자리는 `?at=<앵커>`(`lectureAnchorHref`).
+- 셸 레이아웃 변수(`--app-header-offset`·`--app-bottom-offset`·`--app-topbar-h`)는 셸 것을 쓴다 — Witems 빌드가 앱 CSS 의 정의를 뺀다(`witems/scope.ts`).
+- 화면 제목은 `useScreenTitle`, 페이지 동작(이동·설정)은 `usePageActions`(`shared/lib/screen-chrome`). WitemsShell 이 `ctx.setTitle`·`ctx.setActions` 로
+  보낸다(동작 끝에 '학습 설정', kind `settings`). `ctx.setActions` 가 없는 구버전 셸이면 보내지 않고 탭 옆 설정 링크·강의 ⋯ 메뉴의 이동 항목으로 폴백한다.
+- 확인은 `confirmAction`, 되돌리기는 `notifyUndo`(`shared/ui/kit` feedback — `FeedbackHost` 가 portal 에 그림). `window.confirm`·`alert` 는 쓰지 않는다.
 
 ## 처음 옮길 때 (Witems PostgreSQL → SQLite, 한 번)
 

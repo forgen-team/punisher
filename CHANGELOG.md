@@ -1,5 +1,18 @@
 # 바뀐 점
 
+## 다음 버전 (작업 중)
+
+- **되돌리기**: 강의 완료·이미 앎·필요 없음·확인 그만하기를 누르면 화면 아래(넓은 화면은 오른쪽 위)에 '되돌리기' 알림이 떠요(마우스를 올리거나 포커스가 있으면 사라지지 않아요). 서버에 되돌리기 API 3개(`DELETE /v1/lectures/{id}/complete`, `DELETE /v1/concepts/{id}/known`, `POST /v1/checks/{id}/resume`)를 더했어요 — DB 변경 없음.
+- 삭제·답한 문항을 닫는 그만하기·프롬프트 기본값으로·해설 다시 만들기는 앱 안 확인 창으로 물어요(기본 포커스는 '취소').
+- 프롬프트 편집·궁금한 것 입력·다음 챕터 고르기의 쓰던 내용은 이 기기에 초안으로 남고, 저장하지 않은 프롬프트 편집이 있으면 다른 화면으로 가기 전에 물어요.
+- 화면이 주소에 남아요: 오늘의 추천 상세(`?rec=`), 기록 칩·필터·검색, 지도 개념 시트, 프롬프트 블록. 탭·칩·추천 행은 링크라 ⌘/Ctrl·가운데 클릭으로 새 탭에 열려요. 탭은 화살표로 포커스만 옮기고 Enter/Space 로 열며, 다른 탭에 갔다 오면 그 탭의 마지막 화면·스크롤로 돌아가요.
+- 강의 안 자리 링크가 `#pa-…` 대신 `?at=…` 예요(옛 링크도 열려요).
+- 오늘 화면 시간 줄: "오늘 할 일 약 29분: 강의 20 · 확인 7 · 복습 2" + 하루 학습량 설정 링크. 지도는 일부만 보일 때 '전체 보기', 기초 개념은 왜 숨었는지(설명 수준 설정) 보여요. 기록 칩 줄이 넘치면 끝이 흐려져요.
+- 강의를 완료하면 '오늘의 다음 강의'로 이어지고, 설정은 저장하는 동안에도 다른 칸을 바꿀 수 있어요. 처음 설정 창은 X 로 닫으면 2주 동안 다시 뜨지 않아요. 데이터 내보내기가 실패하면 앱 안에서 알려요.
+- Witems 앱 모드: Shadow DOM 안에서 본문 자리 찾기·⋯ 메뉴 항목 클릭·포커스 가두기·드래그 선택이 맞게 동작해요. 셸 여백 변수를 덮어쓰지 않고, 셸 뒤로/앞으로에 맨 위로 튀지 않아요. 학습 설정·이동 항목은 셸의 페이지 동작(`ctx.setActions`, 없는 구버전 셸은 탭 옆 링크)으로, 화면 제목은 강의 제목 등으로. 테마·로컬 AI CLI 안내·제공자 선택은 숨겨요.
+
+English: Undo toasts for completing a lecture, "I already know this", "not needed" and stopping a check (three new undo endpoints, no schema change); in-app confirm dialogs (Cancel focused) instead of browser ones; drafts kept on this device and a warning before leaving unsaved prompt edits; screens live in the URL (recommendation sheet, history chips and filters, map sheet, prompt block) and tabs, chips and rows are real links; lecture anchors use `?at=`. Inside Witems the app works in the Shadow DOM (anchors, menus, focus, selection), leaves the shell's layout variables alone, hands its settings and navigation entries to the shell (`ctx.setActions`, with a fallback for older shells) and titles screens with the lecture title.
+
 ## v0.10.0 (2026-11-20)
 
 실행하면 DB 가 자동으로 업그레이드됩니다(마이그레이션 018~022, 기존 강의·진도·복습은 그대로).

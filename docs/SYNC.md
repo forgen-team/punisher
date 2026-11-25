@@ -155,6 +155,10 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | `web/src/widgets/punisher/chapter-picker/ui/BackToLearnLink.tsx` | `DesktopBackLink` 대신 단독판 `BackLink`(모든 폭) | 단독판 셸 상단 바에 ← 없음 |
 | `internal/store/sqlite_locale.go` `userLocaleSQL`, `internal/config/locale.go` | 설정을 저장한 적 없는 사용자의 locale = `store.SetDefaultLocale`(OS 로캘·`PUNISHER_LOCALE`), SQL 은 표지 치환. witems 는 `'ko'` 고정 | 설계 L2 |
 | `web/src/styles/brand.css`, `web/src/shared/ui/brand/*`, `assets/*`, `web/public/*` | forgen 패밀리 브랜딩(오렌지 액센트·로고) | 단독판 정체성. `design-tokens.css` 는 witems 원본 그대로 두고 `brand.css` 에서 액센트만 덮어쓴다 |
+| `internal/store/sqlite_undo.go`, `internal/http/handlers/undo.go`, `internal/services/check_session.go` `ResumeCheck`, `store.go` 인터페이스 3줄, `router.go` 3줄 | 되돌리기 API(`DELETE /lectures/{id}/complete`, `DELETE /concepts/{id}/known`, `POST /checks/{id}/resume`). witems 모노레포에는 아직 없음 | Witems 화면 배치 규칙 §5(되돌릴 수 있는 동작은 되돌리기 알림) — 이 저장소가 Witems 앱 모드 컨테이너이기도 해서 먼저 넣음. 모노레포에 들어가면 SQL 만 PostgreSQL 로 |
+| `web/src/shared/lib/{dom-root,drafts,leave-guard,screen-chrome,in-app-history}.ts`, `shared/ui/kit/components/{feedback,scroll-row}.tsx`, `chip.tsx` `ChipLink`, `menu.tsx` href·구분선, `segmented-tabs.tsx` 링크·화살표 포커스만 | Shadow DOM 헬퍼·초안 보관·이동 경고·화면 머리(제목·페이지 동작)·확인 창·되돌리기 알림. `in-app-history` 는 횟수 대신 방문 줄(index) | fix/witems-ux-complete(Witems UI-PAGE-LAYOUT·점검 31건). witems 판에 같은 문제가 있으면 이 파일들을 가져간다 |
+| `web/src/widgets/punisher/today/lib/sessionTime.ts`, `today/i18n.ts` `session*` | "오늘 할 일 약 29분: 강의 20 · 확인 7 · 복습 2"(witems 는 "강의 약 20분 + …") | 운영 관찰 P1 — 합계가 무엇의 합인지 |
+| `web/src/witems/*`, `web/vite.witems.config.ts` | `ctx.setActions`(선택) 사용·폴백, 셸 레이아웃 변수 제거, 셸 이동 표지(`SHELL_NAV_STATE`) | 단독판 저장소에만 있는 앱 모드 |
 
 ## 앞으로 들어올 것
 
