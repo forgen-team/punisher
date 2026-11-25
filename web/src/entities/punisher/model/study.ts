@@ -48,8 +48,9 @@ export function useLeechAction() {
   });
 }
 
+// 오늘 ~ +14일(15칸) — 날짜 축 라벨이 +14 까지 간다.
 export function useReviewForecast() {
-  return useQuery({ queryKey: studyKeys.forecast(), queryFn: () => studyApi.forecast(14), ...punisherQueryDefaults });
+  return useQuery({ queryKey: studyKeys.forecast(), queryFn: () => studyApi.forecast(15), ...punisherQueryDefaults });
 }
 
 export function useActivity() {
