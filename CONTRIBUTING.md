@@ -86,7 +86,8 @@ machines (they re-check it), so prefer adding objectives over rewording them.
   `testdata/golden.json` (`-update` after a reviewed rule change);
   `punisher quality score [files]` and `punisher quality compare a.json b.json`
   run the same rubric offline, `punisher quality db` summarizes the stored
-  review scores per prompt version. SQL examples run only in an in-process
+  review scores per prompt version and `punisher quality gaps` compares the
+  reviewer's reader gaps with the blocks learners asked about or opened terms from. SQL examples run only in an in-process
   `:memory:` SQLite with an allow-list — never through a shell or interpreter.
 - Lab commands shown in lectures must pass `lecture.CheckLabCommand`
   (single read-only command, allow-listed tools and flags). Extend the policy
