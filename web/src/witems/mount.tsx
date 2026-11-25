@@ -19,7 +19,13 @@ const ROOT_CLASS = ROOT_SELECTOR.slice(1);
  * tokens and dark mode apply to both.
  */
 export function mount(el: HTMLElement, ctx: AppContext): Unmount {
-  const runtime: WitemsRuntime = { apiBase: ctx.apiBase, portal: ctx.portal, setTitle: (title) => ctx.setTitle(title) };
+  const runtime: WitemsRuntime = {
+    apiBase: ctx.apiBase,
+    portal: ctx.portal,
+    setTitle: (title) => ctx.setTitle(title),
+    // 구버전 셸에는 setActions 가 없다 — 그때는 undefined 로 두어 앱이 탭 옆 설정 링크로 폴백한다.
+    setActions: typeof ctx.setActions === "function" ? (actions) => ctx.setActions?.(actions) : undefined,
+  };
   setWitemsRuntime(runtime);
 
   const style = document.createElement("style");
@@ -55,6 +61,7 @@ export function mount(el: HTMLElement, ctx: AppContext): Unmount {
   );
 
   return () => {
+    runtime.setActions?.(null);
     offTheme();
     root.unmount();
     style.remove();

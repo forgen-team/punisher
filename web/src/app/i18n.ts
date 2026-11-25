@@ -15,6 +15,7 @@ export const messages = defineMessages({
     titleInstant: "즉석 강의 생성 중",
     titlePrompts: "강의 프롬프트",
     titleSettings: "설정",
+    learnSettings: "학습 설정",
   },
   en: {
     home: "Punisher home",
@@ -29,5 +30,6 @@ export const messages = defineMessages({
     titleInstant: "Writing an instant lecture",
     titlePrompts: "Lecture prompts",
     titleSettings: "Settings",
+    learnSettings: "Learning settings",
   },
 });

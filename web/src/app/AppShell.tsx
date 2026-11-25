@@ -3,7 +3,8 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useTrackInAppNavigation } from "@/src/shared/lib/in-app-history";
 import { Settings } from "lucide-react";
 import { Link } from "@/src/shared/lib/router";
-import { ListSkeleton, cn, focusRing } from "@/src/shared/ui/kit";
+import { FeedbackHost, ListSkeleton, cn, focusRing } from "@/src/shared/ui/kit";
+import { useScreenChrome } from "@/src/shared/lib/screen-chrome";
 import { LearnNav } from "@/src/widgets/punisher/nav";
 import { ClaudeStatusBanner } from "@/src/widgets/claude-status";
 import { BrandMark } from "@/src/shared/ui/brand";
@@ -12,11 +13,13 @@ import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 import { titleKeyFor } from "./titles";
 
+/** 문서 제목: 화면이 정한 구체적인 제목(강의 제목 등) → 없으면 경로별 제목. */
 function useDocumentTitle(pathname: string) {
   const t = useT(messages);
+  const { title } = useScreenChrome();
   useEffect(() => {
-    document.title = `${t[titleKeyFor(pathname)]} · Punisher`;
-  }, [pathname, t]);
+    document.title = `${title ?? t[titleKeyFor(pathname)]} · Punisher`;
+  }, [pathname, t, title]);
 }
 
 /**
@@ -29,7 +32,7 @@ export function AppShell() {
   const { pathname } = useLocation();
   const t = useT(messages);
   useDocumentTitle(pathname);
-  useTrackInAppNavigation(pathname);
+  useTrackInAppNavigation();
   const onSettings = pathname.startsWith("/settings");
 
   return (
@@ -66,6 +69,7 @@ export function AppShell() {
           </Suspense>
         </div>
       </main>
+      <FeedbackHost />
     </div>
   );
 }

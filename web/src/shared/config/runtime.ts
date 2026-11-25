@@ -11,6 +11,19 @@ export interface WitemsRuntime {
   portal: HTMLElement;
   /** shell top-bar title (null = the app's title) */
   setTitle(title: string | null): void;
+  /** shell page actions (ctx.setActions) — undefined when the shell predates it */
+  setActions?: (actions: ShellAction[] | null) => void;
+}
+
+/** Same shape as the contract's AppAction (witems/contract.ts) — kept here so shared code doesn't import the mount. */
+export interface ShellAction {
+  id: string;
+  label: string;
+  icon?: string;
+  href?: string;
+  onSelect?: () => void;
+  kind?: "default" | "settings";
+  danger?: boolean;
 }
 
 let runtime: WitemsRuntime | null = null;
@@ -25,6 +38,11 @@ export function isWitems(): boolean {
 
 export function witemsRuntime(): WitemsRuntime | null {
   return runtime;
+}
+
+/** Does the shell draw page actions (ctx.setActions)? Standalone and older shells: false. */
+export function shellHasActions(): boolean {
+  return typeof runtime?.setActions === "function";
 }
 
 /** API base without a trailing slash: "/v1" standalone, "/apps-api/punisher/v1" in Witems. */

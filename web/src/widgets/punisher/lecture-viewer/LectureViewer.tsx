@@ -1,14 +1,14 @@
 
 import { Link } from "@/src/shared/lib/router";
-import { useRouter } from "@/src/shared/lib/router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useAtom } from "jotai";
 import { ArrowLeft } from "lucide-react";
 import { Button, EmptyState, ErrorState, ListSkeleton, type MenuItem } from "@/src/shared/ui/kit";
-import { lectureBookmarkAtom, useConceptDetail, useLecture, useLectureExercises, useLectureLinks, useMastery, usePrompts } from "@/src/entities/punisher";
+import { lectureAnchorHref, lectureBookmarkAtom, useConceptDetail, useLecture, useLectureExercises, useLectureLinks, useMastery, usePrompts } from "@/src/entities/punisher";
+import { shellHasActions } from "@/src/shared/config/runtime";
+import { usePageActions, useScreenTitle, type PageAction } from "@/src/shared/lib/screen-chrome";
 import { ExerciseProvider } from "@/src/features/punisher/lecture-exercise";
 import { CheckStartButton, CheckStartError, KnownVerifyChoice, useKnownChoice, useLaunchCheck } from "@/src/features/punisher/check-start";
-import { lectureHref } from "@/src/features/punisher/instant-start";
 import { useLectureProgress } from "@/src/features/punisher/lecture-progress";
 import { PretestPanel, usePretest } from "@/src/features/punisher/pretest";
 import { ReadingAssist, ReadingThreadsProvider, ThreadCountBadge } from "@/src/features/punisher/reading-assist";
@@ -37,11 +37,13 @@ import { useT } from "@/src/shared/i18n";
 /**
  * 강의 뷰어(모바일 우선): 고정 상단 바(목차·질문/메모 시트·⋯) → 제목·메타 → 접힌 목표/범위 → 본문.
  * 넓은 화면 배치는 LectureLayout(lg 접은 목차 · xl 보조 열 · 2xl 펼친 목차). 진도는 스크롤 앵커로 저장·복원된다.
+ * ⋯ 메뉴: 이 강의의 상태를 바꾸는 본문 동작(완료·확인·이미 앎·피드백·더 깊은 강의·고칠 점·다시 만들기).
+ * 이동·설정(지도에서 보기·강의 프롬프트)은 페이지 동작 — Witems 셸이 그리면(ctx.setActions) 셸 ⋯ 로 넘기고,
+ * 단독판·구버전 셸이면 같은 ⋯ 메뉴 아래 구분선 뒤에 링크로 둔다(UI-PAGE-LAYOUT §1, 점검 21).
  */
 const NO_FIXES: SectionFix[] = [];
 
 export function LectureViewer({ lectureId }: { lectureId: string }) {
-  const router = useRouter();
   const t = useT(messages);
   const lectureQuery = useLecture(lectureId);
   const lecture = lectureQuery.data;
@@ -53,7 +55,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
   const [bookmark, setBookmark] = useAtom(lectureBookmarkAtom);
   const { getAnchor, saveNow } = useLectureProgress(lectureId, lecture?.progress, Boolean(content));
   const knownChoice = useKnownChoice();
-  const actions = useLectureActions(lectureId, lecture?.conceptId ?? "", Boolean(lecture?.progress?.completedAt), knownChoice);
+  const actions = useLectureActions(lectureId, lecture?.conceptId ?? "", Boolean(lecture?.progress?.completedAt), knownChoice, concept.data?.userState);
   const [tocOpen, setTocOpen] = useState(false);
   const [assistOpen, setAssistOpen] = useState(false);
   const wrapupRef = useRef<HTMLElement>(null);
@@ -84,6 +86,20 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
   const terms = useMemo(() => (content ? extractLectureTerms(content) : []), [content]);
   const anchorKey = useMemo(() => (content?.sections ?? []).map((s) => s.anchor).filter(Boolean).join("|"), [content]);
   const activeAnchor = useActiveSection(anchorKey);
+  // 화면 제목은 강의 제목(셸 상단 바·문서 제목 — 점검 22).
+  useScreenTitle(content?.title ?? lecture?.title);
+  const shellActions = shellHasActions();
+  const conceptId = lecture?.conceptId ?? "";
+  const pageActions = useMemo<PageAction[]>(
+    () => (conceptId
+      ? [
+          { id: "map", label: t.menuMap, icon: "map", href: `/map?concept=${encodeURIComponent(conceptId)}` },
+          { id: "prompts", label: t.menuPrompts, icon: "scroll-text", href: "/settings/prompts" },
+        ]
+      : []),
+    [conceptId, t.menuMap, t.menuPrompts],
+  );
+  usePageActions(shellActions && pageActions.length > 0 ? pageActions : null);
 
   if (lectureQuery.isLoading) {
     return (
@@ -115,7 +131,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
   const newerVersion = latestPublished(regenerated);
   // 서버에 기록된 원 강의가 있으면 그것을, 없으면(이전 데이터) 세션 북마크를 쓴다.
   const showReturn = !parentLecture && bookmark && bookmark.lectureId !== lectureId;
-  const returnHref = bookmark ? `${lectureHref(bookmark.lectureId)}#pa-${bookmark.anchor}` : "";
+  const returnHref = bookmark ? lectureAnchorHref(bookmark.lectureId, bookmark.anchor) : "";
 
   const menuItems: MenuItem[] = [
     { key: "complete", label: actions.done ? t.menuCompleted : t.menuComplete, disabled: actions.done || actions.complete.isPending, onSelect: actions.markComplete },
@@ -147,21 +163,13 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
     ...(lecturePromptEdited
       ? [{ key: "regenerate", label: t.menuRegenerate, onSelect: () => setRegenOpen(true) }]
       : []),
-    {
-      key: "prompts",
-      label: t.menuPrompts,
-      onSelect: () => router.push("/settings/prompts"),
-    },
-    {
-      key: "example-language",
-      label: t.menuExampleLanguage,
-      onSelect: () => router.push("/settings"),
-    },
-    {
-      key: "map",
-      label: t.menuMap,
-      onSelect: () => router.push(`/map?concept=${encodeURIComponent(lecture.conceptId)}`),
-    },
+    // 셸이 페이지 동작을 그리지 않으면 이동·설정 링크를 구분선 뒤에 둔다.
+    ...(shellActions
+      ? []
+      : [
+          ...pageActions.map((a, i) => ({ key: a.id, label: a.label, href: a.href, separatorBefore: i === 0 })),
+          { key: "example-language", label: t.menuExampleLanguage, href: "/settings" },
+        ]),
   ];
 
   return (
