@@ -89,6 +89,11 @@ func askTurn(d models.CheckDetail, itemID string) models.CheckTurn {
 func TestReviewSelfAndTutor(t *testing.T) {
 	s, fake, user, f := checkService(t)
 	ctx := context.Background()
+	// 이 테스트는 상자 간격(+7일)을 본다 — FSRS 혼합(W5a 기본값)은 store 테스트가 따로 본다.
+	ladder := learning.MemoryModelLadder
+	if _, err := s.Store.(*store.SQLiteStore).UpdateStudyPrefs(ctx, user, store.StudyPrefsPatch{MemoryModel: &ladder}); err != nil {
+		t.Fatal(err)
+	}
 	checkBoth(t, s, fake, user, f)
 	if sum, err := s.ReviewSummary(ctx, user); err != nil || sum.Due != 0 || sum.Today != nil {
 		t.Fatalf("nothing due right after the check: %+v %v", sum, err)

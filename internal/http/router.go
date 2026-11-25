@@ -166,6 +166,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Get("/reviews/summary", learn.ReviewSummary)
 		r.Post("/misconceptions", learn.AcknowledgeMisconception)
 		r.Get("/misconceptions", learn.ListMisconceptions)
+		registerStudyRoutes(r, deps)
 	})
 
 	if deps.App != nil {

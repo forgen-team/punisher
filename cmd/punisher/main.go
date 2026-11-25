@@ -36,6 +36,7 @@ import (
 	"github.com/forgen-team/punisher/internal/llm"
 	"github.com/forgen-team/punisher/internal/middleware"
 	"github.com/forgen-team/punisher/internal/phone"
+	"github.com/forgen-team/punisher/internal/reminder"
 	"github.com/forgen-team/punisher/internal/scheduler"
 	"github.com/forgen-team/punisher/internal/services"
 	"github.com/forgen-team/punisher/internal/store"
@@ -282,6 +283,10 @@ func run(cfg config.Config) error {
 	if cfg.SchedulerEnabled {
 		sched := &scheduler.Scheduler{Svc: svc, Interval: cfg.SchedulerInterval, InitialDelay: 2 * time.Minute}
 		go sched.Run(schedCtx)
+	}
+	// 복습 알림(설정 > 학습에서 켬): 단독판 macOS 만. Witems 앱 모드는 앱이 보낼 알림 경로가 없어 앱 안 배지만 쓴다.
+	if !app.Enabled && runtime.GOOS == "darwin" {
+		go reminder.Run(schedCtx, st, middleware.LocalUserID, func(ctx context.Context) string { return st.LocaleFor(ctx, middleware.LocalUserID) }, reminder.MacNotify)
 	}
 
 	serveErr := make(chan error, 1)

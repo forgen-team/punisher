@@ -18,7 +18,8 @@ import (
 var reviewScope = `
 	JOIN objectives o ON o.id = m.objective_id AND o.status = 'active'
 	JOIN concepts c ON c.id = m.concept_id AND c.status <> 'retired' AND ` + visibleTo("c", "$1") + `
-	  AND NOT ` + conceptDismissedSQL("m.concept_id", "$1")
+	  AND NOT ` + conceptDismissedSQL("m.concept_id", "$1") + `
+	  AND NOT ` + suspendedSQL("m.objective_id", "$1")
 
 // ReviewQueue returns the user's due objectives (design §5 P2): reviewed by
 // now, not waiting (queued), not graduated, on an active concept/objective.

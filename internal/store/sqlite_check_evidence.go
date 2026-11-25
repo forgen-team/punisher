@@ -155,6 +155,10 @@ func applyItemEvidence(ctx context.Context, c conn, f ItemFinish) (ResultEntry, 
 			next.Ease = learning.UpdateEase(prev.Ease, prev, next, entry.Outcome, f.Confidence)
 		}
 		m = learning.QueueEntry(prev, next, f.Hold)
+		// FSRS 기억 상태·누적 실패(반복 실패 표시)를 옮기고, FSRS 를 쓰면 복습 날짜를 다시 잡는다(W5a).
+		if m, err = applyMemory(ctx, c, f.UserID, f.Item.ObjectiveID, entry.Outcome, m, f.Now); err != nil {
+			return entry, grade, err
+		}
 		if updated, err = saveMastery(ctx, c, f.UserID, f.Item.ObjectiveID, f.Turn.Grader, m, f.Turn.ID); err != nil {
 			return entry, grade, err
 		}
