@@ -43,6 +43,9 @@ type Store interface {
 	SetConceptState(ctx context.Context, userID, conceptID, requested string) (string, error)
 	UpdateProgress(ctx context.Context, userID, lectureID, anchor string, percent int) error
 	CompleteLecture(ctx context.Context, userID, lectureID string) (CompleteResult, error)
+	// undo of 완료 / 이미 앎 (sqlite_undo.go)
+	UncompleteLecture(ctx context.Context, userID, lectureID string) (CompleteResult, error)
+	UndoKnown(ctx context.Context, userID, conceptID, previous string) (string, error)
 	InsertFeedback(ctx context.Context, userID, lectureID, feedback, anchor, comment, altRequestID string) (string, error)
 	LatestFeedback(ctx context.Context, userID string) (string, error)
 	DismissLecture(ctx context.Context, userID, lectureID string) error
@@ -162,6 +165,7 @@ type Store interface {
 	LoadCheckSnapshot(ctx context.Context, userID, id string) (CheckSnapshot, error)
 	ActivateCheckSession(ctx context.Context, userID, id string, itemIDs []string, ask TurnWrite) (models.CheckSession, error)
 	SetCheckSessionStatus(ctx context.Context, userID, id string, from []string, to, errMsg string) error
+	ResumeCheckSession(ctx context.Context, userID, id string, since time.Time) error
 	SweepStaleChecks(ctx context.Context, turnAge, prepareAge, abandonAge time.Duration) (int64, error)
 	SweepStaleChecksFor(ctx context.Context, userID string, turnAge, prepareAge, abandonAge time.Duration) (int64, error)
 	CountPendingChecks(ctx context.Context, userID string) (int, error)
