@@ -32,7 +32,10 @@ import (
 //	{"caption":"…","columns":["단계","값"],"rows":[["1","…"],["2","…"]]}
 //	@@pause
 //	다음 출력에서 무엇이 보일까요?
-//	@@exercise / @@answer / @@summary  (마크다운)
+//	@@exercise kind=guided / @@answer / @@summary  (마크다운)
+//	@@recall objective=os.process#1
+//	방금 읽은 내용에서 … 무엇인가요?
+//	떠올릴 것: 좋은 회상에 들어갈 내용
 //	@@chart, @@diff lang=sql            (본문 JSON 하나 — structured.go)
 //	@@sources
 //	- [fork(2)](https://man7.org/linux/man-pages/man2/fork.2.html)
@@ -177,8 +180,11 @@ func (p *parser) openBlock(kind string, attrs map[string]string) {
 		if b.Lang == "" && (kind == BlockCode || kind == BlockLog || kind == BlockDiff) {
 			b.Lang = attrs["_"]
 		}
-		if kind == BlockKeypoint {
+		if kind == BlockKeypoint || kind == BlockExercise {
 			b.Kind = attrs["kind"]
+		}
+		if kind == BlockRecall {
+			b.Objective = attrs["objective"]
 		}
 		if kind == BlockLab {
 			b.Kind = attrs["os"]
@@ -221,7 +227,7 @@ func (p *parser) flushBlock() {
 // proseBlocks keep their text trimmed (markdown or a single line).
 var proseBlocks = map[string]bool{
 	BlockMarkdown: true, BlockMisconception: true, BlockTerm: true, BlockKeypoint: true,
-	BlockPause: true, BlockExercise: true, BlockAnswer: true, BlockSummary: true, BlockLab: true,
+	BlockPause: true, BlockExercise: true, BlockAnswer: true, BlockSummary: true, BlockLab: true, BlockRecall: true,
 }
 
 func (p *parser) flushSection() {

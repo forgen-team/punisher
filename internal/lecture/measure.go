@@ -17,6 +17,7 @@ type Measure struct {
 	CodeChars int
 	Exercises int
 	Pauses    int
+	Recalls   int
 	TraceRows int
 	// Hangul / Latin letters of the prose: the lecture language (Language).
 	HangulLetters int
@@ -89,8 +90,11 @@ func (m *Measure) add(b Block) {
 			prose, code := splitFenced(b.Text)
 			m.addProse(prose)
 			m.CodeChars += visibleChars(code)
-			if b.Type == BlockExercise {
+			switch b.Type {
+			case BlockExercise:
 				m.Exercises++
+			case BlockRecall:
+				m.Recalls++
 			}
 		}
 	}

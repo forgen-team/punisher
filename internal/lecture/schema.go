@@ -56,7 +56,28 @@ const (
 	// BlockLab: one read-only command for the reader's own terminal (v3 §4). Kind = os
 	// (macos | linux | any); Text = "$ command" line, then 보는 곳:/예상: lines.
 	BlockLab = "lab"
+	// BlockRecall: "방금 읽은 걸 떠올려 보기" at a section end — Text = the question,
+	// then a "떠올릴 것:" line (what a good recall contains); Objective = the objective it recalls.
+	BlockRecall = "recall"
 )
+
+// Exercise kinds (@@exercise kind=…, optional; lectures before them have none).
+const (
+	ExerciseGuided = "guided" // part of the solution is given (fill in the rest)
+	ExerciseWhy    = "why"    // "왜 그런가요?" right after a rule
+	ExerciseError  = "error"  // find the mistake in a wrong solution
+	ExerciseFree   = "free"   // solve it alone
+	ExerciseModify = "modify" // change one line of the scene's code: what changes in the output?
+)
+
+// ValidExerciseKind reports a known exercise kind ("" = none given).
+func ValidExerciseKind(k string) bool {
+	switch k {
+	case "", ExerciseGuided, ExerciseWhy, ExerciseError, ExerciseFree, ExerciseModify:
+		return true
+	}
+	return false
+}
 
 // Keypoint kinds (@@keypoint kind=…).
 const (
@@ -69,7 +90,8 @@ const (
 func IsBlockType(t string) bool {
 	switch t {
 	case BlockMarkdown, BlockMermaid, BlockCode, BlockLog, BlockMisconception, BlockTerm, BlockSources,
-		BlockKeypoint, BlockTrace, BlockChart, BlockDiff, BlockPause, BlockExercise, BlockAnswer, BlockSummary, BlockLab:
+		BlockKeypoint, BlockTrace, BlockChart, BlockDiff, BlockPause, BlockExercise, BlockAnswer, BlockSummary, BlockLab,
+		BlockRecall:
 		return true
 	}
 	return false
@@ -92,7 +114,8 @@ type Source struct {
 //   - term: Term (display), ConceptID, Gloss (Text), Proposed (concept not yet in graph)
 //   - sources: Sources
 //   - lab: Kind (os) + Text ("$ command" line, 보는 곳:, 예상:)
-//   - keypoint: Kind + Text (markdown); exercise / answer / summary: Text (markdown); pause: Text (one question line)
+//   - keypoint: Kind + Text (markdown); exercise: Kind (optional) + Text; answer / summary: Text (markdown); pause: Text (one question line)
+//   - recall: Text (question + "떠올릴 것:" line) + Objective
 //   - trace / chart: Data (JSON object, §6); diff: Data + Lang
 type Block struct {
 	Anchor    string          `json:"anchor"`
@@ -105,6 +128,7 @@ type Block struct {
 	ConceptID string          `json:"conceptId,omitempty"`
 	Proposed  bool            `json:"proposed,omitempty"`
 	Sources   []Source        `json:"sources,omitempty"`
+	Objective string          `json:"objective,omitempty"`
 }
 
 // Section is one of the four fixed parts.

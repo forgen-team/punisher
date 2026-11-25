@@ -8,7 +8,7 @@ var inlineTermRe = regexp.MustCompile(`\[([^\]\n]+)\]\(term:([^)\s]*)\)`)
 // markdownBodied block types render their Text as markdown (inline term links allowed).
 var markdownBodied = map[string]bool{
 	BlockMarkdown: true, BlockMisconception: true, BlockKeypoint: true,
-	BlockExercise: true, BlockAnswer: true, BlockSummary: true,
+	BlockExercise: true, BlockAnswer: true, BlockSummary: true, BlockRecall: true,
 }
 
 // InlineTermLinks returns the concept ids linked inline in markdown-bodied blocks.
