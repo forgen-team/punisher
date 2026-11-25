@@ -1,11 +1,12 @@
 import { useEffect } from "react";
-import { Settings } from "lucide-react";
+import { Search, Settings } from "lucide-react";
 import { isWitems, shellHasActions } from "@/src/shared/config/runtime";
 import { Link, useRouter } from "@/src/shared/lib/router";
 import { PageHeader, SegmentedTabs, cn, focusRing } from "@/src/shared/ui/kit";
 import { useT } from "@/src/shared/i18n";
 import { useLocation } from "react-router-dom";
 import { HREFS, SEGMENTS, rememberTab, segmentOf, tabHref, tabScroll, type LearnSegment } from "./lib/tabMemory";
+import { useActivity } from "@/src/entities/punisher";
 import { messages } from "./i18n";
 
 /**
@@ -21,6 +22,9 @@ export function LearnNav() {
   const router = useRouter();
   const segment = segmentOf(pathname);
   const t = useT(messages);
+  // 앱 안 배지(W5a): 지금 볼 복습·카드 수 — Witems 에는 앱이 보낼 알림 경로가 없어 이것으로 알린다(쉬는 날은 숨김).
+  const activity = useActivity().data;
+  const due = activity && !activity.restToday ? activity.today.reviewsDue + activity.today.cardsDue : 0;
   useEffect(() => {
     if (segment) { rememberTab(segment, `${pathname}${search}`); }
   }, [segment, pathname, search]);
@@ -45,7 +49,15 @@ export function LearnNav() {
       <div className="flex items-center gap-2">
         <SegmentedTabs
           aria-label={t.tabsLabel}
-          items={SEGMENTS.map((value) => ({ value, label: t[value] }))}
+          items={SEGMENTS.map((value) => ({
+            value,
+            label: value === "lectures" && due > 0 ? (
+              <span className="inline-flex items-center gap-1.5">
+                {t[value]}
+                <span aria-label={t.dueBadge(due)} className="min-w-5 rounded-full bg-accent px-1.5 text-xs font-medium leading-5 text-accent-on tabular-nums">{due}</span>
+              </span>
+            ) : t[value],
+          }))}
           value={segment}
           onChange={select}
           hrefOf={(value) => (value === segment ? HREFS[value] : tabHref(value))}
@@ -53,6 +65,11 @@ export function LearnNav() {
           fill
           className="min-w-0 flex-1 md:max-w-sm md:flex-none"
         />
+        {settingsInTabRow ? (
+          <Link href="/search" aria-label={t.search} className={cn("inline-flex min-h-touch shrink-0 items-center rounded-md px-2 text-fg-secondary hover:bg-canvas-hover hover:text-fg", focusRing)}>
+            <Search className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        ) : null}
         {settingsInTabRow ? (
           <Link
             href="/settings"

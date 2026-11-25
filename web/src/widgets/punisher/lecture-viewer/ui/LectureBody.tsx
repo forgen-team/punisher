@@ -32,7 +32,8 @@ interface LectureBodyProps {
 export function LectureBody({ content, onBeforeDeeper, sectionNote }: LectureBodyProps) {
   const t = useT(messages);
   return (
-    <div className="flex flex-col gap-10 text-base leading-[1.75] text-fg">
+    // 글자 크기는 설정 > 읽기(이 기기)의 배율(--reading-scale, LectureLayout 이 건다).
+    <div className="flex flex-col gap-10 text-[length:calc(1rem*var(--reading-scale,1))] leading-[1.75] text-fg">
       {content.sections.map((section, index) => (
         <section
           key={section.anchor || index}

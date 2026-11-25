@@ -7,3 +7,4 @@ export { ReviewCard } from "./ReviewCard";
 export { RecheckRow } from "./RecheckRow";
 export { UncheckedRow } from "./UncheckedRow";
 export { SynthesisRow } from "./SynthesisRow";
+export { StudyToday } from "./StudyToday";

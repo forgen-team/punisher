@@ -5,6 +5,8 @@ import { shellHasActions, witemsRuntime, type ShellAction } from "@/src/shared/c
 import { useT } from "@/src/shared/i18n";
 import { useTrackInAppNavigation } from "@/src/shared/lib/in-app-history";
 import { actionsSignature, useScreenChrome } from "@/src/shared/lib/screen-chrome";
+import { useSearchShortcut } from "@/src/shared/lib/shortcuts";
+import { useRouter } from "@/src/shared/lib/router";
 import { FeedbackHost, ListSkeleton } from "@/src/shared/ui/kit";
 import { ClaudeStatusBanner } from "@/src/widgets/claude-status";
 import { LearnNav } from "@/src/widgets/punisher/nav";
@@ -21,7 +23,9 @@ export function WitemsShell() {
   const { pathname } = useLocation();
   const t = useT(messages);
   const chrome = useScreenChrome();
+  const router = useRouter();
   useTrackInAppNavigation();
+  useSearchShortcut(() => router.push("/search"));
 
   const pathTitle = useMemo(() => {
     const key = titleKeyFor(pathname);
@@ -34,9 +38,11 @@ export function WitemsShell() {
 
   const actions = useMemo<ShellAction[]>(() => {
     const settings: ShellAction = { id: "settings", label: t.learnSettings, icon: "settings", href: "/settings", kind: "settings" };
+    const search: ShellAction = { id: "search", label: t.search, icon: "search", href: "/search" };
     const own = chrome.actions ?? [];
-    return pathname.startsWith("/settings") ? own : [...own, settings];
-  }, [chrome.actions, pathname, t.learnSettings]);
+    const withSearch = pathname.startsWith("/search") ? own : [...own, search];
+    return pathname.startsWith("/settings") ? withSearch : [...withSearch, settings];
+  }, [chrome.actions, pathname, t.learnSettings, t.search]);
   const sent = useRef("");
   useEffect(() => {
     if (!shellHasActions()) { return; }

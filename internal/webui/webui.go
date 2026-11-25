@@ -37,6 +37,9 @@ func Handler() http.Handler {
 				if strings.HasPrefix(name, "assets/") {
 					w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 				}
+				if name == "sw.js" { // 서비스 워커는 늘 새로 확인한다(오프라인 읽기, web/public/sw.js)
+					w.Header().Set("Cache-Control", "no-cache")
+				}
 				if path.Ext(name) == ".webmanifest" {
 					w.Header().Set("Content-Type", "application/manifest+json")
 				}

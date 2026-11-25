@@ -16,6 +16,10 @@ export const messages = defineMessages({
     titlePrompts: "강의 프롬프트",
     titleSettings: "설정",
     learnSettings: "학습 설정",
+    titleCards: "복습 카드",
+    titleSearch: "검색",
+    search: "검색",
+    offline: "오프라인이에요. 한 번 연 강의·오늘 카드는 읽을 수 있고, 채점·저장은 연결된 뒤에 돼요.",
   },
   en: {
     home: "Punisher home",
@@ -31,5 +35,9 @@ export const messages = defineMessages({
     titlePrompts: "Lecture prompts",
     titleSettings: "Settings",
     learnSettings: "Learning settings",
+    titleCards: "Review cards",
+    titleSearch: "Search",
+    search: "Search",
+    offline: "You're offline. Lectures you've opened and today's cards stay readable; grading and saving wait for the connection.",
   },
 });

@@ -3,7 +3,7 @@ import { Download, ScrollText } from "lucide-react";
 import { List, ListRow, PageHeader, Section, ThemeSelect, notify } from "@/src/shared/ui/kit";
 import { isWitems } from "@/src/shared/config/runtime";
 import { Link } from "@/src/shared/lib/router";
-import { LearningSettingsForm } from "@/src/features/punisher/learning-settings";
+import { LearningSettingsForm, ReadingSettingsFields, StudySettingsFields } from "@/src/features/punisher/learning-settings";
 import { punisherApiBase } from "@/src/shared/api/punisher";
 import { BRAND_LINE, PunisherLogo } from "@/src/shared/ui/brand";
 import { useT } from "@/src/shared/i18n";
@@ -60,6 +60,12 @@ export function SettingsPage() {
       {inWitems ? null : <PageHeader title={t.settings} />}
       <Section title={t.sectionLearning}>
         <LearningSettingsForm />
+      </Section>
+      <Section title={t.sectionReview}>
+        <StudySettingsFields />
+      </Section>
+      <Section title={t.sectionReading}>
+        <ReadingSettingsFields />
       </Section>
       <Section title={t.sectionAdvanced}>
         <List>

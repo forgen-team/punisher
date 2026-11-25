@@ -1,5 +1,6 @@
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { READING_VARS, useUiPrefs } from "@/src/shared/lib/ui-prefs";
 import type { LectureSection } from "@/src/shared/api/punisher";
 import { SectionToc } from "./SectionToc";
 import { TocRail } from "./TocRail";
@@ -30,6 +31,8 @@ interface LectureLayoutProps {
 export function LectureLayout({ sections, totalMinutes, activeAnchor, assist, children }: LectureLayoutProps) {
   const t = useT(messages);
   const hasToc = sections.length > 0;
+  const ui = useUiPrefs();
+  const readingStyle = { ...READING_VARS[ui.fontSize], ...READING_VARS[ui.lineWidth] } as CSSProperties;
   return (
     <div className="flex gap-6 2xl:gap-8">
       <aside aria-label={t.toc} className={`${STICKY_TOP} z-panel hidden w-10 lg:block 2xl:hidden`}>
@@ -38,7 +41,8 @@ export function LectureLayout({ sections, totalMinutes, activeAnchor, assist, ch
       <aside aria-label={t.toc} className={`${STICKY} hidden w-56 2xl:block`}>
         {hasToc && <SectionToc sections={sections} totalMinutes={totalMinutes} activeAnchor={activeAnchor} />}
       </aside>
-      <article className="mx-auto w-full min-w-0 max-w-2xl pb-16">{children}</article>
+      {/* 본문 폭·글자 배율: 설정 > 읽기(이 기기). 보통 = 42rem(max-w-2xl) */}
+      <article style={readingStyle} className="mx-auto w-full min-w-0 max-w-[var(--reading-measure,42rem)] pb-16">{children}</article>
       {assist && <aside className={`${STICKY} hidden w-72 xl:block 2xl:w-80`}>{assist}</aside>}
     </div>
   );

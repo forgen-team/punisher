@@ -1,10 +1,13 @@
 import { Suspense, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useTrackInAppNavigation } from "@/src/shared/lib/in-app-history";
-import { Settings } from "lucide-react";
+import { Search, Settings } from "lucide-react";
+import { useSearchShortcut } from "@/src/shared/lib/shortcuts";
+import { useRouter } from "@/src/shared/lib/router";
 import { Link } from "@/src/shared/lib/router";
 import { FeedbackHost, ListSkeleton, cn, focusRing } from "@/src/shared/ui/kit";
 import { useScreenChrome } from "@/src/shared/lib/screen-chrome";
+import { useOnline } from "@/src/shared/lib/useOnline";
 import { LearnNav } from "@/src/widgets/punisher/nav";
 import { ClaudeStatusBanner } from "@/src/widgets/claude-status";
 import { BrandMark } from "@/src/shared/ui/brand";
@@ -33,7 +36,10 @@ export function AppShell() {
   const t = useT(messages);
   useDocumentTitle(pathname);
   useTrackInAppNavigation();
+  const router = useRouter();
+  useSearchShortcut(() => router.push("/search"));
   const onSettings = pathname.startsWith("/settings");
+  const online = useOnline();
 
   return (
     // overflow-x-clip: 넓은 코드·표는 제 상자 안에서 스크롤하고 화면 전체가 옆으로 밀리지는 않게(clip 은 sticky 를 깨지 않는다).
@@ -44,6 +50,17 @@ export function AppShell() {
         <div className="mx-auto flex h-12 w-full max-w-[1600px] items-center justify-between px-4 fold:px-6 lg:px-8">
           <Link href="/" aria-label={t.home} className={cn("flex items-center rounded-md", focusRing)}>
             <BrandMark />
+          </Link>
+          <div className="flex items-center gap-1">
+          <Link
+            href="/search"
+            aria-label={t.search}
+            aria-keyshortcuts="Meta+K Control+K"
+            aria-current={pathname.startsWith("/search") ? "page" : undefined}
+            className={cn("inline-flex min-h-touch items-center gap-1.5 rounded-md px-2 text-sm text-fg-secondary hover:bg-canvas-hover hover:text-fg", focusRing)}
+          >
+            <Search className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">{t.search}</span>
           </Link>
           <Link
             href="/settings"
@@ -58,9 +75,12 @@ export function AppShell() {
             <Settings className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">{t.settings}</span>
           </Link>
+          </div>
         </div>
       </header>
       <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 px-4 pb-[calc(3rem+var(--safe-bottom))] pt-3 fold:px-6 lg:px-8">
+        {/* 오프라인 읽기(sw.js): 저장해 둔 화면만 읽을 수 있고 채점·저장은 연결된 뒤에 */}
+        {online ? null : <p role="status" className="rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">{t.offline}</p>}
         <ClaudeStatusBanner />
         <LearnNav />
         <div className="flex min-w-0 flex-1 flex-col">

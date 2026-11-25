@@ -16,7 +16,7 @@ import { messages } from "./i18n";
 import { todayRows, type TodayRow } from "./lib/recheck";
 import { reviewCardState } from "./lib/reviewCard";
 import { sessionTimeLabel } from "./lib/sessionTime";
-import { ExplanationRequestList, InquiryList, NEW_CHAPTER_PATH, NextChapterCard, RECOMMENDATION_PARAM, RecheckRow, RecommendationRow, RecommendationSheet, ReviewCard, StudyRequestList, SynthesisRow, UncheckedRow } from "./ui";
+import { ExplanationRequestList, InquiryList, NEW_CHAPTER_PATH, NextChapterCard, RECOMMENDATION_PARAM, RecheckRow, RecommendationRow, RecommendationSheet, ReviewCard, StudyRequestList, StudyToday, SynthesisRow, UncheckedRow } from "./ui";
 import { isWitems } from "@/src/shared/config/runtime";
 
 /** 추천 목록의 한 줄 — 확인하기 · 다시 확인 · 추천(상세 시트 주소로 가는 링크). */
@@ -145,6 +145,8 @@ export function TodayWidget() {
       <HeightReserve id="learn-review" ready={reviewReady} skeleton={null} className="[&:empty:not([style])]:hidden">
         {reviewState.kind !== "hidden" ? <ReviewCard state={reviewState} showTotal={!sessionTime} /> : null}
       </HeightReserve>
+      {/* 오늘 목표·지난 12주·복습 예측·자꾸 막히는 목표(W5a) */}
+      <StudyToday />
       <InstantQueryBox />
       <div aria-live="polite" className="empty:hidden">
         <InlineError error={error} />

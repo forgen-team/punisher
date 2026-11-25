@@ -61,6 +61,12 @@ nginx(Witems)가 `/apps-static/punisher/X` → `/static/X`, `/apps-api/punisher/
 - 화면 제목·← 는 셸이 그린다: Witems 모드에서 앱은 본문 h1(강의·해설 제목, 설정 제목)과 자기 ←(`BackLink`, 강의 상단 바 ←·제목)를 그리지 않는다.
 - API 의 401 은 "세션 없음"에만 쓴다(셸이 `/login?redirect=` 로 보낸다). 오너가 아닌 계정은 403, 로그인 확인 서버 장애는 503,
   AI 제공자 인증 실패(CLI·gateway 의 401)는 503 `GEN_UNAVAILABLE`, 그 밖의 AI 실패는 502(`handlers/status_codes_test.go`).
+- 오프라인 읽기(서비스 워커 `web/public/sw.js`)는 **단독판만** 켠다(`main.tsx` 가 등록, Witems 는 `mount.tsx` 로 들어와 등록하지 않는다).
+  이유: 서비스 워커의 범위는 스크립트가 있는 경로 아래로만 넓힐 수 있어, `/apps-static/punisher/sw.js` 는 화면 묶음만 덮고
+  `/apps/punisher/…` 화면 이동과 `/apps-api/punisher/…` API 를 덮지 못한다(오프라인 읽기가 되지 않는다). 셸 출처 루트에 등록하면
+  셸의 모든 요청을 가로채게 되어 셸·RSS 를 깨뜨릴 수 있다. 셸이 공용 서비스 워커를 갖게 되면 그때 다시 본다.
+- 복습 알림: Witems 에는 다른 앱이 보낼 알림 경로가 없다(rss-server 알림은 RSS 키워드 규칙 전용). 그래서 앱 안 배지('강의' 탭 숫자)만 쓴다.
+  단독판은 macOS 알림(`internal/reminder`, 설정 > 학습에서 켬).
 - 확인은 `confirmAction`, 되돌리기는 `notifyUndo`(`shared/ui/kit` feedback — `FeedbackHost` 가 portal 에 그림). `window.confirm`·`alert` 는 쓰지 않는다.
 
 ## 처음 옮길 때 (Witems PostgreSQL → SQLite, 한 번)

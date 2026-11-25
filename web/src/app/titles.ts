@@ -10,6 +10,8 @@ const TITLES: Array<[RegExp, TitleKey]> = [
   [/^\/inquiries\//, "titleInquiry"],
   [/^\/check\//, "titleCheck"],
   [/^\/instant\//, "titleInstant"],
+  [/^\/cards/, "titleCards"],
+  [/^\/search/, "titleSearch"],
   [/^\/settings\/prompts/, "titlePrompts"],
   [/^\/settings/, "titleSettings"],
 ];

@@ -11,6 +11,18 @@
 - 강의를 완료하면 '오늘의 다음 강의'로 이어지고, 설정은 저장하는 동안에도 다른 칸을 바꿀 수 있어요. 처음 설정 창은 X 로 닫으면 2주 동안 다시 뜨지 않아요. 데이터 내보내기가 실패하면 앱 안에서 알려요.
 - Witems 앱 모드: Shadow DOM 안에서 본문 자리 찾기·⋯ 메뉴 항목 클릭·포커스 가두기·드래그 선택이 맞게 동작해요. 셸 여백 변수를 덮어쓰지 않고, 셸 뒤로/앞으로에 맨 위로 튀지 않아요. 학습 설정·이동 항목은 셸의 페이지 동작(`ctx.setActions`, 없는 구버전 셸은 탭 옆 링크)으로, 화면 제목은 강의 제목 등으로. 테마·로컬 AI CLI 안내·제공자 선택은 숨겨요.
 
+**학습 기능**(DB 자동 업그레이드: 마이그레이션 023·024, 기존 복습 날짜는 그대로)
+- **기억 모델(FSRS)·목표 유지율**: 답할 때마다 목표별로 잊히는 속도를 배워 다음 복습을 정해요(설정 > 학습 > 복습·기억, 80~95%). 기록이 적은 목표는 지금까지의 상자 간격과 섞어 천천히 옮겨 가요. '상자 간격만'으로 되돌릴 수 있어요.
+- **자꾸 막히는 목표**: 같은 목표를 4번 이상 틀리거나 도움을 받으면 오늘 화면에 '다르게 설명한 강의 · 앞 개념부터 · 잠시 보류(되돌리기) · 그대로 복습'을 보여요.
+- **메모·구절 대화 → 복습 카드**: '복습에 넣기'로 고른 것만, 질문·답을 직접 다듬어 저장(AI 로 만들지 않아요). 내일부터 `복습 카드` 화면(/cards)에 나와요.
+- **복습 단축키**: Space 답 보기 · 1·2·3 채점(카드, 자기 채점 복습), ⌘/Ctrl+K 검색. 설정 > 읽기에서 끌 수 있어요.
+- **오늘 목표·지난 12주·복습 예측**: 오늘 복습 n/m, 카드, 완료한 강의, 최근 7일 중 공부한 날, 앞으로 14일 복습 수. 연속일·끊김 표시는 없고 **쉬는 요일**에는 목표를 띄우지 않아요.
+- **목표 기한**: 지도 목표에 날짜를 정하면 쉬는 날을 뺀 하루 필요 시간과, 지금 학습량으로 끝나는 날을 보여요.
+- **읽기 설정**: 강의 글자 크기·줄 폭(이 기기만).
+- **학습 자료 검색**(/search, ⌘/Ctrl+K): 강의 섹션·메모·강의 중 질문·질문 해설 전문 검색(SQLite FTS5).
+- **오프라인 읽기**(단독판): 한 번 연 강의·해설·오늘 카드는 Mac 이 잠들어도 폰에서 읽을 수 있어요.
+- **복습 알림**(단독판 macOS): 정한 시각에 하루 한 번(쉬는 날 없음, 기본 끔). Witems 에서는 '강의' 탭 숫자로 알려요.
+
 English: Undo toasts for completing a lecture, "I already know this", "not needed" and stopping a check (three new undo endpoints, no schema change); in-app confirm dialogs (Cancel focused) instead of browser ones; drafts kept on this device and a warning before leaving unsaved prompt edits; screens live in the URL (recommendation sheet, history chips and filters, map sheet, prompt block) and tabs, chips and rows are real links; lecture anchors use `?at=`. Inside Witems the app works in the Shadow DOM (anchors, menus, focus, selection), leaves the shell's layout variables alone, hands its settings and navigation entries to the shell (`ctx.setActions`, with a fallback for older shells) and titles screens with the lecture title.
 
 ## v0.10.0 (2026-11-20)

@@ -6,6 +6,7 @@ import { GOAL_STATUS_LABELS, useDeleteGoal, useUpdateGoal } from "@/src/entities
 import type { Goal, GoalStatus } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { GoalPathView } from "./GoalPathView";
+import { GoalDeadline } from "./GoalDeadline";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 
@@ -94,6 +95,7 @@ export function GoalItem({ goal, onShowPath }: GoalItemProps) {
       <InlineError error={update.error ?? remove.error} />
       {open && !editing && (
         <div className="pb-3">
+          <GoalDeadline goalId={goal.id} />
           <GoalPathView goalId={goal.id} onSelectStep={(conceptId) => onShowPath(goal.id, conceptId)} />
         </div>
       )}

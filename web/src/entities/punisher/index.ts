@@ -25,3 +25,4 @@ export * from "./model/misconceptions";
 export * from "./model/exercises";
 export { LocaleSync } from "./model/LocaleSync";
 export { useBatchMarkKnown, type MarkKnownProgress } from "./model/knownBatch";
+export * from "./model/study";
