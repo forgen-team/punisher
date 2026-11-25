@@ -102,6 +102,15 @@ export function useCompleteLecture(lectureId: string) {
   });
 }
 
+/** '완료' 되돌리기(되돌리기 알림). */
+export function useUncompleteLecture(lectureId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => punisherApi.uncompleteLecture(lectureId),
+    onSuccess: () => invalidateLearningState(queryClient),
+  });
+}
+
 export function useLectureFeedback(lectureId: string) {
   return useMutation({
     mutationFn: ({ feedback, anchor }: { feedback: FeedbackKind; anchor: string }) =>

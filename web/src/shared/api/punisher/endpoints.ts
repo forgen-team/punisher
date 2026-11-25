@@ -75,6 +75,9 @@ export const punisherApi = {
       method: "POST",
       json: options.queueVerify ? { queueVerify: true } : undefined,
     }),
+  /** '이미 앎' 되돌리기 — previous: 누르기 전 상태(없으면 not_started). */
+  undoKnown: (id: string, previous: UserConceptState) =>
+    punisherFetch<{ conceptId: string; state: string }>(`/concepts/${enc(id)}/known${query({ previous })}`, { method: "DELETE" }),
   /** '필요 없음' — 추천·다음 개념·복습에서 뺀다(지도에는 흐리게 남음). DELETE 가 되돌리기. */
   dismissConcept: (id: string) =>
     punisherFetch<{ conceptId: string; dismissed: boolean }>(`/concepts/${enc(id)}/dismiss`, { method: "POST" }),
@@ -120,6 +123,9 @@ export const punisherApi = {
     }),
   completeLecture: (id: string) =>
     punisherFetch<CompleteResult>(`/lectures/${enc(id)}/complete`, { method: "POST" }),
+  /** '완료' 되돌리기 — 그 강의가 완료한 목표를 진행 중으로. */
+  uncompleteLecture: (id: string) =>
+    punisherFetch<CompleteResult>(`/lectures/${enc(id)}/complete`, { method: "DELETE" }),
   sendFeedback: (id: string, feedback: FeedbackKind, anchor: string) =>
     punisherFetch<FeedbackResponse>(`/lectures/${enc(id)}/feedback`, {
       method: "POST",
@@ -238,6 +244,8 @@ export const punisherApi = {
     }),
   retryCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/retry`, { method: "POST" }),
   abandonCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/abandon`, { method: "POST" }),
+  /** '그만하기' 되돌리기(10분 안, 반쯤 답한 문항을 닫지 않은 경우만 — 아니면 409). */
+  resumeCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/resume`, { method: "POST" }),
   /** 자기 채점 — 답을 보낸 뒤(current.canSelfGrade)에만. */
   selfGradeCheck: (id: string, verdict: "correct" | "partial" | "incorrect") =>
     punisherFetch<CheckDetail>(`/checks/${enc(id)}/self-grade`, { method: "POST", json: { verdict } }),

@@ -16,6 +16,9 @@ export const messages = defineMessages({
     completed: "완료함",
     known: "이미 앎",
     knownDone: "이미 앎으로 표시됨",
+    completedToast: "강의를 완료했어요",
+    knownToast: "이미 앎으로 표시했어요",
+    nextLecture: "오늘의 다음 강의",
   },
   en: {
     altExplanation: "Explained another way",
@@ -32,5 +35,8 @@ export const messages = defineMessages({
     completed: "Completed",
     known: "I already know this",
     knownDone: "Marked as known",
+    completedToast: "Lecture completed",
+    knownToast: "Marked as known",
+    nextLecture: "Next lecture for today",
   },
 });

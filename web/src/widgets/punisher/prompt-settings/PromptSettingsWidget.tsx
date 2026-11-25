@@ -13,6 +13,7 @@ import { messages } from "./i18n";
  * 학습 설정 > 강의 프롬프트. 모바일: 단계별 목록 → 블록 상세(뒤로가기는 셸 상단 바 하나 — 상세는 기록에 쌓아 연다).
  * 폴드 펼침(600px+): 목록 | 상세 2단 — 목록 아래쪽 항목을 고르면 편집기 머리로 스크롤한다.
  * URL 상태: ?block=<id>&from=<피드백 종류>(강의 피드백에서 온 제안 문구를 초안에 붙여 연다 — 저장은 사용자가).
+ * 블록을 고르면 넓은 화면도 기록에 쌓는다(화면=주소). 고친 초안은 블록마다 이 기기에 보관된다(PromptBlockEditor).
  */
 export function PromptSettingsWidget() {
   const t = useT(messages);
@@ -28,11 +29,9 @@ export function PromptSettingsWidget() {
   const select = useCallback(
     (id: string) => {
       const href = `${pathname}?block=${encodeURIComponent(id)}`;
-      if (!split) {
-        router.push(href);
-        return;
-      }
-      router.replace(href, { scroll: false });
+      // 상세(블록)는 주소에 남긴다(push — 같은 블록이면 이동하지 않음). 고친 초안은 블록마다 보관되므로 묻지 않는다.
+      router.push(href, { scroll: false, guard: false });
+      if (!split) { return; }
       const el = editorRef.current;
       const headerOffset = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--app-header-offset")) || 0;
       if (el && editorOutOfView(el.getBoundingClientRect().top, window.innerHeight, headerOffset)) {
