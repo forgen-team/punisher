@@ -54,6 +54,9 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "samples" {
 		os.Exit(runSamples(os.Args[2:]))
 	}
+	if len(os.Args) > 1 && os.Args[1] == "quality" {
+		os.Exit(runQuality(os.Args[2:], os.Stdout))
+	}
 	if len(os.Args) > 1 && (os.Args[1] == "export" || os.Args[1] == "import") {
 		os.Exit(runBackup(os.Args[1], os.Args[2:]))
 	}
