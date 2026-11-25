@@ -86,7 +86,7 @@ func (s *Service) backfillOne(ctx context.Context, apiKey, owner string, lec mod
 	}
 	t, err := s.TargetForLecture(ctx, userID, lec, "", "")
 	if errors.Is(err, store.ErrNotFound) { // 개념이 지도에서 빠진 강의: 대기열을 막지 않도록 기록하고 표시한다.
-		return false, s.recordBackfill(ctx, lec.ID, ReviewOutcome{Verdict: "fail", Summary: reasonUnreviewable}, "", reasonUnreviewable)
+		return false, s.recordBackfill(ctx, lec.ID, ReviewOutcome{Verdict: "fail", Summary: reasonUnreviewable}, "", reasonUnreviewable, nil)
 	}
 	if err != nil {
 		return false, err
@@ -108,14 +108,16 @@ func (s *Service) backfillOne(ctx context.Context, apiKey, owner string, lec mod
 	if err != nil {
 		return false, err
 	}
+	markup := lecture.RenderMarkup(c)
 	outcome := ParseReview(text)
+	outcome.Rubric = validRubric(outcome.Rubric, markup)
 	reason := strings.Join(userReasons(Attempt{Review: outcome, Reviewed: true}), i18n.FlagReasonSeparator)
-	return !outcome.Blocking(), s.recordBackfill(ctx, lec.ID, outcome, u.model, reason)
+	return !outcome.Blocking(), s.recordBackfill(ctx, lec.ID, outcome, u.model, reason, qualityJSON(c, t.Quality, lec.PromptVersion, outcome))
 }
 
 // recordBackfill stores the backfill review row (reviewer backfill — the
 // lecture leaves the queue) and its result on the lecture.
-func (s *Service) recordBackfill(ctx context.Context, lectureID string, outcome ReviewOutcome, model, reason string) error {
+func (s *Service) recordBackfill(ctx context.Context, lectureID string, outcome ReviewOutcome, model, reason string, q json.RawMessage) error {
 	passed := !outcome.Blocking()
 	verdict := "fail"
 	if passed {
@@ -123,7 +125,7 @@ func (s *Service) recordBackfill(ctx context.Context, lectureID string, outcome 
 	}
 	if err := s.Store.InsertReview(ctx, lectureID, models.LectureReview{Verdict: verdict, Summary: outcome.Summary,
 		Issues: issuesJSON(outcome.Issues), ValidationIssues: issuesJSON(nil), ReaderGaps: issuesJSON(outcome.ReaderGaps),
-		Attempt: 1, Model: model, Reviewer: ReviewerBackfill}); err != nil {
+		Attempt: 1, Model: model, Reviewer: ReviewerBackfill, Quality: q}); err != nil {
 		return err
 	}
 	return s.Store.SetLectureReviewOutcome(ctx, lectureID, passed, reason)

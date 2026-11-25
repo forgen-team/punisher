@@ -138,9 +138,15 @@ func (r Report) Failed() []RuleResult {
 
 // Issues are the failing rules as advisory issues for a rewrite (Path
 // "quality.<id>"; Message = rule name, measured value, limit and detail).
-func (r Report) Issues() []lecture.Issue {
+func (r Report) Issues() []lecture.Issue { return r.IssuesFor(nil) }
+
+// IssuesFor is Issues of the failing rules keep accepts (nil = all).
+func (r Report) IssuesFor(keep map[string]bool) []lecture.Issue {
 	var out []lecture.Issue
 	for _, x := range r.Failed() {
+		if keep != nil && !keep[x.ID] {
+			continue
+		}
 		msg := fmt.Sprintf("%s: %s", RuleTitle(x.ID), x.Detail)
 		if x.Limit != "" {
 			msg += " (기준 " + x.Limit + ")"

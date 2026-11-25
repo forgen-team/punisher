@@ -20,6 +20,7 @@ const (
 
 // Generation stages (StageEvent.Stage).
 const (
+	StagePlanning  = "planning"  // short plan of an instant lecture (Config.InstantOutline; older screens ignore it)
 	StageWriting   = "writing"   // first draft
 	StageChecking  = "checking"  // format validation + machine checks
 	StageReviewing = "reviewing" // review pass

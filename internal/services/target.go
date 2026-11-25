@@ -8,6 +8,7 @@ import (
 	"github.com/forgen-team/punisher/internal/lecture"
 	"github.com/forgen-team/punisher/internal/models"
 	"github.com/forgen-team/punisher/internal/prompts"
+	"github.com/forgen-team/punisher/internal/quality"
 )
 
 func logf(format string, args ...any) { log.Printf("[services] "+format, args...) }
@@ -26,6 +27,8 @@ type Target struct {
 	Owner string
 	// personal: the learner's weak concepts and misconceptions (used only when Owner is set — LectureContext).
 	personal personalContext
+	// Quality: what the rubric checks against (allowed source hosts).
+	Quality quality.Context
 }
 
 // promptVersion is the version recorded on lectures saved from t.
@@ -155,6 +158,7 @@ func (s *Service) targetForPlan(ctx context.Context, userID string, concept mode
 		Concept:  concept,
 		Prompt:   pc,
 		personal: personal,
+		Quality:  quality.Context{AllowedHosts: s.SourceHosts},
 		Validation: lecture.ValidationContext{
 			KnownConceptIDs:     s.withGlossary(known),
 			PlannedObjectiveIDs: plan.ObjectiveIDs,
@@ -175,16 +179,16 @@ func (s *Service) exampleLanguageName(ctx context.Context, userID string) string
 
 // parseAndValidate turns a new draft's markup into content and its issues:
 // structural validation, then the machine checks of quality design v2.2 §4
-// (self links, meta phrases, material blocks, volume). Stored lectures never
-// go through this.
+// (self links, meta phrases, material blocks, volume) and the rewrite rules
+// of the quality rubric (advisory). Stored lectures never go through this.
 func (t Target) parseAndValidate(markup string) (lecture.Content, []lecture.Issue, error) {
 	content, err := lecture.ParseMarkup(markup, t.Plan.ConceptID, t.Plan.Depth)
 	if err != nil {
 		return content, nil, err
 	}
 	lecture.NormalizeInlineTerms(&content, t.Validation.KnownConceptIDs)
-	issues := lecture.Validate(content, t.Validation)
-	return content, append(issues, lecture.MachineCheck(content)...), nil
+	issues := append(lecture.Validate(content, t.Validation), lecture.MachineCheck(content)...)
+	return content, append(issues, rubricIssues(content, t.Quality)...), nil
 }
 
 // withGlossary adds the glossary term ids (term:g.…) to the link targets a lecture may use.

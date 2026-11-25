@@ -36,6 +36,7 @@ import (
 	"github.com/forgen-team/punisher/internal/llm"
 	"github.com/forgen-team/punisher/internal/middleware"
 	"github.com/forgen-team/punisher/internal/phone"
+	"github.com/forgen-team/punisher/internal/quality"
 	"github.com/forgen-team/punisher/internal/scheduler"
 	"github.com/forgen-team/punisher/internal/services"
 	"github.com/forgen-team/punisher/internal/store"
@@ -250,7 +251,17 @@ func run(cfg config.Config) error {
 			DailyCheckTokenLimit: cfg.DailyCheckTokenLimit,
 
 			BackfillReviewEnabled: cfg.BackfillReviewEnabled,
+			InstantOutline:        cfg.InstantOutline,
+			LectureVerify:         cfg.LectureVerify,
 		},
+	}
+	if hosts, err := quality.CurriculumHosts(seedfiles.Files); err != nil {
+		log.Printf("source hosts: %v (official hosts only)", err)
+	} else {
+		svc.SourceHosts = hosts
+	}
+	if cfg.LinkCheck {
+		svc.Links = quality.NewLinkChecker()
 	}
 
 	if app.Enabled && app.RSSServerURL != "" {

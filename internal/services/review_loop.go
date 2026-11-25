@@ -12,6 +12,7 @@ import (
 	"github.com/forgen-team/punisher/internal/lecture"
 	"github.com/forgen-team/punisher/internal/llm"
 	"github.com/forgen-team/punisher/internal/llmjson"
+	"github.com/forgen-team/punisher/internal/quality"
 	"github.com/forgen-team/punisher/internal/store"
 )
 
@@ -161,6 +162,11 @@ type ReviewOutcome struct {
 	Summary    string        `json:"summary"`
 	ReaderGaps []ReaderGap   `json:"reader_gaps"`
 	Issues     []ReviewIssue `json:"issues"`
+	// Rubric: the reviewer's E01~E13 scores (validRubric keeps quoted ones; never a gate).
+	Rubric []RubricScore `json:"rubric,omitempty"`
+	// Set by code: the independent answers and checked links the review was given.
+	Independent []IndependentAnswer  `json:"-"`
+	Links       []quality.LinkResult `json:"-"`
 }
 
 // Blocking reports whether the review stops publishing: any blocking finding
@@ -361,6 +367,10 @@ type LoopFuncs struct {
 	// Parse: format validation and machine checks (issues = rewrite findings;
 	// only non-advisory ones block).
 	Parse func(markup string) (lecture.Content, []lecture.Issue, error)
+	// Notes (optional): measured improvements of a parsed draft that go into
+	// the notes of a rewrite but never cause one (the rubric's spacing,
+	// definitions, recall prompts…).
+	Notes func(c lecture.Content) []lecture.Issue
 	// OnStage (optional) reports each step: writing/rewriting (attempt = rewrite
 	// number), checking, reviewing — the instant stream's stage events.
 	OnStage func(stage string, attempt int)
@@ -493,7 +503,11 @@ func RunReviewLoop(ctx context.Context, maxAttempts int, f LoopFuncs) (LoopResul
 		}
 		// Advisory findings go into a rewrite that is not the last attempt (or
 		// the advisory rewrite itself); the last chance fixes blocking ones only.
-		rev = Revision{Notes: RevisionNotes(a, a.Passed() || n+1 < maxAttempts)}
+		var notes []lecture.Issue
+		if f.Notes != nil && a.drafted() {
+			notes = f.Notes(a.Content)
+		}
+		rev = Revision{Notes: revisionNotes(a, a.Passed() || n+1 < maxAttempts, notes)}
 		if a.drafted() {
 			rev.Previous, revFrom = a.Markup, idx
 		}
@@ -532,7 +546,13 @@ const maxAdvisoryNotes = 8
 // advisory ones (improve where it does not create a new factual problem).
 // Findings downgraded from blocking (dismissed on adjudication, outside the
 // changed blocks, low confidence, no reader impact) are left out.
-func RevisionNotes(a Attempt, advisory bool) string {
+func RevisionNotes(a Attempt, advisory bool) string { return revisionNotes(a, advisory, nil) }
+
+// maxQualityNotes bounds the rubric notes of a rewrite.
+const maxQualityNotes = 5
+
+// revisionNotes is RevisionNotes with the rubric notes (only with advisory).
+func revisionNotes(a Attempt, advisory bool, notes []lecture.Issue) string {
 	var must strings.Builder
 	var improve []string
 	switch {
@@ -580,6 +600,18 @@ func RevisionNotes(a Attempt, advisory bool) string {
 			b.WriteString("\n")
 		}
 		b.WriteString("### 개선 권장(고쳐도 새 사실 오류가 생기지 않는 범위에서만)\n" + strings.Join(improve, ""))
+	}
+	if advisory && len(notes) > 0 {
+		if b.Len() > 0 {
+			b.WriteString("\n")
+		}
+		b.WriteString("### 구성 메모(앱이 잰 값 — 고쳐도 새 사실 오류가 생기지 않는 범위에서만)\n")
+		for i, n := range notes {
+			if i == maxQualityNotes {
+				break
+			}
+			fmt.Fprintf(&b, "- %s\n", n.Message)
+		}
 	}
 	return b.String()
 }

@@ -230,4 +230,8 @@ type ExerciseAttempt struct {
 	Feedback    string    `json:"feedback"`
 	Status      string    `json:"status"`
 	CreatedAt   time.Time `json:"createdAt"`
+	// Confidence: the learner's confidence on a self-graded pause (sure | unsure | unknown, "" = not asked).
+	Confidence string `json:"confidence,omitempty"`
+	// ReviewItemID: the review item a recall put into tomorrow's review queue ("" = none).
+	ReviewItemID string `json:"reviewItemId,omitempty"`
 }
