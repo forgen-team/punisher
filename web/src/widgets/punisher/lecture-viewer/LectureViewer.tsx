@@ -181,6 +181,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
         onOpenAssist={() => setAssistOpen(true)}
         assistBadge={<ThreadCountBadge />}
         menuItems={menuItems}
+        menuText={actions.done ? { full: t.menuStatusDone, short: t.menuStatusDone } : { full: t.menuStatus, short: t.menuStatusShort }}
       />
       <LectureLayout
         sections={content.sections}

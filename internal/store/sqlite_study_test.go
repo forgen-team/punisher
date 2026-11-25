@@ -220,7 +220,7 @@ func TestSearchIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	hits, err := s.Search(ctx, testUser, "디스크 블록", 10)
-	if err != nil || len(hits) != 1 || hits[0].Kind != "lecture" || hits[0].Anchor != "intro" || !strings.Contains(hits[0].Snippet, "[[") {
+	if err != nil || len(hits) != 1 || hits[0].Kind != "lecture" || hits[0].Anchor != "intro" || hits[0].SectionTitle != "도입" || !strings.Contains(hits[0].Snippet, "[[") {
 		t.Fatalf("fts hits = %+v (%v)", hits, err)
 	}
 	short, err := s.Search(ctx, testUser, "블록", 10)

@@ -48,6 +48,11 @@ interface LectureTopBarProps {
   /** 질문 아이콘 위 개수 표시(스레드 수) */
   assistBadge?: ReactNode;
   menuItems?: MenuItem[];
+  /**
+   * ⋯ 대신 글자 버튼으로 보일 메뉴 이름(강의: "학습 상태"/"완료함"). 셸 상단 바의 ⋯(페이지 동작) 바로 아래라
+   * 두 ⋯ 가 붙어 헷갈리지 않게 한다. short 는 아주 좁은 폭(400px 미만)용.
+   */
+  menuText?: { full: string; short: string };
 }
 
 /**
@@ -58,7 +63,7 @@ interface LectureTopBarProps {
  * 질문·메모를 하단 FAB이 아니라 여기 두어 하단 탭 바와 겹치지 않게 한다.
  * 휴대폰: 아래로 읽는 동안 셸 상단 바가 숨고 이 바만 맨 위에 남는다(위로 되돌아가면 셸 바가 다시 보인다).
  */
-export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, assistBadge, menuItems }: LectureTopBarProps) {
+export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, assistBadge, menuItems, menuText }: LectureTopBarProps) {
   const router = useRouter();
   const t = useT(messages);
   const barRef = useRef<HTMLDivElement>(null);
@@ -98,7 +103,19 @@ export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, 
           {assistBadge}
         </IconButton>
       )}
-      {menuItems && menuItems.length > 0 && <Menu items={menuItems} label={t.lectureMenu} linkAs={Link} />}
+      {menuItems && menuItems.length > 0 && (
+        <Menu
+          items={menuItems}
+          label={t.lectureMenu}
+          linkAs={Link}
+          triggerText={menuText ? (
+            <>
+              <span className="hidden min-[400px]:inline">{menuText.full}</span>
+              <span className="min-[400px]:hidden">{menuText.short}</span>
+            </>
+          ) : undefined}
+        />
+      )}
     </div>
   );
 }

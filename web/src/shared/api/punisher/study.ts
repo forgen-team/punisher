@@ -111,6 +111,8 @@ export interface SearchHit {
   lectureId: string;
   anchor: string;
   title: string;
+  /** 강의 결과의 섹션 제목(같은 강의가 여러 섹션에서 걸린다) — 그 밖은 "" */
+  sectionTitle: string;
   /** 일치 부분은 [[ ]] 로 감싼다(3글자 이상 검색) */
   snippet: string;
 }

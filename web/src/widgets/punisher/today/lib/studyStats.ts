@@ -48,3 +48,27 @@ export function forecastSummary(days: ForecastDay[]): { today: number; tomorrow:
     peak: days.reduce((m, d) => Math.max(m, total(d)), 0),
   };
 }
+
+/** 예측 막대 한 칸: 그 날 개수와 그릴 높이(px). 0 은 높이 0(바닥 눈금만), 0 이 아니면 최소 높이를 둔다. */
+export interface ForecastBar {
+  day: string;
+  total: number;
+  height: number;
+  /** 날짜 축 라벨 자리(오늘·내일·+7·+14) — 그 밖은 null */
+  axis: "today" | "tomorrow" | 7 | 14 | null;
+}
+
+/** 막대 높이: 가장 큰 값이 작아도(1~3) 막대가 꽉 차 보이지 않게 눈금은 최소 4 로 잡는다. */
+export const FORECAST_MIN_SCALE = 4;
+export const FORECAST_MIN_BAR = 6;
+
+export function forecastBars(days: ForecastDay[], maxHeight: number): ForecastBar[] {
+  const totals = days.map((d) => d.objectives + d.cards);
+  const scale = Math.max(FORECAST_MIN_SCALE, ...totals);
+  return days.map((d, i) => {
+    const total = totals[i] ?? 0;
+    const height = total === 0 ? 0 : Math.max(FORECAST_MIN_BAR, Math.round((total / scale) * maxHeight));
+    const axis = i === 0 ? "today" : i === 1 ? "tomorrow" : i === 7 ? 7 : i === 14 ? 14 : null;
+    return { day: d.day, total, height, axis };
+  });
+}
