@@ -152,6 +152,10 @@ func (s *Service) targetForPlan(ctx context.Context, userID string, concept mode
 		return Target{}, err
 	}
 	personal.labOS = s.labOS(ctx, userID)
+	if personal.repeated, err = s.Store.RepeatedMisconceptions(ctx, userID, conceptID, minRepeatedMisconception, maxRepeatedMisconceptions); err != nil {
+		logf("repeated misconceptions of %s: %v", conceptID, err)
+		personal.repeated = nil
+	}
 
 	return Target{
 		Plan:     plan,

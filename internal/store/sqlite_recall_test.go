@@ -86,3 +86,25 @@ func TestUpgradeToV030(t *testing.T) {
 		t.Fatalf("old review quality = %q %v", q, err)
 	}
 }
+
+func TestRepeatedMisconceptions(t *testing.T) {
+	s, _ := newTestStore(t)
+	ctx := context.Background()
+	conceptID, objectiveID := masteryFixture(t, s, testUser)
+	stmts := []string{
+		`INSERT INTO check_items (id, concept_id, objective_id, purpose, format, prompt) VALUES ('it', '` + conceptID + `', '` + objectiveID + `', 'check', 'recall', 'q')`,
+		`INSERT INTO check_sessions (id, user_id, kind, session_key, status) VALUES ('ss', '` + testUser + `', 'check', 'k', 'finished')`,
+	}
+	for i, m := range []string{"인덱스가 유니크를 보장한다", "인덱스가 유니크를 보장한다", "한 번만 나온 오해"} {
+		stmts = append(stmts, `INSERT INTO check_turns (id, session_id, user_id, item_id, seq, role, grade) VALUES ('t`+string(rune('0'+i))+`', 'ss', '`+testUser+`', 'it', `+string(rune('1'+i))+`, 'tutor', '{"misconception":"`+m+`"}')`)
+	}
+	for _, q := range stmts {
+		if _, err := s.c().exec(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := s.RepeatedMisconceptions(ctx, testUser, conceptID, 2, 3)
+	if err != nil || len(got) != 1 || got[0] != "인덱스가 유니크를 보장한다" {
+		t.Fatalf("repeated = %q %v", got, err)
+	}
+}

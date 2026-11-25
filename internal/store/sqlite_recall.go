@@ -153,3 +153,25 @@ func (s *SQLiteStore) QualityRecords(ctx context.Context) ([]QualityRecord, erro
 	}
 	return list, nil
 }
+
+// RepeatedMisconceptions are the misconceptions the check tutor found at
+// least minCount times in the user's answers on the concept or its
+// prerequisites, most frequent first (acknowledged ones go through OpenMisconceptions).
+func (s *SQLiteStore) RepeatedMisconceptions(ctx context.Context, userID, conceptID string, minCount, limit int) ([]string, error) {
+	list, err := collect(s.c().query(ctx, `
+		SELECT json_extract(t.grade, '$.misconception') AS m FROM check_turns t JOIN check_items ci ON ci.id = t.item_id
+		WHERE t.user_id = $1 AND (ci.concept_id = $2 OR ci.concept_id IN (
+			SELECT e.from_id FROM concept_edges e WHERE e.to_id = $2 AND e.kind = 'prerequisite'))
+		  AND TRIM(COALESCE(json_extract(t.grade, '$.misconception'), '')) <> ''
+		  AND NOT EXISTS (SELECT 1 FROM user_misconceptions um WHERE um.user_id = $1 AND um.turn_id = t.id)
+		GROUP BY m HAVING COUNT(*) >= $3 ORDER BY COUNT(*) DESC, m LIMIT $4`, userID, conceptID, minCount, limit),
+		func(row rowScanner) (string, error) {
+			var m string
+			err := row.Scan(&m)
+			return m, err
+		})
+	if err != nil {
+		return nil, fmt.Errorf("repeated misconceptions: %w", err)
+	}
+	return list, nil
+}

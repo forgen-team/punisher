@@ -20,6 +20,12 @@ import (
 // independent solutions, broken links) as evidence, and every review row
 // stores the rubric and the reviewer's 1~4 scores for trends (never a gate).
 
+// Repeated check misconceptions offered to a user-owned generation (research #5).
+const (
+	minRepeatedMisconception  = 2
+	maxRepeatedMisconceptions = 3
+)
+
 // verifyTimeout bounds the independent solving pass and the link checks of one review.
 const verifyTimeout = 75 * time.Second
 

@@ -83,6 +83,9 @@ type LectureContext struct {
 	Glossary []GlossaryRef
 	// Reader: the reader level section appended after the blocks (ReaderProfile).
 	Reader Reader
+	// RepeatedMisconceptions: misconceptions the learner's checks showed more than
+	// once on this concept or its prerequisites (user-owned generations only).
+	RepeatedMisconceptions []string
 }
 
 // GlossaryRef is a dictionary term the lecture may link.
@@ -221,6 +224,12 @@ func writeContext(b *strings.Builder, c LectureContext) {
 		b.WriteString("\n## 설명 방식 조정\n" + c.StyleHint + "\n")
 	}
 	writeMisconceptions(b, c.Misconceptions)
+	if len(c.RepeatedMisconceptions) > 0 {
+		b.WriteString("\n## 확인에서 여러 번 드러난 오개념(관련 있으면 @@misconception 으로 다룰 것)\n")
+		for _, m := range c.RepeatedMisconceptions {
+			b.WriteString("- " + m + "\n")
+		}
+	}
 	writeLearnerSignals(b, c.LearnerSignals)
 	b.WriteString(ExampleLanguageRule(c.ExampleLanguage))
 	b.WriteString(LabRule(c.LabOS))

@@ -233,4 +233,5 @@ type Store interface {
 	SetAttemptReviewItem(ctx context.Context, userID, attemptID, itemID string) error
 	LectureAnchorSignals(ctx context.Context, userID, lectureID string) ([]learning.AnchorSignal, error)
 	QualityRecords(ctx context.Context) ([]QualityRecord, error)
+	RepeatedMisconceptions(ctx context.Context, userID, conceptID string, minCount, limit int) ([]string, error)
 }
