@@ -180,6 +180,13 @@ export function RecallPanel({ anchor, text, renderBody }: RecallPanelProps) {
   );
 }
 
+/** 요약을 떠올렸거나 건너뛰었는가(문맥이 없는 미리보기는 늘 true) — 요약 뒤 블록(다음 개념)을 보일지. */
+export function useSummaryRecalled(anchor: string, text: string): boolean {
+  const ctx = useExerciseContext();
+  if (!ctx || !anchor) { return true; }
+  return findAttempt(ctx.attempts, anchor, blockContentHash(text, "")) !== undefined;
+}
+
 interface SummaryRecallProps {
   anchor: string;
   text: string;

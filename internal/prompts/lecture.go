@@ -8,7 +8,7 @@ import (
 )
 
 // Version is recorded in lectures.prompt_version.
-const Version = "punisher-prompts-2026-11-25.1"
+const Version = "punisher-prompts-2026-11-25.2"
 
 // ConceptRef is a concept the prompt may link to.
 type ConceptRef struct {

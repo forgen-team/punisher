@@ -108,9 +108,11 @@ $ lsof -nP -iTCP:3000 -sTCP:LISTEN
 - [문서 제목](https://...)
 @@section judgment_next minutes=3 title=섹션 제목
 @@markdown
-첫 장면의 숫자를 다시 계산해 닫기, 판단 기준(표), 관측 방법(지표의 원천·도구), 다음에 배울 개념([개념 이름](term:개념id) — 왜 이어지는지 한 줄씩)
+첫 장면의 숫자를 다시 계산해 닫기, 판단 기준(표), 관측 방법(지표의 원천·도구)
 @@summary
 - 한 장 요약 불릿 3~6개(불릿 하나에 개념 하나)
+@@markdown
+다음에 배울 개념([개념 이름](term:개념id) — 왜 이어지는지 한 줄씩)
 @@end
 
 블록 규칙:
@@ -123,7 +125,7 @@ $ lsof -nP -iTCP:3000 -sTCP:LISTEN
 - @@misconception 은 그 오해와 관련된 정의(@@keypoint kind=definition)나 손계산 바로 뒤에 둡니다. 섹션 끝에 몰아 두지 않습니다.
 - 실행 출력 예시(@@pause 다음 출력, 코드 아래 @@log)는 언어 표준만으로 결정되는 코드에만 붙입니다. 라이브러리·DB 드라이버를 거친 값의 타입·형식은 출력 예시로 쓰지 않습니다.
 - 깊이 1 강의에는 운영 마이그레이션·드라이버별 반환 타입·잠금 수준 같은 제품·버전 의존 세부를 본문 주장으로 넣지 않습니다. 필요하면 판단 기준에 "확인할 것"으로만 씁니다.
-- @@summary 는 judgment_next 에 정확히 1개, 불릿 3~6개입니다.
+- @@summary 는 judgment_next 에 정확히 1개, 불릿 3~6개입니다. 다음에 배울 개념은 @@summary 바로 뒤 마지막 @@markdown 에만 씁니다(학습자가 요약을 떠올린 뒤에 보입니다).
 - @@lab(선택, walkthrough 또는 judgment_next 에 0~1곳)은 수강생이 자기 터미널에서 직접 실행해 볼 읽기 전용 명령 하나입니다. 본문은 "$ 명령" 한 줄, "보는 곳:" 한 줄, "예상:" 한 줄입니다. 명령은 하나만(파이프 |, 리다이렉트 >, ;, &&, $(…), 변수, 와일드카드 금지), 다음 도구만 씁니다: lsof, ss, netstat, ps -e -o <열>, vm_stat, free, uptime, uname, getconf, ulimit, sysctl(읽기), df, du, ls, stat, file, cat /proc/<시스템 파일>, dig, nslookup, host, ping -c <≤5>, traceroute -m <≤20>, curl -sI/-o /dev/null -w(URL 하나). sudo·파일 쓰기·프로세스 종료·스크립트 실행(python, node 등)은 쓰지 않습니다. 비밀이 담길 수 있는 경로(~/.ssh, .env 등)는 쓰지 않습니다.
 - @@trace / @@chart / @@diff 의 본문은 JSON 객체 하나뿐입니다(앞뒤 설명 문장 금지, 코드펜스 없이). 앱이 데이터를 그리므로 HTML·JS 는 쓰지 않습니다.
   - trace: columns 2~6개, rows 2~16개, 모든 행의 칸 수 = columns 수, 칸은 모두 문자열.

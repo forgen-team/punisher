@@ -4,7 +4,10 @@ import { SECTION_KIND_LABELS } from "@/src/entities/punisher";
 import { anchorElementId } from "@/src/features/punisher/lecture-progress";
 import type { DeeperOrigin } from "@/src/features/punisher/term-popover";
 import { PassageMarkers } from "@/src/features/punisher/reading-assist";
+import { useSummaryRecalled } from "@/src/features/punisher/lecture-exercise";
+import type { LectureBlock } from "@/src/shared/api/punisher";
 import { groupBlocks, type BlockGroup } from "../lib/blockGroups";
+import { layoutAroundSummary } from "../lib/afterSummary";
 import { sectionMinutes } from "../lib/sectionMinutes";
 import { BlockGroupRenderer } from "./blocks";
 import { messages } from "../i18n";
@@ -52,18 +55,45 @@ export function LectureBody({ content, onBeforeDeeper, sectionNote }: LectureBod
           </header>
           <PassageMarkers anchor={section.anchor} />
           {sectionNote?.(section)}
-          {groupBlocks(section.blocks).map((group, gi) => {
-            const [first, second] = groupAnchors(group);
-            return (
-              <div key={first || gi} {...anchorProps(first)} className="scroll-mt-28">
-                <BlockGroupRenderer group={group} onBeforeDeeper={onBeforeDeeper} />
-                {second && <span {...anchorProps(second)} className="block scroll-mt-28" />}
-                <PassageMarkers anchor={first} />
-              </div>
-            );
-          })}
+          <SectionBlocks section={section} onBeforeDeeper={onBeforeDeeper} />
         </section>
       ))}
     </div>
   );
+}
+
+function Blocks({ blocks, onBeforeDeeper }: { blocks: LectureBlock[]; onBeforeDeeper?: LectureBodyProps["onBeforeDeeper"] }) {
+  return (
+    <>
+      {groupBlocks(blocks).map((group, gi) => {
+        const [first, second] = groupAnchors(group);
+        return (
+          <div key={first || `g${gi}`} {...anchorProps(first)} className="scroll-mt-28">
+            <BlockGroupRenderer group={group} onBeforeDeeper={onBeforeDeeper} />
+            {second && <span {...anchorProps(second)} className="block scroll-mt-28" />}
+            <PassageMarkers anchor={first} />
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/** judgment_next 는 요약을 떠올린 뒤에 다음 개념(지식 지도 링크)이 보인다(lib/afterSummary). */
+function SectionBlocks({ section, onBeforeDeeper }: { section: LectureSection; onBeforeDeeper?: LectureBodyProps["onBeforeDeeper"] }) {
+  const layout = section.kind === "judgment_next" ? layoutAroundSummary(section.blocks) : null;
+  if (!layout) { return <Blocks blocks={section.blocks} onBeforeDeeper={onBeforeDeeper} />; }
+  return (
+    <>
+      <Blocks blocks={[...layout.before, layout.summary]} onBeforeDeeper={onBeforeDeeper} />
+      <AfterSummary summary={layout.summary}>
+        <Blocks blocks={layout.after} onBeforeDeeper={onBeforeDeeper} />
+      </AfterSummary>
+    </>
+  );
+}
+
+function AfterSummary({ summary, children }: { summary: LectureBlock; children: ReactNode }) {
+  const recalled = useSummaryRecalled(summary.anchor, summary.text ?? "");
+  return recalled ? <>{children}</> : null;
 }
