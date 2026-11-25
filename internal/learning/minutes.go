@@ -17,6 +17,8 @@ const (
 	MinutesPerExercise    = 1.5
 	MinutesPerPause       = 0.5
 	MinutesPerTraceRow    = 0.1
+	// MinutesPerRecall: one "방금 읽은 걸 떠올려 보기" (think, reveal, one tap) [추정].
+	MinutesPerRecall = 0.5
 )
 
 // EstimateMinutes is the displayed lecture time: the sum of SectionMinutes, so
@@ -32,7 +34,7 @@ func EstimateMinutes(c lecture.Content) int {
 
 // SectionMinutes is the reading time of each section alone, in order: prose
 // chars (no spaces)/600 + code·log chars/500 + exercises×1.5 + pauses×0.5 +
-// trace rows×0.1, rounded, at least 1.
+// recalls×0.5 + trace rows×0.1, rounded, at least 1.
 func SectionMinutes(c lecture.Content) []int {
 	out := make([]int, len(c.Sections))
 	for i, s := range c.Sections {
@@ -48,7 +50,7 @@ func readingMinutes(c lecture.Content) int {
 		rate = ProseCharsPerMinuteEn
 	}
 	total := float64(m.ProseChars)/rate + float64(m.CodeChars)/CodeCharsPerMinute +
-		float64(m.Exercises)*MinutesPerExercise + float64(m.Pauses)*MinutesPerPause + float64(m.TraceRows)*MinutesPerTraceRow
+		float64(m.Exercises)*MinutesPerExercise + float64(m.Pauses)*MinutesPerPause + float64(m.Recalls)*MinutesPerRecall + float64(m.TraceRows)*MinutesPerTraceRow
 	if n := int(math.Round(total)); n > 1 {
 		return n
 	}

@@ -42,6 +42,18 @@ func renderBlock(b *strings.Builder, blk Block) {
 		fmt.Fprintf(b, "@@keypoint kind=%s\n", blk.Kind)
 	case BlockLab:
 		fmt.Fprintf(b, "@@lab os=%s\n", blk.Kind)
+	case BlockExercise:
+		if blk.Kind != "" {
+			fmt.Fprintf(b, "@@exercise kind=%s\n", blk.Kind)
+		} else {
+			b.WriteString("@@exercise\n")
+		}
+	case BlockRecall:
+		if blk.Objective != "" {
+			fmt.Fprintf(b, "@@recall objective=%s\n", blk.Objective)
+		} else {
+			b.WriteString("@@recall\n")
+		}
 	case BlockTerm:
 		proposed := ""
 		if blk.Proposed {
@@ -73,7 +85,7 @@ func HasMaterialBlocks(c Content) bool {
 	for _, s := range c.Sections {
 		for _, b := range s.Blocks {
 			switch b.Type {
-			case BlockKeypoint, BlockTrace, BlockChart, BlockDiff, BlockPause, BlockExercise, BlockAnswer, BlockSummary, BlockLab:
+			case BlockKeypoint, BlockTrace, BlockChart, BlockDiff, BlockPause, BlockExercise, BlockAnswer, BlockSummary, BlockLab, BlockRecall:
 				return true
 			}
 		}

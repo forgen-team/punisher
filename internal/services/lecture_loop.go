@@ -11,6 +11,7 @@ import (
 	"github.com/forgen-team/punisher/internal/lecture"
 	"github.com/forgen-team/punisher/internal/llm"
 	"github.com/forgen-team/punisher/internal/prompts"
+	"github.com/forgen-team/punisher/internal/quality"
 )
 
 // Per-attempt time limits of a lecture generation (an attempt = one draft and
@@ -18,7 +19,8 @@ import (
 const (
 	draftTimeout  = 7 * time.Minute
 	reviewTimeout = 3 * time.Minute
-	attemptBudget = draftTimeout + reviewTimeout
+	// attemptBudget: the draft, the evidence pass before the review (verifyTimeout) and the review.
+	attemptBudget = draftTimeout + verifyTimeout + reviewTimeout
 	// adjudicateTimeout bounds one adjudication (a short call; adjudications
 	// of one review run in parallel).
 	adjudicateTimeout = 90 * time.Second
@@ -49,13 +51,21 @@ func (s *Service) lectureLoop(apiKey string, t Target, outlineJSON string, u *us
 				User: user, MaxTokens: maxTokens, Timeout: draftTimeout}, u)
 		},
 		Review: func(ctx context.Context, markup string) (ReviewOutcome, error) {
+			var ev prompts.ReviewEvidence
+			var answers []IndependentAnswer
+			var links []quality.LinkResult
+			if c, perr := lecture.ParseMarkup(markup, t.Plan.ConceptID, t.Plan.Depth); perr == nil {
+				ev, answers, links = s.reviewEvidence(ctx, apiKey, t, pc, c, u)
+			}
 			text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel,
 				System: prompts.WithOutputLanguage(t.Prompts.Text(prompts.BlockReviewerSystem, vars), lang),
-				User:   prompts.Review(pc, markup, t.Prompts), MaxTokens: 4000, Timeout: reviewTimeout}, u)
+				User:   prompts.ReviewChecked(pc, markup, t.Prompts, ev), MaxTokens: 5000, Timeout: reviewTimeout}, u)
 			if err != nil {
 				return ReviewOutcome{}, err
 			}
-			return ParseReview(text), nil
+			out := ParseReview(text)
+			out.Rubric, out.Independent, out.Links = validRubric(out.Rubric, markup), answers, links
+			return out, nil
 		},
 		Recheck: func(ctx context.Context, in RecheckInput) (RecheckOutcome, error) {
 			text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel,
@@ -85,8 +95,9 @@ func (s *Service) lectureLoop(apiKey string, t Target, outlineJSON string, u *us
 			return ParseAdjudication(text), nil
 		},
 		Parse:             t.parseAndValidate,
+		Notes:             func(c lecture.Content) []lecture.Issue { return rubricNotes(c, t.Quality) },
 		DraftTimeout:      draftTimeout,
-		ReviewTimeout:     reviewTimeout,
+		ReviewTimeout:     verifyTimeout + reviewTimeout,
 		AdjudicateTimeout: adjudicateTimeout,
 	}
 }

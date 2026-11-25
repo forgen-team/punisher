@@ -50,7 +50,7 @@ func MermaidSwallowedProse(src string) string {
 }
 
 var (
-	strayDirectiveRe = regexp.MustCompile(`@@(?:lecture|section|end|markdown|mermaid|code|log|misconception|term|sources|keypoint|trace|chart|diff|pause|exercise|answer|summary)\b`)
+	strayDirectiveRe = regexp.MustCompile(`@@(?:lecture|section|end|markdown|mermaid|code|log|misconception|term|sources|keypoint|trace|chart|diff|pause|exercise|answer|summary|recall)\b`)
 	inlineCodeRe     = regexp.MustCompile("`[^`]*`")
 )
 

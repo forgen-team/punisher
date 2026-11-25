@@ -2,20 +2,27 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
+	"github.com/forgen-team/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/llmjson"
 	"github.com/forgen-team/punisher/internal/models"
+	"github.com/forgen-team/punisher/internal/prompts"
 )
 
 const (
 	// InstantRewrites: a draft that fails the checks or the review is rewritten
 	// with the findings at most this many times (quality design v2.2 §2.1).
 	InstantRewrites = 2
-	// instantTimeout bounds the whole pipeline: every attempt may use its full
-	// draft + review limit. It stays under the scheduler's stale-job age so a
-	// live job is never swept.
-	instantTimeout = (InstantRewrites + 1) * attemptBudget
+	// outlineLiteTimeout bounds the short plan of an instant lecture.
+	outlineLiteTimeout = 90 * time.Second
+	// instantTimeout bounds the whole pipeline: the short plan and every
+	// attempt with its full draft + review limit. It stays under the
+	// scheduler's stale-job age so a live job is never swept.
+	instantTimeout = outlineLiteTimeout + (InstantRewrites+1)*attemptBudget
 )
 
 // LongestJobTimeout is the longest generation job limit; the scheduler's
@@ -60,7 +67,12 @@ func (s *Service) runInstant(apiKey, userID, jobID string, t Target, emit func(E
 		return
 	}
 
-	loop := s.lectureLoop(apiKey, t, "", &u)
+	outline := ""
+	if s.Cfg.InstantOutline {
+		emit(stageEvent(StagePlanning, 0, InstantRewrites, "", nil))
+		outline = s.instantOutline(ctx, apiKey, t, &u)
+	}
+	loop := s.lectureLoop(apiKey, t, outline, &u)
 	loop.SkipReviewOnIssues = true
 	loop.NoAdvisoryRewrite = true // advisory only → publish at once (shorter wait)
 	loop.OnStage = func(stage string, n int) {
@@ -96,6 +108,31 @@ func (s *Service) runInstant(apiKey, userID, jobID string, t Target, emit func(E
 	emit(Event{Type: EventDone, Data: map[string]any{
 		"lectureId": saved.ID, "status": saved.Status, "flagged": false, "issues": []any{}, "attempts": len(result.Attempts),
 	}})
+}
+
+// instantOutline is the short plan of an instant lecture (thesis check, key
+// definitions, misconceptions, scene numbers — research #13) as compact JSON,
+// "" when the call fails or its output is not one JSON object (the draft is
+// then written without it, as before).
+func (s *Service) instantOutline(ctx context.Context, apiKey string, t Target, u *usage) string {
+	pc := t.LectureContext()
+	text, err := s.complete(ctx, apiKey, llm.MessagesRequest{Model: s.Cfg.LectureModel,
+		System: prompts.WithOutputLanguage(t.Prompts.Text(prompts.BlockTeacherSystem, prompts.LectureVars(pc)), t.Plan.Language),
+		User:   prompts.OutlineLite(pc), MaxTokens: 1500, Timeout: outlineLiteTimeout}, u)
+	if err != nil {
+		logf("instant outline of %s: %v (drafting without it)", t.Plan.ConceptID, err)
+		return ""
+	}
+	plan, err := llmjson.TryParseJSON[map[string]json.RawMessage](text)
+	if err != nil || len(plan) == 0 {
+		logf("instant outline of %s unreadable (drafting without it)", t.Plan.ConceptID)
+		return ""
+	}
+	raw, err := json.Marshal(plan)
+	if err != nil {
+		return ""
+	}
+	return string(raw)
 }
 
 // llmFailReason is the learner-facing reason of a failed generation call:

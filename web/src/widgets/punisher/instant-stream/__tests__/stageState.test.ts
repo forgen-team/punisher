@@ -68,3 +68,13 @@ describe("reduceStage — 예전 이벤트 호환", () => {
     expect(reduceStage(INITIAL_STAGE, "stage", null)).toBe(INITIAL_STAGE);
   });
 });
+
+describe("짧은 개요 단계", () => {
+  it("shows planning as the writing step and older screens' stages still apply", () => {
+    const planning = reduceStage(INITIAL_STAGE, "stage", { type: "stage", stage: "planning", attempt: 0, maxAttempts: 2 });
+    expect(planning.stage).toBe("planning");
+    expect(stageLabel(planning, "ko")).toBe("계획 중");
+    expect(currentStep("planning")).toBe("write");
+    expect(reduceStage(planning, "stage", { type: "stage", stage: "writing", attempt: 0 }).stage).toBe("writing");
+  });
+});

@@ -1,5 +1,13 @@
-import type { ExerciseVerdict } from "@/src/shared/api/punisher";
+import type { ExerciseVerdict, PredictionConfidence } from "@/src/shared/api/punisher";
 import { defineMessages, type Locale } from "@/src/shared/i18n";
+
+/** 회상 자기 채점(서버 learning.RecallRemembered · ExercisePartial · RecallForgot) */
+export type RecallGrade = "remembered" | "partial" | "forgot";
+export const RECALL_GRADES: RecallGrade[] = ["remembered", "partial", "forgot"];
+const RECALL_KO: Record<RecallGrade, string> = { remembered: "기억났어요", partial: "흐릿해요", forgot: "못 떠올렸어요" };
+const RECALL_EN: Record<RecallGrade, string> = { remembered: "Recalled it", partial: "Partly", forgot: "Couldn't recall" };
+const CONFIDENCE_KO: Record<PredictionConfidence, string> = { sure: "확실", unsure: "대충", unknown: "모름" };
+const CONFIDENCE_EN: Record<PredictionConfidence, string> = { sure: "Sure", unsure: "Roughly", unknown: "No idea" };
 
 export const messages = defineMessages({
   ko: {
@@ -16,6 +24,26 @@ export const messages = defineMessages({
     labTooLong: "앞 8KB만 읽어요",
     look: "보는 곳",
     expect: "예상",
+    predictPlaceholder: "내 예측(한 줄)",
+    confidenceLabel: "확신도",
+    confidence: (c: PredictionConfidence) => CONFIDENCE_KO[c],
+    revealOutput: "출력 보기",
+    skipPredict: "예측 없이 보기",
+    sameAsPrediction: "내 예측과 같았나요?",
+    predictionRight: "맞았어요",
+    predictionWrong: "달랐어요",
+    myPrediction: "내 예측",
+    recallTitle: "방금 읽은 걸 떠올려 보기",
+    recallReveal: "떠올렸어요, 답 보기",
+    recallSkip: "건너뛰기",
+    recallKey: "떠올릴 것",
+    recallHowMuch: "얼마나 떠올렸나요?",
+    recallQueued: "하루 뒤 복습에 넣었어요",
+    recallGrade: (g: string) => RECALL_KO[g as RecallGrade] ?? "",
+    summaryRecallLabel: "요약을 열기 전에 핵심을 떠올려 적어 보세요",
+    summaryRecallPlaceholder: "떠올린 핵심(저장하지 않아요)",
+    summaryReveal: "요약 보기",
+    summarySkip: "바로 보기",
   },
   en: {
     answerPlaceholder: "Your answer",
@@ -31,6 +59,26 @@ export const messages = defineMessages({
     labTooLong: "Only the first 8 KB is read",
     look: "Where to look",
     expect: "Expected",
+    predictPlaceholder: "Your prediction (one line)",
+    confidenceLabel: "Confidence",
+    confidence: (c: PredictionConfidence) => CONFIDENCE_EN[c],
+    revealOutput: "Show output",
+    skipPredict: "Show without predicting",
+    sameAsPrediction: "Did it match your prediction?",
+    predictionRight: "It matched",
+    predictionWrong: "It differed",
+    myPrediction: "Your prediction",
+    recallTitle: "Recall what you just read",
+    recallReveal: "I recalled it, show the answer",
+    recallSkip: "Skip",
+    recallKey: "What to recall",
+    recallHowMuch: "How much did you recall?",
+    recallQueued: "Added to tomorrow's review",
+    recallGrade: (g: string) => RECALL_EN[g as RecallGrade] ?? "",
+    summaryRecallLabel: "Before opening the summary, write down the key points",
+    summaryRecallPlaceholder: "Key points you recall (not saved)",
+    summaryReveal: "Show summary",
+    summarySkip: "Just show it",
   },
 });
 
@@ -43,6 +91,9 @@ export const VERDICT_LABELS: Record<Locale, Record<Exclude<ExerciseVerdict, "">,
     matched: "예상과 같아요",
     different: "예상과 달라요",
     unreadable: "읽지 못했어요",
+    remembered: "기억났어요",
+    forgot: "못 떠올렸어요",
+    written: "떠올려 적었어요",
   },
   en: {
     correct: "Correct",
@@ -52,5 +103,8 @@ export const VERDICT_LABELS: Record<Locale, Record<Exclude<ExerciseVerdict, "">,
     matched: "Matches the expected result",
     different: "Differs from the expected result",
     unreadable: "Couldn't read it",
+    remembered: "Recalled it",
+    forgot: "Couldn't recall it",
+    written: "Wrote it down",
   },
 };

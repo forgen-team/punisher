@@ -8,4 +8,7 @@ export const VERDICT_TONE: Record<Exclude<ExerciseVerdict, "">, string> = {
   matched: "text-success",
   different: "text-warning",
   unreadable: "text-fg-muted",
+  remembered: "text-success",
+  forgot: "text-warning",
+  written: "text-fg-muted",
 };

@@ -13,6 +13,11 @@ import (
 const (
 	AttemptExercise = "exercise"
 	AttemptLab      = "lab"
+	// Self-graded, no LLM (lecture quality v2): a pause prediction, a section-end
+	// recall prompt, the summary recalled before it opens.
+	AttemptPause   = "pause"
+	AttemptRecall  = "recall"
+	AttemptSummary = "summary"
 
 	ExerciseCorrect   = "correct"
 	ExercisePartial   = "partial"
@@ -21,15 +26,44 @@ const (
 	LabMatched        = "matched"
 	LabDifferent      = "different"
 	LabUnreadable     = "unreadable"
+	// Recall self-grades (partial = ExercisePartial); a pause is graded correct | incorrect.
+	RecallRemembered = "remembered"
+	RecallForgot     = "forgot"
+	// SummaryWritten: the learner wrote a recall before opening the summary (the text is not kept).
+	SummaryWritten = "written"
 )
 
 // ValidAttemptKind reports a known attempt kind.
-func ValidAttemptKind(k string) bool { return k == AttemptExercise || k == AttemptLab }
+func ValidAttemptKind(k string) bool {
+	switch k {
+	case AttemptExercise, AttemptLab, AttemptPause, AttemptRecall, AttemptSummary:
+		return true
+	}
+	return false
+}
+
+// SelfGraded: the kind is graded by the learner's one tap (no LLM call).
+func SelfGraded(kind string) bool {
+	return kind == AttemptPause || kind == AttemptRecall || kind == AttemptSummary
+}
+
+// ValidSelfGrade reports a verdict the learner may give a self-graded kind.
+func ValidSelfGrade(kind, verdict string) bool {
+	switch kind {
+	case AttemptPause:
+		return verdict == ExerciseCorrect || verdict == ExerciseIncorrect
+	case AttemptRecall:
+		return verdict == RecallRemembered || verdict == ExercisePartial || verdict == RecallForgot
+	case AttemptSummary:
+		return verdict == SummaryWritten
+	}
+	return false
+}
 
 // AttemptMiss: the attempt shows the section did not land.
 func AttemptMiss(verdict string) bool {
 	switch verdict {
-	case ExerciseIncorrect, ExerciseSkipped, LabDifferent, LabUnreadable:
+	case ExerciseIncorrect, ExerciseSkipped, LabDifferent, LabUnreadable, RecallForgot:
 		return true
 	}
 	return false
@@ -43,6 +77,11 @@ type SectionSignal struct {
 	Labs       int    `json:"labs"`
 	LabMisses  int    `json:"labMisses"`
 	Questions  int    `json:"questions"`
+	// Pauses / PauseMisses: self-graded predictions (wrong or skipped); Recalls / RecallMisses: forgot or skipped.
+	Pauses       int `json:"pauses"`
+	PauseMisses  int `json:"pauseMisses"`
+	Recalls      int `json:"recalls"`
+	RecallMisses int `json:"recallMisses"`
 }
 
 // SectionFlag is a section marked '고칠 곳' with its reasons.
@@ -61,7 +100,7 @@ func FlagSections(signals []SectionSignal, locale string) []SectionFlag {
 	out := []SectionFlag{}
 	for _, s := range signals {
 		var reasons []string
-		attempts, misses := s.Exercises+s.Labs, s.ExerciseMs+s.LabMisses
+		attempts, misses := s.Exercises+s.Labs+s.Pauses+s.Recalls, s.ExerciseMs+s.LabMisses+s.PauseMisses+s.RecallMisses
 		if misses >= 1 && misses*2 >= attempts {
 			if s.ExerciseMs > 0 {
 				reasons = append(reasons, fmt.Sprintf(inLocale(locale, "직접 해 보기 %d번 중 %d번 틀리거나 건너뜀",
@@ -70,6 +109,14 @@ func FlagSections(signals []SectionSignal, locale string) []SectionFlag {
 			if s.LabMisses > 0 {
 				reasons = append(reasons, fmt.Sprintf(inLocale(locale, "실습 %d번 중 %d번 결과가 예상과 다름",
 					"%[2]d of %[1]d labs differed from the expected result"), s.Labs, s.LabMisses))
+			}
+			if s.PauseMisses > 0 {
+				reasons = append(reasons, fmt.Sprintf(inLocale(locale, "출력 예측 %d번 중 %d번 빗나가거나 건너뜀",
+					"missed or skipped %[2]d of %[1]d output predictions"), s.Pauses, s.PauseMisses))
+			}
+			if s.RecallMisses > 0 {
+				reasons = append(reasons, fmt.Sprintf(inLocale(locale, "떠올려 보기 %d번 중 %d번 못 떠올리거나 건너뜀",
+					"couldn't recall or skipped %[2]d of %[1]d recall prompts"), s.Recalls, s.RecallMisses))
 			}
 		}
 		if s.Questions >= FlagMinQuestions {
@@ -88,4 +135,43 @@ func SectionOfAnchor(anchor string) string {
 		return anchor[:i]
 	}
 	return anchor
+}
+
+// AnchorSignal is one block's signals (research #15: block-level instead of section-level).
+type AnchorSignal struct {
+	Anchor string `json:"anchor"`
+	// ConfidentMiss: a pause predicted with "sure" that turned out wrong (착각).
+	ConfidentMiss bool `json:"confidentMiss"`
+	// Forgot: a recall the learner could not recall.
+	Forgot bool `json:"forgot"`
+	// Questions: lecture questions and passage explanations asked on the block.
+	Questions int `json:"questions"`
+}
+
+// AnchorFlag is a block marked to rework, with its reasons.
+type AnchorFlag struct {
+	Anchor  string   `json:"anchor"`
+	Reasons []string `json:"reasons"`
+}
+
+// FlagAnchors marks blocks with a confident miss, a forgotten recall, or
+// FlagMinQuestions+ questions, worded in locale.
+func FlagAnchors(signals []AnchorSignal, locale string) []AnchorFlag {
+	out := []AnchorFlag{}
+	for _, s := range signals {
+		var reasons []string
+		if s.ConfidentMiss {
+			reasons = append(reasons, inLocale(locale, "확신하고 예측했는데 틀림", "predicted with confidence and was wrong"))
+		}
+		if s.Forgot {
+			reasons = append(reasons, inLocale(locale, "읽은 직후 떠올리지 못함", "could not recall it right after reading"))
+		}
+		if s.Questions >= FlagMinQuestions {
+			reasons = append(reasons, fmt.Sprintf(inLocale(locale, "이 블록에 질문·설명 요청 %d개", "%d questions or explanations on this block"), s.Questions))
+		}
+		if len(reasons) > 0 {
+			out = append(out, AnchorFlag{Anchor: s.Anchor, Reasons: reasons})
+		}
+	}
+	return out
 }

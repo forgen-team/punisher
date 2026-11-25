@@ -17,17 +17,20 @@ const (
 	AttemptFailed  = "failed"
 )
 
-const attemptColumns = `id, lecture_id, anchor, content_hash, kind, answer, verdict, feedback, status, created_at`
+const attemptColumns = `id, lecture_id, anchor, content_hash, kind, answer, verdict, feedback, status, created_at, confidence, COALESCE(review_item_id, '')`
 
 func scanAttempt(row rowScanner) (models.ExerciseAttempt, error) {
 	var a models.ExerciseAttempt
-	err := row.Scan(&a.ID, &a.LectureID, &a.Anchor, &a.ContentHash, &a.Kind, &a.Answer, &a.Verdict, &a.Feedback, &a.Status, ts(&a.CreatedAt))
+	err := row.Scan(&a.ID, &a.LectureID, &a.Anchor, &a.ContentHash, &a.Kind, &a.Answer, &a.Verdict, &a.Feedback, &a.Status, ts(&a.CreatedAt),
+		&a.Confidence, &a.ReviewItemID)
 	return a, err
 }
 
 // NewExerciseAttempt is an attempt to save; Status "" = pending.
 type NewExerciseAttempt struct {
 	UserID, LectureID, Anchor, ContentHash, Section, Kind, Answer, Verdict, Status string
+	// Confidence: a self-graded pause's confidence ("" = not asked).
+	Confidence string
 }
 
 // InsertExerciseAttempt saves an attempt (a skip is saved done with verdict skipped).
@@ -36,10 +39,10 @@ func (s *SQLiteStore) InsertExerciseAttempt(ctx context.Context, a NewExerciseAt
 		a.Status = AttemptPending
 	}
 	out, err := scanAttempt(s.c().row(ctx, `
-		INSERT INTO lecture_exercise_attempts (id, user_id, lecture_id, anchor, content_hash, section, kind, answer, verdict, status, created_at)
-		VALUES ($10, $1, $2, $3, $4, $5, $6, $7, $8, $9, $11)
+		INSERT INTO lecture_exercise_attempts (id, user_id, lecture_id, anchor, content_hash, section, kind, answer, verdict, status, created_at, confidence)
+		VALUES ($10, $1, $2, $3, $4, $5, $6, $7, $8, $9, $11, $12)
 		RETURNING `+attemptColumns, a.UserID, a.LectureID, a.Anchor, a.ContentHash, a.Section, a.Kind, a.Answer, a.Verdict, a.Status,
-		NewID(), clockNow()))
+		NewID(), clockNow(), a.Confidence))
 	if err != nil {
 		return out, fmt.Errorf("insert exercise attempt: %w", err)
 	}
@@ -116,16 +119,20 @@ func (s *SQLiteStore) LectureSignals(ctx context.Context, userID, lectureID stri
 		}
 		sig := get(learning.SectionOfAnchor(a.Anchor))
 		miss := learning.AttemptMiss(a.Verdict)
-		if a.Kind == learning.AttemptLab {
+		switch a.Kind {
+		case learning.AttemptLab:
 			sig.Labs++
-			if miss {
-				sig.LabMisses++
-			}
-		} else {
+			sig.LabMisses += boolInt(miss)
+		case learning.AttemptPause:
+			sig.Pauses++
+			sig.PauseMisses += boolInt(miss)
+		case learning.AttemptRecall:
+			sig.Recalls++
+			sig.RecallMisses += boolInt(miss)
+		case learning.AttemptSummary: // 요약 전에 떠올려 봤는지는 섹션 신호가 아니다
+		default:
 			sig.Exercises++
-			if miss {
-				sig.ExerciseMs++
-			}
+			sig.ExerciseMs += boolInt(miss)
 		}
 	}
 	type count struct {
@@ -149,4 +156,11 @@ func (s *SQLiteStore) LectureSignals(ctx context.Context, userID, lectureID stri
 		out = append(out, *bySection[sec])
 	}
 	return out, nil
+}
+
+func boolInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

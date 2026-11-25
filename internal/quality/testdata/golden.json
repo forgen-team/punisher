@@ -1,0 +1,762 @@
+[
+  {
+    "file": "samples/arch.data-representation.json",
+    "conceptId": "arch.data-representation",
+    "promptVersion": "punisher-prompts-2026-11-13.6",
+    "failed": [
+      "G08",
+      "G11",
+      "G13",
+      "G14",
+      "G23"
+    ],
+    "rules": {
+      "G07": {
+        "id": "G07",
+        "status": "pass",
+        "value": 22,
+        "limit": "15~25분",
+        "detail": "예상 읽기 22분"
+      },
+      "G08": {
+        "id": "G08",
+        "status": "fail",
+        "value": 2070,
+        "limit": "≤ 1800자",
+        "detail": "가장 긴 구간 2070자(walkthrough-8부터) — 사이에 손계산·예측·연습·회상을 두세요",
+        "path": "walkthrough-8"
+      },
+      "G09": {
+        "id": "G09",
+        "status": "pass",
+        "value": 4,
+        "limit": "정의 ≤ 4개, 연속 ≤ 2개",
+        "detail": "정의 4개, 상호작용 없이 연속 최대 2개"
+      },
+      "G10": {
+        "id": "G10",
+        "status": "pass",
+        "value": 785,
+        "limit": "≤ 2000자",
+        "detail": "principles 시작 후 첫 손계산·연습까지 785자"
+      },
+      "G11": {
+        "id": "G11",
+        "status": "fail",
+        "value": 1,
+        "limit": "0개",
+        "detail": "전제·과장 표현 1개: \"항상\"(principles-17) — 전제는 빼고, 단정은 조건을 붙이세요"
+      },
+      "G12": {
+        "id": "G12",
+        "status": "pass",
+        "value": 0,
+        "limit": "0개",
+        "detail": "처음 이후 다시 건 링크 0개: "
+      },
+      "G13": {
+        "id": "G13",
+        "status": "fail",
+        "value": 1,
+        "limit": "문단당 ≤ 5문장",
+        "detail": "5문장 넘는 문단 1개(가장 긴 문단 6문장, judgment_next-1) — 문단을 나누세요",
+        "path": "judgment_next-1"
+      },
+      "G14": {
+        "id": "G14",
+        "status": "fail",
+        "value": 1,
+        "limit": "≥ 2개",
+        "detail": "장면 숫자 2개 중 judgment_next 에 다시 나온 것 1개(2147483647)"
+      },
+      "G15": {
+        "id": "G15",
+        "status": "pass",
+        "value": 2,
+        "limit": "≤ 2개, ①②③ + 계산 가능한 반례",
+        "detail": "오개념 2개 "
+      },
+      "G16": {
+        "id": "G16",
+        "status": "na",
+        "value": 0,
+        "detail": "연습 종류 표시 없음(이전 형식)"
+      },
+      "G17": {
+        "id": "G17",
+        "status": "pass",
+        "value": 1,
+        "limit": "예측 → 출력 → (수정) 연습",
+        "detail": "예측 멈춤 있음, 그 뒤 연습 있음"
+      },
+      "G18": {
+        "id": "G18",
+        "status": "pass",
+        "value": 0,
+        "limit": "공식 문서 도메인",
+        "detail": "허용 목록 밖 출처 0개:  — 공식 문서로 바꾸세요"
+      },
+      "G20": {
+        "id": "G20",
+        "status": "pass",
+        "value": 0,
+        "limit": "코드 ≤ 30줄, 장면 로그 6~12줄"
+      },
+      "G21": {
+        "id": "G21",
+        "status": "na",
+        "value": 0,
+        "detail": "SQL 코드 없음"
+      },
+      "G22": {
+        "id": "G22",
+        "status": "pass",
+        "value": 0,
+        "limit": "틀린 계산 0",
+        "detail": "식 7개 중 틀림 0개"
+      },
+      "G23": {
+        "id": "G23",
+        "status": "fail",
+        "value": 0,
+        "limit": "principles·walkthrough 끝에 1~2개",
+        "detail": "principles 회상 0개, walkthrough 회상 0개"
+      }
+    }
+  },
+  {
+    "file": "samples/db.relational-model.json",
+    "conceptId": "db.relational-model",
+    "promptVersion": "punisher-prompts-2026-11-13.6",
+    "failed": [
+      "G07",
+      "G08",
+      "G09",
+      "G10",
+      "G11",
+      "G12",
+      "G13",
+      "G15",
+      "G20",
+      "G23"
+    ],
+    "rules": {
+      "G07": {
+        "id": "G07",
+        "status": "fail",
+        "value": 29,
+        "limit": "15~25분",
+        "detail": "예상 읽기 29분"
+      },
+      "G08": {
+        "id": "G08",
+        "status": "fail",
+        "value": 2797,
+        "limit": "≤ 1800자",
+        "detail": "가장 긴 구간 2797자(situation_question-1부터) — 사이에 손계산·예측·연습·회상을 두세요",
+        "path": "situation_question-1"
+      },
+      "G09": {
+        "id": "G09",
+        "status": "fail",
+        "value": 6,
+        "limit": "정의 ≤ 4개, 연속 ≤ 2개",
+        "detail": "정의 6개, 상호작용 없이 연속 최대 6개"
+      },
+      "G10": {
+        "id": "G10",
+        "status": "fail",
+        "value": 2350,
+        "limit": "≤ 2000자",
+        "detail": "principles 시작 후 첫 손계산·연습까지 2350자"
+      },
+      "G11": {
+        "id": "G11",
+        "status": "fail",
+        "value": 1,
+        "limit": "0개",
+        "detail": "전제·과장 표현 1개: \"항상\"(walkthrough-10) — 전제는 빼고, 단정은 조건을 붙이세요"
+      },
+      "G12": {
+        "id": "G12",
+        "status": "fail",
+        "value": 2,
+        "limit": "0개",
+        "detail": "처음 이후 다시 건 링크 2개: db.joins×2, db.transaction×2"
+      },
+      "G13": {
+        "id": "G13",
+        "status": "fail",
+        "value": 3,
+        "limit": "문단당 ≤ 5문장",
+        "detail": "5문장 넘는 문단 3개(가장 긴 문단 7문장, principles-20) — 문단을 나누세요",
+        "path": "principles-20"
+      },
+      "G14": {
+        "id": "G14",
+        "status": "pass",
+        "value": 3,
+        "limit": "≥ 2개",
+        "detail": "장면 숫자 11개 중 judgment_next 에 다시 나온 것 3개(1041, 1042, 201)"
+      },
+      "G15": {
+        "id": "G15",
+        "status": "fail",
+        "value": 3,
+        "limit": "≤ 2개, ①②③ + 계산 가능한 반례",
+        "detail": "오개념 3개 "
+      },
+      "G16": {
+        "id": "G16",
+        "status": "na",
+        "value": 0,
+        "detail": "연습 종류 표시 없음(이전 형식)"
+      },
+      "G17": {
+        "id": "G17",
+        "status": "pass",
+        "value": 1,
+        "limit": "예측 → 출력 → (수정) 연습",
+        "detail": "예측 멈춤 있음, 그 뒤 연습 있음"
+      },
+      "G18": {
+        "id": "G18",
+        "status": "pass",
+        "value": 0,
+        "limit": "공식 문서 도메인",
+        "detail": "허용 목록 밖 출처 0개:  — 공식 문서로 바꾸세요"
+      },
+      "G20": {
+        "id": "G20",
+        "status": "fail",
+        "value": 1,
+        "limit": "코드 ≤ 30줄, 장면 로그 6~12줄",
+        "detail": "walkthrough-2 코드 31줄"
+      },
+      "G21": {
+        "id": "G21",
+        "status": "pass",
+        "value": 0,
+        "limit": "불일치 0",
+        "detail": "SQL 1개(일치 0, 불일치 0, 실행만 0, 건너뜀 1)"
+      },
+      "G22": {
+        "id": "G22",
+        "status": "na",
+        "value": 0,
+        "detail": "다시 계산할 식 없음"
+      },
+      "G23": {
+        "id": "G23",
+        "status": "fail",
+        "value": 0,
+        "limit": "principles·walkthrough 끝에 1~2개",
+        "detail": "principles 회상 0개, walkthrough 회상 0개"
+      }
+    }
+  },
+  {
+    "file": "samples/en/arch.data-representation.json",
+    "conceptId": "arch.data-representation",
+    "language": "en",
+    "promptVersion": "punisher-prompts-2026-11-16.1",
+    "failed": [
+      "G11",
+      "G12",
+      "G13",
+      "G14",
+      "G23"
+    ],
+    "rules": {
+      "G07": {
+        "id": "G07",
+        "status": "pass",
+        "value": 19,
+        "limit": "15~25분",
+        "detail": "예상 읽기 19분"
+      },
+      "G08": {
+        "id": "G08",
+        "status": "pass",
+        "value": 3193,
+        "limit": "≤ 3600자",
+        "detail": "가장 긴 구간 3193자(walkthrough-10부터) — 사이에 손계산·예측·연습·회상을 두세요",
+        "path": "walkthrough-10"
+      },
+      "G09": {
+        "id": "G09",
+        "status": "pass",
+        "value": 4,
+        "limit": "정의 ≤ 4개, 연속 ≤ 2개",
+        "detail": "정의 4개, 상호작용 없이 연속 최대 2개"
+      },
+      "G10": {
+        "id": "G10",
+        "status": "pass",
+        "value": 1193,
+        "limit": "≤ 4000자",
+        "detail": "principles 시작 후 첫 손계산·연습까지 1193자"
+      },
+      "G11": {
+        "id": "G11",
+        "status": "fail",
+        "value": 2,
+        "limit": "0개",
+        "detail": "전제·과장 표현 2개: \"never\"(principles-12), \"always\"(walkthrough-1) — 전제는 빼고, 단정은 조건을 붙이세요"
+      },
+      "G12": {
+        "id": "G12",
+        "status": "fail",
+        "value": 3,
+        "limit": "0개",
+        "detail": "처음 이후 다시 건 링크 3개: arch.cpu-instruction-execution×2, arch.floating-point×2, arch.endianness-alignment×2"
+      },
+      "G13": {
+        "id": "G13",
+        "status": "fail",
+        "value": 1,
+        "limit": "문단당 ≤ 5문장",
+        "detail": "5문장 넘는 문단 1개(가장 긴 문단 6문장, walkthrough-7) — 문단을 나누세요",
+        "path": "walkthrough-7"
+      },
+      "G14": {
+        "id": "G14",
+        "status": "fail",
+        "value": 1,
+        "limit": "≥ 2개",
+        "detail": "장면 숫자 6개 중 judgment_next 에 다시 나온 것 1개(2147483647)"
+      },
+      "G15": {
+        "id": "G15",
+        "status": "pass",
+        "value": 2,
+        "limit": "≤ 2개, ①②③ + 계산 가능한 반례",
+        "detail": "오개념 2개 "
+      },
+      "G16": {
+        "id": "G16",
+        "status": "na",
+        "value": 0,
+        "detail": "연습 종류 표시 없음(이전 형식)"
+      },
+      "G17": {
+        "id": "G17",
+        "status": "pass",
+        "value": 1,
+        "limit": "예측 → 출력 → (수정) 연습",
+        "detail": "예측 멈춤 있음, 그 뒤 연습 있음"
+      },
+      "G18": {
+        "id": "G18",
+        "status": "pass",
+        "value": 0,
+        "limit": "공식 문서 도메인",
+        "detail": "허용 목록 밖 출처 0개:  — 공식 문서로 바꾸세요"
+      },
+      "G20": {
+        "id": "G20",
+        "status": "pass",
+        "value": 0,
+        "limit": "코드 ≤ 30줄, 장면 로그 6~12줄"
+      },
+      "G21": {
+        "id": "G21",
+        "status": "na",
+        "value": 0,
+        "detail": "SQL 코드 없음"
+      },
+      "G22": {
+        "id": "G22",
+        "status": "pass",
+        "value": 0,
+        "limit": "틀린 계산 0",
+        "detail": "식 6개 중 틀림 0개"
+      },
+      "G23": {
+        "id": "G23",
+        "status": "fail",
+        "value": 0,
+        "limit": "principles·walkthrough 끝에 1~2개",
+        "detail": "principles 회상 0개, walkthrough 회상 0개"
+      }
+    }
+  },
+  {
+    "file": "samples/en/db.relational-model.json",
+    "conceptId": "db.relational-model",
+    "language": "en",
+    "promptVersion": "punisher-prompts-2026-11-16.1",
+    "failed": [
+      "G08",
+      "G11",
+      "G12",
+      "G13",
+      "G14",
+      "G23"
+    ],
+    "rules": {
+      "G07": {
+        "id": "G07",
+        "status": "pass",
+        "value": 19,
+        "limit": "15~25분",
+        "detail": "예상 읽기 19분"
+      },
+      "G08": {
+        "id": "G08",
+        "status": "fail",
+        "value": 3870,
+        "limit": "≤ 3600자",
+        "detail": "가장 긴 구간 3870자(walkthrough-10부터) — 사이에 손계산·예측·연습·회상을 두세요",
+        "path": "walkthrough-10"
+      },
+      "G09": {
+        "id": "G09",
+        "status": "pass",
+        "value": 2,
+        "limit": "정의 ≤ 4개, 연속 ≤ 2개",
+        "detail": "정의 2개, 상호작용 없이 연속 최대 2개"
+      },
+      "G10": {
+        "id": "G10",
+        "status": "pass",
+        "value": 1799,
+        "limit": "≤ 4000자",
+        "detail": "principles 시작 후 첫 손계산·연습까지 1799자"
+      },
+      "G11": {
+        "id": "G11",
+        "status": "fail",
+        "value": 2,
+        "limit": "0개",
+        "detail": "전제·과장 표현 2개: \"never\"(principles-17), \"always\"(judgment_next-1) — 전제는 빼고, 단정은 조건을 붙이세요"
+      },
+      "G12": {
+        "id": "G12",
+        "status": "fail",
+        "value": 1,
+        "limit": "0개",
+        "detail": "처음 이후 다시 건 링크 1개: db.normalization×2"
+      },
+      "G13": {
+        "id": "G13",
+        "status": "fail",
+        "value": 3,
+        "limit": "문단당 ≤ 5문장",
+        "detail": "5문장 넘는 문단 3개(가장 긴 문단 8문장, principles-18) — 문단을 나누세요",
+        "path": "principles-18"
+      },
+      "G14": {
+        "id": "G14",
+        "status": "fail",
+        "value": 1,
+        "limit": "≥ 2개",
+        "detail": "장면 숫자 12개 중 judgment_next 에 다시 나온 것 1개(409)"
+      },
+      "G15": {
+        "id": "G15",
+        "status": "pass",
+        "value": 2,
+        "limit": "≤ 2개, ①②③ + 계산 가능한 반례",
+        "detail": "오개념 2개 "
+      },
+      "G16": {
+        "id": "G16",
+        "status": "na",
+        "value": 0,
+        "detail": "연습 종류 표시 없음(이전 형식)"
+      },
+      "G17": {
+        "id": "G17",
+        "status": "pass",
+        "value": 1,
+        "limit": "예측 → 출력 → (수정) 연습",
+        "detail": "예측 멈춤 있음, 그 뒤 연습 있음"
+      },
+      "G18": {
+        "id": "G18",
+        "status": "pass",
+        "value": 0,
+        "limit": "공식 문서 도메인",
+        "detail": "허용 목록 밖 출처 0개:  — 공식 문서로 바꾸세요"
+      },
+      "G20": {
+        "id": "G20",
+        "status": "pass",
+        "value": 0,
+        "limit": "코드 ≤ 30줄, 장면 로그 6~12줄"
+      },
+      "G21": {
+        "id": "G21",
+        "status": "pass",
+        "value": 0,
+        "limit": "불일치 0",
+        "detail": "SQL 2개(일치 0, 불일치 0, 실행만 2, 건너뜀 0)"
+      },
+      "G22": {
+        "id": "G22",
+        "status": "na",
+        "value": 0,
+        "detail": "다시 계산할 식 없음"
+      },
+      "G23": {
+        "id": "G23",
+        "status": "fail",
+        "value": 0,
+        "limit": "principles·walkthrough 끝에 1~2개",
+        "detail": "principles 회상 0개, walkthrough 회상 0개"
+      }
+    }
+  },
+  {
+    "file": "samples/en/net.network-layers.json",
+    "conceptId": "net.network-layers",
+    "language": "en",
+    "promptVersion": "punisher-prompts-2026-11-16.1",
+    "failed": [
+      "G08",
+      "G11",
+      "G13",
+      "G14",
+      "G23"
+    ],
+    "rules": {
+      "G07": {
+        "id": "G07",
+        "status": "pass",
+        "value": 20,
+        "limit": "15~25분",
+        "detail": "예상 읽기 20분"
+      },
+      "G08": {
+        "id": "G08",
+        "status": "fail",
+        "value": 4480,
+        "limit": "≤ 3600자",
+        "detail": "가장 긴 구간 4480자(situation_question-1부터) — 사이에 손계산·예측·연습·회상을 두세요",
+        "path": "situation_question-1"
+      },
+      "G09": {
+        "id": "G09",
+        "status": "pass",
+        "value": 2,
+        "limit": "정의 ≤ 4개, 연속 ≤ 2개",
+        "detail": "정의 2개, 상호작용 없이 연속 최대 2개"
+      },
+      "G10": {
+        "id": "G10",
+        "status": "pass",
+        "value": 3706,
+        "limit": "≤ 4000자",
+        "detail": "principles 시작 후 첫 손계산·연습까지 3706자"
+      },
+      "G11": {
+        "id": "G11",
+        "status": "fail",
+        "value": 4,
+        "limit": "0개",
+        "detail": "전제·과장 표현 4개: \"never\"(principles-3), \"never\"(principles-16), \"never\"(walkthrough-4), \"never\"(walkthrough-4) — 전제는 빼고, 단정은 조건을 붙이세요"
+      },
+      "G12": {
+        "id": "G12",
+        "status": "pass",
+        "value": 0,
+        "limit": "0개",
+        "detail": "처음 이후 다시 건 링크 0개: "
+      },
+      "G13": {
+        "id": "G13",
+        "status": "fail",
+        "value": 2,
+        "limit": "문단당 ≤ 5문장",
+        "detail": "5문장 넘는 문단 2개(가장 긴 문단 6문장, walkthrough-6) — 문단을 나누세요",
+        "path": "walkthrough-6"
+      },
+      "G14": {
+        "id": "G14",
+        "status": "fail",
+        "value": 1,
+        "limit": "≥ 2개",
+        "detail": "장면 숫자 6개 중 judgment_next 에 다시 나온 것 1개(8080)"
+      },
+      "G15": {
+        "id": "G15",
+        "status": "pass",
+        "value": 2,
+        "limit": "≤ 2개, ①②③ + 계산 가능한 반례",
+        "detail": "오개념 2개 "
+      },
+      "G16": {
+        "id": "G16",
+        "status": "na",
+        "value": 0,
+        "detail": "연습 종류 표시 없음(이전 형식)"
+      },
+      "G17": {
+        "id": "G17",
+        "status": "pass",
+        "value": 1,
+        "limit": "예측 → 출력 → (수정) 연습",
+        "detail": "예측 멈춤 있음, 그 뒤 연습 있음"
+      },
+      "G18": {
+        "id": "G18",
+        "status": "pass",
+        "value": 0,
+        "limit": "공식 문서 도메인",
+        "detail": "허용 목록 밖 출처 0개:  — 공식 문서로 바꾸세요"
+      },
+      "G20": {
+        "id": "G20",
+        "status": "pass",
+        "value": 0,
+        "limit": "코드 ≤ 30줄, 장면 로그 6~12줄"
+      },
+      "G21": {
+        "id": "G21",
+        "status": "na",
+        "value": 0,
+        "detail": "SQL 코드 없음"
+      },
+      "G22": {
+        "id": "G22",
+        "status": "pass",
+        "value": 0,
+        "limit": "틀린 계산 0",
+        "detail": "식 3개 중 틀림 0개"
+      },
+      "G23": {
+        "id": "G23",
+        "status": "fail",
+        "value": 0,
+        "limit": "principles·walkthrough 끝에 1~2개",
+        "detail": "principles 회상 0개, walkthrough 회상 0개"
+      }
+    }
+  },
+  {
+    "file": "samples/net.network-layers.json",
+    "conceptId": "net.network-layers",
+    "promptVersion": "punisher-prompts-2026-11-16.1",
+    "failed": [
+      "G08",
+      "G09",
+      "G13",
+      "G14",
+      "G23"
+    ],
+    "rules": {
+      "G07": {
+        "id": "G07",
+        "status": "pass",
+        "value": 22,
+        "limit": "15~25분",
+        "detail": "예상 읽기 22분"
+      },
+      "G08": {
+        "id": "G08",
+        "status": "fail",
+        "value": 2383,
+        "limit": "≤ 1800자",
+        "detail": "가장 긴 구간 2383자(principles-10부터) — 사이에 손계산·예측·연습·회상을 두세요",
+        "path": "principles-10"
+      },
+      "G09": {
+        "id": "G09",
+        "status": "fail",
+        "value": 3,
+        "limit": "정의 ≤ 4개, 연속 ≤ 2개",
+        "detail": "정의 3개, 상호작용 없이 연속 최대 3개"
+      },
+      "G10": {
+        "id": "G10",
+        "status": "pass",
+        "value": 1590,
+        "limit": "≤ 2000자",
+        "detail": "principles 시작 후 첫 손계산·연습까지 1590자"
+      },
+      "G11": {
+        "id": "G11",
+        "status": "pass",
+        "value": 0,
+        "limit": "0개",
+        "detail": "전제·과장 표현 0개:  — 전제는 빼고, 단정은 조건을 붙이세요"
+      },
+      "G12": {
+        "id": "G12",
+        "status": "pass",
+        "value": 0,
+        "limit": "0개",
+        "detail": "처음 이후 다시 건 링크 0개: "
+      },
+      "G13": {
+        "id": "G13",
+        "status": "fail",
+        "value": 3,
+        "limit": "문단당 ≤ 5문장",
+        "detail": "5문장 넘는 문단 3개(가장 긴 문단 8문장, situation_question-1) — 문단을 나누세요",
+        "path": "situation_question-1"
+      },
+      "G14": {
+        "id": "G14",
+        "status": "fail",
+        "value": 0,
+        "limit": "≥ 2개",
+        "detail": "장면 숫자 5개 중 judgment_next 에 다시 나온 것 0개()"
+      },
+      "G15": {
+        "id": "G15",
+        "status": "pass",
+        "value": 2,
+        "limit": "≤ 2개, ①②③ + 계산 가능한 반례",
+        "detail": "오개념 2개 "
+      },
+      "G16": {
+        "id": "G16",
+        "status": "na",
+        "value": 0,
+        "detail": "연습 종류 표시 없음(이전 형식)"
+      },
+      "G17": {
+        "id": "G17",
+        "status": "pass",
+        "value": 1,
+        "limit": "예측 → 출력 → (수정) 연습",
+        "detail": "예측 멈춤 있음, 그 뒤 연습 있음"
+      },
+      "G18": {
+        "id": "G18",
+        "status": "pass",
+        "value": 0,
+        "limit": "공식 문서 도메인",
+        "detail": "허용 목록 밖 출처 0개:  — 공식 문서로 바꾸세요"
+      },
+      "G20": {
+        "id": "G20",
+        "status": "pass",
+        "value": 0,
+        "limit": "코드 ≤ 30줄, 장면 로그 6~12줄"
+      },
+      "G21": {
+        "id": "G21",
+        "status": "na",
+        "value": 0,
+        "detail": "SQL 코드 없음"
+      },
+      "G22": {
+        "id": "G22",
+        "status": "pass",
+        "value": 0,
+        "limit": "틀린 계산 0",
+        "detail": "식 9개 중 틀림 0개"
+      },
+      "G23": {
+        "id": "G23",
+        "status": "fail",
+        "value": 0,
+        "limit": "principles·walkthrough 끝에 1~2개",
+        "detail": "principles 회상 0개, walkthrough 회상 0개"
+      }
+    }
+  }
+]

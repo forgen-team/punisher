@@ -271,7 +271,9 @@ export type BlockType =
   // 구조 블록(v2.2 §6) — data 는 trace·chart·diff, kind 는 keypoint 종류
   | "keypoint" | "trace" | "chart" | "diff" | "pause" | "exercise" | "answer" | "summary"
   // 실습(v3 §4) — kind 는 os(macos | linux | any), text 는 "$ 명령" · 보는 곳: · 예상:
-  | "lab";
+  | "lab"
+  // 방금 읽은 걸 떠올려 보기 — text 는 질문 + "떠올릴 것:" 줄, objective 는 목표 id
+  | "recall";
 
 export interface LectureBlock {
   anchor: string;
@@ -284,8 +286,10 @@ export interface LectureBlock {
   sources?: DocumentLink[];
   /** 구조 블록 데이터(JSON 객체) — 화면이 검증한 뒤 그린다 */
   data?: unknown;
-  /** keypoint 종류: definition | caution | rule · lab 은 os: macos | linux | any */
+  /** keypoint 종류: definition | caution | rule · lab 은 os: macos | linux | any · exercise 는 guided | why | error | free | modify */
   kind?: string;
+  /** recall 이 다루는 목표 id */
+  objective?: string;
 }
 
 export interface LectureSection {

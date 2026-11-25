@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -37,17 +38,23 @@ var (
 	ErrExerciseStale = errors.New("강의 내용이 바뀌었어요. 새로고침해 주세요")
 )
 
-// ExerciseInput is one answer (or skip) to a block.
+// ExerciseInput is one answer (or skip) to a block. Verdict and Confidence
+// are the learner's own grade of a self-graded block (pause, recall, summary).
 type ExerciseInput struct {
 	Anchor      string `json:"anchor"`
 	ContentHash string `json:"contentHash"`
 	Answer      string `json:"answer"`
 	Skip        bool   `json:"skip"`
+	Verdict     string `json:"verdict,omitempty"`
+	Confidence  string `json:"confidence,omitempty"`
 }
 
-// exerciseBlock is the located block: exercise (+ its answer) or lab.
+// exerciseBlock is the located block: exercise (+ its answer), lab, pause
+// (+ the output it hides), recall or summary.
 type exerciseBlock struct {
 	kind, section, problem, solution string
+	// objective: the recall's objective ("" = none given).
+	objective string
 }
 
 // BlockContentHash is the hash the screen sends with an attempt: the first 12
@@ -72,6 +79,16 @@ func findExercise(c lecture.Content, anchor string) (exerciseBlock, bool) {
 				return exerciseBlock{kind: learning.AttemptExercise, section: s.Kind, problem: b.Text, solution: sol}, true
 			case lecture.BlockLab:
 				return exerciseBlock{kind: learning.AttemptLab, section: s.Kind, problem: b.Text}, true
+			case lecture.BlockPause:
+				out := "" // the output it hides — the screen pairs only a next code/log block (blockGroups.ts)
+				if i+1 < len(s.Blocks) && (s.Blocks[i+1].Type == lecture.BlockLog || s.Blocks[i+1].Type == lecture.BlockCode) {
+					out = s.Blocks[i+1].Text
+				}
+				return exerciseBlock{kind: learning.AttemptPause, section: s.Kind, problem: b.Text, solution: out}, true
+			case lecture.BlockRecall:
+				return exerciseBlock{kind: learning.AttemptRecall, section: s.Kind, problem: b.Text, objective: b.Objective}, true
+			case lecture.BlockSummary:
+				return exerciseBlock{kind: learning.AttemptSummary, section: s.Kind, problem: b.Text}, true
 			}
 			return exerciseBlock{}, false
 		}
@@ -98,6 +115,9 @@ func (s *Service) SubmitExercise(ctx context.Context, userID string, lec models.
 	if in.Skip {
 		a.Verdict, a.Status = learning.ExerciseSkipped, store.AttemptDone
 		return s.Store.InsertExerciseAttempt(ctx, a)
+	}
+	if learning.SelfGraded(blk.kind) {
+		return s.submitSelfGraded(ctx, userID, lec, blk, a, in)
 	}
 	answer := strings.TrimSpace(in.Answer)
 	if blk.kind == learning.AttemptLab {
@@ -220,5 +240,108 @@ func (s *Service) signalLines(ctx context.Context, userID string, lec models.Lec
 		}
 		out = append(out, name+" — "+strings.Join(f.Reasons, "; "))
 	}
+	return append(out, s.anchorSignalLines(ctx, userID, lec, content, titles)...)
+}
+
+// maxAnchorSignalLines bounds the block-level lines of a regeneration prompt.
+const maxAnchorSignalLines = 6
+
+// anchorSignalLines are the blocks the learner got stuck on ("섹션 제목 · 블록 첫 구절 — 이유"):
+// a confident wrong prediction, a forgotten recall, repeated questions (research #15).
+func (s *Service) anchorSignalLines(ctx context.Context, userID string, lec models.Lecture, c lecture.Content, titles map[string]string) []string {
+	signals, err := s.Store.LectureAnchorSignals(ctx, userID, lec.ID)
+	if err != nil {
+		logf("anchor signals for %s: %v", lec.ID, err)
+		return nil
+	}
+	texts := map[string]string{}
+	for _, sec := range c.Sections {
+		for _, b := range sec.Blocks {
+			texts[b.Anchor] = clipRunes(squash(lecture.ProseOnly(b.Text)), 40)
+		}
+	}
+	var out []string
+	for _, f := range learning.FlagAnchors(signals, s.Store.LocaleFor(ctx, userID)) {
+		if len(out) == maxAnchorSignalLines {
+			break
+		}
+		section := learning.SectionOfAnchor(f.Anchor)
+		name := titles[section]
+		if name == "" {
+			name = section
+		}
+		if t := texts[f.Anchor]; t != "" {
+			name += " · \"" + t + "\""
+		}
+		out = append(out, name+" — "+strings.Join(f.Reasons, "; "))
+	}
 	return out
+}
+
+// Self-graded blocks (lecture quality v2): no LLM call, the learner's tap is the grade.
+const (
+	// maxPredictionRunes bounds a written pause prediction.
+	maxPredictionRunes = 300
+	// recallReviewDelay: a recall prompt's objective comes back in the review a day later.
+	recallReviewDelay = 24 * time.Hour
+)
+
+var validConfidence = map[string]bool{"": true, learning.ConfidenceSure: true, learning.ConfidenceUnsure: true, learning.ConfidenceUnknown: true}
+
+// submitSelfGraded saves a pause prediction (with confidence and the
+// learner's correct/incorrect after seeing the output), a recall grade, or a
+// summary recall (whether one was written — the text is not kept). A recall
+// also puts its question into the review bank and, unless the objective is
+// already scheduled, its first review a day later (queued when the backlog is
+// over the limit) — never mastery evidence by itself.
+func (s *Service) submitSelfGraded(ctx context.Context, userID string, lec models.Lecture, blk exerciseBlock, a store.NewExerciseAttempt, in ExerciseInput) (models.ExerciseAttempt, error) {
+	verdict := strings.TrimSpace(in.Verdict)
+	if blk.kind == learning.AttemptSummary {
+		verdict = learning.SummaryWritten
+		if strings.TrimSpace(in.Answer) == "" {
+			return models.ExerciseAttempt{}, invalidCheck(CodeAnswerEmpty, "answer is required")
+		}
+	}
+	if !learning.ValidSelfGrade(blk.kind, verdict) {
+		return models.ExerciseAttempt{}, invalidCheck(CodeInvalidVerdict, "verdict %q is not valid for %s", verdict, blk.kind)
+	}
+	if blk.kind == learning.AttemptPause {
+		if !validConfidence[in.Confidence] {
+			return models.ExerciseAttempt{}, invalidCheck(CodeInvalidVerdict, "confidence must be sure|unsure|unknown")
+		}
+		a.Confidence, a.Answer = in.Confidence, clipRunes(strings.TrimSpace(in.Answer), maxPredictionRunes)
+	}
+	a.Verdict, a.Status = verdict, store.AttemptDone
+	saved, err := s.Store.InsertExerciseAttempt(ctx, a)
+	if err != nil || blk.kind != learning.AttemptRecall {
+		return saved, err
+	}
+	itemID, err := s.scheduleRecall(ctx, userID, lec, blk, in.Anchor)
+	if err != nil {
+		logf("recall review of %s %s: %v", lec.ID, in.Anchor, err) // 회상 기록은 남는다 — 복습 연결만 빠진다
+		return saved, nil
+	}
+	if err := s.Store.SetAttemptReviewItem(ctx, userID, saved.ID, itemID); err != nil {
+		logf("recall review item of attempt %s: %v", saved.ID, err)
+		return saved, nil
+	}
+	saved.ReviewItemID = itemID
+	return saved, nil
+}
+
+// scheduleRecall adds the recall prompt to the review bank of its objective
+// (the block's, else the lecture's first) with the inflow control of a new check.
+func (s *Service) scheduleRecall(ctx context.Context, userID string, lec models.Lecture, blk exerciseBlock, anchor string) (string, error) {
+	objective := blk.objective
+	if !slices.Contains(lec.ObjectiveIDs, objective) {
+		if len(lec.ObjectiveIDs) == 0 {
+			return "", fmt.Errorf("lecture has no objectives")
+		}
+		objective = lec.ObjectiveIDs[0]
+	}
+	question, key := lecture.RecallParts(blk.problem)
+	itemID, _, err := s.Store.AddRecallReview(ctx, store.RecallReview{UserID: userID, LectureID: lec.ID, ConceptID: lec.ConceptID,
+		ObjectiveID: objective, Anchor: anchor, Question: question, Key: key, Due: s.now().Add(recallReviewDelay),
+		Hold: s.reviewHold(ctx, userID), PromptVersion: lec.PromptVersion})
+	return itemID, err
 }

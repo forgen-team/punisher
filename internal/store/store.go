@@ -227,4 +227,11 @@ type Store interface {
 	LastSynthesisAt(ctx context.Context, userID string) (*time.Time, error)
 	SaveSynthesisItems(ctx context.Context, d SynthesisItems) ([]CheckItem, error)
 	SynthesisObjectives(ctx context.Context, userID string, ids []string) ([]SynthesisObjective, error)
+
+	// lecture quality v2: recall prompts into the review queue, block-level signals, stored quality
+	AddRecallReview(ctx context.Context, r RecallReview) (string, bool, error)
+	SetAttemptReviewItem(ctx context.Context, userID, attemptID, itemID string) error
+	LectureAnchorSignals(ctx context.Context, userID, lectureID string) ([]learning.AnchorSignal, error)
+	QualityRecords(ctx context.Context) ([]QualityRecord, error)
+	RepeatedMisconceptions(ctx context.Context, userID, conceptID string, minCount, limit int) ([]string, error)
 }

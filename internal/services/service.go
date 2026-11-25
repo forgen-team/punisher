@@ -15,6 +15,7 @@ import (
 	"github.com/forgen-team/punisher/internal/i18n"
 	"github.com/forgen-team/punisher/internal/learning"
 	"github.com/forgen-team/punisher/internal/llm"
+	"github.com/forgen-team/punisher/internal/quality"
 	"github.com/forgen-team/punisher/internal/store"
 )
 
@@ -82,6 +83,11 @@ type Config struct {
 	DailyCheckTokenLimit int    // check tokens per KST day (0 = unlimited)
 	// BackfillReviewEnabled: review stored lectures without a pass review, BackfillReviewsPerTick per scheduler tick.
 	BackfillReviewEnabled bool
+	// InstantOutline: an instant lecture gets a short plan (thesis, definitions,
+	// misconceptions, scene numbers) before its draft (research #13).
+	InstantOutline bool
+	// LectureVerify: the review gets the draft's problems solved independently by FastModel (research #11).
+	LectureVerify bool
 }
 
 // Service bundles dependencies.
@@ -96,6 +102,10 @@ type Service struct {
 	Signals SignalSource
 	// Glossary: the shipped term dictionary (nil = none — glosses are generated as before).
 	Glossary *glossary.Glossary
+	// Links checks lecture source links during the review (nil = off).
+	Links *quality.LinkChecker
+	// SourceHosts: the curriculum's doc_links hosts, allowed as sources besides quality.OfficialHosts.
+	SourceHosts map[string]bool
 }
 
 func (s *Service) now() time.Time {

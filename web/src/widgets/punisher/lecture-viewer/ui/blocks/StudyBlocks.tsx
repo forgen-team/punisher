@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, BookMarked, ListChecks, NotebookPen, ScrollText, Sparkles, Terminal, type LucideIcon } from "lucide-react";
+import { AlertTriangle, BookMarked, Brain, ListChecks, NotebookPen, ScrollText, Sparkles, Terminal, type LucideIcon } from "lucide-react";
 import { cn } from "@/src/shared/ui/kit";
 import { Markdown, type RenderTerm } from "@/src/shared/ui/punisher/Markdown";
-import { ExercisePanel, LabResultPanel, parseLab } from "@/src/features/punisher/lecture-exercise";
+import { ExercisePanel, LabResultPanel, parseLab, PausePanel, RecallPanel, SummaryRecall } from "@/src/features/punisher/lecture-exercise";
 import { CodeBlock } from "./CodeBlock";
 import { closeUnclosedFence } from "../../lib/fences";
 import { toInlineTermLinks } from "../../lib/inlineTerms";
@@ -46,22 +46,47 @@ export function KeypointBlock({ kind, text, renderTerm }: { kind?: string; text?
   );
 }
 
-/** `@@pause` — 질문(본문과 같은 Markdown·용어 링크) + 다음 출력 블록을 접어 둔다('출력 보기') */
-export function PauseBlock({ question, output, renderTerm }: { question?: string; output?: ReactNode; renderTerm?: RenderTerm }) {
+interface PauseBlockProps {
+  anchor?: string;
+  question?: string;
+  output?: ReactNode;
+  /** 접어 둔 출력 블록의 원문(시도 기록의 content hash) */
+  outputText?: string;
+  renderTerm?: RenderTerm;
+}
+
+/** `@@pause` — 질문(본문과 같은 Markdown·용어 링크) + 다음 출력 블록. 강의 화면에서는 예측·확신도를 남긴 뒤 열고
+ * 같았는지 한 번 누른다. 미리보기에선 '출력 보기'로 접어 둔다. */
+export function PauseBlock({ anchor, question, output, outputText, renderTerm }: PauseBlockProps) {
   const t = useT(blockMessages);
+  const folded = output && <Reveal label={t.showOutput}>{output}</Reveal>;
   return (
     <div className="my-4 rounded-md border border-line bg-canvas-elevated px-3 py-2">
       <CardTitle icon={NotebookPen} className="text-fg">{t.pause}</CardTitle>
       {question && <Body text={question} renderTerm={renderTerm} />}
-      {output && <Reveal label={t.showOutput}>{output}</Reveal>}
+      {output && (
+        <PausePanel anchor={anchor ?? ""} question={question ?? ""} outputText={outputText ?? ""} output={output} fallback={folded} />
+      )}
     </div>
+  );
+}
+
+/** `@@recall` — 섹션 끝 '방금 읽은 걸 떠올려 보기'. 질문만 보이고, 답은 떠올린 뒤 연다. */
+export function RecallBlock({ anchor, text, renderTerm }: { anchor?: string; text?: string; renderTerm?: RenderTerm }) {
+  const t = useT(blockMessages);
+  return (
+    <section className="my-4 rounded-md border border-dashed border-line-strong bg-canvas-subtle px-3 py-2">
+      <CardTitle icon={Brain} className="text-fg">{t.recall}</CardTitle>
+      <RecallPanel anchor={anchor ?? ""} text={text ?? ""} renderBody={(body) => <Body text={body} renderTerm={renderTerm} />} />
+    </section>
   );
 }
 
 /** `@@exercise` (+ 바로 다음 `@@answer`) — 문제 카드. 강의 화면에서는 답을 써야 풀이가 열리고(건너뛰기 가능)
  * 튜터 평이 뒤따른다. 미리보기에선 접힌 풀이. */
-export function ExerciseBlock({ anchor, text, answer, renderTerm }: { anchor?: string; text?: string; answer?: string; renderTerm?: RenderTerm }) {
+export function ExerciseBlock({ anchor, kind, text, answer, renderTerm }: { anchor?: string; kind?: string; text?: string; answer?: string; renderTerm?: RenderTerm }) {
   const t = useT(blockMessages);
+  const kindLabel = t.exerciseKind(kind ?? "");
   const folded = answer !== undefined && (
     <Reveal label={t.showAnswer}>
       <div className="border-l-2 border-line-strong pl-3">
@@ -71,7 +96,10 @@ export function ExerciseBlock({ anchor, text, answer, renderTerm }: { anchor?: s
   );
   return (
     <section className="my-4 rounded-md border border-line bg-canvas-elevated px-3 py-2">
-      <CardTitle icon={NotebookPen} className="text-fg">{t.exercise}</CardTitle>
+      <CardTitle icon={NotebookPen} className="text-fg">
+        {t.exercise}
+        {kindLabel && <span className="ml-1 rounded-sm bg-canvas-subtle px-1.5 text-xs font-medium text-fg-secondary">{kindLabel}</span>}
+      </CardTitle>
       <Body text={text} renderTerm={renderTerm} />
       {answer !== undefined && (
         <ExercisePanel
@@ -127,13 +155,13 @@ export function AnswerBlock({ text, renderTerm }: { text?: string; renderTerm?: 
   );
 }
 
-/** `@@summary` — 강의 끝 한 장 요약 카드 */
-export function SummaryBlock({ text, renderTerm }: { text?: string; renderTerm?: RenderTerm }) {
+/** `@@summary` — 강의 끝 한 장 요약 카드. 강의 화면에서는 핵심을 먼저 떠올려 적은 뒤(건너뛰기 가능) 연다. */
+export function SummaryBlock({ anchor, text, renderTerm }: { anchor?: string; text?: string; renderTerm?: RenderTerm }) {
   const t = useT(blockMessages);
   return (
     <section aria-label={t.summary} className="my-6 rounded-xl border border-line bg-canvas-elevated px-4 py-3 shadow-xs">
       <CardTitle icon={ScrollText} className="text-fg">{t.summary}</CardTitle>
-      <Body text={text} renderTerm={renderTerm} />
+      <SummaryRecall anchor={anchor ?? ""} text={text ?? ""} summary={<Body text={text} renderTerm={renderTerm} />} />
     </section>
   );
 }
