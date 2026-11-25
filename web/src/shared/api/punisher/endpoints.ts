@@ -35,7 +35,7 @@ import type { CompletedArea, CompletedItem, Inquiry, InquiryFollowup } from "./i
 import type { CheckDetail, ConceptMastery, Confidence, DiagnosticChoice, DiagnosticRequest } from "./checkTypes";
 import type { CheckHistoryKind, CheckHistoryPage, ConceptMasterySummary, MasteryMetrics, ReviewSummary } from "./reviewTypes";
 import type { Misconception, MisconceptionStatus } from "./misconceptionTypes";
-import type { ExerciseAttempt, ExerciseInput, LectureExercises } from "./exerciseTypes";
+import type { ExerciseAttempt, ExerciseInput, LectureExercises, ReadingSignalInput } from "./exerciseTypes";
 
 const enc = encodeURIComponent;
 
@@ -148,6 +148,9 @@ export const punisherApi = {
     punisherFetch<{ attempt: ExerciseAttempt }>(`/lectures/${enc(lectureId)}/exercises`, { method: "POST", json: input }).then(
       (r) => r.attempt,
     ),
+  /** 블록 체류 시간·용어 팝오버 열기(조사 #15). keepalive: 화면을 떠날 때도 보낸다. */
+  postReadingSignals: (lectureId: string, signals: ReadingSignalInput[], keepalive = false) =>
+    punisherFetch<void>(`/lectures/${enc(lectureId)}/reading-signals`, { method: "POST", json: { signals }, keepalive }),
   deleteExercise: (lectureId: string, attemptId: string) =>
     punisherFetch<void>(`/lectures/${enc(lectureId)}/exercises/${enc(attemptId)}`, { method: "DELETE" }),
   getQuestion: (id: string) =>

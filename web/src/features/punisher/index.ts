@@ -13,3 +13,4 @@ export * from "./prompt-edit";
 export * from "./check-start";
 export * from "./pretest";
 export * from "./lecture-exercise";
+export * from "./reading-signals";
