@@ -43,25 +43,36 @@ export function depthOneIdsForAreas(concepts: Concept[], areas: readonly string[
     .map((c) => c.id);
 }
 
+/** X 로 닫으면 이 기기에서 2주 동안 다시 띄우지 않는다(설명 수준은 설정에서 언제든 고를 수 있다). */
+const CLOSED_FOR_MS = 14 * 24 * 60 * 60 * 1000;
+
+export function closedRecently(raw: string | null, now: number): boolean {
+  if (!raw) { return false; }
+  // 예전 값("1", 세션 저장)은 오늘 닫은 것으로 본다.
+  const at = raw === "1" ? now : Number(raw);
+  return Number.isFinite(at) && now - at < CLOSED_FOR_MS;
+}
+
 function readClosed(): boolean {
   try {
-    return window.sessionStorage.getItem(CLOSED_KEY) === "1";
+    return closedRecently(window.localStorage.getItem(CLOSED_KEY) ?? window.sessionStorage.getItem(CLOSED_KEY), Date.now());
   } catch (err) {
-    console.warn("punisher: sessionStorage read failed", err);
+    console.warn("punisher: storage read failed", err);
     return false;
   }
 }
 
 function writeClosed(): void {
   try {
-    window.sessionStorage.setItem(CLOSED_KEY, "1");
+    window.localStorage.setItem(CLOSED_KEY, String(Date.now()));
   } catch (err) {
-    console.warn("punisher: sessionStorage write failed", err);
+    console.warn("punisher: storage write failed", err);
   }
 }
 
 /**
- * 처음 설정 시트를 띄울지 — 설정을 받았고 설명 수준이 빈 값("")이며 이번 세션에 X 로 닫지 않았을 때.
+ * 처음 설정 시트를 띄울지 — 설정을 받았고 설명 수준이 빈 값("")이며 최근 2주 안에 X 로 닫지 않았을 때(점검 19:
+ * 세션마다 다시 뜨던 것을 기기 단위로).
  * 한 번 열리면 저장으로 수준이 채워져도(이미 앎 저장·실패 안내 중) 닫을 때까지 열어 둔다.
  */
 export function useFirstSetupGate() {
@@ -73,7 +84,7 @@ export function useFirstSetupGate() {
     if (needsSetup && !readClosed()) { setOpen(true); }
   }, [needsSetup]);
 
-  /** X·배경: 이번 세션만 닫는다(다음 세션에 다시 묻는다). */
+  /** X·배경: 이 기기에서 2주 동안 닫는다. */
   const closeForSession = useCallback(() => {
     writeClosed();
     setOpen(false);

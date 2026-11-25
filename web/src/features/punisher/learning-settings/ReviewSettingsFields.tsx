@@ -8,7 +8,6 @@ import { messages } from "./i18n";
 
 interface ReviewSettingsFieldsProps {
   settings: LearningSettings;
-  saving: boolean;
   onSave: (patch: LearningSettingsPatch) => void;
   /** 그 필드를 저장하다 난 오류(서버 400 문구) */
   fieldError: (field: SettingsField) => string | undefined;
@@ -17,7 +16,7 @@ interface ReviewSettingsFieldsProps {
 const GRADERS: ReviewGrader[] = ["self", "llm"];
 
 /** 복습 간격 — 쉼표로 적고, 칸을 벗어나거나 Enter 로 저장(바뀌었고 형식이 맞을 때만). */
-function IntervalsField({ value, saving, onSave, serverError }: { value: number[]; saving: boolean; onSave: (days: number[]) => void; serverError?: string }) {
+function IntervalsField({ value, onSave, serverError }: { value: number[]; onSave: (days: number[]) => void; serverError?: string }) {
   const t = useT(messages);
   const saved = formatIntervals(value);
   const [text, setText] = useState(saved);
@@ -43,7 +42,6 @@ function IntervalsField({ value, saving, onSave, serverError }: { value: number[
       <FieldInput
         inputMode="numeric"
         value={text}
-        disabled={saving}
         onChange={(event) => setText(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {
@@ -55,7 +53,7 @@ function IntervalsField({ value, saving, onSave, serverError }: { value: number[
 }
 
 /** 설정 > 학습의 숙달·복습 항목 — 숙달 기준 · 복습 간격 · 하루 복습 시간 · 복습 채점 방식(부분 저장). */
-export function ReviewSettingsFields({ settings, saving, onSave, fieldError }: ReviewSettingsFieldsProps) {
+export function ReviewSettingsFields({ settings, onSave, fieldError }: ReviewSettingsFieldsProps) {
   const t = useT(messages);
   const minuteOptions = REVIEW_MINUTE_OPTIONS.includes(settings.reviewMinutes)
     ? REVIEW_MINUTE_OPTIONS
@@ -63,7 +61,7 @@ export function ReviewSettingsFields({ settings, saving, onSave, fieldError }: R
   return (
     <>
       <Field label={t.masteryTarget} error={fieldError("masteryTarget")}>
-        <Select value={String(settings.masteryTarget)} disabled={saving} onChange={(event) => onSave({ masteryTarget: Number(event.target.value) })}>
+        <Select value={String(settings.masteryTarget)} onChange={(event) => onSave({ masteryTarget: Number(event.target.value) })}>
           {MASTERY_TARGET_OPTIONS.map((level) => (
             <option key={level} value={level}>
               {t.masteryOption(level, MASTERY_LABELS[level])}
@@ -73,12 +71,11 @@ export function ReviewSettingsFields({ settings, saving, onSave, fieldError }: R
       </Field>
       <IntervalsField
         value={settings.reviewIntervals ?? []}
-        saving={saving}
         onSave={(days) => onSave({ reviewIntervals: days })}
         serverError={fieldError("reviewIntervals")}
       />
       <Field label={t.reviewMinutes} error={fieldError("reviewMinutes")}>
-        <Select value={String(settings.reviewMinutes)} disabled={saving} onChange={(event) => onSave({ reviewMinutes: Number(event.target.value) })}>
+        <Select value={String(settings.reviewMinutes)} onChange={(event) => onSave({ reviewMinutes: Number(event.target.value) })}>
           {minuteOptions.map((m) => (
             <option key={m} value={m}>
               {t.minutes(m)}
@@ -89,12 +86,11 @@ export function ReviewSettingsFields({ settings, saving, onSave, fieldError }: R
       <Field label={t.adaptiveIntervals} error={fieldError("adaptiveIntervals")}>
         <Switch
           checked={settings.adaptiveIntervals ?? true}
-          disabled={saving}
           onCheckedChange={(checked) => onSave({ adaptiveIntervals: checked })}
         />
       </Field>
       <Field label={t.reviewGrader} error={fieldError("reviewGrader")}>
-        <Select value={settings.reviewGrader} disabled={saving} onChange={(event) => onSave({ reviewGrader: event.target.value as ReviewGrader })}>
+        <Select value={settings.reviewGrader} onChange={(event) => onSave({ reviewGrader: event.target.value as ReviewGrader })}>
           {GRADERS.map((g) => (
             <option key={g} value={g}>
               {REVIEW_GRADER_LABELS[g]}
