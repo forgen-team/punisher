@@ -8,6 +8,7 @@ import { lectureAnchorHref, lectureBookmarkAtom, useConceptDetail, useLecture, u
 import { shellHasActions } from "@/src/shared/config/runtime";
 import { usePageActions, useScreenTitle, type PageAction } from "@/src/shared/lib/screen-chrome";
 import { ExerciseProvider } from "@/src/features/punisher/lecture-exercise";
+import { ReadingSignalsProvider } from "@/src/features/punisher/reading-signals";
 import { CheckStartButton, CheckStartError, KnownVerifyChoice, useKnownChoice, useLaunchCheck } from "@/src/features/punisher/check-start";
 import { useLectureProgress } from "@/src/features/punisher/lecture-progress";
 import { PretestPanel, usePretest } from "@/src/features/punisher/pretest";
@@ -220,9 +221,11 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
           <CheckStartError check={check} />
         </div>
         <div ref={bodyRef} className="mt-6">
-          <ExerciseProvider lectureId={lectureId}>
-            <LectureBody content={content} onBeforeDeeper={onBeforeDeeper} />
-          </ExerciseProvider>
+          <ReadingSignalsProvider lectureId={lectureId} containerRef={bodyRef}>
+            <ExerciseProvider lectureId={lectureId}>
+              <LectureBody content={content} onBeforeDeeper={onBeforeDeeper} />
+            </ExerciseProvider>
+          </ReadingSignalsProvider>
         </div>
         <ReadingAssist containerRef={bodyRef} />
         <SourcesList sources={sources} title={t.sourcesTitle} />

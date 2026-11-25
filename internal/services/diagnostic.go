@@ -119,6 +119,9 @@ func (s *Service) startPretest(ctx context.Context, userID string, req Diagnosti
 	if err != nil {
 		return nil, false, err
 	}
+	if plan.lectureID != "" && !plan.opened {
+		s.reanchorPretest(ctx, userID, plan.lectureID) // 즉석 강의의 생성 중 사전 질문 → 본문 앵커(첫 열람)
+	}
 	for _, key := range plan.openKeys {
 		open, err := s.Store.LatestCheckSession(ctx, userID, key)
 		if errors.Is(err, store.ErrNotFound) {

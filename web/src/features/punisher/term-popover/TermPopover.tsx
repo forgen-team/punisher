@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useReadingSignals } from "@/src/shared/lib/readingSignals";
 import { BookOpen } from "lucide-react";
 import { Button, Chip, Skeleton, cn, focusRing } from "@/src/shared/ui/kit";
 import { useCreateStudyRequest, useGloss } from "@/src/entities/punisher";
@@ -48,6 +49,7 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
   const [blockAnchor, setBlockAnchor] = useState("");
   const open = anchor !== null;
   const threads = useReadingThreads();
+  const readingSignals = useReadingSignals();
   const readLater = useCreateStudyRequest();
   const gloss = useGloss(conceptId, open);
   const { launch, isPending, error } = useLaunchInstant();
@@ -88,7 +90,9 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={(event) => {
-          setBlockAnchor(event.currentTarget.closest<HTMLElement>("[data-lecture-anchor]")?.dataset.lectureAnchor ?? "");
+          const at = event.currentTarget.closest<HTMLElement>("[data-lecture-anchor]")?.dataset.lectureAnchor ?? "";
+          setBlockAnchor(at);
+          readingSignals?.termOpened(conceptId, at);
           setAnchor(toOverlayAnchor(event.currentTarget.getBoundingClientRect()));
         }}
         className={cn(

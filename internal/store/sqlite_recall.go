@@ -123,6 +123,14 @@ func (s *SQLiteStore) LectureAnchorSignals(ctx context.Context, userID, lectureI
 	for _, c := range counts {
 		get(c.anchor).Questions += c.n
 	}
+	reading, err := s.LectureReadingSignals(ctx, userID, lectureID)
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range reading {
+		sig := get(r.Anchor)
+		sig.TermOpens, sig.DwellMs = r.TermOpens, r.DwellMs
+	}
 	out := make([]learning.AnchorSignal, 0, len(order))
 	for _, a := range order {
 		out = append(out, *byAnchor[a])
@@ -174,4 +182,26 @@ func (s *SQLiteStore) RepeatedMisconceptions(ctx context.Context, userID, concep
 		return nil, fmt.Errorf("repeated misconceptions: %w", err)
 	}
 	return list, nil
+}
+
+// UnanchoredPretestItems are the user's pretest items of the objectives,
+// created since (an instant lecture's job start) and pointing to no lecture block yet.
+func (s *SQLiteStore) UnanchoredPretestItems(ctx context.Context, userID string, objectiveIDs []string, since time.Time) ([]CheckItem, error) {
+	list, err := collect(s.c().query(ctx, `SELECT `+checkItemColumns+` FROM check_items ci
+		WHERE ci.purpose = 'pretest' AND ci.created_for = $1 AND ci.objective_id IN (SELECT value FROM json_each($2))
+		  AND ci.created_at >= $3 AND COALESCE(json_extract(ci.rubric, '$.anchor'), '') = ''
+		ORDER BY ci.created_at, ci.rowid`, userID, nonNil(objectiveIDs), since.UTC()), scanCheckItem)
+	if err != nil {
+		return nil, fmt.Errorf("unanchored pretest items: %w", err)
+	}
+	return list, nil
+}
+
+// SetCheckItemAnchor points one of the user's own items to a lecture block.
+func (s *SQLiteStore) SetCheckItemAnchor(ctx context.Context, userID, itemID, anchor string) error {
+	if _, err := s.c().exec(ctx, `UPDATE check_items SET rubric = json_set(rubric, '$.anchor', $3) WHERE id = $1 AND created_for = $2`,
+		itemID, userID, anchor); err != nil {
+		return fmt.Errorf("set check item anchor: %w", err)
+	}
+	return nil
 }

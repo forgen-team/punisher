@@ -46,6 +46,13 @@ export interface ExerciseInput {
   confidence?: PredictionConfidence;
 }
 
+/** 한 블록의 읽기 신호(서버 store.ReadingSignal) — dwellMs 는 그 블록이 화면 중심이었던 시간, terms 는 연 용어별 횟수 */
+export interface ReadingSignalInput {
+  anchor: string;
+  dwellMs: number;
+  terms?: Record<string, number>;
+}
+
 export const EXERCISE_MAX_ANSWER_CHARS = 2000;
 /** 예측 한 줄(서버 maxPredictionRunes) */
 export const PREDICTION_MAX_CHARS = 300;

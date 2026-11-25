@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/forgen-team/punisher/internal/services"
+	"github.com/forgen-team/punisher/internal/store"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -79,6 +80,33 @@ func (h *LearnHandler) DeleteExercise(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.Store.DeleteExerciseAttempt(r.Context(), userID, chi.URLParam(r, "attemptId")); err != nil {
 		writeServiceError(w, r, "delete exercise", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RecordReadingSignals handles POST /v1/lectures/{id}/reading-signals
+// {signals: [{anchor, dwellMs, terms: {conceptId: n}}]} — the screen's block
+// dwell times and term popover opens (204; research #15).
+func (h *LearnHandler) RecordReadingSignals(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		Signals []store.ReadingSignal `json:"signals"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, err.Error())
+		return
+	}
+	lec, err := h.Store.GetLecture(r.Context(), userID, chi.URLParam(r, "id"))
+	if err != nil {
+		writeServiceError(w, r, "reading signals", err)
+		return
+	}
+	if err := h.Svc.RecordReadingSignals(r.Context(), userID, lec, body.Signals); err != nil {
+		writeCheckError(w, r, "reading signals", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

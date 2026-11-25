@@ -30,6 +30,7 @@ const ALLOWED = new Set([
   "entities/punisher/ui/constants.ts", // *_BY_LOCALE 의 ko 표
   "widgets/punisher/lecture-viewer/lib/blockData.ts", // 표 글 열 판별·내부 실패 이유
   "widgets/punisher/lecture-viewer/lib/inlineTerms.ts", // 한국어 강의 본문 복구 정규식
+  "widgets/punisher/lecture-viewer/lib/afterSummary.ts", // 강의 본문의 '다음에 배울 개념' 문단 표지
   "features/punisher/lecture-exercise/lib/lab.ts", // 실습 표지 보는 곳:/예상:
   "features/punisher/lecture-exercise/lib/recall.ts", // 회상 표지 떠올릴 것: (서버 lecture.RecallParts)
   "features/punisher/prompt-edit/lib/lineDiff.ts", // 서버로 보내는 프롬프트 머리글
