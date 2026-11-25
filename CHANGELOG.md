@@ -2,6 +2,7 @@
 
 ## 다음 버전 (작업 중)
 
+- **외부 카드(atlas 연동, 마이그레이션 032)**: 다른 앱이 `POST /v1/cards` 에 `sourceKind:"external"`·`externalId`(예 `atlas:<id>`)·`sourceUrl`·`front`/`back` 으로 복습 카드를 보낼 수 있어요(같은 externalId 는 같은 카드를 고쳐요). `PATCH /v1/cards/{id}`·`PATCH /v1/cards/external/{externalId}` 로 앞/뒤와 "근거 바뀜"(`stale`)을 바꿔요. 카드 화면에 "출처: atlas" 링크와 "근거 바뀜" 표시. 인증은 기존 규칙 그대로(단독판은 이 Mac 에서 온 호출만, Witems 는 내부 토큰 + 오너).
 - 강의 품질 v2 마무리(마이그레이션 031): '다음에 배울 개념'은 요약을 떠올린 뒤에 보여요(이전 강의도). 본문 블록별 체류 시간과 용어 설명을 연 횟수를 기록해 다시 만들기의 '막힌 곳'에 쓰고, `punisher quality gaps` 로 감수의 '막힌 곳'과 비교해요. 즉석 강의의 예측 질문은 처음 열 때 답이 있는 본문 위치로 연결돼요.
 
 - **되돌리기**: 강의 완료·이미 앎·필요 없음·확인 그만하기를 누르면 화면 아래(넓은 화면은 오른쪽 위)에 '되돌리기' 알림이 떠요(마우스를 올리거나 포커스가 있으면 사라지지 않아요). 서버에 되돌리기 API 3개(`DELETE /v1/lectures/{id}/complete`, `DELETE /v1/concepts/{id}/known`, `POST /v1/checks/{id}/resume`)를 더했어요 — DB 변경 없음.

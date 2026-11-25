@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -295,23 +296,43 @@ func (h *StudyHandler) CardDraft(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, d)
 }
 
-// SaveCard handles POST /v1/cards {kind, sourceId, question, answer}.
+// SaveCard handles POST /v1/cards {kind, sourceId, question, answer}. An
+// external card (kind or sourceKind "external", sent by another app) is
+// {externalId, sourceUrl, question|front, answer|back, stale?}; the same
+// externalId again updates that card.
 func (h *StudyHandler) SaveCard(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
 		return
 	}
 	var body struct {
-		Kind     string `json:"kind"`
-		SourceID string `json:"sourceId"`
-		Question string `json:"question"`
-		Answer   string `json:"answer"`
+		Kind       string `json:"kind"`
+		SourceKind string `json:"sourceKind"`
+		SourceID   string `json:"sourceId"`
+		Question   string `json:"question"`
+		Answer     string `json:"answer"`
+		ExternalID string `json:"externalId"`
+		SourceURL  string `json:"sourceUrl"`
+		Front      string `json:"front"`
+		Back       string `json:"back"`
+		Stale      bool   `json:"stale"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, err.Error())
 		return
 	}
-	c, err := h.Study.SaveCard(r.Context(), userID, body.Kind, body.SourceID, body.Question, body.Answer, h.now())
+	kind := firstNonEmpty(body.Kind, body.SourceKind)
+	if kind == store.CardSourceExternal {
+		c, err := h.Study.SaveExternalCard(r.Context(), userID, store.ExternalCard{ExternalID: body.ExternalID, SourceURL: body.SourceURL,
+			Question: firstNonEmpty(body.Question, body.Front), Answer: firstNonEmpty(body.Answer, body.Back), Stale: body.Stale}, h.now())
+		if err != nil {
+			writeExternalCardError(w, r, "save external card", err)
+			return
+		}
+		writeJSON(w, http.StatusOK, c)
+		return
+	}
+	c, err := h.Study.SaveCard(r.Context(), userID, kind, body.SourceID, body.Question, body.Answer, h.now())
 	if err != nil {
 		writeCardError(w, r, "save card", err)
 		return
@@ -358,6 +379,66 @@ func (h *StudyHandler) GradeCard(w http.ResponseWriter, r *http.Request) {
 	c, err := h.Study.GradeCard(r.Context(), userID, chi.URLParam(r, "id"), body.Rating, h.now())
 	if err != nil {
 		writeCardError(w, r, "grade card", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, c)
+}
+
+func firstNonEmpty(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
+}
+
+func writeExternalCardError(w http.ResponseWriter, r *http.Request, op string, err error) {
+	if errors.Is(err, store.ErrInvalidCard) {
+		writeError(w, r, http.StatusBadRequest, ErrorBadRequest,
+			"external card needs externalId (app:id), an http(s) sourceUrl or none, question ≤ 500 and answer ≤ 2000 chars; stale is for external cards only")
+		return
+	}
+	writeServiceError(w, r, op, err)
+}
+
+// PatchCard handles PATCH /v1/cards/{id} and PATCH /v1/cards/external/{externalId}
+// {question|front?, answer|back?, stale?} — absent fields are kept.
+func (h *StudyHandler) PatchCard(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		Question *string `json:"question"`
+		Answer   *string `json:"answer"`
+		Front    *string `json:"front"`
+		Back     *string `json:"back"`
+		Stale    *bool   `json:"stale"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, r, http.StatusBadRequest, ErrorBadRequest, err.Error())
+		return
+	}
+	p := store.CardPatch{Question: body.Question, Answer: body.Answer, Stale: body.Stale}
+	if p.Question == nil {
+		p.Question = body.Front
+	}
+	if p.Answer == nil {
+		p.Answer = body.Back
+	}
+	var c store.ReviewCard
+	var err error
+	if ext := chi.URLParam(r, "externalId"); ext != "" {
+		// chi matches the raw path: an escaped id ("atlas%3A…") arrives escaped.
+		if ext, err = url.PathUnescape(ext); err != nil {
+			writeError(w, r, http.StatusBadRequest, ErrorBadRequest, "invalid externalId")
+			return
+		}
+		c, err = h.Study.PatchExternalCard(r.Context(), userID, ext, p, h.now())
+	} else {
+		c, err = h.Study.PatchCard(r.Context(), userID, chi.URLParam(r, "id"), p, h.now())
+	}
+	if err != nil {
+		writeExternalCardError(w, r, "patch card", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, c)

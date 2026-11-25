@@ -31,6 +31,11 @@ type ReviewCard struct {
 	NextReviewAt *time.Time `json:"nextReviewAt"`
 	SuspendedAt  *time.Time `json:"suspendedAt"`
 	CreatedAt    time.Time  `json:"createdAt"`
+	// External cards (sourceKind "external", sent by another app such as atlas):
+	// the link back to the source, the sender's id and "the evidence changed".
+	SourceURL  string `json:"sourceUrl"`
+	ExternalID string `json:"externalId"`
+	Stale      bool   `json:"stale"`
 }
 
 // Card limits.
@@ -58,12 +63,12 @@ type CardDraft struct {
 }
 
 const cardColumns = `id, source_kind, source_id, COALESCE(lecture_id, ''), COALESCE(concept_id, ''), anchor, question, answer,
-	reps, lapses, next_review_at, suspended_at, created_at`
+	reps, lapses, next_review_at, suspended_at, created_at, COALESCE(source_url, ''), COALESCE(external_id, ''), stale`
 
 func scanCard(row rowScanner) (ReviewCard, error) {
 	var c ReviewCard
 	err := row.Scan(&c.ID, &c.SourceKind, &c.SourceID, &c.LectureID, &c.ConceptID, &c.Anchor, &c.Question, &c.Answer,
-		&c.Reps, &c.Lapses, nts(&c.NextReviewAt), nts(&c.SuspendedAt), ts(&c.CreatedAt))
+		&c.Reps, &c.Lapses, nts(&c.NextReviewAt), nts(&c.SuspendedAt), ts(&c.CreatedAt), &c.SourceURL, &c.ExternalID, &c.Stale)
 	return c, err
 }
 
