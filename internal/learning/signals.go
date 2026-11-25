@@ -146,6 +146,29 @@ type AnchorSignal struct {
 	Forgot bool `json:"forgot"`
 	// Questions: lecture questions and passage explanations asked on the block.
 	Questions int `json:"questions"`
+	// TermOpens: term popovers opened from the block; DwellMs: time it was the block in view.
+	TermOpens int   `json:"termOpens"`
+	DwellMs   int64 `json:"dwellMs"`
+	// SlowRead: the block was in view far longer than its reading time (set by SlowReads).
+	SlowRead bool `json:"slowRead"`
+}
+
+// Reading-signal thresholds (research #15) [추정 — 기록이 쌓이면 조정].
+const (
+	// FlagMinTermOpens: term popovers opened from one block that flag it.
+	FlagMinTermOpens = 3
+	// SlowReadFactor × the block's reading time (and at least SlowReadMinMs) flags a block.
+	SlowReadFactor = 3
+	SlowReadMinMs  = 60_000
+)
+
+// SlowReads marks the signals whose dwell is SlowReadFactor× the block's
+// reading time (expectedMs by anchor) and at least SlowReadMinMs.
+func SlowReads(signals []AnchorSignal, expectedMs map[string]int64) {
+	for i := range signals {
+		exp, ok := expectedMs[signals[i].Anchor]
+		signals[i].SlowRead = ok && signals[i].DwellMs >= SlowReadMinMs && signals[i].DwellMs >= SlowReadFactor*exp
+	}
 }
 
 // AnchorFlag is a block marked to rework, with its reasons.
@@ -168,6 +191,12 @@ func FlagAnchors(signals []AnchorSignal, locale string) []AnchorFlag {
 		}
 		if s.Questions >= FlagMinQuestions {
 			reasons = append(reasons, fmt.Sprintf(inLocale(locale, "이 블록에 질문·설명 요청 %d개", "%d questions or explanations on this block"), s.Questions))
+		}
+		if s.TermOpens >= FlagMinTermOpens {
+			reasons = append(reasons, fmt.Sprintf(inLocale(locale, "용어 설명을 %d번 열어 봄", "opened term explanations %d times"), s.TermOpens))
+		}
+		if s.SlowRead {
+			reasons = append(reasons, fmt.Sprintf(inLocale(locale, "읽기 시간보다 훨씬 오래 머묾(%d초)", "stayed far longer than its reading time (%ds)"), s.DwellMs/1000))
 		}
 		if len(reasons) > 0 {
 			out = append(out, AnchorFlag{Anchor: s.Anchor, Reasons: reasons})

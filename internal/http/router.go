@@ -124,6 +124,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Get("/lectures/{id}/exercises", learn.ListExercises)
 		r.Post("/lectures/{id}/exercises", learn.SubmitExercise)
 		r.Delete("/lectures/{id}/exercises/{attemptId}", learn.DeleteExercise)
+		r.Post("/lectures/{id}/reading-signals", learn.RecordReadingSignals)
 		r.Get("/lectures/{id}/links", learn.Links)
 		r.Post("/lectures/{id}/regenerate", learn.Regenerate)
 		r.Get("/lectures/{id}/questions", learn.ListQuestions)

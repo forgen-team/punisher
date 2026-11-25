@@ -123,6 +123,14 @@ func (s *SQLiteStore) LectureAnchorSignals(ctx context.Context, userID, lectureI
 	for _, c := range counts {
 		get(c.anchor).Questions += c.n
 	}
+	reading, err := s.LectureReadingSignals(ctx, userID, lectureID)
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range reading {
+		sig := get(r.Anchor)
+		sig.TermOpens, sig.DwellMs = r.TermOpens, r.DwellMs
+	}
 	out := make([]learning.AnchorSignal, 0, len(order))
 	for _, a := range order {
 		out = append(out, *byAnchor[a])

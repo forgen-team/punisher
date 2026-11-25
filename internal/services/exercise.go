@@ -255,11 +255,14 @@ func (s *Service) anchorSignalLines(ctx context.Context, userID string, lec mode
 		return nil
 	}
 	texts := map[string]string{}
+	expected := map[string]int64{}
 	for _, sec := range c.Sections {
 		for _, b := range sec.Blocks {
 			texts[b.Anchor] = clipRunes(squash(lecture.ProseOnly(b.Text)), 40)
+			expected[b.Anchor] = blockReadingMs(b)
 		}
 	}
+	learning.SlowReads(signals, expected)
 	var out []string
 	for _, f := range learning.FlagAnchors(signals, s.Store.LocaleFor(ctx, userID)) {
 		if len(out) == maxAnchorSignalLines {
@@ -344,4 +347,64 @@ func (s *Service) scheduleRecall(ctx context.Context, userID string, lec models.
 		ObjectiveID: objective, Anchor: anchor, Question: question, Key: key, Due: s.now().Add(recallReviewDelay),
 		Hold: s.reviewHold(ctx, userID), PromptVersion: lec.PromptVersion})
 	return itemID, err
+}
+
+// blockReadingMs is the reading time of one block (learning.SectionMinutes rates, in ms).
+func blockReadingMs(b lecture.Block) int64 {
+	m := lecture.MeasureContent(lecture.Content{Sections: []lecture.Section{{Blocks: []lecture.Block{b}}}})
+	rate := learning.ProseCharsPerMinute
+	if m.Language() == "en" {
+		rate = learning.ProseCharsPerMinuteEn
+	}
+	minutes := float64(m.ProseChars)/rate + float64(m.CodeChars)/learning.CodeCharsPerMinute + float64(m.TraceRows)*learning.MinutesPerTraceRow
+	return int64(minutes * 60_000)
+}
+
+// Reading signal bounds of one POST (the screen flushes about every 30 seconds).
+const (
+	maxReadingBatch     = 200
+	maxReadingDwellMs   = 10 * 60_000
+	maxReadingTermOpens = 50
+)
+
+// RecordReadingSignals adds the screen's per-block dwell times and term
+// popover opens of a lecture the user can read (anchors must be the
+// lecture's blocks; values are clipped).
+func (s *Service) RecordReadingSignals(ctx context.Context, userID string, lec models.Lecture, batch []store.ReadingSignal) error {
+	if len(batch) > maxReadingBatch {
+		return invalidCheck(CodeInvalidVerdict, "at most %d signals per request", maxReadingBatch)
+	}
+	var c lecture.Content
+	if err := json.Unmarshal(lec.Content, &c); err != nil {
+		return fmt.Errorf("decode lecture content: %w", err)
+	}
+	anchors := map[string]bool{}
+	for _, sec := range c.Sections {
+		for _, b := range sec.Blocks {
+			anchors[b.Anchor] = true
+		}
+	}
+	var keep []store.ReadingSignal
+	for _, r := range batch {
+		if !anchors[r.Anchor] {
+			continue // 강의가 바뀌었거나 블록이 아닌 자리
+		}
+		r.DwellMs = min(max(r.DwellMs, 0), maxReadingDwellMs)
+		terms := map[string]int{}
+		total := 0
+		for id, n := range r.Terms {
+			if n > 0 && id != "" && total < maxReadingTermOpens {
+				n = min(n, maxReadingTermOpens-total)
+				terms[id], total = n, total+n
+			}
+		}
+		r.Terms = terms
+		if r.DwellMs > 0 || len(terms) > 0 {
+			keep = append(keep, r)
+		}
+	}
+	if len(keep) == 0 {
+		return nil
+	}
+	return s.Store.AddReadingSignals(ctx, userID, lec.ID, keep)
 }

@@ -11,13 +11,15 @@ import (
 
 	seedfiles "github.com/forgen-team/punisher/curriculum"
 	"github.com/forgen-team/punisher/internal/config"
+	"github.com/forgen-team/punisher/internal/lecture"
 	"github.com/forgen-team/punisher/internal/quality"
 	"github.com/forgen-team/punisher/internal/store"
 )
 
 const qualityUsage = `punisher quality score [파일|폴더 ...]   강의 JSON(샘플 형식)을 결정적 루브릭으로 채점 (기본: 내장 샘플)
 punisher quality compare <전.json> <후.json>   두 채점 결과를 규칙별로 비교
-punisher quality db                            데이터 폴더의 감수 품질 기록을 프롬프트 버전별로 요약`
+punisher quality db                            데이터 폴더의 감수 품질 기록을 프롬프트 버전별로 요약
+punisher quality gaps                          감수 '막힌 곳'과 실제 질문·용어 열기 블록 대조`
 
 // runQuality is the offline quality harness (research #14): no LLM call.
 func runQuality(args []string, stdout io.Writer) int {
@@ -36,6 +38,8 @@ func runQuality(args []string, stdout io.Writer) int {
 		return qualityCompare(args[1], args[2], stdout)
 	case "db":
 		return qualityDB(stdout)
+	case "gaps":
+		return qualityGaps(stdout)
 	}
 	fmt.Fprintln(os.Stderr, qualityUsage)
 	return 2
@@ -193,4 +197,59 @@ func sortedKeys[V any](m map[string]V) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// qualityGaps compares, per lecture of the data folder, the reviewer's reader
+// gaps with the blocks the learner asked about or opened terms from (research #15).
+func qualityGaps(stdout io.Writer) int {
+	st, err := store.Open(filepath.Join(config.Load().DataDir, "punisher.db"))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	defer st.Close()
+	recs, err := st.GapRecords(context.Background())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if len(recs) == 0 {
+		fmt.Fprintln(stdout, "감수 '막힌 곳'과 학습자 신호가 함께 있는 강의가 없습니다.")
+		return 0
+	}
+	pct := func(f float64) string {
+		if f < 0 {
+			return "-"
+		}
+		return fmt.Sprintf("%.0f%%", f*100)
+	}
+	var both, learner, gapBlocks int
+	fmt.Fprintf(stdout, "%-28s %6s %6s %6s %8s %8s %10s\n", "개념", "막힌곳", "신호", "겹침", "정밀도", "놓침", "섹션 놓침")
+	for _, r := range recs {
+		var c lecture.Content
+		var gaps []quality.ReaderGap
+		if json.Unmarshal(r.Content, &c) != nil || json.Unmarshal(r.ReaderGaps, &gaps) != nil {
+			continue
+		}
+		signals := map[string]int{}
+		for a, n := range r.Questions {
+			signals[a] += n
+		}
+		for a, n := range r.TermOpens {
+			signals[a] += n
+		}
+		a := quality.CompareGaps(c, gaps, signals, 1)
+		both, learner, gapBlocks = both+a.Both, learner+a.LearnerBlocks, gapBlocks+a.GapBlocks
+		fmt.Fprintf(stdout, "%-28s %6d %6d %6d %8s %8s %10s\n", r.ConceptID, a.GapBlocks, a.LearnerBlocks, a.Both, pct(a.Precision), pct(a.Missed), pct(a.SectionMissed))
+	}
+	missed := -1.0
+	if learner > 0 {
+		missed = 1 - float64(both)/float64(learner)
+	}
+	precision := -1.0
+	if gapBlocks > 0 {
+		precision = float64(both) / float64(gapBlocks)
+	}
+	fmt.Fprintf(stdout, "합계: 강의 %d편, 정밀도 %s, 감수가 놓친 블록 %s\n", len(recs), pct(precision), pct(missed))
+	return 0
 }

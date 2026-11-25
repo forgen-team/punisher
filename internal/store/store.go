@@ -236,4 +236,7 @@ type Store interface {
 	RepeatedMisconceptions(ctx context.Context, userID, conceptID string, minCount, limit int) ([]string, error)
 	UnanchoredPretestItems(ctx context.Context, userID string, objectiveIDs []string, since time.Time) ([]CheckItem, error)
 	SetCheckItemAnchor(ctx context.Context, userID, itemID, anchor string) error
+	AddReadingSignals(ctx context.Context, userID, lectureID string, batch []ReadingSignal) error
+	LectureReadingSignals(ctx context.Context, userID, lectureID string) ([]ReadingSignal, error)
+	GapRecords(ctx context.Context) ([]GapRecord, error)
 }
