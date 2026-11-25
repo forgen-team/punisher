@@ -52,6 +52,7 @@ vi.mock("@/src/shared/api/punisher", async (importOriginal) => {
 Object.defineProperty(window, "scrollTo", { value: () => undefined, writable: true });
 
 const { FirstSetup } = await import("../FirstSetupSheet");
+const { closedRecently } = await import("../useFirstSetup");
 
 function renderSetup(level: ReaderLevel = "") {
   current = { ...baseSettings, readerLevel: level };
@@ -69,6 +70,7 @@ const button = (name: string) => screen.getByRole("button", { name });
 describe("처음 설정 시트", () => {
   beforeEach(() => {
     window.sessionStorage.clear();
+    window.localStorage.clear();
   });
 
   it("does not open once a reader level is chosen", async () => {
@@ -152,5 +154,17 @@ describe("처음 설정 시트", () => {
     fireEvent.click(button("다시 시도"));
     await waitFor(() => expect(api.markKnown).toHaveBeenLastCalledWith("os.thread", { queueVerify: true }));
     await waitFor(() => expect(screen.queryByRole("heading", { name: /이렇게 시작할게요/ })).toBeNull());
+  });
+});
+
+describe("closedRecently", () => {
+  const day = 24 * 60 * 60 * 1000;
+  it("keeps the sheet closed for two weeks after X", () => {
+    const now = 100 * day;
+    expect(closedRecently(null, now)).toBe(false);
+    expect(closedRecently(String(now - 13 * day), now)).toBe(true);
+    expect(closedRecently(String(now - 15 * day), now)).toBe(false);
+    expect(closedRecently("1", now)).toBe(true);
+    expect(closedRecently("x", now)).toBe(false);
   });
 });

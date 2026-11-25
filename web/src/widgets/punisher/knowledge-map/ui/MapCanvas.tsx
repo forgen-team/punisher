@@ -1,7 +1,9 @@
 
 // Lazy chunk: @xyflow/react + elkjs are only loaded on the map route.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Background, Controls, MiniMap, ReactFlow, type Edge, type ReactFlowInstance } from "@xyflow/react";
+import { Background, Controls, MiniMap, Panel, ReactFlow, type Edge, type ReactFlowInstance } from "@xyflow/react";
+import { Maximize2, Minimize2 } from "lucide-react";
+import { Button } from "@/src/shared/ui/kit";
 import { MAP_STATE_STYLES, mapNodeState, useResolvedTheme } from "@/src/entities/punisher";
 import type { GraphEdge, GraphNode } from "@/src/shared/api/punisher";
 import { NODE_HEIGHT, layoutGraph, nodeWidth, type LaidOutNode } from "../lib/elkLayout";
@@ -117,6 +119,22 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, mast
     void flow.setCenter(box.x + box.width / 2, box.y + box.height / 2, { zoom: Math.max(zoom, FIT_MIN_ZOOM), duration: reduced ? 0 : 300 });
   }, [flow, nodes, positions, selectedId]);
 
+  // 첫 화면은 진행·추천 묶음에 맞춘다 — 그때 화면 밖에 개념이 더 있으면 "일부만 보여요" 단서와 '전체 보기'를 둔다(P3·점검 27).
+  const partial = fitIds !== undefined && fitIds.length < nodes.length;
+  const [showingAll, setShowingAll] = useState(false);
+  useEffect(() => setShowingAll(false), [nodes]);
+  const reduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  function showAll() {
+    if (!flow) { return; }
+    void flow.fitView({ padding: FIT_PADDING, minZoom: 0.05, maxZoom: FIT_MAX_ZOOM, duration: reduced ? 0 : 300 });
+    setShowingAll(true);
+  }
+  function showFocus() {
+    if (!flow) { return; }
+    void flow.fitView({ padding: FIT_PADDING, nodes: fitIds, minZoom: FIT_MIN_ZOOM, maxZoom: FIT_MAX_ZOOM, duration: reduced ? 0 : 300 });
+    setShowingAll(false);
+  }
+
   const flowEdges = useMemo<Edge[]>(
     () =>
       edges.map((edge) => {
@@ -163,6 +181,17 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, mast
           aria-label={t.mapLabel}
         >
           <Background />
+          {partial && (
+            <Panel position="top-left" className="!m-2">
+              <div className="flex items-center gap-2 rounded-md border border-line bg-canvas-elevated py-0.5 pl-2.5 pr-0.5 text-xs text-fg-secondary shadow-xs">
+                {showingAll ? null : <span>{t.partialView(fitIds?.length ?? 0, nodes.length)}</span>}
+                <Button variant="ghost" size="sm" onClick={showingAll ? showFocus : showAll}>
+                  {showingAll ? <Minimize2 className="size-3.5" aria-hidden="true" /> : <Maximize2 className="size-3.5" aria-hidden="true" />}
+                  {showingAll ? t.focusView : t.showAll}
+                </Button>
+              </div>
+            </Panel>
+          )}
           {/* 휴대폰(fold 미만): 확대·축소·맞춤 버튼을 터치 크기(44px)로, 아이콘도 조금 크게. */}
           <Controls
             showInteractive={false}

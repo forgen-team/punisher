@@ -1,5 +1,33 @@
 # 바뀐 점
 
+## 다음 버전 (작업 중)
+
+- **되돌리기**: 강의 완료·이미 앎·필요 없음·확인 그만하기를 누르면 화면 아래(넓은 화면은 오른쪽 위)에 '되돌리기' 알림이 떠요(마우스를 올리거나 포커스가 있으면 사라지지 않아요). 서버에 되돌리기 API 3개(`DELETE /v1/lectures/{id}/complete`, `DELETE /v1/concepts/{id}/known`, `POST /v1/checks/{id}/resume`)를 더했어요 — DB 변경 없음.
+- 삭제·답한 문항을 닫는 그만하기·프롬프트 기본값으로·해설 다시 만들기는 앱 안 확인 창으로 물어요(기본 포커스는 '취소').
+- 프롬프트 편집·궁금한 것 입력·다음 챕터 고르기의 쓰던 내용은 이 기기에 초안으로 남고, 저장하지 않은 프롬프트 편집이 있으면 다른 화면으로 가기 전에 물어요.
+- 화면이 주소에 남아요: 오늘의 추천 상세(`?rec=`), 기록 칩·필터·검색, 지도 개념 시트, 프롬프트 블록. 탭·칩·추천 행은 링크라 ⌘/Ctrl·가운데 클릭으로 새 탭에 열려요. 탭은 화살표로 포커스만 옮기고 Enter/Space 로 열며, 다른 탭에 갔다 오면 그 탭의 마지막 화면·스크롤로 돌아가요.
+- 강의 안 자리 링크가 `#pa-…` 대신 `?at=…` 예요(옛 링크도 열려요).
+- 오늘 화면 시간 줄: "오늘 할 일 약 29분: 강의 20 · 확인 7 · 복습 2" + 하루 학습량 설정 링크. 지도는 일부만 보일 때 '전체 보기', 기초 개념은 왜 숨었는지(설명 수준 설정) 보여요. 기록 칩 줄이 넘치면 끝이 흐려져요.
+- 강의를 완료하면 '오늘의 다음 강의'로 이어지고, 설정은 저장하는 동안에도 다른 칸을 바꿀 수 있어요. 처음 설정 창은 X 로 닫으면 2주 동안 다시 뜨지 않아요. 데이터 내보내기가 실패하면 앱 안에서 알려요.
+- Witems 앱 모드: Shadow DOM 안에서 본문 자리 찾기·⋯ 메뉴 항목 클릭·포커스 가두기·드래그 선택이 맞게 동작해요. 셸 여백 변수를 덮어쓰지 않고, 셸 뒤로/앞으로에 맨 위로 튀지 않아요. 학습 설정·이동 항목은 셸의 페이지 동작(`ctx.setActions`, 없는 구버전 셸은 탭 옆 링크)으로, 화면 제목은 강의 제목 등으로. 테마·로컬 AI CLI 안내·제공자 선택은 숨겨요.
+
+**학습 기능**(DB 자동 업그레이드: 마이그레이션 023·024, 기존 복습 날짜는 그대로)
+- **기억 모델(FSRS)·목표 유지율**: 답할 때마다 목표별로 잊히는 속도를 배워 다음 복습을 정해요(설정 > 학습 > 복습·기억, 80~95%). 기록이 적은 목표는 지금까지의 상자 간격과 섞어 천천히 옮겨 가요. '상자 간격만'으로 되돌릴 수 있어요.
+- **자꾸 막히는 목표**: 같은 목표를 4번 이상 틀리거나 도움을 받으면 오늘 화면에 '다르게 설명한 강의 · 앞 개념부터 · 잠시 보류(되돌리기) · 그대로 복습'을 보여요.
+- **메모·구절 대화 → 복습 카드**: '복습에 넣기'로 고른 것만, 질문·답을 직접 다듬어 저장(AI 로 만들지 않아요). 내일부터 `복습 카드` 화면(/cards)에 나와요.
+- **복습 단축키**: Space 답 보기 · 1·2·3 채점(카드, 자기 채점 복습), ⌘/Ctrl+K 검색. 설정 > 읽기에서 끌 수 있어요.
+- **오늘 목표·지난 12주·복습 예측**: 오늘 복습 n/m, 카드, 완료한 강의, 최근 7일 중 공부한 날, 앞으로 14일 복습 수. 연속일·끊김 표시는 없고 **쉬는 요일**에는 목표를 띄우지 않아요.
+- **목표 기한**: 지도 목표에 날짜를 정하면 쉬는 날을 뺀 하루 필요 시간과, 지금 학습량으로 끝나는 날을 보여요.
+- **읽기 설정**: 강의 글자 크기·줄 폭(이 기기만).
+- **학습 자료 검색**(/search, ⌘/Ctrl+K): 강의 섹션·메모·강의 중 질문·질문 해설 전문 검색(SQLite FTS5).
+- **오프라인 읽기**(단독판): 한 번 연 강의·해설·오늘 카드는 Mac 이 잠들어도 폰에서 읽을 수 있어요.
+- **복습 알림**(단독판 macOS): 정한 시각에 하루 한 번(쉬는 날 없음, 기본 끔). Witems 에서는 '강의' 탭 숫자로 알려요.
+- Witems: ⌘K 통합 검색에 학습 명령(오늘·지도·기록·다음 강의·복습 시작·카드·검색·설정 등)을 넣어요.
+
+- **강의 품질 v2**(마이그레이션 030, 기존 강의는 그대로 읽혀요): 섹션 끝 **방금 읽은 걸 떠올려 보기**(1탭 자기 채점 → 하루 뒤 복습, 숙달 반영은 복습에서), 예측 질문은 한 줄 예측·확신도를 남긴 뒤 열기, 요약은 먼저 떠올려 적고 열기, 연습 종류(빈칸 채우기·왜 그럴까·오류 찾기·혼자 풀기·바꿔 보기). 새 강의는 약 20분(본문 약 7,000자) 기준이고, 생성 직후 결정적 루브릭(G07~G23)과 검수 앞 근거(SQL 메모리 실행·계산 재확인·풀이를 가린 독립 풀이·출처 링크)를 거쳐요. 검수 기록에 루브릭과 검수자 점수(E01~E13, 본문 인용이 있는 것만)가 남고, `punisher quality score|compare|db` 로 LLM 없이 비교해요. 즉석 강의는 짧은 계획 단계가 먼저 돌아요. 끄기: `PUNISHER_LECTURE_VERIFY`·`PUNISHER_LINK_CHECK`·`PUNISHER_INSTANT_OUTLINE`=false.
+
+English: Undo toasts for completing a lecture, "I already know this", "not needed" and stopping a check (three new undo endpoints, no schema change); in-app confirm dialogs (Cancel focused) instead of browser ones; drafts kept on this device and a warning before leaving unsaved prompt edits; screens live in the URL (recommendation sheet, history chips and filters, map sheet, prompt block) and tabs, chips and rows are real links; lecture anchors use `?at=`. Lecture quality v2 (migration 030; stored lectures read as before): recall prompts at section ends (one-tap self grade, reviewed a day later — never mastery by itself), predictions with confidence before the output opens, recall before the summary, exercise kinds; new lectures aim at ~20 minutes and go through a deterministic rubric plus review evidence (in-memory SQLite runs of SQL examples, recomputed arithmetic, independent solutions, source link checks); reviews store the rubric and quoted reviewer scores, compared offline with `punisher quality`. Inside Witems the app works in the Shadow DOM (anchors, menus, focus, selection), leaves the shell's layout variables alone, hands its settings and navigation entries to the shell (`ctx.setActions`, with a fallback for older shells) and titles screens with the lecture title.
+
 ## v0.10.0 (2026-11-20)
 
 실행하면 DB 가 자동으로 업그레이드됩니다(마이그레이션 018~022, 기존 강의·진도·복습은 그대로).

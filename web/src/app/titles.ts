@@ -1,6 +1,8 @@
 import type { messages } from "./i18n";
 
-export type TitleKey = keyof (typeof messages)["ko"];
+type AppMessages = (typeof messages)["ko"];
+/** 화면 제목으로 쓰는 글 키(문구 함수는 빼고). */
+export type TitleKey = { [K in keyof AppMessages]: AppMessages[K] extends string ? K : never }[keyof AppMessages];
 
 const TITLES: Array<[RegExp, TitleKey]> = [
   [/^\/map/, "titleMap"],
@@ -10,6 +12,8 @@ const TITLES: Array<[RegExp, TitleKey]> = [
   [/^\/inquiries\//, "titleInquiry"],
   [/^\/check\//, "titleCheck"],
   [/^\/instant\//, "titleInstant"],
+  [/^\/cards/, "titleCards"],
+  [/^\/search/, "titleSearch"],
   [/^\/settings\/prompts/, "titlePrompts"],
   [/^\/settings/, "titleSettings"],
 ];

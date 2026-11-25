@@ -7,6 +7,7 @@ import { INQUIRY_MAX_QUOTE_CHARS } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
 import { portalRoot } from "@/src/shared/config/runtime";
+import { clearAppSelection } from "@/src/shared/lib/dom-root";
 
 const BUTTON_GAP = 10;
 const MIN_CHARS = 2;
@@ -32,7 +33,7 @@ export function QuoteAsk({ containerRef, onQuote }: { containerRef: RefObject<HT
         onPointerDown={(event) => event.preventDefault()}
         onClick={() => {
           onQuote(Array.from(selection.text).slice(0, INQUIRY_MAX_QUOTE_CHARS).join(""));
-          window.getSelection()?.removeAllRanges();
+          clearAppSelection();
         }}
         className={cn(
           "inline-flex h-10 items-center gap-1.5 rounded-full border border-line bg-canvas-elevated px-3.5 text-sm font-medium",

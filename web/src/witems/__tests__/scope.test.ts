@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scopeSelector } from "./scope";
+import { isShellOwnedDeclaration, scopeSelector } from "../scope";
 
 describe("scopeSelector", () => {
   it.each([
@@ -16,5 +16,15 @@ describe("scopeSelector", () => {
 
   it.each(["[data-theme=\"dark\"]", ".html-preview", ".tbody", "td.body-cell", "#htmlish", ":host"])("leaves %s alone", (sel) => {
     expect(scopeSelector(sel)).toBe(sel);
+  });
+});
+
+describe("isShellOwnedDeclaration", () => {
+  it("drops the shell's layout variables from the Witems build", () => {
+    expect(isShellOwnedDeclaration("--app-header-offset")).toBe(true);
+    expect(isShellOwnedDeclaration("--app-bottom-offset")).toBe(true);
+    expect(isShellOwnedDeclaration("--app-topbar-h")).toBe(true);
+    expect(isShellOwnedDeclaration("--safe-top")).toBe(false);
+    expect(isShellOwnedDeclaration("--color-bg")).toBe(false);
   });
 });

@@ -9,6 +9,7 @@ import { useT } from "@/src/shared/i18n";
 import { useReadingThreads, type ThreadFocus } from "./ReadingThreadsProvider";
 import { findThread, type ReadingThread } from "./lib/threads";
 import { messages } from "./i18n";
+import { AddToReview } from "@/src/features/punisher/card-add";
 
 type T = typeof messages.ko;
 
@@ -150,13 +151,15 @@ function ThreadBody({ thread, showQuote, autoFocusInput }: { thread: ReadingThre
           )}
         </div>
       )}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Chip disabled={followup.isPending || !answered} onClick={() => ask({ mode: "easier" })}>
           {t.moreEasier}
         </Chip>
         <Chip disabled={followup.isPending || !answered} onClick={() => ask({ mode: "deeper" })}>
           {t.moreDeeper}
         </Chip>
+        {/* 구절 대화 → 복습 카드(W5a): 답이 있는 대화만 */}
+        {answered && <AddToReview kind="thread" sourceId={rootId} />}
       </div>
       <AskForm label={t.followupLabel} pending={followup.isPending} onSend={(question) => ask({ question, mode: "question" })} autoFocus={autoFocusInput} />
       {ctx && (

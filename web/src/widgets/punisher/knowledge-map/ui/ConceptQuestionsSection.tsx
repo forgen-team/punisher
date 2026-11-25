@@ -3,7 +3,8 @@ import { Link } from "@/src/shared/lib/router";
 import { MessageSquare } from "lucide-react";
 import { ErrorState, List, ListRow, ListSkeleton, Section } from "@/src/shared/ui/kit";
 import { INQUIRY_STATUS_LABELS, InquiryStatusIcon, QUESTION_STATUS_LABELS, inquiryRowTitle, useInquiries, useMyQuestions } from "@/src/entities/punisher";
-import { inquiryHref, lectureHref } from "@/src/features/punisher/instant-start";
+import { inquiryHref } from "@/src/features/punisher/instant-start";
+import { lectureAnchorHref } from "@/src/entities/punisher";
 import { describePunisherError } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
@@ -49,7 +50,7 @@ function QuestionRows({ conceptId }: { conceptId: string }) {
         q.lectureId ? (
           <ListRow
             key={q.id}
-            href={`${lectureHref(q.lectureId)}${q.anchor ? `#pa-${q.anchor}` : ""}`}
+            href={lectureAnchorHref(q.lectureId, q.anchor)}
             linkAs={Link}
             leading={<MessageSquare aria-hidden="true" />}
             title={q.question}

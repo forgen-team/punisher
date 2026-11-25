@@ -105,6 +105,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 
 		r.Get("/today", learn.Today)
 		r.Post("/concepts/{id}/known", learn.MarkKnown)
+		r.Delete("/concepts/{id}/known", learn.UndoKnown)
 		r.Post("/concepts/{id}/dismiss", learn.DismissConcept)
 		r.Delete("/concepts/{id}/dismiss", learn.RestoreConcept)
 		r.Get("/terms/{conceptId}/gloss", learn.Gloss)
@@ -115,6 +116,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Get("/lectures/{id}", learn.GetLecture)
 		r.Put("/lectures/{id}/progress", learn.Progress)
 		r.Post("/lectures/{id}/complete", learn.Complete)
+		r.Delete("/lectures/{id}/complete", learn.Uncomplete)
 		r.Post("/lectures/{id}/feedback", learn.Feedback)
 		r.Post("/lectures/{id}/dismiss", learn.Dismiss)
 		r.Delete("/lectures/{id}/dismiss", learn.Restore)
@@ -156,6 +158,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Post("/checks/{id}/turns/{turnId}/dispute", learn.DisputeCheck)
 		r.Post("/checks/{id}/retry", learn.RetryCheck)
 		r.Post("/checks/{id}/abandon", learn.AbandonCheck)
+		r.Post("/checks/{id}/resume", learn.ResumeCheck)
 		r.Post("/objectives/{id}/relearn", learn.Relearn)
 		r.Get("/mastery", learn.Mastery)
 		r.Get("/mastery/metrics", learn.MasteryMetrics)
@@ -163,6 +166,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Get("/reviews/summary", learn.ReviewSummary)
 		r.Post("/misconceptions", learn.AcknowledgeMisconception)
 		r.Get("/misconceptions", learn.ListMisconceptions)
+		registerStudyRoutes(r, deps)
 	})
 
 	if deps.App != nil {

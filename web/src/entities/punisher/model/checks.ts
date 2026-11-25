@@ -125,6 +125,11 @@ export function useCheckAbandon(id: string) {
   return useCheckAction<void>(() => punisherApi.abandonCheck(id));
 }
 
+/** '그만하기' 되돌리기 — 같은 문항에서 다시 진행. */
+export function useCheckResume(id: string) {
+  return useCheckAction<void>(() => punisherApi.resumeCheck(id));
+}
+
 /** 개념의 목표별 숙달(레벨·다음 복습일·채점 주체). */
 export function useMastery(conceptId: string | undefined) {
   return useQuery({

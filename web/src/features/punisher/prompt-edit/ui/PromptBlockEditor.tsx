@@ -1,7 +1,9 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, History, Info } from "lucide-react";
-import { Badge, Button, IconButton, SegmentedTabs, Textarea } from "@/src/shared/ui/kit";
+import { Badge, Button, IconButton, SegmentedTabs, Textarea, confirmAction } from "@/src/shared/ui/kit";
+import { useDraftState } from "@/src/shared/lib/drafts";
+import { useLeaveGuard } from "@/src/shared/lib/leave-guard";
 import { useChangePrompt } from "@/src/entities/punisher";
 import { describePunisherError, type PromptBlock, type PromptHistoryEntry } from "@/src/shared/api/punisher";
 import { useWideLayout } from "@/src/shared/lib/useWideLayout";
@@ -28,35 +30,44 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
   const change = useChangePrompt();
   const t = useT(messages);
   const tabLabels: Record<EditorTab, string> = { edit: t.tabEdit, diff: t.tabDiff, preview: t.tabPreview };
-  const [draft, setDraft] = useState(() => (suggestion ? withSuggestion(block.body, suggestion) : block.body));
+  // 초안은 블록·저장본(body)마다 이 기기에 보관한다 — 다른 블록·화면에 갔다 와도, 새로고침해도 이어서 쓴다(점검 5).
+  const startText = suggestion ? withSuggestion(block.body, suggestion) : block.body;
+  const draftState = useDraftState(`prompt:${block.id}`, startText, block.body, (value) => value.trimEnd() === block.body.trimEnd());
+  const draft = draftState.value;
+  const setDraft = draftState.setValue;
   const [tabChoice, setTab] = useState<EditorTab>("edit");
   // 넓은 화면(xl)은 편집 옆에 '기본값과 비교'를 늘 펼쳐 두므로 비교 탭을 따로 두지 않는다.
   const wide = useWideLayout() === true;
   const tab: EditorTab = wide && tabChoice === "diff" ? "edit" : tabChoice;
   const tabs = (wide ? EDITOR_TABS.filter((value) => value !== "diff") : EDITOR_TABS).map((value) => ({ value, label: tabLabels[value] }));
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
   const [notice, setNotice] = useState("");
   const [scopeAnchor, setScopeAnchor] = useState<OverlayAnchor | null>(null);
 
-  // 다른 블록으로 바꾸거나 제안 문구가 바뀌면 초안을 새로 잡는다(저장 결과로 block.body 가 바뀔 때도).
+  // 제안 문구가 바뀌면(강의 피드백에서 다시 들어옴) 초안에 새로 붙인다. 보관된 초안이 있으면 그대로 둔다.
+  const seenSuggestion = useRef(suggestion);
+  const restored = draftState.restored;
   useEffect(() => {
-    setDraft(suggestion ? withSuggestion(block.body, suggestion) : block.body);
-    setConfirmReset(false);
-  }, [block.id, block.body, suggestion]);
+    if (seenSuggestion.current === suggestion) { return; }
+    seenSuggestion.current = suggestion;
+    if (suggestion && !restored) { setDraft(withSuggestion(block.body, suggestion)); }
+  }, [suggestion, restored, block.body, setDraft]);
 
   const dirty = draft.trimEnd() !== block.body.trimEnd();
+  // 저장하지 않은 편집이 있으면 앱 안 이동 전에 묻는다(초안은 이미 보관돼 있다).
+  useLeaveGuard(dirty);
   const unknownNames = findUnknownVariables(draft, block.vars.map((v) => v.name));
 
   function save() {
     change.mutate(
       { kind: "save", id: block.id, body: draft },
-      { onSuccess: () => setNotice(t.savedNotice) },
+      { onSuccess: () => { draftState.clear(); setNotice(t.savedNotice); } },
     );
   }
-  function reset() {
-    change.mutate({ kind: "reset", id: block.id }, { onSuccess: () => setNotice(t.resetNotice) });
-    setConfirmReset(false);
+  async function reset() {
+    const ok = await confirmAction({ title: t.resetConfirmTitle, description: t.resetConfirmBody, confirmLabel: t.reset, cancelLabel: t.cancel });
+    if (!ok) { return; }
+    change.mutate({ kind: "reset", id: block.id }, { onSuccess: () => { draftState.clear(); setNotice(t.resetNotice); } });
   }
   function restore(entry: PromptHistoryEntry) {
     change.mutate({ kind: "restore", id: block.id, historyId: entry.id }, {
@@ -113,6 +124,12 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
               spellCheck={false}
               className="font-mono text-xs leading-5 xl:h-[60vh]"
             />
+            {draftState.restored && dirty && (
+              <p className="flex flex-wrap items-center gap-2 text-xs text-fg-secondary">
+                {t.draftRestored}
+                <Button size="sm" variant="ghost" onClick={draftState.discard}>{t.draftDiscard}</Button>
+              </p>
+            )}
             {block.vars.length > 0 && (
               <p className="text-xs text-fg-muted">
                 {t.variables}{" "}
@@ -157,21 +174,11 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
           <History className="size-4" aria-hidden="true" />
           {t.history}
         </Button>
-        {block.overridden &&
-          (confirmReset ? (
-            <span className="flex items-center gap-1">
-              <Button variant="secondary" onClick={reset} loading={change.isPending && change.variables?.kind === "reset"}>
-                {t.confirmReset}
-              </Button>
-              <Button variant="ghost" onClick={() => setConfirmReset(false)}>
-                {t.cancel}
-              </Button>
-            </span>
-          ) : (
-            <Button variant="ghost" onClick={() => setConfirmReset(true)}>
-              {t.reset}
-            </Button>
-          ))}
+        {block.overridden && (
+          <Button variant="ghost" onClick={() => void reset()} loading={change.isPending && change.variables?.kind === "reset"}>
+            {t.reset}
+          </Button>
+        )}
       </div>
 
       <HistorySheet

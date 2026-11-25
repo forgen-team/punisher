@@ -1,5 +1,6 @@
 
 import { Link } from "@/src/shared/lib/router";
+import { isWitems } from "@/src/shared/config/runtime";
 import { ChevronRight } from "lucide-react";
 import type { ConceptDetail, ConceptMastery, Lecture, LectureContent } from "@/src/shared/api/punisher";
 import { LECTURE_TITLE_ID } from "./LectureTopBar";
@@ -49,7 +50,8 @@ export function LectureHeader({ lecture, content, concept, mastery, fallbackTitl
         <p className="text-sm font-semibold text-accent-text">{concept.name}</p>
       )}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <h1 id={LECTURE_TITLE_ID} className="text-xl font-semibold text-fg md:text-2xl">{content.title || fallbackTitle}</h1>
+        {/* Witems: 화면 제목(h1·폰 상단 바)은 셸이 ctx.setTitle 로 그린다 — 같은 제목을 다시 그리지 않는다. */}
+        {isWitems() ? null : <h1 id={LECTURE_TITLE_ID} className="text-xl font-semibold text-fg md:text-2xl">{content.title || fallbackTitle}</h1>}
         {lecture && <LectureReviewBadges lecture={lecture} />}
       </div>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-muted">

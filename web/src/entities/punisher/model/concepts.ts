@@ -5,6 +5,7 @@ import {
   punisherKeys,
   punisherLearningStateKeys,
   punisherQueryDefaults,
+  type UserConceptState,
 } from "@/src/shared/api/punisher";
 
 /** Invalidate every query that depends on learning state (today, graph, ...). */
@@ -62,6 +63,15 @@ export function useMarkKnown() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (conceptId: string) => punisherApi.markKnown(conceptId),
+    onSuccess: () => invalidateLearningState(queryClient),
+  });
+}
+
+/** '이미 앎' 되돌리기(되돌리기 알림) — 누르기 전 상태로. */
+export function useUndoKnown() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conceptId, previous }: { conceptId: string; previous: UserConceptState }) => punisherApi.undoKnown(conceptId, previous),
     onSuccess: () => invalidateLearningState(queryClient),
   });
 }

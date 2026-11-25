@@ -245,6 +245,7 @@ func (s *Service) storeAttempts(ctx context.Context, t Target, jobID string, res
 			Verdict: verdict, Summary: a.Review.Summary, Issues: issuesJSON(a.Review.Issues),
 			ValidationIssues: issuesJSON(a.Issues), ReaderGaps: issuesJSON(a.Review.ReaderGaps),
 			Attempt: a.Number, Model: model, Reviewer: "llm",
+			Quality: qualityJSON(a.Content, t.Quality, t.promptVersion(), a.Review),
 		}); err != nil {
 			return final, err
 		}

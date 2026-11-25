@@ -6,6 +6,7 @@ import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 import { placeOverlay, type OverlayPlacement } from "./overlayPlacement";
 import { portalRoot } from "@/src/shared/config/runtime";
+import { eventWithin } from "@/src/shared/lib/dom-root";
 
 /** 읽기 위치를 기준으로 붙일 사각형(문서 좌표가 아니라 getBoundingClientRect 값). */
 export interface OverlayAnchor {
@@ -154,7 +155,7 @@ export function ReadingOverlay({ open, onClose, anchor, title, description, chil
   useEffect(() => {
     if (!open || !desktop) { return; }
     function onPointerDown(event: PointerEvent) {
-      if (!panelRef.current?.contains(event.target as Node)) { onClose(); }
+      if (!eventWithin(event, panelRef.current)) { onClose(); }
     }
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);

@@ -2,6 +2,7 @@
 import { useState, type FormEvent } from "react";
 import { Trash2 } from "lucide-react";
 import { Button, EmptyState, ErrorState, Field, FieldTextarea, IconButton, ListSkeleton } from "@/src/shared/ui/kit";
+import { AddToReview } from "@/src/features/punisher/card-add";
 import { useCreateNote, useDeleteNote, useNotes } from "@/src/entities/punisher";
 import { scrollToAnchor } from "@/src/features/punisher/lecture-progress";
 import { describePunisherError } from "@/src/shared/api/punisher";
@@ -65,15 +66,19 @@ export function NotesPanel({ lectureId, conceptId, getAnchor, onJump }: NotesPan
               <div className="min-w-0 flex-1">
                 {n.quote && <blockquote className="mb-1 border-l-2 border-line-strong pl-2 text-fg-secondary">{n.quote}</blockquote>}
                 <p className="whitespace-pre-wrap break-words text-fg">{n.body}</p>
-                {n.anchor && (
-                  <button
-                    type="button"
-                    className="mt-1 text-xs text-fg-muted underline underline-offset-2 hover:text-fg"
-                    onClick={() => jumpTo(n.anchor)}
-                  >
-                    {t.jumpToNote}
-                  </button>
-                )}
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  {n.anchor && (
+                    <button
+                      type="button"
+                      className="text-xs text-fg-muted underline underline-offset-2 hover:text-fg"
+                      onClick={() => jumpTo(n.anchor)}
+                    >
+                      {t.jumpToNote}
+                    </button>
+                  )}
+                  {/* 메모 → 복습 카드(W5a): 고른 메모만, 글은 사용자가 확인 */}
+                  <AddToReview kind="note" sourceId={n.id} className="-ml-2" />
+                </div>
               </div>
               <IconButton aria-label={t.deleteNote} size="sm" disabled={remove.isPending} onClick={() => remove.mutate(n.id)}>
                 <Trash2 aria-hidden="true" />

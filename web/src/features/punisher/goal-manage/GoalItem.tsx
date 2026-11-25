@@ -1,11 +1,12 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { Input, ListRow, Menu, type MenuItem } from "@/src/shared/ui/kit";
+import { Input, ListRow, Menu, confirmAction, type MenuItem } from "@/src/shared/ui/kit";
 import { GOAL_STATUS_LABELS, useDeleteGoal, useUpdateGoal } from "@/src/entities/punisher";
 import type { Goal, GoalStatus } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { GoalPathView } from "./GoalPathView";
+import { GoalDeadline } from "./GoalDeadline";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 
@@ -50,8 +51,12 @@ export function GoalItem({ goal, onShowPath }: GoalItemProps) {
       label: t.delete,
       danger: true,
       disabled: remove.isPending,
+      separatorBefore: true,
+      // 삭제는 되돌릴 수 없어 앱 안 확인 창으로 묻는다(기본 포커스 취소).
       onSelect: () => {
-        if (window.confirm(t.confirmDelete(goal.title))) { remove.mutate(goal.id); }
+        void confirmAction({ title: t.confirmDelete(goal.title), confirmLabel: t.delete, danger: true }).then((ok) => {
+          if (ok) { remove.mutate(goal.id); }
+        });
       },
     },
   ];
@@ -90,6 +95,7 @@ export function GoalItem({ goal, onShowPath }: GoalItemProps) {
       <InlineError error={update.error ?? remove.error} />
       {open && !editing && (
         <div className="pb-3">
+          <GoalDeadline goalId={goal.id} />
           <GoalPathView goalId={goal.id} onSelectStep={(conceptId) => onShowPath(goal.id, conceptId)} />
         </div>
       )}

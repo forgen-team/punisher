@@ -1,9 +1,13 @@
 import { useCallback, useMemo, useRef, type ReactNode } from "react";
-import { EmptyState, ErrorState, Skeleton, Spinner, type MenuItem } from "@/src/shared/ui/kit";
+import { EmptyState, ErrorState, Skeleton, Spinner, confirmAction, notifyUndo, type MenuItem } from "@/src/shared/ui/kit";
+import { useScreenTitle } from "@/src/shared/lib/screen-chrome";
+import { isWitems } from "@/src/shared/config/runtime";
 import {
   describeCheckError,
+  lectureAnchorHref,
   lectureHref,
   useCheckAbandon,
+  useCheckResume,
   useCheckDispute,
   useCheckRetry,
   useCheckSession,
@@ -61,6 +65,7 @@ export function CheckView({ checkId }: { checkId: string }) {
   const lecture = useLecture(lectureId);
   const retry = useCheckRetry(checkId);
   const abandon = useCheckAbandon(checkId);
+  const resume = useCheckResume(checkId);
   const dispute = useCheckDispute(checkId);
   const endRef = useRef<HTMLDivElement>(null);
   const resultRef = useRef<HTMLElement>(null);
@@ -73,7 +78,7 @@ export function CheckView({ checkId }: { checkId: string }) {
 
   const anchorLink = useCallback(
     (anchor: string) =>
-      lectureId ? { href: `${lectureHref(lectureId)}#pa-${encodeURIComponent(anchor)}`, label: anchorTitle(sections, anchor) || t.viewInLecture } : null,
+      lectureId ? { href: lectureAnchorHref(lectureId, anchor), label: anchorTitle(sections, anchor) || t.viewInLecture } : null,
     [lectureId, sections, t],
   );
   const rows = useMemo(() => (d ? resultRows(d) : []), [d]);
@@ -95,20 +100,38 @@ export function CheckView({ checkId }: { checkId: string }) {
   const barTitle = topBarTitle(title, d ? progressLabel(d, locale) : "");
   const shownCount = d ? d.items.filter((item) => isShownItem(item, currentId, itemTurns(d.turns, item.id).length)).length : 0;
   const open = status === "active" || status === "preparing";
+  useScreenTitle(title);
+  // 그만두기: 지금 문항에 아직 답하지 않았으면 되돌릴 수 있다 → 실행 뒤 되돌리기 알림. 답한 문항이 있으면
+  // 그 답으로 문항을 닫고 근거가 남아 되돌릴 수 없으므로 앱 안 확인 창(기본 포커스 취소)으로 먼저 묻는다.
+  const answeredCurrent = d && currentId ? itemTurns(d.turns, currentId).some((turn) => turn.role === "learner") : false;
+  async function stop() {
+    const label = kind === "placement" ? t.skip : t.abandon;
+    if (answeredCurrent) {
+      const ok = await confirmAction({ title: t.abandonConfirmTitle, description: t.abandonConfirmBody, confirmLabel: label, danger: kind !== "placement" });
+      if (!ok) { return; }
+    }
+    abandon.mutate(undefined, {
+      onSuccess: () => {
+        if (answeredCurrent) { return; }
+        notifyUndo(kind === "placement" ? t.skippedToast : t.abandonedToast, () => resume.mutateAsync());
+      },
+    });
+  }
   const menuItems: MenuItem[] = [
     {
       key: "abandon",
       label: kind === "placement" ? t.skip : t.abandon,
       danger: kind !== "placement",
       disabled: !open || abandon.isPending,
-      onSelect: () => abandon.mutate(),
+      onSelect: () => void stop(),
     },
   ];
 
   return (
     <div className="flex w-full flex-col">
       <LectureTopBar title={barTitle} backHref={backHref} menuItems={d ? menuItems : undefined} />
-      <h1 className="sr-only">{barTitle}</h1>
+      {/* Witems 는 셸이 화면 제목(h1)을 그린다. */}
+      {isWitems() ? null : <h1 className="sr-only">{barTitle}</h1>}
       <LectureLayout sections={NO_SECTIONS} totalMinutes={0} activeAnchor="">
         {renderBody()}
       </LectureLayout>

@@ -5,7 +5,9 @@ import { Sparkles } from "lucide-react";
 import { Button, ErrorState, Section, Textarea } from "@/src/shared/ui/kit";
 import { useApplyChapterDraft, useChapterSuggestions, useCreateChapterDraft, useGraph, useStartDiagnostic } from "@/src/entities/punisher";
 import { checkHref } from "@/src/features/punisher/check-start";
-import { PunisherApiError, describePunisherError } from "@/src/shared/api/punisher";
+import { PunisherApiError, describePunisherError, type ChapterDraftResponse } from "@/src/shared/api/punisher";
+import { useDraftState } from "@/src/shared/lib/drafts";
+import { isWitems } from "@/src/shared/config/runtime";
 import { DraftPreview } from "./ui/DraftPreview";
 import { PlacementOffer } from "./ui/PlacementOffer";
 import { SuggestionCards, SuggestionCardsSkeleton } from "./ui/SuggestionCards";
@@ -19,7 +21,17 @@ function designProblems(error: unknown): string[] {
   return error instanceof PunisherApiError && error.status === 422 ? error.problems : [];
 }
 
+interface PickerDraft {
+  selected: string[];
+  freeText: string;
+  /** 설계해 본 초안(미리보기) — 다른 화면에 갔다 와도 그대로 본다 */
+  preview: ChapterDraftResponse | null;
+}
+
+const EMPTY_DRAFT: PickerDraft = { selected: [], freeText: "", preview: null };
+
 /**
+ * 고른 제안·직접 입력·설계 미리보기는 이 기기에 보관한다(점검 17) — 반영('이대로 열기')하면 지운다.
  * 다음 챕터 고르기(질문형): 자동 제안 카드(여러 개) + 직접 입력 → 설계(미리보기) → '이대로 열기'.
  * 생성은 Claude 게이트웨이로 하고, 반영 전까지 지도는 바뀌지 않는다.
  */
@@ -31,29 +43,39 @@ export function ChapterPickerWidget() {
   const graph = useGraph();
   const create = useCreateChapterDraft();
   const apply = useApplyChapterDraft();
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [freeText, setFreeText] = useState("");
+  const draft = useDraftState<PickerDraft>("chapter-picker", EMPTY_DRAFT, "", (v) => v.selected.length === 0 && !v.freeText.trim() && !v.preview);
+  const setDraft = draft.setValue;
+  const selected = useMemo(() => new Set(draft.value.selected), [draft.value.selected]);
+  const freeText = draft.value.freeText;
+  const setFreeText = (text: string) => setDraft((v) => ({ ...v, freeText: text }));
+  const preview = create.data ?? draft.value.preview;
   const [openedChapterId, setOpenedChapterId] = useState("");
   const placement = useStartDiagnostic();
 
   const names = useMemo(() => new Map((graph.data?.nodes ?? []).map((n) => [n.id, n.name])), [graph.data]);
 
   function toggle(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
+    setDraft((v) => {
+      const next = new Set(v.selected);
       if (next.has(id)) { next.delete(id); } else if (next.size < MAX_PICKS) { next.add(id); }
-      return next;
+      return { ...v, selected: [...next] };
     });
   }
 
   function design() {
-    create.mutate({ suggestionIds: [...selected], freeText: freeText.trim() });
+    create.mutate(
+      { suggestionIds: [...selected], freeText: freeText.trim() },
+      { onSuccess: (res) => setDraft((v) => ({ ...v, preview: res })) },
+    );
   }
 
   function openChapter() {
-    if (!create.data) { return; }
-    apply.mutate(create.data.draftId, {
-      onSuccess: (res) => setOpenedChapterId(res.chapterId),
+    if (!preview) { return; }
+    apply.mutate(preview.draftId, {
+      onSuccess: (res) => {
+        draft.discard();
+        setOpenedChapterId(res.chapterId);
+      },
     });
   }
 
@@ -76,17 +98,18 @@ export function ChapterPickerWidget() {
     );
   }
 
-  if (create.data) {
+  if (preview) {
     return (
       <div className="flex flex-col gap-3">
         <DraftPreview
-          draft={create.data.draft}
+          draft={preview.draft}
           names={names}
           applying={apply.isPending}
           onApply={openChapter}
           onBack={() => {
             create.reset();
             apply.reset();
+            setDraft((v) => ({ ...v, preview: null }));
           }}
         />
         {apply.error && (
@@ -98,13 +121,15 @@ export function ChapterPickerWidget() {
     );
   }
 
+  const QuestionHeading = isWitems() ? "h2" : "h1";
   const canDesign = (selected.size > 0 || freeText.trim() !== "") && !create.isPending;
   const problems = designProblems(create.error);
 
   return (
     <div className="flex flex-col gap-5">
       <header className="pt-4 lg:pt-6">
-        <h1 className="text-xl font-semibold text-fg">{suggestions.data?.question ?? t.defaultQuestion}</h1>
+        {/* Witems: h1 은 셸 화면 제목('다음 챕터 고르기') — 이 질문은 그 아래 h2. */}
+        <QuestionHeading className="text-xl font-semibold text-fg">{suggestions.data?.question ?? t.defaultQuestion}</QuestionHeading>
       </header>
 
       {/* xl: 추천 카드 | 직접 입력(오른쪽 열 sticky). 실행은 아래 고정 바 하나 — 어느 쪽을 골라도 '선택 n개 · 설계해 보기'가 늘 보인다. */}

@@ -1,13 +1,15 @@
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/src/shared/ui/kit";
 import { selectedProviderStatus, useAppStatus } from "@/src/shared/api/status";
+import { isWitems } from "@/src/shared/config/runtime";
 import { useT } from "@/src/shared/i18n";
-import { isRateLimitedCode, messages, statusText } from "./i18n";
+import { isRateLimitedCode, messages, statusText, witemsStatusText } from "./i18n";
 
 /**
  * 고른 AI(설정 › AI 연결: claude·codex·agy 로컬 CLI)를 쓸 수 없을 때만 보이는 안내 배너.
  * 미설치 · 미로그인 · 사용 한도 각각 고치는 방법을 화면 언어로 보여 준다.
  * 이미 만든 강의·지도·기록은 AI 없이도 계속 볼 수 있다.
+ * Witems 앱 모드는 셸의 AI 연결(claude-gateway)이라 로컬 CLI 단계 없이 한 줄로 알린다.
  */
 export function ClaudeStatusBanner() {
   const t = useT(messages);
@@ -15,7 +17,7 @@ export function ClaudeStatusBanner() {
   const data = status.data;
   const code = data ? selectedProviderStatus(data)?.code : undefined;
   if (!data || !code) { return null; }
-  const text = statusText(t, code, data.message, data.steps);
+  const text = isWitems() ? witemsStatusText(t, code) : statusText(t, code, data.message, data.steps);
   const blocking = !isRateLimitedCode(code);
 
   return (

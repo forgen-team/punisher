@@ -23,6 +23,9 @@ type pipelineLLM struct {
 	drafts, reviews, decisions []string
 	draftUsers, reviewUsers    []string
 	reviewCalls, adjudications int
+	// solved: the independent solving reply (Config.LectureVerify); solveUsers its prompts.
+	solved     string
+	solveUsers []string
 }
 
 func (f *pipelineLLM) Create(_ context.Context, _ string, req llm.MessagesRequest) (llm.MessagesResult, error) {
@@ -36,6 +39,9 @@ func (f *pipelineLLM) Create(_ context.Context, _ string, req llm.MessagesReques
 			return llm.MessagesResult{Text: `{"decision":"uphold","reason":"틀림"}`, Model: "fake"}, nil
 		}
 		queue = &f.decisions
+	case strings.Contains(req.System, "처음 보는 풀이자"):
+		f.solveUsers = append(f.solveUsers, req.User)
+		return llm.MessagesResult{Text: f.solved, Model: "fake"}, nil
 	case strings.Contains(req.System, "기술 감수자"):
 		queue = &f.reviews
 		f.reviewCalls++
@@ -79,7 +85,16 @@ func runInstantWith(t *testing.T, drafts func(objectiveIDs []string) []string, r
 // runInstantScripted is runInstantWith with a prepared fake (adjudication decisions).
 func runInstantScripted(t *testing.T, fake *pipelineLLM, drafts func(objectiveIDs []string) []string) *instantRun {
 	t.Helper()
+	return runInstantPrepared(t, fake, drafts, nil)
+}
+
+// runInstantPrepared is runInstantScripted with the service adjusted first (prep may be nil).
+func runInstantPrepared(t *testing.T, fake *pipelineLLM, drafts func(objectiveIDs []string) []string, prep func(*Service)) *instantRun {
+	t.Helper()
 	s, user := dbService(t)
+	if prep != nil {
+		prep(s)
+	}
 	ctx := context.Background()
 	var conceptID string
 	if err := testDB(s).QueryRowContext(ctx, `

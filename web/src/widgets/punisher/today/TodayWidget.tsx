@@ -1,9 +1,10 @@
 
-import { Link } from "@/src/shared/lib/router";
+import { Link, useRouter, useSearchParams } from "@/src/shared/lib/router";
+import { canGoBack } from "@/src/shared/lib/in-app-history";
 import { useState } from "react";
 import { Target } from "lucide-react";
 import { EmptyState, ErrorState, HeightReserve, List, ListSkeleton, Section, buttonVariants, cn } from "@/src/shared/ui/kit";
-import { useInquiries, useReviewSummary, useToday } from "@/src/entities/punisher";
+import { useInquiries, useLearningSettings, useReviewSummary, useToday } from "@/src/entities/punisher";
 import { InstantQueryBox, ResolutionChoices, useLaunchInstant } from "@/src/features/punisher/instant-start";
 import { DismissedNotice, ResumeList, useResumeDismiss } from "@/src/features/punisher/resume-dismiss";
 import { describePunisherError, type InstantResponse, type Recommendation } from "@/src/shared/api/punisher";
@@ -15,11 +16,11 @@ import { messages } from "./i18n";
 import { todayRows, type TodayRow } from "./lib/recheck";
 import { reviewCardState } from "./lib/reviewCard";
 import { sessionTimeLabel } from "./lib/sessionTime";
-import { ExplanationRequestList, InquiryList, NEW_CHAPTER_PATH, NextChapterCard, RecheckRow, RecommendationRow, RecommendationSheet, ReviewCard, StudyRequestList, SynthesisRow, UncheckedRow } from "./ui";
+import { ExplanationRequestList, InquiryList, NEW_CHAPTER_PATH, NextChapterCard, RECOMMENDATION_PARAM, RecheckRow, RecommendationRow, RecommendationSheet, ReviewCard, StudyRequestList, StudyToday, SynthesisRow, UncheckedRow } from "./ui";
 import { isWitems } from "@/src/shared/config/runtime";
 
-/** 추천 목록의 한 줄 — 확인하기 · 다시 확인 · 추천. */
-function renderRow(row: TodayRow, onOpen: (item: Recommendation) => void) {
+/** 추천 목록의 한 줄 — 확인하기 · 다시 확인 · 추천(상세 시트 주소로 가는 링크). */
+function renderRow(row: TodayRow) {
   switch (row.type) {
     case "synthesis":
       return <SynthesisRow key="synthesis" />;
@@ -28,7 +29,7 @@ function renderRow(row: TodayRow, onOpen: (item: Recommendation) => void) {
     case "recheck":
       return <RecheckRow key={`recheck-${row.card.conceptId}`} card={row.card} />;
     default:
-      return <RecommendationRow key={`${row.item.kind}-${row.item.conceptId}`} item={row.item} onOpen={onOpen} />;
+      return <RecommendationRow key={`${row.item.kind}-${row.item.conceptId}`} item={row.item} />;
   }
 }
 
@@ -39,7 +40,16 @@ export function TodayWidget() {
   const today = useToday();
   const { launch, isPending, error } = useLaunchInstant();
   const [pickResult, setPickResult] = useState<InstantResponse | null>(null);
-  const [detail, setDetail] = useState<Recommendation | null>(null);
+  // 추천 상세 시트는 주소(?rec=<개념>)에 남는다 — 뒤로 가면 닫히고, 새 탭으로 열어도 같은 시트.
+  const router = useRouter();
+  const params = useSearchParams();
+  const detailId = params.get(RECOMMENDATION_PARAM);
+  // 닫기: 행에서 열었으면(앱 안 기록이 있으면) 뒤로 — 기록에 같은 화면이 두 번 쌓이지 않게. 직접 들어왔으면 시트 없는 주소로 교체.
+  const closeDetail = () => {
+    if (!detailId) { return; }
+    if (canGoBack()) { router.back(); } else { router.replace("/", { guard: false }); }
+  };
+  const settings = useLearningSettings();
   const resumeDismiss = useResumeDismiss();
   const [resumeExpanded, setResumeExpanded] = useState(false);
   const inquiries = useInquiries({ open: true });
@@ -51,10 +61,10 @@ export function TodayWidget() {
     try {
       const result = await launch({ conceptId, query });
       setPickResult(result);
-      if (result) { setDetail(null); }
+      if (result) { closeDetail(); }
     } catch {
       // 오류는 <InlineError error={error}> 가 표시한다.
-      setDetail(null);
+      closeDetail();
     }
   }
 
@@ -62,6 +72,7 @@ export function TodayWidget() {
   const resume = items.filter((item) => item.kind === "resume");
   const recommendations = items.filter((item) => item.kind !== "resume");
   const rows = todayRows(recommendations, today.data?.recheck, today.data?.unchecked, Boolean(today.data?.synthesis?.due));
+  const detail: Recommendation | null = (detailId && recommendations.find((item) => item.conceptId === detailId)) || null;
   const ready = !today.isLoading && !today.error;
   // 복습 카드는 열들 위 전체 폭 띠(맨 앞) — 3단에서도 열 배치를 바꾸지 않고, '추천 소진' 안내와 다른 칸에 둔다.
   // 완료 여부(오늘 세션)를 받기 전에는 그리지 않는다(숨김 ↔ 접힌 완료가 깜빡이지 않게).
@@ -98,7 +109,7 @@ export function TodayWidget() {
     <Section variant="card" title={t.recommendations}>
       {rows.length > 0 ? (
         <List>
-          {rows.map((row) => renderRow(row, setDetail))}
+          {rows.map((row) => renderRow(row))}
         </List>
       ) : today.data?.exhausted ? (
         <EmptyState
@@ -134,13 +145,25 @@ export function TodayWidget() {
       <HeightReserve id="learn-review" ready={reviewReady} skeleton={null} className="[&:empty:not([style])]:hidden">
         {reviewState.kind !== "hidden" ? <ReviewCard state={reviewState} showTotal={!sessionTime} /> : null}
       </HeightReserve>
+      {/* 오늘 목표·지난 12주·복습 예측·자꾸 막히는 목표(W5a) */}
+      <StudyToday />
       <InstantQueryBox />
       <div aria-live="polite" className="empty:hidden">
         <InlineError error={error} />
         {pickResult && <ResolutionChoices response={pickResult} disabled={isPending} onPick={(id) => start(id)} />}
       </div>
       <HeightReserve id="learn-resume" ready={ready} skeleton={null} remember={!resumeExpanded && !resumeDismiss.dismissed} className="[&:empty:not([style])]:hidden">{resumeSection}</HeightReserve>
-      {sessionTime && <p className="-my-3 text-sm tabular-nums text-fg-secondary">{sessionTime}</p>}
+      {sessionTime && (
+        // 합계가 무엇의 합인지 라벨로 보이고, 하루 학습량 설정으로 이어 둔다(P1).
+        <p className="-my-3 flex flex-wrap items-center gap-x-2 text-sm tabular-nums text-fg-secondary">
+          <span>{sessionTime}</span>
+          {settings.data?.settings.dailyMinutes ? (
+            <Link href="/settings" title={t.dailyGoalLink} className="text-fg-muted underline-offset-2 hover:text-fg hover:underline">
+              {t.dailyGoal(settings.data.settings.dailyMinutes)}
+            </Link>
+          ) : null}
+        </p>
+      )}
       <div className={cn("flex flex-col gap-6 fold:grid fold:grid-cols-2 fold:items-start fold:gap-4 md:gap-6", middle && "xl:grid-cols-3")}>
         <div className="contents fold:flex fold:min-w-0 fold:flex-col fold:gap-4 md:gap-6">
           {nextChapter && (
@@ -181,7 +204,7 @@ export function TodayWidget() {
         </div>
       </div>
 
-      <RecommendationSheet item={detail} starting={isPending} onClose={() => setDetail(null)} onStart={(id) => start(id)} />
+      <RecommendationSheet item={detail} starting={isPending} onClose={closeDetail} onStart={(id) => start(id)} />
       <FirstSetup />
     </div>
   );

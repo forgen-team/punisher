@@ -18,6 +18,9 @@ type personalContext struct {
 	labOS string
 	// signals: '고칠 곳' of the version being remade (regenerations only, v3 §6).
 	signals []string
+	// repeated: misconceptions the checks found more than once on the concept
+	// or its prerequisites (research #5: candidates for @@misconception).
+	repeated []string
 }
 
 // LectureContext is the prompt context of t. User-owned generations (Owner set:
@@ -40,6 +43,7 @@ func personalize(pc prompts.LectureContext, p personalContext) prompts.LectureCo
 	pc.Misconceptions = p.misconceptions
 	pc.LabOS = p.labOS
 	pc.LearnerSignals = p.signals
+	pc.RepeatedMisconceptions = p.repeated
 	return pc
 }
 

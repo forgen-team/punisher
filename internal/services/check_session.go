@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/forgen-team/punisher/internal/check"
 	"github.com/forgen-team/punisher/internal/learning"
@@ -94,6 +95,20 @@ func (s *Service) AbandonCheck(ctx context.Context, userID, id string) (models.C
 		}
 	}
 	if err := s.Store.SetCheckSessionStatus(ctx, userID, id, []string{"preparing", "active"}, "abandoned", ""); err != nil {
+		return models.CheckDetail{}, checkBusy(err)
+	}
+	return s.GetCheck(ctx, userID, id)
+}
+
+// ResumeCheckWindow: how long after '그만하기' the undo toast can reopen the session.
+const ResumeCheckWindow = 10 * time.Minute
+
+// ResumeCheck undoes a plain '그만하기' within ResumeCheckWindow (store.ResumeCheckSession):
+// the session is active again at the same item. A half-answered item that the
+// abandon closed stays closed (ErrCheckState).
+func (s *Service) ResumeCheck(ctx context.Context, userID, id string) (models.CheckDetail, error) {
+	// finished_at is the DB clock (NOW()), so the window is measured on the wall clock too.
+	if err := s.Store.ResumeCheckSession(ctx, userID, id, time.Now().Add(-ResumeCheckWindow)); err != nil {
 		return models.CheckDetail{}, checkBusy(err)
 	}
 	return s.GetCheck(ctx, userID, id)

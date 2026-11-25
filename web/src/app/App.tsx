@@ -6,7 +6,7 @@ import { ScrollToTopOnNavigate } from "@/src/shared/lib/router";
 import { ThemeSync } from "@/src/shared/lib/ThemeSync";
 import { AppShell } from "./AppShell";
 import {
-  CheckPage, HistoryPage, InquiryPage, InstantPage, LecturePage, MapPage, NewChapterPage, NotFoundPage, PromptSettingsPage, SettingsPage, TodayPage,
+  CardsPage, CheckPage, HistoryPage, InquiryPage, InstantPage, LecturePage, MapPage, NewChapterPage, NotFoundPage, PromptSettingsPage, SearchPage, SettingsPage, TodayPage,
 } from "@/src/pages";
 
 function createQueryClient(): QueryClient {
@@ -42,6 +42,8 @@ export function AppRoutes({ shell, extra }: { shell: ReactElement; extra?: React
         <Route path="inquiries/:id" element={<InquiryPage />} />
         <Route path="check/:id" element={<CheckPage />} />
         <Route path="instant/:jobId" element={<InstantPage />} />
+        <Route path="cards" element={<CardsPage />} />
+        <Route path="search" element={<SearchPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="settings/prompts" element={<PromptSettingsPage />} />
         {extra}

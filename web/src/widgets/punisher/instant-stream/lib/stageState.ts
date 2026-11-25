@@ -1,6 +1,6 @@
 /**
  * 즉석 강의 생성 단계(v2.2 §2.1) — SSE 이벤트 → 화면 상태.
- * 새 계약: `stage` 이벤트 {"type":"stage","stage":"writing|checking|reviewing|rewriting|published|failed","attempt","maxAttempts","lectureId"?,"reasons"?,"reasonCodes"?}.
+ * 새 계약: `stage` 이벤트 {"type":"stage","stage":"planning|writing|checking|reviewing|rewriting|published|failed","attempt","maxAttempts","lectureId"?,"reasons"?,"reasonCodes"?}.
  * reasonCodes 가 모두 아는 code 면 화면 언어로 옮긴 문구를, 아니면 서버 문구(reasons)를 쓴다.
  * 예전 서버 이벤트(status·delta·done·error)도 같은 상태로 바꾼다(본문 delta 는 보이지 않으므로 버린다).
  */
@@ -8,7 +8,7 @@ import { translate, type Locale } from "@/src/shared/i18n";
 import { translateReasonCodes } from "@/src/shared/api/punisher";
 import { messages } from "../i18n";
 
-export type GenStage = "connecting" | "writing" | "checking" | "reviewing" | "rewriting" | "published" | "failed";
+export type GenStage = "connecting" | "planning" | "writing" | "checking" | "reviewing" | "rewriting" | "published" | "failed";
 
 export interface StageState {
   stage: GenStage;
@@ -26,7 +26,7 @@ export const INITIAL_STAGE: StageState = { stage: "connecting", attempt: 0, maxA
 
 export type StreamEventName = "stage" | "status" | "delta" | "done" | "error" | "message";
 
-const STAGES = new Set<GenStage>(["writing", "checking", "reviewing", "rewriting", "published", "failed"]);
+const STAGES = new Set<GenStage>(["planning", "writing", "checking", "reviewing", "rewriting", "published", "failed"]);
 
 type Payload = Record<string, unknown>;
 
@@ -98,6 +98,8 @@ export function stageLabel(state: StageState, locale: Locale): string {
   switch (state.stage) {
     case "connecting":
       return t.connecting;
+    case "planning":
+      return t.planning;
     case "writing":
       return t.writing;
     case "checking":
@@ -116,7 +118,7 @@ export function stageLabel(state: StageState, locale: Locale): string {
 export type StepKey = "write" | "review" | "fix";
 
 export function currentStep(stage: GenStage): StepKey | null {
-  if (stage === "writing") { return "write"; }
+  if (stage === "planning" || stage === "writing") { return "write"; }
   if (stage === "checking" || stage === "reviewing") { return "review"; }
   if (stage === "rewriting") { return "fix"; }
   return null;

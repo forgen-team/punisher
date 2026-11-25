@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate, useNavigationType } from "react-router-dom";
+import { SHELL_NAV_STATE, isShellNavigation } from "@/src/shared/lib/in-app-history";
 import type { AppContext } from "./contract";
 
 /**
@@ -7,6 +8,8 @@ import type { AppContext } from "./contract";
  * shell owns the address bar). In-app navigation → ctx.navigate; back/forward
  * in the shell → ctx.onRouteChange → the memory router follows (replace).
  * Equal paths are skipped both ways, so neither side echoes the other.
+ * Shell-originated moves carry SHELL_NAV_STATE so the app treats them like
+ * back/forward (no scroll-to-top, in-app history steps instead of growing).
  */
 export function RouteSync({ ctx }: { ctx: AppContext }) {
   const location = useLocation();
@@ -22,9 +25,9 @@ export function RouteSync({ ctx }: { ctx: AppContext }) {
       return;
     }
     const target = `${location.pathname}${location.search}`;
-    if (target === `${ctx.path}${ctx.search}`) { return; }
+    if (isShellNavigation(location.state) || target === `${ctx.path}${ctx.search}`) { return; }
     ctx.navigate(target, { replace: type === "REPLACE" });
-  }, [ctx, location.pathname, location.search, type]);
+  }, [ctx, location.pathname, location.search, location.state, type]);
 
   useEffect(
     () =>
@@ -32,7 +35,7 @@ export function RouteSync({ ctx }: { ctx: AppContext }) {
         // 앱이 ctx.navigate 로 바꾼 주소도 여기로 돌아온다 — 이미 그 자리면 다시 이동하지 않는다
         // (불필요한 REPLACE 가 쿼리만 바뀐 이동을 맨 위로 올리지 않게).
         if (`${path}${search}` === current.current) { return; }
-        navigate(`${path}${search}`, { replace: true });
+        navigate(`${path}${search}`, { replace: true, state: SHELL_NAV_STATE });
       }),
     [ctx, navigate],
   );

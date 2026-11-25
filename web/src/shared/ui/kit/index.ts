@@ -9,7 +9,8 @@ export * from "./hooks/useFocusTrap";
 export * from "./components/button"; // Button, IconButton
 export * from "./components/spinner";
 export * from "./components/badge";
-export * from "./components/chip";
+export * from "./components/chip"; // Chip, ChipLink
+export * from "./components/scroll-row"; // ScrollRow(넘치는 칩 줄 + 끝 페이드)
 export * from "./components/list-row"; // List, ListRow
 export * from "./components/section"; // Section, PageHeader
 export * from "./components/segmented-tabs";
@@ -20,5 +21,6 @@ export * from "./components/height-reserve"; // HeightReserve(로딩 시프트 �
 export * from "./components/input"; // Input, Textarea
 export * from "./components/field"; // Field, FieldInput, FieldTextarea, Select, Switch
 export * from "./components/toast";
+export * from "./components/feedback"; // confirmAction(앱 안 확인 창), notify·notifyUndo(되돌리기 알림), FeedbackHost
 export * from "./components/theme-toggle";
 

@@ -84,6 +84,9 @@ type LectureReview struct {
 	Model      string          `json:"model"`
 	Reviewer   string          `json:"reviewer"`
 	CreatedAt  time.Time       `json:"createdAt"`
+	// Quality: the stored rubric of this review (machine rules, LLM scores,
+	// independent answers, links); omitted when recorded before it existed.
+	Quality json.RawMessage `json:"quality,omitempty"`
 }
 
 // GenerationJob is an LLM job (lecture generation or usage accounting).

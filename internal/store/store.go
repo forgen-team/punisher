@@ -43,6 +43,9 @@ type Store interface {
 	SetConceptState(ctx context.Context, userID, conceptID, requested string) (string, error)
 	UpdateProgress(ctx context.Context, userID, lectureID, anchor string, percent int) error
 	CompleteLecture(ctx context.Context, userID, lectureID string) (CompleteResult, error)
+	// undo of 완료 / 이미 앎 (sqlite_undo.go)
+	UncompleteLecture(ctx context.Context, userID, lectureID string) (CompleteResult, error)
+	UndoKnown(ctx context.Context, userID, conceptID, previous string) (string, error)
 	InsertFeedback(ctx context.Context, userID, lectureID, feedback, anchor, comment, altRequestID string) (string, error)
 	LatestFeedback(ctx context.Context, userID string) (string, error)
 	DismissLecture(ctx context.Context, userID, lectureID string) error
@@ -162,6 +165,7 @@ type Store interface {
 	LoadCheckSnapshot(ctx context.Context, userID, id string) (CheckSnapshot, error)
 	ActivateCheckSession(ctx context.Context, userID, id string, itemIDs []string, ask TurnWrite) (models.CheckSession, error)
 	SetCheckSessionStatus(ctx context.Context, userID, id string, from []string, to, errMsg string) error
+	ResumeCheckSession(ctx context.Context, userID, id string, since time.Time) error
 	SweepStaleChecks(ctx context.Context, turnAge, prepareAge, abandonAge time.Duration) (int64, error)
 	SweepStaleChecksFor(ctx context.Context, userID string, turnAge, prepareAge, abandonAge time.Duration) (int64, error)
 	CountPendingChecks(ctx context.Context, userID string) (int, error)
@@ -223,4 +227,11 @@ type Store interface {
 	LastSynthesisAt(ctx context.Context, userID string) (*time.Time, error)
 	SaveSynthesisItems(ctx context.Context, d SynthesisItems) ([]CheckItem, error)
 	SynthesisObjectives(ctx context.Context, userID string, ids []string) ([]SynthesisObjective, error)
+
+	// lecture quality v2: recall prompts into the review queue, block-level signals, stored quality
+	AddRecallReview(ctx context.Context, r RecallReview) (string, bool, error)
+	SetAttemptReviewItem(ctx context.Context, userID, attemptID, itemID string) error
+	LectureAnchorSignals(ctx context.Context, userID, lectureID string) ([]learning.AnchorSignal, error)
+	QualityRecords(ctx context.Context) ([]QualityRecord, error)
+	RepeatedMisconceptions(ctx context.Context, userID, conceptID string, minCount, limit int) ([]string, error)
 }

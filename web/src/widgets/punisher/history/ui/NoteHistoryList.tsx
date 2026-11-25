@@ -3,7 +3,7 @@ import { Link } from "@/src/shared/lib/router";
 import { useMemo } from "react";
 import { EmptyState, ErrorState, List, ListRow, ListSkeleton } from "@/src/shared/ui/kit";
 import { useNotes } from "@/src/entities/punisher";
-import { lectureHref } from "@/src/features/punisher/instant-start";
+import { lectureAnchorHref } from "@/src/entities/punisher";
 import { describePunisherError, type Note } from "@/src/shared/api/punisher";
 import { translate, useLocale, useT, type Locale } from "@/src/shared/i18n";
 import { historyDay } from "../lib/historyDate";
@@ -34,7 +34,7 @@ export function NoteHistoryList() {
         n.lectureId ? (
           <ListRow
             key={n.id}
-            href={`${lectureHref(n.lectureId)}${n.anchor ? `#pa-${n.anchor}` : ""}`}
+            href={lectureAnchorHref(n.lectureId, n.anchor)}
             linkAs={Link}
             title={n.body || n.quote}
             meta={metaOf(n, locale)}

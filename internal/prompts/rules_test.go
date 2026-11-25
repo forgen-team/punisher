@@ -45,7 +45,7 @@ func TestLectureQualityRules(t *testing.T) {
 		}
 	}
 	for _, want := range []string{"@@keypoint kind=definition", "@@trace", "@@pause", "@@exercise", "@@answer", "@@summary",
-		"@@diff lang=", "@@chart", "8,500자", "MDN이 아닌", "대상 개념 자신"} {
+		"@@diff lang=", "@@chart", "7,000자", "@@recall objective=", "kind=modify", "MDN이 아닌", "대상 개념 자신"} {
 		if !strings.Contains(MarkupSpec, want) {
 			t.Errorf("markup spec lacks %q", want)
 		}

@@ -4,6 +4,7 @@ import { ArrowRight, BookOpen, MessageCircleQuestion } from "lucide-react";
 import { Chip, IconButton, Spinner, Textarea, cn } from "@/src/shared/ui/kit";
 import { useCreateInquiry } from "@/src/entities/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
+import { useDraftState } from "@/src/shared/lib/drafts";
 import type { InstantResponse } from "@/src/shared/api/punisher";
 import { ResolutionChoices } from "./ResolutionChoices";
 import { inquiryHref, useLaunchInstant } from "./useLaunchInstant";
@@ -30,7 +31,10 @@ export function InstantQueryBox() {
   const t = useT(messages);
   const text = (m: QueryMode, part: ModeText) => t[`${m}${part}` as ModeKey];
   const [mode, setMode] = useState<QueryMode>("answer");
-  const [query, setQuery] = useState("");
+  // 쓰던 질문은 이 기기에 보관한다 — 다른 화면에 갔다 와도 남고, 보내면 지운다(점검 17).
+  const queryDraft = useDraftState("instant-query", "");
+  const query = queryDraft.value;
+  const setQuery = queryDraft.setValue;
   const [submitted, setSubmitted] = useState("");
   const [result, setResult] = useState<InstantResponse | null>(null);
   // 해설 화면으로 넘어가는 동안 한 번 더 보내지 않게(mutation 이 끝난 뒤에도 이동 전까지 막는다).
@@ -52,11 +56,13 @@ export function InstantQueryBox() {
     try {
       if (mode === "answer") {
         const created = await inquiry.mutateAsync(trimmed);
+        queryDraft.clear();
         setNavigating(true);
         router.push(inquiryHref(created.id));
         return;
       }
       setResult(await instant.launch({ query: trimmed }));
+      queryDraft.clear();
     } catch {
       // 오류는 아래 <InlineError error={error}> 가 표시한다.
       setResult(null);

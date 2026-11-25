@@ -194,8 +194,18 @@ func validateBlock(path string, b Block, vc ValidationContext, add func(string, 
 		if why := MermaidSwallowedProse(b.Text); why != "" {
 			add(path, "mermaid block swallowed lecture prose (%s) — end the diagram and start a new @@markdown block", why)
 		}
-	case BlockMarkdown, BlockMisconception, BlockExercise, BlockAnswer:
+	case BlockMarkdown, BlockMisconception, BlockAnswer:
 		validateProse(path, b, add)
+	case BlockExercise:
+		validateProse(path, b, add)
+		if !ValidExerciseKind(b.Kind) {
+			add(path, "exercise kind must be guided|why|error|free|modify (or omitted), got %q", b.Kind)
+		}
+	case BlockRecall:
+		validateProse(path, b, add)
+		if q, key := RecallParts(b.Text); q == "" || key == "" {
+			add(path, "@@recall needs a question line and a \"떠올릴 것:\" (or \"Recall:\") line")
+		}
 	case BlockLab:
 		validateLab(path, b, add)
 	case BlockKeypoint:

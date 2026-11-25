@@ -13,15 +13,21 @@ import { useLocale, useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
 import { ConfidencePicker } from "./ConfidencePicker";
 import { asksConfidence, canSend, selfGradeStep, showReveal } from "../lib/checkView";
+import { useStudyShortcuts } from "@/src/shared/lib/shortcuts";
 
 const COMPOSER_CLASS =
   "sticky bottom-[var(--app-bottom-offset)] z-nav -mx-4 mt-6 flex flex-col gap-2 border-t border-line bg-canvas px-4 py-3 fold:-mx-6 fold:px-6 lg:mx-0 lg:px-0";
 
-/** 자기 채점 — 모범답·기준을 본 뒤 맞음 / 부분 / 틀림. */
+/** 자기 채점 — 모범답·기준을 본 뒤 맞음 / 부분 / 틀림. 단축키 1·2·3(설정에서 끌 수 있음)은 버튼 순서와 같다. */
 function SelfGradeBar({ id }: { id: string }) {
   const locale = useLocale();
   const t = useT(messages);
   const grade = useCheckSelfGrade(id);
+  const pick = (index: number) => () => {
+    const verdict = SELF_VERDICT_ORDER[index];
+    if (verdict && !grade.isPending) { grade.mutate(verdict); }
+  };
+  const keys = useStudyShortcuts({ "1": pick(0), "2": pick(1), "3": pick(2) });
   return (
     <div className={COMPOSER_CLASS}>
       {grade.error && (
@@ -30,14 +36,16 @@ function SelfGradeBar({ id }: { id: string }) {
         </p>
       )}
       <div role="group" aria-label={t.selfGrade} className="grid grid-cols-3 gap-2">
-        {SELF_VERDICT_ORDER.map((verdict) => (
+        {SELF_VERDICT_ORDER.map((verdict, index) => (
           <Button
             key={verdict}
             variant="secondary"
             disabled={grade.isPending}
             loading={grade.isPending && grade.variables === verdict}
             onClick={() => grade.mutate(verdict)}
+            aria-keyshortcuts={keys ? String(index + 1) : undefined}
           >
+            {keys && <kbd className="hidden rounded-sm border border-line px-1 text-xs text-fg-muted md:inline">{index + 1}</kbd>}
             {SELF_VERDICT_LABELS_BY_LOCALE[locale][verdict]}
           </Button>
         ))}

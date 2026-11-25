@@ -80,6 +80,14 @@ machines (they re-check it), so prefer adding objectives over rewording them.
 - LLM output is never trusted: parse it, validate it in Go, and record failures as
   failures. Grading moves (boxes, review dates) are pure Go functions in
   `internal/learning` with table tests.
+- Lecture quality rules (reading time, interaction spacing, recall prompts, SQL
+  and arithmetic re-computation…) live in `internal/quality` and are advisory.
+  `go test ./internal/quality` compares the shipped samples with
+  `testdata/golden.json` (`-update` after a reviewed rule change);
+  `punisher quality score [files]` and `punisher quality compare a.json b.json`
+  run the same rubric offline, `punisher quality db` summarizes the stored
+  review scores per prompt version. SQL examples run only in an in-process
+  `:memory:` SQLite with an allow-list — never through a shell or interpreter.
 - Lab commands shown in lectures must pass `lecture.CheckLabCommand`
   (single read-only command, allow-listed tools and flags). Extend the policy
   table with tests, never loosen it to "anything".

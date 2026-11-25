@@ -187,7 +187,13 @@ func mergeRecheck(base Attempt, next lecture.Content, prev []ReviewIssue, rewrit
 	for _, v := range out.Previous {
 		byID[v.ID] = v
 	}
-	r := ReviewOutcome{Summary: out.Summary, Issues: []ReviewIssue{}, ReaderGaps: []ReaderGap{}}
+	r := ReviewOutcome{Summary: out.Summary, Issues: []ReviewIssue{}, ReaderGaps: []ReaderGap{},
+		Independent: base.Review.Independent, Links: base.Review.Links}
+	for _, sc := range base.Review.Rubric { // 바뀌지 않은 문장에 근거한 점수는 처음 감수 판정을 그대로 쓴다
+		if stillThere(next, sc.Quote) {
+			r.Rubric = append(r.Rubric, sc)
+		}
+	}
 	var verdicts []RecheckVerdict
 	for k, i := range prev {
 		v, ok := byID[k+1]

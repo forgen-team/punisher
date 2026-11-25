@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type { CheckSessionStatus } from "@/src/shared/api/punisher";
+import { eventOrigin, getAppElementById } from "@/src/shared/lib/dom-root";
 import { checkItemAnchorId, isScrollKey, shouldFollow } from "./followScroll";
 
 interface FollowScrollInput {
@@ -54,7 +55,8 @@ export function useFollowScroll({ status, turnCount, lastTurnKey, currentId, end
       scrolledAt.current = Date.now();
     };
     const onKey = (event: KeyboardEvent) => {
-      if (isScrollKey(event.key, event.target)) { onScroll(); }
+      // Shadow DOM 안 입력창의 키는 window 에서 target 이 호스트로 보이므로 실제 요소로 판단한다.
+      if (isScrollKey(event.key, eventOrigin(event))) { onScroll(); }
     };
     window.addEventListener("wheel", onScroll, { passive: true });
     window.addEventListener("touchmove", onScroll, { passive: true });
@@ -82,7 +84,7 @@ export function useFollowScroll({ status, turnCount, lastTurnKey, currentId, end
     }
     if (!shouldFollow({ actedAt: actedAt.current, scrolledAt: scrolledAt.current, now: Date.now() })) { return; }
     if (itemChanged && currentId) {
-      document.getElementById(checkItemAnchorId(currentId))?.scrollIntoView({ behavior: "smooth", block: "start" });
+      getAppElementById(checkItemAnchorId(currentId), endRef.current)?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
     revealLatestTurn(endRef.current);

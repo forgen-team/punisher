@@ -2,7 +2,7 @@
 import { Link } from "@/src/shared/lib/router";
 import { useEffect } from "react";
 import { BookOpen, PlayCircle } from "lucide-react";
-import { BottomSheet, Button, ListRow, buttonVariants } from "@/src/shared/ui/kit";
+import { BottomSheet, Button, ListRow, buttonVariants, notifyUndo } from "@/src/shared/ui/kit";
 import { RECOMMENDATION_KIND_LABELS_BY_LOCALE, areaLabel, recommendationReason, useConceptDismiss } from "@/src/entities/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
@@ -19,17 +19,24 @@ export function lectureSubtitle(item: Pick<Recommendation, "title" | "conceptNam
   return item.title && item.title !== item.conceptName ? item.title : "";
 }
 
-interface RecommendationRowProps {
-  item: Recommendation;
-  onOpen: (item: Recommendation) => void;
+/** 추천 상세 시트 주소(오늘 화면의 `?rec=<개념>`) — 화면=주소, 새 탭으로 열어도 같은 시트. */
+export const RECOMMENDATION_PARAM = "rec";
+
+export function recommendationHref(conceptId: string): string {
+  return `/?${RECOMMENDATION_PARAM}=${encodeURIComponent(conceptId)}`;
 }
 
-/** 추천 행: 제목 / 영역 · 약 N분 / 왜 오늘(두 줄까지). 상세는 시트로. */
-export function RecommendationRow({ item, onOpen }: RecommendationRowProps) {
+interface RecommendationRowProps {
+  item: Recommendation;
+}
+
+/** 추천 행: 제목 / 영역 · 약 N분 / 왜 오늘(두 줄까지). 상세는 시트로 — 행은 그 시트 주소로 가는 링크. */
+export function RecommendationRow({ item }: RecommendationRowProps) {
   const t = useT(messages);
   return (
     <ListRow
-      onClick={() => onOpen(item)}
+      href={recommendationHref(item.conceptId)}
+      linkAs={Link}
       leading={<BookOpen aria-hidden />}
       title={item.conceptName || item.title}
       meta={
@@ -61,8 +68,15 @@ export function RecommendationSheet({ item, starting, onClose, onStart }: Recomm
   useEffect(() => {
     reset();
   }, [conceptId, reset]);
+  // '필요 없음'은 되돌릴 수 있어 확인 없이 빼고 되돌리기 알림을 띄운다.
   const dismissItem = (conceptId: string) =>
-    dismiss.mutate({ conceptId, dismissed: true }, { onSuccess: () => { dismiss.reset(); onClose(); } });
+    dismiss.mutate({ conceptId, dismissed: true }, {
+      onSuccess: () => {
+        dismiss.reset();
+        onClose();
+        notifyUndo(t.dismissedToast, () => dismiss.mutateAsync({ conceptId, dismissed: false }));
+      },
+    });
   const title = item ? item.conceptName || item.title : "";
   return (
     <BottomSheet

@@ -1,6 +1,9 @@
 
 import { useCallback, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { punisherApi, type LectureProgress } from "@/src/shared/api/punisher";
+import { anchorFromLocation } from "@/src/entities/punisher";
+import { getAppElementById, queryAppAll } from "@/src/shared/lib/dom-root";
 
 const SAVE_DEBOUNCE_MS = 2000;
 const TOP_OFFSET_PX = 120;
@@ -10,7 +13,8 @@ export function anchorElementId(anchor: string): string {
 }
 
 export function scrollToAnchor(anchor: string, behavior: ScrollBehavior = "smooth"): boolean {
-  const el = document.getElementById(anchorElementId(anchor));
+  // Witems 는 본문을 Shadow DOM 에 그린다 — document 가 아니라 화면 루트에서 찾는다.
+  const el = getAppElementById(anchorElementId(anchor));
   if (!el) { return false; }
   el.scrollIntoView({ behavior, block: "start" });
   return true;
@@ -27,9 +31,9 @@ function currentScrollY(): number {
 }
 
 function readPosition(): { anchor: string; percent: number } {
-  const nodes = document.querySelectorAll<HTMLElement>("[data-lecture-anchor]");
+  const nodes = queryAppAll<HTMLElement>("[data-lecture-anchor]");
   let anchor = "";
-  for (const node of Array.from(nodes)) {
+  for (const node of nodes) {
     if (node.getBoundingClientRect().top <= TOP_OFFSET_PX) { anchor = node.dataset.lectureAnchor ?? anchor; }
     else { break; }
   }
@@ -49,6 +53,8 @@ export function useLectureProgress(lectureId: string, initial: LectureProgress |
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resumed = useRef(false);
   const initialAnchor = initial?.anchor ?? "";
+  const { search, hash } = useLocation();
+  const linkAnchor = anchorFromLocation(search, hash);
 
   const flush = useCallback(() => {
     if (timer.current) { clearTimeout(timer.current); }
@@ -93,11 +99,10 @@ export function useLectureProgress(lectureId: string, initial: LectureProgress |
   useEffect(() => {
     if (!ready || resumed.current) { return; }
     resumed.current = true;
-    const hash = window.location.hash;
-    const hashAnchor = hash.startsWith("#pa-") ? decodeURIComponent(hash.slice(4)) : "";
-    const target = hashAnchor || initialAnchor;
+    // 링크로 받은 자리(?at=, 옛 #pa-)가 저장된 진도보다 앞선다.
+    const target = linkAnchor || initialAnchor;
     if (target) { scrollToAnchor(target, "auto"); }
-  }, [ready, initialAnchor]);
+  }, [ready, initialAnchor, linkAnchor]);
 
   /** Current anchor (for questions, notes, feedback, bookmarks). */
   const getAnchor = useCallback(() => current.current.anchor || readPosition().anchor, []);

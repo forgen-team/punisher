@@ -12,8 +12,9 @@ import {
   type ProviderStatus,
 } from "@/src/shared/api/status";
 import { Button, Skeleton, cn } from "@/src/shared/ui/kit";
+import { isWitems } from "@/src/shared/config/runtime";
 import { useT } from "@/src/shared/i18n";
-import { messages, panelMessages, statusText } from "./i18n";
+import { messages, panelMessages, statusText, witemsStatusText } from "./i18n";
 
 /**
  * 설정 › AI 연결: 고른 AI 하나가 강의 생성·검수·질문 답·채점을 모두 맡는다.
@@ -37,6 +38,23 @@ export function AiConnectionPanel() {
   const { message } = statusText(ts, current?.code, data.message);
   const ok = current !== undefined && !current.code;
   const { claude, dataDir, appVersion } = data;
+  if (isWitems()) {
+    // Witems: AI 는 셸의 연결 하나 — 제공자 고르기·로컬 CLI·데이터 위치는 의미가 없다.
+    return (
+      <div className="flex flex-col gap-2 text-sm">
+        <p className="flex items-center gap-2">
+          {ok ? <CheckCircle2 className="h-4 w-4 shrink-0 text-success" aria-hidden="true" /> : <AlertTriangle className="h-4 w-4 shrink-0 text-warning" aria-hidden="true" />}
+          <span className="font-medium text-fg">{ok ? t.witemsConnected : witemsStatusText(ts, current?.code ?? "claude_unavailable").message}</span>
+        </p>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-fg-secondary">
+          <dt>{t.activeJobs}</dt>
+          <dd className="text-fg">{t.activeCount(claude.active, claude.queued)}</dd>
+          <dt>{t.version}</dt>
+          <dd className="text-fg">{appVersion}</dd>
+        </dl>
+      </div>
+    );
+  }
 
   const choose = (id: AiProvider) => {
     if (id === serverSelected || save.isPending) { return; }

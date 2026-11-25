@@ -80,18 +80,21 @@ export function KnowledgeMapWidget() {
   const [knownOpen, setKnownOpen] = useState(false);
 
   const setParams = useCallback(
-    (patch: Record<string, string | null>) => {
+    (patch: Record<string, string | null>, replace = false) => {
       const next = new URLSearchParams(params.toString());
       for (const [key, value] of Object.entries(patch)) {
         if (value) { next.set(key, value); } else { next.delete(key); }
       }
       const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      // 화면=주소: 개념 시트·필터 모두 기록에 쌓는다(뒤로 = 앞 시트·앞 필터). 같은 값이면 이동하지 않는다.
+      // 시트 닫기(×)는 교체 — 닫은 뒤 뒤로 가기가 방금 닫은 시트를 다시 열지 않게.
+      const href = qs ? `${pathname}?${qs}` : pathname;
+      if (replace) { router.replace(href, { scroll: false }); } else { router.push(href, { scroll: false }); }
     },
     [params, pathname, router],
   );
   const onSelect = useCallback((id: string) => setParams({ concept: id }), [setParams]);
-  const closeDetail = useCallback(() => setParams({ concept: null, request: null }), [setParams]);
+  const closeDetail = useCallback(() => setParams({ concept: null, request: null }, true), [setParams]);
   const wide = useWideLayout();
   const showGoalPath = useCallback(
     (id: string, conceptId?: string) => setParams({ goal: id, concept: conceptId ?? null, panel: null }),
@@ -225,7 +228,7 @@ export function KnowledgeMapWidget() {
         onSelect={onSelect}
       />
       <MapLegendSheet open={legendOpen} onClose={() => setLegendOpen(false)} />
-      <BottomSheet open={goalsOpen} onClose={() => setParams({ panel: null })} title={t.manageGoals} desktop="side">
+      <BottomSheet open={goalsOpen} onClose={() => setParams({ panel: null }, true)} title={t.manageGoals} desktop="side">
         <GoalsManager onShowPath={showGoalPath} />
       </BottomSheet>
       <KnownAreasSheet open={knownOpen} onClose={() => setKnownOpen(false)} onSaved={onboarding.dismiss} />

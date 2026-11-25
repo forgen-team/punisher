@@ -2,10 +2,13 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/forgen-team/punisher/internal/check"
+	"github.com/forgen-team/punisher/internal/lecture"
 	"github.com/forgen-team/punisher/internal/llm"
 	"github.com/forgen-team/punisher/internal/prompts"
 	"github.com/forgen-team/punisher/internal/store"
@@ -36,6 +39,7 @@ func (s *Service) runDiagnosticItems(ctx context.Context, apiKey, userID, sessio
 	}
 	lang := s.Store.LocaleFor(ctx, userID) // 강의에 묶이지 않은 문항은 만든 사용자의 언어(i18n §1.2).
 	dc.Reader = s.readerFor(ctx, userID, lang)
+	anchors := s.pretestLecture(ctx, userID, plan, &dc)
 	items, u, _, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.diagnosticModel(plan.kind), attempts: plan.attempts,
 		priority: priority, system: set.Text(prompts.BlockCheckPretest, s.interactionVars(ctx, userID, conceptID, lang)), language: lang},
 		func(revisions []string) string { dc.Revisions = revisions; return prompts.Diagnostic(dc) },
@@ -43,8 +47,13 @@ func (s *Service) runDiagnosticItems(ctx context.Context, apiKey, userID, sessio
 	s.recordUsage(done, userID, "check_items", conceptID, u, err)
 	var saved []store.CheckItem
 	if err == nil {
+		normalized := check.NormalizeDiagnostic(items)
+		if anchors != nil {
+			linked := keepLectureAnchors(normalized, anchors)
+			logf("pretest %s: %d/%d items point to the lecture body", sessionID, linked, len(normalized))
+		}
 		saved, err = s.Store.SaveDiagnosticItems(done, store.DiagnosticItems{Language: lang, PromptHash: set.Hash(prompts.BlockCheckPretest),
-			CreatedFor: userID, Model: u.model, PromptVersion: diagnosticPromptVersion(set), Items: check.NormalizeDiagnostic(items)})
+			CreatedFor: userID, Model: u.model, PromptVersion: diagnosticPromptVersion(set), Items: normalized})
 	}
 	if err == nil {
 		saved = orderByObjectives(saved, plan.objectiveIDs())
@@ -88,4 +97,56 @@ func diagnosticPromptVersion(set prompts.Set) string {
 		return prompts.CheckVersion + "+u:" + h
 	}
 	return prompts.CheckVersion
+}
+
+// pretestLecture gives a pretest of a stored lecture its body and anchors
+// (research #2: predictions the lecture answers). It returns the anchor set
+// (nil = no lecture: a pretest while an instant lecture is written, or another purpose).
+func (s *Service) pretestLecture(ctx context.Context, userID string, plan diagnosticPlan, dc *prompts.DiagnosticContext) map[string]bool {
+	if plan.kind != check.PurposePretest || plan.lectureID == "" {
+		return nil
+	}
+	lec, err := s.Store.GetLecture(ctx, userID, plan.lectureID)
+	if err != nil {
+		logf("pretest lecture %s: %v (objectives only)", plan.lectureID, err)
+		return nil
+	}
+	var c lecture.Content
+	if err := json.Unmarshal(lec.Content, &c); err != nil {
+		logf("pretest lecture %s: %v (objectives only)", plan.lectureID, err)
+		return nil
+	}
+	anchors := map[string]bool{}
+	for _, sec := range c.Sections {
+		var b strings.Builder
+		fmt.Fprintf(&b, "### [%s] %s\n", sec.Anchor, sec.Title)
+		anchors[sec.Anchor] = true
+		dc.Anchors = append(dc.Anchors, sec.Anchor)
+		for _, blk := range sec.Blocks {
+			if blk.Type == lecture.BlockRecall || blk.Type == lecture.BlockAnswer || blk.Type == lecture.BlockSummary {
+				continue // 답이 그대로 적힌 블록은 사전 질문의 재료가 아니다
+			}
+			if blk.Anchor != "" && !anchors[blk.Anchor] {
+				anchors[blk.Anchor] = true
+				dc.Anchors = append(dc.Anchors, blk.Anchor)
+			}
+			writeCheckBlock(&b, blk)
+		}
+		dc.Lecture = append(dc.Lecture, b.String())
+	}
+	return anchors
+}
+
+// keepLectureAnchors clears item anchors outside the lecture and returns how
+// many items point to it (G19: pretest questions the lecture answers).
+func keepLectureAnchors(items []check.Item, anchors map[string]bool) int {
+	linked := 0
+	for i := range items {
+		if anchors[items[i].Rubric.Anchor] {
+			linked++
+		} else {
+			items[i].Rubric.Anchor = ""
+		}
+	}
+	return linked
 }

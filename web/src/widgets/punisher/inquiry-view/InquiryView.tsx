@@ -1,7 +1,8 @@
 import { Link } from "@/src/shared/lib/router";
 import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import { BottomSheet, Button, ErrorState, Skeleton, Spinner, buttonVariants, type MenuItem } from "@/src/shared/ui/kit";
+import { Button, ErrorState, Skeleton, Spinner, buttonVariants, confirmAction, type MenuItem } from "@/src/shared/ui/kit";
+import { useScreenTitle } from "@/src/shared/lib/screen-chrome";
 import { useInquiry, useRegenerateInquiry, useRetryFollowup, useSetInquiryRead } from "@/src/entities/punisher";
 import { INQUIRY_MAX_FOLLOWUPS, describePunisherError, type Inquiry, type InquiryFollowup, type LectureSection } from "@/src/shared/api/punisher";
 import { formatDate, useLocale, useT } from "@/src/shared/i18n";
@@ -70,7 +71,6 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
   const regenerate = useRegenerateInquiry();
   const setRead = useSetInquiryRead();
   const [tocOpen, setTocOpen] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const retryFollowup = useRetryFollowup(inquiryId);
   const [quote, setQuote] = useState("");
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -99,6 +99,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
   }, []);
   const anchorKey = useMemo(() => sections.map((s) => s.anchor).filter(Boolean).join("|"), [sections]);
   const activeAnchor = useActiveSection(anchorKey);
+  useScreenTitle(q?.content?.title || q?.question);
 
   // 처음 불러오기에 실패했을 때만 오류 화면. 폴링 중 일시 오류는 본문을 지우지 않고 아래에 알린다.
   if (!q && inquiry.error) {
@@ -109,17 +110,24 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
   const generating = q?.status === "pending";
   const read = Boolean(q?.readAt);
   const totalMinutes = sections.reduce((sum, s) => sum + (s.minutes || 0), 0);
-  const askRegenerate = () => (hasContent ? setConfirmOpen(true) : q && regenerate.mutate(q.id));
-  const runRegenerate = () => {
-    setConfirmOpen(false);
-    if (q) { regenerate.mutate(q.id); }
+  // 해설이 있으면 앱 안 확인 창으로 무엇이 바뀌고 남는지 보인 뒤 다시 만든다(기본 포커스 취소).
+  const askRegenerate = async () => {
+    if (!q) { return; }
+    const ok = !hasContent || (await confirmAction({
+      title: t.confirmTitle,
+      description: t.confirmDescription,
+      details: [t.confirmReplace, t.confirmFollowups, t.confirmFailure, t.confirmUsage],
+      confirmLabel: t.regenerate,
+      cancelLabel: t.cancel,
+    }));
+    if (ok) { regenerate.mutate(q.id); }
   };
   const toggleRead = () => q && setRead.mutate({ id: q.id, read: !read });
 
   const menuItems: MenuItem[] = q
     ? [
         { key: "read", label: read ? t.unread : t.markRead, disabled: generating || setRead.isPending, onSelect: toggleRead },
-        { key: "regenerate", label: t.regenerate, disabled: generating || followupBusy || regenerate.isPending, onSelect: askRegenerate },
+        { key: "regenerate", label: t.regenerate, disabled: generating || followupBusy || regenerate.isPending, onSelect: () => void askRegenerate() },
       ]
     : [];
 
@@ -142,7 +150,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
         {q && !generating && q.error && hasContent && (
           <p role="alert" className="mt-3 flex flex-wrap items-center gap-2 break-keep rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">
             {t.regenerateFailed}
-            <Button size="sm" variant="ghost" onClick={runRegenerate} loading={regenerate.isPending}>
+            <Button size="sm" variant="ghost" onClick={() => q && regenerate.mutate(q.id)} loading={regenerate.isPending}>
               {t.retry}
             </Button>
           </p>
@@ -207,7 +215,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
             <div className="mt-6">
               <ErrorState
                 message={t.noContent}
-                onRetry={runRegenerate}
+                onRetry={() => q && regenerate.mutate(q.id)}
                 retrying={regenerate.isPending}
               />
             </div>
@@ -229,7 +237,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
           {hasContent && (
             <Button
               variant="ghost"
-              onClick={askRegenerate}
+              onClick={() => void askRegenerate()}
               loading={regenerate.isPending}
               disabled={generating || followupBusy}
               title={followupBusy ? t.regenerateBusy : undefined}
@@ -247,29 +255,6 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
         </div>
       </LectureLayout>
       {hasContent && <TocSheet open={tocOpen} onClose={() => setTocOpen(false)} sections={sections} totalMinutes={totalMinutes} />}
-      <BottomSheet
-        open={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        title={t.confirmTitle}
-        description={t.confirmDescription}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setConfirmOpen(false)}>
-              {t.cancel}
-            </Button>
-            <Button onClick={runRegenerate} loading={regenerate.isPending}>
-              {t.regenerate}
-            </Button>
-          </>
-        }
-      >
-        <ul className="list-disc space-y-1 break-keep pl-5 text-sm text-fg-secondary">
-          <li>{t.confirmReplace}</li>
-          <li>{t.confirmFollowups}</li>
-          <li>{t.confirmFailure}</li>
-          <li>{t.confirmUsage}</li>
-        </ul>
-      </BottomSheet>
     </div>
   );
 }

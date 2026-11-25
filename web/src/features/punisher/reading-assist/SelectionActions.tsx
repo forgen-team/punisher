@@ -5,6 +5,7 @@ import { cn, focusRing, useMediaQuery } from "@/src/shared/ui/kit";
 import { SELECTION_MAX_CHARS, SELECTION_MIN_CHARS, type ThreadMode } from "@/src/shared/api/punisher";
 import { toOverlayAnchor } from "@/src/shared/ui/punisher";
 import { portalRoot } from "@/src/shared/config/runtime";
+import { clearAppSelection, selectionRangeIn } from "@/src/shared/lib/dom-root";
 import { useT } from "@/src/shared/i18n";
 import { useReadingThreads, type ThreadPassage } from "./ReadingThreadsProvider";
 import { useTextSelection } from "./useTextSelection";
@@ -109,7 +110,7 @@ export function SelectionToolbar({ containerRef }: { containerRef: RefObject<HTM
   const passage: ThreadPassage = { anchor: selection.anchor, quote: selection.text, rect: selection.rect };
   function act(action: PassageAction) {
     if (!ctx) { return; }
-    window.getSelection()?.removeAllRanges();
+    clearAppSelection(groupRef.current);
     if (action === "memo") {
       ctx.saveMemo(passage).then(() => setMemo("saved"), () => setMemo("failed"));
       return;
@@ -160,8 +161,7 @@ export function SentenceTap({ containerRef }: { containerRef: RefObject<HTMLElem
     function onClick(event: MouseEvent) {
       const host = containerRef.current;
       if (!host || isIgnoredTapTarget(event.target)) { return; }
-      const sel = window.getSelection();
-      if (sel && !sel.isCollapsed) { return; }
+      if (selectionRangeIn(host)) { return; }
       const next = sentenceAtPoint(host, event.clientX, event.clientY);
       const prev = tappedRef.current;
       if (!next || (prev && prev.text === next.text && prev.anchor === next.anchor)) {

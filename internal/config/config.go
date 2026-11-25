@@ -62,6 +62,13 @@ type Config struct {
 	// pass review (lecture quality design v2.2 §2.2; also the lectures already
 	// in a user's database). Runs only when SchedulerEnabled.
 	BackfillReviewEnabled bool
+	// Lecture quality v2 (research 2026-11-25), all on by default:
+	// InstantOutline — a short plan before an instant lecture (PUNISHER_INSTANT_OUTLINE);
+	// LectureVerify — the review gets the draft's problems solved independently (PUNISHER_LECTURE_VERIFY);
+	// LinkCheck — source links on official hosts are checked with HEAD (PUNISHER_LINK_CHECK).
+	InstantOutline bool
+	LectureVerify  bool
+	LinkCheck      bool
 
 	// Witems is the Witems app mode (PUNISHER_MODE=witems): the app runs as a
 	// container inside the Witems shell instead of on this machine. See
@@ -121,6 +128,9 @@ func Load() Config {
 		DailyCheckTokenLimit: readInt("PUNISHER_DAILY_CHECK_TOKEN_LIMIT", 0),
 
 		BackfillReviewEnabled: readEnv("PUNISHER_BACKFILL_REVIEW_ENABLED", "true") != "false",
+		InstantOutline:        readEnv("PUNISHER_INSTANT_OUTLINE", "true") != "false",
+		LectureVerify:         readEnv("PUNISHER_LECTURE_VERIFY", "true") != "false",
+		LinkCheck:             readEnv("PUNISHER_LINK_CHECK", "true") != "false",
 
 		CodexBin:          strings.TrimSpace(os.Getenv("PUNISHER_CODEX_BIN")),
 		CodexLectureModel: strings.TrimSpace(os.Getenv("PUNISHER_CODEX_LECTURE_MODEL")),

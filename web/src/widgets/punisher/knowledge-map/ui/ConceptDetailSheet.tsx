@@ -14,7 +14,8 @@ import {
   useNotes,
 } from "@/src/entities/punisher";
 import { KnownVerifyChoice, useKnownChoice } from "@/src/features/punisher/check-start";
-import { ResolutionChoices, lectureHref, useLaunchInstant } from "@/src/features/punisher/instant-start";
+import { ResolutionChoices, useLaunchInstant } from "@/src/features/punisher/instant-start";
+import { lectureAnchorHref } from "@/src/entities/punisher";
 import { describePunisherError, type ConceptLink, type InstantResponse, type MapRequest } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { ConceptLecturesSection } from "./ConceptLecturesSection";
@@ -64,7 +65,7 @@ function NotesGroup({ conceptId }: { conceptId: string }) {
             n.lectureId ? (
               <ListRow
                 key={n.id}
-                href={`${lectureHref(n.lectureId)}${n.anchor ? `#pa-${n.anchor}` : ""}`}
+                href={lectureAnchorHref(n.lectureId, n.anchor)}
                 linkAs={Link}
                 title={n.body || n.quote}
               />
@@ -126,7 +127,7 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
   const title = c?.name ?? conceptId ?? "";
   const conceptActions = c ? (
     <div className="flex w-full flex-wrap items-center justify-end gap-2">
-      <Button variant="secondary" disabled={learned || known.isSuccess} loading={known.isPending} onClick={() => knownChoice.ask(c.id)}>
+      <Button variant="secondary" disabled={learned || known.isSuccess} loading={known.isPending} onClick={() => knownChoice.ask(c.id, c.userState)}>
         {known.isSuccess ? t.knownDone : t.known}
       </Button>
       <Button loading={isPending} onClick={() => start(c.id)}>

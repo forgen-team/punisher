@@ -9,7 +9,7 @@ import { splitMermaid } from "../../lib/mermaidInMarkdown";
 import { CodeBlock } from "./CodeBlock";
 import { MermaidBlock } from "./MermaidBlock";
 import { StructuredBlock } from "./StructuredBlock";
-import { AnswerBlock, ExerciseBlock, KeypointBlock, LabBlock, PauseBlock, SummaryBlock, WARNING_BOX } from "./StudyBlocks";
+import { AnswerBlock, ExerciseBlock, KeypointBlock, LabBlock, PauseBlock, RecallBlock, SummaryBlock, WARNING_BOX } from "./StudyBlocks";
 import { labForOS, useExerciseContext } from "@/src/features/punisher/lecture-exercise";
 import { keepLineBreaks } from "../../lib/lineBreaks";
 import { useT } from "@/src/shared/i18n";
@@ -83,12 +83,21 @@ function termRenderer(onBeforeDeeper: BlockRendererProps["onBeforeDeeper"]): Ren
 export function BlockGroupRenderer({ group, onBeforeDeeper }: { group: BlockGroup; onBeforeDeeper?: BlockRendererProps["onBeforeDeeper"] }) {
   if (group.type === "pause") {
     const output = group.output ? <BlockRenderer block={group.output} onBeforeDeeper={onBeforeDeeper} /> : undefined;
-    return <PauseBlock question={group.pause.text} output={output} renderTerm={termRenderer(onBeforeDeeper)} />;
+    return (
+      <PauseBlock
+        anchor={group.pause.anchor}
+        question={group.pause.text}
+        output={output}
+        outputText={group.output?.text ?? ""}
+        renderTerm={termRenderer(onBeforeDeeper)}
+      />
+    );
   }
   if (group.type === "exercise") {
     return (
       <ExerciseBlock
         anchor={group.exercise.anchor}
+        kind={group.exercise.kind}
         text={group.exercise.text}
         answer={group.answer ? (group.answer.text ?? "") : undefined}
         renderTerm={termRenderer(onBeforeDeeper)}
@@ -164,7 +173,7 @@ export function BlockRenderer({ block, onBeforeDeeper }: BlockRendererProps) {
       // 다음 출력 블록과 묶는 일은 LectureBody(groupBlocks)가 한다. 여기서는 짝 없는 질문만.
       return <PauseBlock question={text} renderTerm={renderTerm} />;
     case "exercise":
-      return <ExerciseBlock anchor={block.anchor} text={text} renderTerm={renderTerm} />;
+      return <ExerciseBlock anchor={block.anchor} kind={block.kind} text={text} renderTerm={renderTerm} />;
     case "lab":
       // 강의 화면에서는 내 실습 환경(설정)에 맞는 블록만, 미리보기에선 모두.
       if (exercise && !labForOS(block.kind, exercise.labOs)) { return null; }
@@ -172,7 +181,9 @@ export function BlockRenderer({ block, onBeforeDeeper }: BlockRendererProps) {
     case "answer":
       return <AnswerBlock text={text} renderTerm={renderTerm} />;
     case "summary":
-      return <SummaryBlock text={text} renderTerm={renderTerm} />;
+      return <SummaryBlock anchor={block.anchor} text={text} renderTerm={renderTerm} />;
+    case "recall":
+      return <RecallBlock anchor={block.anchor} text={text} renderTerm={renderTerm} />;
     default:
       // 알 수 없는 블록 타입(새 서버·옛 화면)은 그리지 않는다.
       return null;

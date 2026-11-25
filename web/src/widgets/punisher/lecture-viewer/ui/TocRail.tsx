@@ -2,6 +2,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { ListOrdered } from "lucide-react";
 import { IconButton, cn, focusRing } from "@/src/shared/ui/kit";
+import { eventWithin } from "@/src/shared/lib/dom-root";
 import { SECTION_KIND_LABELS } from "@/src/entities/punisher";
 import { scrollToAnchor } from "@/src/features/punisher/lecture-progress";
 import type { LectureSection } from "@/src/shared/api/punisher";
@@ -29,7 +30,7 @@ export function TocRail({ sections, totalMinutes, activeAnchor }: TocRailProps) 
   useEffect(() => {
     if (!open) { return; }
     const onPointer = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) { setOpen(false); }
+      if (!eventWithin(event, rootRef.current)) { setOpen(false); }
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") { setOpen(false); }

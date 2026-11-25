@@ -112,11 +112,13 @@ export function CompletedByArea() {
   const areas = useCompletedAreas(urlQuery);
 
   function setParam(patch: Record<string, string>) {
-    const next = new URLSearchParams(window.location.search);
+    // 앱 주소(Witems 는 셸 주소가 아니라 앱 라우터)에서 읽고, 필터도 기록에 쌓는다(화면=주소, 같은 값이면 이동 없음).
+    const next = new URLSearchParams(params.toString());
     for (const [key, value] of Object.entries(patch)) {
       if (value) { next.set(key, value); } else { next.delete(key); }
     }
-    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+    const qs = next.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
   function changeText(value: string) {
@@ -128,6 +130,10 @@ export function CompletedByArea() {
   useEffect(() => () => {
     if (timer.current) { clearTimeout(timer.current); }
   }, []);
+  // 뒤로/앞으로로 주소의 검색어가 바뀌면 입력란도 따라간다(치는 중인 값과 같으면 그대로).
+  useEffect(() => {
+    setText((prev) => (prev.trim() === urlQuery ? prev : urlQuery));
+  }, [urlQuery]);
 
   const list = areas.data ?? [];
   const total = list.reduce((sum, a) => sum + a.count, 0);
