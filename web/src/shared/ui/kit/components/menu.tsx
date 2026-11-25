@@ -4,7 +4,7 @@ import { cn } from "../lib/utils";
 import { useT } from "@/src/shared/i18n";
 import { kitMessages } from "../lib/messages";
 import { eventWithin } from "@/src/shared/lib/dom-root";
-import { IconButton } from "./button";
+import { Button, IconButton } from "./button";
 
 export interface MenuItem {
   key: string;
@@ -31,6 +31,11 @@ export interface MenuProps {
   className?: string;
   /** href 항목을 그릴 링크 부품(앱 Link). 없으면 <a> */
   linkAs?: React.ElementType;
+  /**
+   * 글자 트리거 — 주면 ⋯ 아이콘 대신 "글자 ▾" 버튼(접근 이름은 그 글자). 바로 위에 다른 ⋯(셸 상단 바 등)이 있을 때
+   * 어느 메뉴인지 보이게 쓴다.
+   */
+  triggerText?: React.ReactNode;
 }
 
 function MoreIcon() {
@@ -43,11 +48,19 @@ function MoreIcon() {
   );
 }
 
+function ChevronDownIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-4 shrink-0">
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 /**
  * Menu — 오버플로("⋯") 메뉴. role=menu/menuitem, ↑↓/Home/End, Esc 닫기 후 트리거로 포커스 복귀.
  * 행 안의 보조 동작은 여기에 모은다(행당 노출 버튼 최소화).
  */
-export function Menu({ items, label, align = "end", icon, className, linkAs }: MenuProps) {
+export function Menu({ items, label, align = "end", icon, className, linkAs, triggerText }: MenuProps) {
   const t = useT(kitMessages);
   const triggerLabel = label ?? t.more;
   const [open, setOpen] = React.useState(false);
@@ -114,17 +127,34 @@ export function Menu({ items, label, align = "end", icon, className, linkAs }: M
 
   return (
     <div ref={rootRef} className={cn("relative inline-flex", className)}>
-      <IconButton
-        ref={triggerRef}
-        aria-label={triggerLabel}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={open ? menuId : undefined}
-        onClick={() => setOpen((prev) => !prev)}
-        onKeyDown={handleTriggerKeyDown}
-      >
-        {icon ?? <MoreIcon />}
-      </IconButton>
+      {triggerText ? (
+        <Button
+          ref={triggerRef}
+          variant="ghost"
+          size="sm"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={open ? menuId : undefined}
+          onClick={() => setOpen((prev) => !prev)}
+          onKeyDown={handleTriggerKeyDown}
+          className="gap-1 whitespace-nowrap px-2"
+        >
+          {triggerText}
+          <ChevronDownIcon />
+        </Button>
+      ) : (
+        <IconButton
+          ref={triggerRef}
+          aria-label={triggerLabel}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={open ? menuId : undefined}
+          onClick={() => setOpen((prev) => !prev)}
+          onKeyDown={handleTriggerKeyDown}
+        >
+          {icon ?? <MoreIcon />}
+        </IconButton>
+      )}
       {open ? (
         <div
           id={menuId}

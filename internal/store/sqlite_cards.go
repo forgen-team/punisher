@@ -225,7 +225,9 @@ type SearchHit struct {
 	LectureID string `json:"lectureId"`
 	Anchor    string `json:"anchor"`
 	Title     string `json:"title"`
-	Snippet   string `json:"snippet"`
+	// SectionTitle: the lecture section the hit is in (lecture hits; "" otherwise) — one lecture can match in several sections.
+	SectionTitle string `json:"sectionTitle"`
+	Snippet      string `json:"snippet"`
 }
 
 // SearchMinFTS: shorter queries cannot use the trigram index and fall back to LIKE.
@@ -247,12 +249,50 @@ func (s *SQLiteStore) Search(ctx context.Context, userID, q string, limit int) (
 	}
 	// 강의는 지금도 보이는 것만(다른 사람의 즉석 강의·공개 안 된 판 제외 — 색인 user_id 로 1차, 여기서 다시).
 	visible := `(user_id = $1 OR user_id = '')`
+	var hits []SearchHit
+	var err error
 	if utf8.RuneCountInString(q) >= SearchMinFTS {
 		phrase := `"` + strings.ReplaceAll(q, `"`, `""`) + `"`
-		return collect(s.c().query(ctx, `SELECT kind, ref_id, lecture_id, anchor, title, snippet(search_index, -1, '[[', ']]', '…', 12)
+		hits, err = collect(s.c().query(ctx, `SELECT kind, ref_id, lecture_id, anchor, title, snippet(search_index, -1, '[[', ']]', '…', 12)
 			FROM search_index WHERE search_index MATCH $2 AND `+visible+` ORDER BY rank LIMIT $3`, userID, phrase, limit), scan)
+	} else {
+		like := "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(q) + "%"
+		hits, err = collect(s.c().query(ctx, `SELECT kind, ref_id, lecture_id, anchor, title, substr(body, max(1, instr(body, $4) - 30), 120)
+			FROM search_index WHERE (title LIKE $2 ESCAPE '\' OR body LIKE $2 ESCAPE '\') AND `+visible+` LIMIT $3`, userID, like, limit, q), scan)
 	}
-	like := "%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(q) + "%"
-	return collect(s.c().query(ctx, `SELECT kind, ref_id, lecture_id, anchor, title, substr(body, max(1, instr(body, $4) - 30), 120)
-		FROM search_index WHERE (title LIKE $2 ESCAPE '\' OR body LIKE $2 ESCAPE '\') AND `+visible+` LIMIT $3`, userID, like, limit, q), scan)
+	if err != nil {
+		return nil, err
+	}
+	return hits, s.fillSectionTitles(ctx, hits)
+}
+
+// fillSectionTitles sets SectionTitle of lecture hits from the lecture's sections (one query per lecture).
+func (s *SQLiteStore) fillSectionTitles(ctx context.Context, hits []SearchHit) error {
+	titles := map[string]map[string]string{}
+	for i, h := range hits {
+		if h.Kind != "lecture" || h.LectureID == "" {
+			continue
+		}
+		byAnchor, ok := titles[h.LectureID]
+		if !ok {
+			type row struct{ anchor, title string }
+			rows, err := collect(s.c().query(ctx, `SELECT COALESCE(json_extract(sv.value, '$.anchor'), ''), COALESCE(json_extract(sv.value, '$.title'), '')
+				FROM lectures l, json_each(l.content, '$.sections') sv WHERE l.id = $1 AND json_valid(l.content)`, h.LectureID),
+				func(r rowScanner) (row, error) {
+					var x row
+					err := r.Scan(&x.anchor, &x.title)
+					return x, err
+				})
+			if err != nil {
+				return fmt.Errorf("search section titles: %w", err)
+			}
+			byAnchor = make(map[string]string, len(rows))
+			for _, x := range rows {
+				byAnchor[x.anchor] = x.title
+			}
+			titles[h.LectureID] = byAnchor
+		}
+		hits[i].SectionTitle = byAnchor[h.Anchor]
+	}
+	return nil
 }
