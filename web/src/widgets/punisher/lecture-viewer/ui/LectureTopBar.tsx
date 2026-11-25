@@ -4,6 +4,7 @@ import { Link } from "@/src/shared/lib/router";
 import { useRouter } from "@/src/shared/lib/router";
 import { canGoBack } from "@/src/shared/lib/in-app-history";
 import { getAppElementById } from "@/src/shared/lib/dom-root";
+import { isWitems } from "@/src/shared/config/runtime";
 import { useCollapsingAppHeader } from "@/src/shared/lib/appHeaderCollapse";
 import { ArrowLeft, ListOrdered, MessagesSquare } from "lucide-react";
 import { IconButton, Menu, cn, iconButtonVariants, type MenuItem } from "@/src/shared/ui/kit";
@@ -63,9 +64,11 @@ export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, 
   const barRef = useRef<HTMLDivElement>(null);
   const titleAway = useTitleScrolledAway(barRef, title);
   useCollapsingAppHeader();
+  // Witems: ← 와 화면 제목은 셸 상단 바가 그린다 — 이 바에는 목차·질문/메모·⋯ 만 둔다.
+  const inWitems = isWitems();
   return (
     <div ref={barRef} data-lecture-topbar="" className="sticky top-[var(--app-header-offset)] z-nav -mx-4 flex h-12 transition-[top] duration-base ease-standard items-center gap-1 border-b border-line bg-canvas px-2 fold:-mx-6 fold:px-4 lg:-mx-8 lg:px-6">
-      <Link
+      {inWitems ? null : <Link
         href={backHref}
         onClick={(event) => {
           // 앱 안에서 들어왔으면 들어온 곳(지도·기록 등)으로, 직접 들어왔으면 강의 화면으로.
@@ -77,12 +80,12 @@ export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, 
         // 단독판: 셸 상단 바에 ← 가 없어 모든 폭에서 보인다(witems 는 lg 이상만 — docs/SYNC.md).
         aria-label={t.back} className={iconButtonVariants({ variant: "ghost" })}>
         <ArrowLeft aria-hidden="true" />
-      </Link>
+      </Link>}
       <p
         className={cn("min-w-0 flex-1 truncate text-sm font-semibold text-fg transition-opacity duration-150", titleAway ? "opacity-100" : "opacity-0")}
         aria-hidden="true"
       >
-        {title}
+        {inWitems ? null : title}
       </p>
       {onOpenToc && (
         <IconButton aria-label={t.toc} onClick={onOpenToc} className="lg:hidden">

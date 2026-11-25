@@ -58,6 +58,9 @@ nginx(Witems)가 `/apps-static/punisher/X` → `/static/X`, `/apps-api/punisher/
 - 셸 레이아웃 변수(`--app-header-offset`·`--app-bottom-offset`·`--app-topbar-h`)는 셸 것을 쓴다 — Witems 빌드가 앱 CSS 의 정의를 뺀다(`witems/scope.ts`).
 - 화면 제목은 `useScreenTitle`, 페이지 동작(이동·설정)은 `usePageActions`(`shared/lib/screen-chrome`). WitemsShell 이 `ctx.setTitle`·`ctx.setActions` 로
   보낸다(동작 끝에 '학습 설정', kind `settings`). `ctx.setActions` 가 없는 구버전 셸이면 보내지 않고 탭 옆 설정 링크·강의 ⋯ 메뉴의 이동 항목으로 폴백한다.
+- 화면 제목·← 는 셸이 그린다: Witems 모드에서 앱은 본문 h1(강의·해설 제목, 설정 제목)과 자기 ←(`BackLink`, 강의 상단 바 ←·제목)를 그리지 않는다.
+- API 의 401 은 "세션 없음"에만 쓴다(셸이 `/login?redirect=` 로 보낸다). 오너가 아닌 계정은 403, 로그인 확인 서버 장애는 503,
+  AI 제공자 인증 실패(CLI·gateway 의 401)는 503 `GEN_UNAVAILABLE`, 그 밖의 AI 실패는 502(`handlers/status_codes_test.go`).
 - 확인은 `confirmAction`, 되돌리기는 `notifyUndo`(`shared/ui/kit` feedback — `FeedbackHost` 가 portal 에 그림). `window.confirm`·`alert` 는 쓰지 않는다.
 
 ## 처음 옮길 때 (Witems PostgreSQL → SQLite, 한 번)

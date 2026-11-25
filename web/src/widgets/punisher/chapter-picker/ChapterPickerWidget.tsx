@@ -7,6 +7,7 @@ import { useApplyChapterDraft, useChapterSuggestions, useCreateChapterDraft, use
 import { checkHref } from "@/src/features/punisher/check-start";
 import { PunisherApiError, describePunisherError, type ChapterDraftResponse } from "@/src/shared/api/punisher";
 import { useDraftState } from "@/src/shared/lib/drafts";
+import { isWitems } from "@/src/shared/config/runtime";
 import { DraftPreview } from "./ui/DraftPreview";
 import { PlacementOffer } from "./ui/PlacementOffer";
 import { SuggestionCards, SuggestionCardsSkeleton } from "./ui/SuggestionCards";
@@ -120,13 +121,15 @@ export function ChapterPickerWidget() {
     );
   }
 
+  const QuestionHeading = isWitems() ? "h2" : "h1";
   const canDesign = (selected.size > 0 || freeText.trim() !== "") && !create.isPending;
   const problems = designProblems(create.error);
 
   return (
     <div className="flex flex-col gap-5">
       <header className="pt-4 lg:pt-6">
-        <h1 className="text-xl font-semibold text-fg">{suggestions.data?.question ?? t.defaultQuestion}</h1>
+        {/* Witems: h1 은 셸 화면 제목('다음 챕터 고르기') — 이 질문은 그 아래 h2. */}
+        <QuestionHeading className="text-xl font-semibold text-fg">{suggestions.data?.question ?? t.defaultQuestion}</QuestionHeading>
       </header>
 
       {/* xl: 추천 카드 | 직접 입력(오른쪽 열 sticky). 실행은 아래 고정 바 하나 — 어느 쪽을 골라도 '선택 n개 · 설계해 보기'가 늘 보인다. */}

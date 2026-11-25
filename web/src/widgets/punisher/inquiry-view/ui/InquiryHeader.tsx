@@ -1,4 +1,5 @@
 import { Skeleton } from "@/src/shared/ui/kit";
+import { isWitems } from "@/src/shared/config/runtime";
 import { useT } from "@/src/shared/i18n";
 import { LECTURE_TITLE_ID } from "../../lecture-viewer";
 import { messages } from "../i18n";
@@ -15,7 +16,8 @@ export function InquiryHeader({ question, title }: InquiryHeaderProps) {
     <header className="flex flex-col gap-2 pt-4">
       <p className="text-sm font-semibold text-accent-text">{t.myQuestion}</p>
       <blockquote className="break-keep border-l-2 border-line-strong pl-3 text-base text-fg-secondary">{question}</blockquote>
-      {title ? (
+      {/* Witems: 해설 제목은 셸이 화면 제목으로 그린다(ctx.setTitle). */}
+      {isWitems() ? null : title ? (
         <h1 id={LECTURE_TITLE_ID} className="break-keep text-xl font-semibold text-fg md:text-2xl">
           {title}
         </h1>

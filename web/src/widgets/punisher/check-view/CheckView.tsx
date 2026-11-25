@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, type ReactNode } from "react";
 import { EmptyState, ErrorState, Skeleton, Spinner, confirmAction, notifyUndo, type MenuItem } from "@/src/shared/ui/kit";
 import { useScreenTitle } from "@/src/shared/lib/screen-chrome";
+import { isWitems } from "@/src/shared/config/runtime";
 import {
   describeCheckError,
   lectureAnchorHref,
@@ -129,7 +130,8 @@ export function CheckView({ checkId }: { checkId: string }) {
   return (
     <div className="flex w-full flex-col">
       <LectureTopBar title={barTitle} backHref={backHref} menuItems={d ? menuItems : undefined} />
-      <h1 className="sr-only">{barTitle}</h1>
+      {/* Witems 는 셸이 화면 제목(h1)을 그린다. */}
+      {isWitems() ? null : <h1 className="sr-only">{barTitle}</h1>}
       <LectureLayout sections={NO_SECTIONS} totalMinutes={0} activeAnchor="">
         {renderBody()}
       </LectureLayout>
