@@ -27,6 +27,8 @@ func registerStudyRoutes(r chi.Router, deps RouterDependencies) {
 	r.Get("/cards", h.ListCards)
 	r.Post("/cards", h.SaveCard)
 	r.Post("/cards/{id}/grade", h.GradeCard)
+	r.Patch("/cards/{id}", h.PatchCard)
+	r.Patch("/cards/external/{externalId}", h.PatchCard)
 	r.Delete("/cards/{id}", h.DeleteCard)
 	r.Get("/search", h.Search)
 }

@@ -21,6 +21,9 @@ type StudyStore interface {
 	SetGoalDeadline(ctx context.Context, userID, goalID, dueOn string) error
 	CardDraftFor(ctx context.Context, userID, kind, sourceID string) (CardDraft, error)
 	SaveCard(ctx context.Context, userID, kind, sourceID, question, answer string, now time.Time) (ReviewCard, error)
+	SaveExternalCard(ctx context.Context, userID string, in ExternalCard, now time.Time) (ReviewCard, error)
+	PatchCard(ctx context.Context, userID, cardID string, p CardPatch, now time.Time) (ReviewCard, error)
+	PatchExternalCard(ctx context.Context, userID, externalID string, p CardPatch, now time.Time) (ReviewCard, error)
 	DeleteCard(ctx context.Context, userID, cardID string) error
 	DueCards(ctx context.Context, userID string, now time.Time, limit int) ([]ReviewCard, error)
 	ListCards(ctx context.Context, userID string) ([]ReviewCard, error)

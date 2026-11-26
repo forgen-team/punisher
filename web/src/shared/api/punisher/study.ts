@@ -88,7 +88,8 @@ export interface CardDraft {
 
 export interface ReviewCard {
   id: string;
-  sourceKind: CardSourceKind;
+  /** external: 다른 앱(atlas 등)이 보낸 카드 — sourceUrl 은 출처 링크, stale 은 근거가 바뀜. */
+  sourceKind: CardSourceKind | "external";
   sourceId: string;
   lectureId: string;
   conceptId: string;
@@ -100,6 +101,9 @@ export interface ReviewCard {
   nextReviewAt: string | null;
   suspendedAt: string | null;
   createdAt: string;
+  sourceUrl: string;
+  externalId: string;
+  stale: boolean;
 }
 
 /** 1 다시 · 2 어려움 · 3 알맞음 */

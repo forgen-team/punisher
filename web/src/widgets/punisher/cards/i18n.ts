@@ -25,6 +25,9 @@ export const messages = defineMessages({
     nextReview: (day: string) => `다음 복습 ${day}`,
     cardMenu: (q: string) => `카드 메뉴: ${q}`,
     offline: "오프라인 — 저장된 카드를 읽기만 할 수 있어요.",
+    source: (app: string) => `출처: ${app}`,
+    stale: "근거 바뀜",
+    staleHint: "보낸 곳에서 이 카드의 근거가 바뀌었어요. 출처에서 다시 확인해 보세요.",
   },
   en: {
     title: "Review cards",
@@ -50,5 +53,8 @@ export const messages = defineMessages({
     nextReview: (day: string) => `Next review ${day}`,
     cardMenu: (q: string) => `Card menu: ${q}`,
     offline: "Offline — saved cards are read-only.",
+    source: (app: string) => `Source: ${app}`,
+    stale: "Evidence changed",
+    staleHint: "The evidence behind this card changed where it came from. Check it at the source.",
   },
 });

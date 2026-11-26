@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link, useRouter, useSearchParams } from "@/src/shared/lib/router";
-import { Button, ChipLink, EmptyState, ErrorState, List, ListRow, ListSkeleton, Menu, buttonVariants, confirmAction, type MenuItem } from "@/src/shared/ui/kit";
+import { Badge, Button, ChipLink, EmptyState, ErrorState, List, ListRow, ListSkeleton, Menu, buttonVariants, confirmAction, type MenuItem } from "@/src/shared/ui/kit";
 import { lectureAnchorHref, useCards, useDeleteCard, useGradeCard } from "@/src/entities/punisher";
 import { describePunisherError, type CardRating, type ReviewCard } from "@/src/shared/api/punisher";
 import { useStudyShortcuts } from "@/src/shared/lib/shortcuts";
 import { useOnline } from "@/src/shared/lib/useOnline";
-import { formatDate, useLocale, useT } from "@/src/shared/i18n";
+import { formatDate, useLocale, useT, type Locale } from "@/src/shared/i18n";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { START, graded, reveal } from "./lib/session";
 import { messages } from "./i18n";
@@ -92,6 +92,7 @@ function CardReview() {
       </div>
       {!online && <p role="status" className="rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">{t.offline}</p>}
       <article className="flex min-h-48 flex-col gap-4 rounded-xl border border-line bg-canvas-elevated p-5 shadow-xs">
+        {card.stale && <Badge tone="warning" className="self-start" title={t.staleHint}>{t.stale}</Badge>}
         <p className="whitespace-pre-wrap break-keep text-lg font-medium text-fg">{card.question}</p>
         {s.revealed ? (
           <div className="border-t border-line pt-4">
@@ -101,6 +102,7 @@ function CardReview() {
                 {t.fromLecture}
               </Link>
             )}
+            {card.sourceKind === "external" && <ExternalSource card={card} />}
           </div>
         ) : null}
       </article>
@@ -149,7 +151,7 @@ function CardList() {
               key={card.id}
               title={card.question}
               titleLines={2}
-              meta={card.nextReviewAt ? t.nextReview(formatDate(new Date(card.nextReviewAt), locale, { month: "short", day: "numeric" })) : undefined}
+              meta={cardMeta(card, t, locale)}
               trailing={<Menu items={menu} label={t.cardMenu(card.question.slice(0, 30))} />}
             />
           );
@@ -157,4 +159,29 @@ function CardList() {
       </List>
     </>
   );
+}
+
+/** 외부 카드(atlas 등)를 보낸 앱 이름 — externalId 의 "app:" 앞부분. */
+function externalApp(card: ReviewCard): string {
+  return card.externalId.split(":")[0] || card.externalId;
+}
+
+function ExternalSource({ card }: { card: ReviewCard }) {
+  const t = useT(messages);
+  const label = t.source(externalApp(card));
+  if (!card.sourceUrl) { return <p className="mt-3 text-sm text-fg-muted">{label}</p>; }
+  return (
+    <a href={card.sourceUrl} target="_blank" rel="noopener noreferrer"
+      className="mt-3 inline-block text-sm text-accent-text underline-offset-2 hover:underline">
+      {label}
+    </a>
+  );
+}
+
+function cardMeta(card: ReviewCard, t: (typeof messages)["ko"], locale: Locale): string | undefined {
+  const parts: string[] = [];
+  if (card.stale) { parts.push(t.stale); }
+  if (card.sourceKind === "external") { parts.push(t.source(externalApp(card))); }
+  if (card.nextReviewAt) { parts.push(t.nextReview(formatDate(new Date(card.nextReviewAt), locale, { month: "short", day: "numeric" }))); }
+  return parts.length > 0 ? parts.join(" · ") : undefined;
 }
