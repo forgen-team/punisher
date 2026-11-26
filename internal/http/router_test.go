@@ -104,3 +104,37 @@ func TestLocalOnlyMatchesEncodedLogin(t *testing.T) {
 		t.Fatalf("status = %d", rec.Code)
 	}
 }
+
+// Another site's <img>/<iframe> sends no Origin but does send Sec-Fetch-Site:
+// the API refuses it, a link may still open the screen, and nothing may frame the app.
+func TestLocalOnlyCrossSiteWithoutOrigin(t *testing.T) {
+	h := localOnly("", testLogin)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }))
+	serve := func(path, site string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(http.MethodGet, path, nil)
+		r.Host = "127.0.0.1:4710"
+		if site != "" {
+			r.Header.Set("Sec-Fetch-Site", site)
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, r)
+		return rec
+	}
+	for _, tc := range []struct {
+		path, site string
+		want       int
+	}{
+		{"/v1/today", "cross-site", http.StatusForbidden},
+		{"/v1/today", "same-origin", http.StatusOK},
+		{"/v1/today", "none", http.StatusOK},
+		{"/v1/today", "", http.StatusOK},
+		{"/lectures/x", "cross-site", http.StatusOK},
+	} {
+		rec := serve(tc.path, tc.site)
+		if rec.Code != tc.want {
+			t.Errorf("%s Sec-Fetch-Site=%q: %d, want %d", tc.path, tc.site, rec.Code, tc.want)
+		}
+		if rec.Header().Get("X-Frame-Options") != "DENY" || rec.Header().Get("Content-Security-Policy") != "frame-ancestors 'none'" {
+			t.Errorf("%s: framing headers missing", tc.path)
+		}
+	}
+}

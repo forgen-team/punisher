@@ -303,6 +303,10 @@ func run(cfg config.Config) error {
 		go reminder.Run(schedCtx, st, middleware.LocalUserID, func(ctx context.Context) string { return st.LocaleFor(ctx, middleware.LocalUserID) }, reminder.MacNotify)
 	}
 
+	// Register before serving: startup below can take seconds (the AI CLI
+	// check), and a signal arriving then must still shut down cleanly.
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.Serve(ln) }()
 
@@ -320,8 +324,6 @@ func run(cfg config.Config) error {
 		openBrowser(url)
 	}
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case <-stop:
 	case err := <-serveErr:
