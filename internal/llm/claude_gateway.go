@@ -40,7 +40,14 @@ type ClaudeGatewayClient struct {
 	// whose gateway timeout starts only after a slot is granted. It should
 	// match CLAUDE_GATEWAY_BACKGROUND_QUEUE_TIMEOUT_SEC; default 300s.
 	BackgroundQueueWait time.Duration
+	// AppName is sent as X-Witems-App so the gateway picks this app's Claude
+	// account profile. Empty means "read WITEMS_APP_NAME at request time";
+	// both empty sends no header (the gateway uses its default profile).
+	AppName string
 }
+
+// GatewayAppHeader names the calling app to the gateway (punisher in Witems).
+const GatewayAppHeader = "X-Witems-App"
 
 const defaultBackgroundQueueWait = 300 * time.Second
 
@@ -51,7 +58,27 @@ func NewClaudeGatewayClientFromEnv() *ClaudeGatewayClient {
 	if url == "" {
 		return nil
 	}
-	return &ClaudeGatewayClient{BaseURL: url, InternalToken: strings.TrimSpace(os.Getenv("WITEMS_INTERNAL_TOKEN"))}
+	return &ClaudeGatewayClient{
+		BaseURL:       url,
+		InternalToken: strings.TrimSpace(os.Getenv("WITEMS_INTERNAL_TOKEN")),
+		AppName:       strings.TrimSpace(os.Getenv("WITEMS_APP_NAME")),
+	}
+}
+
+// appName is the explicit AppName, else WITEMS_APP_NAME.
+func (c *ClaudeGatewayClient) appName() string {
+	if c != nil && strings.TrimSpace(c.AppName) != "" {
+		return strings.TrimSpace(c.AppName)
+	}
+	return strings.TrimSpace(os.Getenv("WITEMS_APP_NAME"))
+}
+
+// setCommonHeaders adds the token and, when known, the app name.
+func (c *ClaudeGatewayClient) setCommonHeaders(req *http.Request) {
+	req.Header.Set("X-Internal-Token", c.InternalToken)
+	if app := c.appName(); app != "" {
+		req.Header.Set(GatewayAppHeader, app)
+	}
 }
 
 // GatewayRequest is the gateway's /v1/complete and /v1/stream body.
@@ -220,7 +247,7 @@ func (c *ClaudeGatewayClient) Health(ctx context.Context) (GatewayHealth, error)
 	if err != nil {
 		return GatewayHealth{}, err
 	}
-	req.Header.Set("X-Internal-Token", c.InternalToken)
+	c.setCommonHeaders(req)
 	resp, err := c.httpClient().Do(req)
 	if err != nil {
 		return GatewayHealth{}, gatewayTransportError(ctx, err)
@@ -314,7 +341,7 @@ func (c *ClaudeGatewayClient) do(ctx context.Context, path string, body GatewayR
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Internal-Token", c.InternalToken)
+	c.setCommonHeaders(req)
 	req.Header.Set("X-Priority", string(body.Priority))
 	resp, err := c.httpClient().Do(req)
 	if err != nil {

@@ -178,3 +178,64 @@ func TestGatewayPriority(t *testing.T) {
 		t.Fatal("IsBackground")
 	}
 }
+
+func TestGatewayAppHeaderFromEnvOnEveryRequest(t *testing.T) {
+	t.Setenv("WITEMS_APP_NAME", "punisher")
+	var seen []string
+	c := gatewayServer(t, func(w http.ResponseWriter, r *http.Request) {
+		seen = append(seen, r.URL.Path+"="+r.Header.Get(GatewayAppHeader))
+		switch r.URL.Path {
+		case "/health":
+			fmt.Fprint(w, `{"status":"ok"}`)
+		case "/v1/stream":
+			w.Header().Set("Content-Type", "text/event-stream")
+			fmt.Fprint(w, "event: done\ndata: {\"text\":\"x\"}\n\n")
+		default:
+			fmt.Fprint(w, `{"text":"x"}`)
+		}
+	})
+	if _, err := c.Health(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Create(context.Background(), "", MessagesRequest{User: "u"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Stream(context.Background(), "", MessagesRequest{User: "u"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(seen, ","); got != "/health=punisher,/v1/complete=punisher,/v1/stream=punisher" {
+		t.Fatalf("headers %s", got)
+	}
+}
+
+func TestGatewayAppHeaderExplicitWinsAndEmptyOmits(t *testing.T) {
+	t.Setenv("WITEMS_APP_NAME", "punisher")
+	var got []string
+	c := gatewayServer(t, func(w http.ResponseWriter, r *http.Request) {
+		_, present := r.Header[http.CanonicalHeaderKey(GatewayAppHeader)]
+		got = append(got, fmt.Sprintf("%v:%s", present, r.Header.Get(GatewayAppHeader)))
+		fmt.Fprint(w, `{"status":"ok"}`)
+	})
+	c.AppName = "chiron"
+	if _, err := c.Health(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	c.AppName = ""
+	t.Setenv("WITEMS_APP_NAME", "")
+	if _, err := c.Health(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(got, ",") != "true:chiron,false:" {
+		t.Fatalf("headers %v", got)
+	}
+}
+
+func TestNewClaudeGatewayClientFromEnvReadsAppName(t *testing.T) {
+	t.Setenv("CLAUDE_GATEWAY_URL", "http://gw")
+	t.Setenv("WITEMS_INTERNAL_TOKEN", "tok")
+	t.Setenv("WITEMS_APP_NAME", " punisher ")
+	c := NewClaudeGatewayClientFromEnv()
+	if c == nil || c.AppName != "punisher" || c.InternalToken != "tok" {
+		t.Fatalf("client %+v", c)
+	}
+}

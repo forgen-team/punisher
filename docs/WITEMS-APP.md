@@ -34,6 +34,7 @@ nginx(Witems)가 `/apps-static/punisher/X` → `/static/X`, `/apps-api/punisher/
 | `PUNISHER_OWNER_USER_ID` | 예 | 쓸 수 있는 Witems 사용자 id |
 | `PUNISHER_WITEMS_ORIGIN` | 예 | 예: `https://witems.kr`. 다른 `Origin` 요청은 403 |
 | `CLAUDE_GATEWAY_URL`, `WITEMS_INTERNAL_TOKEN` | 예 | claude-gateway |
+| `WITEMS_APP_NAME` | 아니오 | gateway 에 보내는 `X-Witems-App`(Witems compose 는 `punisher`). gateway 가 이 이름으로 앱별 Claude 계정 프로필을 고른다. 비면 머리글 없이 보내 기본 프로필 |
 | `PUNISHER_RSS_SERVER_URL` | 아니오 | 챕터 제안의 RSS 신호(비우면 끔) |
 | `PUNISHER_LOCALE` | 아니오 | 설정을 저장한 적 없는 사용자의 언어(Witems 는 `ko`) |
 | `PUNISHER_LISTEN`, `PUNISHER_DATA_DIR` | 아니오 | 기본 `0.0.0.0:8080`, `/data` |
