@@ -56,10 +56,10 @@ export function TodayWidget() {
   const reviewToday = today.data?.review;
   const reviewSummary = useReviewSummary(Boolean(reviewToday));
 
-  async function start(conceptId: string, query?: string) {
+  async function start(conceptId: string, query?: string, studyRequestId?: string) {
     setPickResult(null);
     try {
-      const result = await launch({ conceptId, query });
+      const result = await launch({ conceptId, query, studyRequestId });
       setPickResult(result);
       if (result) { closeDetail(); }
     } catch {
@@ -197,7 +197,7 @@ export function TodayWidget() {
             ) : (
               <Section variant="card" title={t.studyRequests}>
                 <AddStudyRequestForm />
-                <StudyRequestList starting={isPending} onStart={(id, query) => start(id, query)} />
+                <StudyRequestList starting={isPending} onStart={(id, query, requestId) => start(id, query, requestId)} />
               </Section>
             )}
           </div>

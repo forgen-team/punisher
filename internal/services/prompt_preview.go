@@ -42,6 +42,13 @@ const (
 	previewMisconception = "(예시 오개념) 확인 결과에서 인정한 오개념이 여기에 들어갑니다"
 )
 
+// previewKnowledgeGaps fill "지식 카드에서 모르는 것·충돌하는 것" (from a
+// knowledge_gap study request) so the block shows in the preview.
+var previewKnowledgeGaps = []string{
+	"모름: (예시) 지식 카드에서 '모름'으로 표시한 질문이 여기에 들어갑니다",
+	"충돌: (예시) 서로 맞서는 두 주장의 요약 — ① 주장 A ② 주장 B",
+}
+
 // PreviewPrompt assembles the final system+user prompt of the step that uses
 // blockID, with the user's blocks (and draft, when non-nil, in place of
 // blockID) and an example concept. It makes no LLM call.
@@ -61,6 +68,9 @@ func (s *Service) PreviewPrompt(ctx context.Context, userID, blockID string, dra
 	pc := t.LectureContext()
 	if len(pc.Misconceptions) == 0 {
 		pc.Misconceptions = []prompts.Misconception{{ConceptName: pc.ConceptName, Text: previewMisconception}}
+	}
+	if len(pc.KnowledgeGaps) == 0 {
+		pc.KnowledgeGaps = previewKnowledgeGaps
 	}
 	vars := prompts.LectureVars(pc)
 	out := PromptPreview{BlockID: blockID, Stage: block.Stage, ConceptID: pc.ConceptID, ConceptName: pc.ConceptName,

@@ -253,6 +253,8 @@ export interface InstantRequest {
   /** "이 개념 더 깊게" — 결과 강의를 이 강의 아래에 연결한다 */
   parentLectureId?: string;
   parentAnchor?: string;
+  /** 학습 요청에서 시작 — 요청 context 가 knowledge_gap 이면 그 빈칸이 강의 입력이 된다 */
+  studyRequestId?: string;
 }
 
 export interface InstantResponse {

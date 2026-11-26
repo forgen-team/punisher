@@ -59,7 +59,7 @@ function metaOf(req: StudyRequest, phase: ResolvePhase, names: ReadonlyMap<strin
 
 interface StudyRequestListProps {
   starting: boolean;
-  onStart: (conceptId: string, query: string) => void;
+  onStart: (conceptId: string, query: string, studyRequestId: string) => void;
 }
 
 /** 진행 중(아직 안 배움)과 완료(요청한 주제 개념을 다 배움)를 나눈다. 목록에서 뺀 요청은 숨긴다. */
@@ -117,11 +117,11 @@ export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
       action = (
         <>
           {prereqId ? (
-            <Button size="sm" variant="ghost" disabled={starting} onClick={() => onStart(prereqId, req.query)}>
+            <Button size="sm" variant="ghost" disabled={starting} onClick={() => onStart(prereqId, req.query, req.id)}>
               {t.requestFromBasics}
             </Button>
           ) : null}
-          <Button size="sm" variant="secondary" disabled={starting} onClick={() => onStart(conceptId, req.query)}>
+          <Button size="sm" variant="secondary" disabled={starting} onClick={() => onStart(conceptId, req.query, req.id)}>
             {t.requestStart}
           </Button>
         </>
