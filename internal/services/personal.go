@@ -21,6 +21,9 @@ type personalContext struct {
 	// repeated: misconceptions the checks found more than once on the concept
 	// or its prerequisites (research #5: candidates for @@misconception).
 	repeated []string
+	// gaps: '모름/충돌' of the learner's knowledge cards from a knowledge_gap
+	// study request (instant lectures started from that request only).
+	gaps []string
 }
 
 // LectureContext is the prompt context of t. User-owned generations (Owner set:
@@ -44,6 +47,7 @@ func personalize(pc prompts.LectureContext, p personalContext) prompts.LectureCo
 	pc.LabOS = p.labOS
 	pc.LearnerSignals = p.signals
 	pc.RepeatedMisconceptions = p.repeated
+	pc.KnowledgeGaps = p.gaps
 	return pc
 }
 

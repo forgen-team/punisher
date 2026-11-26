@@ -86,6 +86,10 @@ type LectureContext struct {
 	// RepeatedMisconceptions: misconceptions the learner's checks showed more than
 	// once on this concept or its prerequisites (user-owned generations only).
 	RepeatedMisconceptions []string
+	// KnowledgeGaps: what the learner's knowledge cards (witems) mark as unknown or
+	// conflicting ("모름: …", "충돌: … — ① … ② …"), from a knowledge_gap study
+	// request. User-owned generations only; capped by writeKnowledgeGaps.
+	KnowledgeGaps []string
 }
 
 // GlossaryRef is a dictionary term the lecture may link.
@@ -231,6 +235,7 @@ func writeContext(b *strings.Builder, c LectureContext) {
 		}
 	}
 	writeLearnerSignals(b, c.LearnerSignals)
+	writeKnowledgeGaps(b, c.KnowledgeGaps)
 	b.WriteString(ExampleLanguageRule(c.ExampleLanguage))
 	b.WriteString(LabRule(c.LabOS))
 }
@@ -316,6 +321,34 @@ func writeMisconceptions(b *strings.Builder, list []Misconception) {
 	b.WriteString("\n## 이 수강생이 인정한 오개념(관련 내용이 나오면 이 생각이 왜 틀렸는지 바로잡을 것)\n")
 	for _, m := range list {
 		fmt.Fprintf(b, "- %s: %s\n", m.ConceptName, m.Text)
+	}
+}
+
+// Knowledge gap caps keep one study request from flooding the prompt.
+const (
+	MaxKnowledgeGaps     = 8
+	MaxKnowledgeGapRunes = 300
+)
+
+// writeKnowledgeGaps lists the unknown/conflicting points of the learner's
+// knowledge cards (omitted when none): at most MaxKnowledgeGaps non-empty
+// lines, each cut to MaxKnowledgeGapRunes.
+func writeKnowledgeGaps(b *strings.Builder, list []string) {
+	lines := make([]string, 0, MaxKnowledgeGaps)
+	for _, g := range list {
+		if len(lines) == MaxKnowledgeGaps {
+			break
+		}
+		if g = truncate(strings.Join(strings.Fields(g), " "), MaxKnowledgeGapRunes); g != "" {
+			lines = append(lines, g)
+		}
+	}
+	if len(lines) == 0 {
+		return
+	}
+	b.WriteString("\n## 학습자의 지식 카드에서 모르는 것·충돌하는 것(강의는 이 빈칸을 메우는 데서 출발하고, 충돌이면 어떤 조건에서 각각 맞는지 다룰 것)\n")
+	for _, g := range lines {
+		fmt.Fprintf(b, "- %s\n", g)
 	}
 }
 

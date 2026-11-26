@@ -30,6 +30,9 @@ type InstantRequest struct {
 	// a lecture; the resulting lecture is linked under it (lecture_links).
 	ParentLectureID string `json:"parentLectureId"`
 	ParentAnchor    string `json:"parentAnchor"`
+	// StudyRequestID: set when started from a study request; a knowledge_gap
+	// context fills the lecture's KnowledgeGaps (KNOWLEDGE-DESIGN §4.7).
+	StudyRequestID string `json:"studyRequestId"`
 }
 
 // InstantResponse describes what happened.
@@ -77,16 +80,21 @@ func (s *Service) StartInstant(ctx context.Context, userID string, req InstantRe
 	if err != nil {
 		return InstantResponse{}, err
 	}
+	t.personal.gaps = s.studyRequestGaps(ctx, userID, strings.TrimSpace(req.StudyRequestID))
 	resp := InstantResponse{ConceptID: conceptID, Resolution: resolution}
 
-	existing, err := s.Store.PublishedLectureCovering(ctx, userID, conceptID, t.Plan.Depth, t.Plan.ObjectiveIDs, t.Plan.Language, t.Plan.ReaderLevel, store.LangExact)
-	if err == nil {
-		resp.Status, resp.LectureID = InstantExisting, existing.ID
-		s.linkDeeper(ctx, userID, req, resp)
-		return resp, nil
-	}
-	if !errors.Is(err, store.ErrNotFound) {
-		return InstantResponse{}, err
+	// A lecture asked for the learner's gaps is written for them: an existing
+	// lecture of the same objectives never saw those gaps, so it is not reused.
+	if len(t.personal.gaps) == 0 {
+		existing, err := s.Store.PublishedLectureCovering(ctx, userID, conceptID, t.Plan.Depth, t.Plan.ObjectiveIDs, t.Plan.Language, t.Plan.ReaderLevel, store.LangExact)
+		if err == nil {
+			resp.Status, resp.LectureID = InstantExisting, existing.ID
+			s.linkDeeper(ctx, userID, req, resp)
+			return resp, nil
+		}
+		if !errors.Is(err, store.ErrNotFound) {
+			return InstantResponse{}, err
+		}
 	}
 
 	target := learning.TargetKey(t.Plan)
