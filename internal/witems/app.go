@@ -40,6 +40,12 @@ var Manifest = map[string]any{
 	"remoteEntry": "/apps-static/punisher/remoteEntry.js",
 	"api":         "/apps-api/punisher/",
 	"health":      "/healthz",
+	// ai.claude (contract §2, optional): this app calls the Witems claude-gateway
+	// (X-Witems-App: punisher). The shell lists it under Settings › AI·키 so the
+	// owner can pick its Claude account. No toolsets — generation only.
+	"ai": map[string]any{
+		"claude": map[string]any{"purpose": "강의·문제 생성과 다음 챕터 제안"},
+	},
 }
 
 // Revalidate is for files whose name does not change between builds

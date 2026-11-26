@@ -233,6 +233,13 @@ func TestAppHandler(t *testing.T) {
 		t.Fatalf("manifest %v %v", m, err)
 	}
 
+	// ai.claude (contract §2): a one-line purpose (≤80 chars) for Settings › AI·키, no toolsets.
+	ai, _ := m["ai"].(map[string]any)
+	claude, _ := ai["claude"].(map[string]any)
+	if purpose, _ := claude["purpose"].(string); purpose == "" || len([]rune(purpose)) > 80 || claude["toolsets"] != nil {
+		t.Fatalf("ai.claude %v", ai)
+	}
+
 	// nav.items (contract §2): the shell's sidebar sub-menu — at most 8, each href/match an in-app hash "#/…".
 	nav, _ := m["nav"].(map[string]any)
 	items, _ := nav["items"].([]any)

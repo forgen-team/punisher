@@ -34,6 +34,9 @@ nginx(Witems)가 `/apps-static/punisher/X` → `/static/X`, `/apps-api/punisher/
 | `PUNISHER_OWNER_USER_ID` | 예 | 쓸 수 있는 Witems 사용자 id |
 | `PUNISHER_WITEMS_ORIGIN` | 예 | 예: `https://witems.kr`. 다른 `Origin` 요청은 403 |
 | `CLAUDE_GATEWAY_URL`, `WITEMS_INTERNAL_TOKEN` | 예 | claude-gateway |
+| `WITEMS_APP_NAME` | 아니오 | gateway 에 보내는 `X-Witems-App`(Witems compose 는 `punisher`). gateway 가 이 이름으로 앱별 Claude 계정 프로필을 고른다. 비면 머리글 없이 보내 기본 프로필 |
+
+manifest 는 `ai.claude.purpose`("강의·문제 생성과 다음 챕터 제안")를 선언한다(Witems 앱 계약 §2 선택 필드). Witems 설정 › AI·키 "Claude 계정"이 이걸 보고 학습 앱을 앱별 계정 목록에 넣는다. 요청하는 도구 묶음(toolsets)은 없다.
 | `PUNISHER_RSS_SERVER_URL` | 아니오 | 챕터 제안의 RSS 신호(비우면 끔) |
 | `PUNISHER_LOCALE` | 아니오 | 설정을 저장한 적 없는 사용자의 언어(Witems 는 `ko`) |
 | `PUNISHER_LISTEN`, `PUNISHER_DATA_DIR` | 아니오 | 기본 `0.0.0.0:8080`, `/data` |
