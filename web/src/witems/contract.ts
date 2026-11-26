@@ -46,6 +46,11 @@ export interface AppContext {
   readonly theme: AppTheme;
   onThemeChange(callback: (theme: AppTheme) => void): () => void;
   setTitle(title: string | null): void;
+  /**
+   * Optional: numbers on the sidebar sub-menu (manifest nav.items) — { "#/": n }, unknown items and n ≤ 0 are
+   * ignored. Shells without it don't draw the sub-menu either, so the app keeps its own tabs (LearnNav).
+   */
+  setBadges?(badges: Record<string, number>): void;
   /** Optional: older shells don't have it — the app then keeps its own settings link (LearnNav). */
   setActions?(actions: AppAction[] | null): void;
   /** Optional: ⌘K commands. The shell owns ⌘K (captures it); older shells lack this and the app keeps its own ⌘K. */

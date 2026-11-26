@@ -19,7 +19,8 @@ import { messages } from "@/src/app/i18n";
 import { titleKeyFor } from "@/src/app/titles";
 
 /**
- * 셸 안에서의 앱 틀: Witems 가 상단 바·메뉴·여백·제목(데스크톱 h1)을 맡으므로 학습 탭과 본문만 둔다.
+ * 셸 안에서의 앱 틀: Witems 가 상단 바·메뉴·여백·제목(데스크톱 h1)을 맡으므로 본문만 둔다. 학습 탭[강의·지도·기록]은
+ * 셸 사이드바 하위 메뉴(manifest nav.items)가 맡고, 그 메뉴가 없는 구버전 셸에서만 LearnNav 가 탭을 그린다.
  * 제목: 화면이 정한 구체적인 제목(강의 제목 등, useScreenTitle) → 없으면 경로별 제목(오늘은 null = manifest "학습").
  * 페이지 동작: 셸이 ctx.setActions 를 가지면 화면의 동작 + 마지막에 '학습 설정'을 넘긴다(UI-PAGE-LAYOUT §1).
  * 구버전 셸이면 넘기지 않고, LearnNav 가 탭 옆에 설정 링크를, 강의 화면은 ⋯ 메뉴에 이동 항목을 그대로 둔다.

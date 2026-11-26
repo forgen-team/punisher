@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -230,6 +231,28 @@ func TestAppHandler(t *testing.T) {
 	var m map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &m); err != nil || m["name"] != "punisher" || m["version"] != "1.2.3" || m["api"] != "/apps-api/punisher/" {
 		t.Fatalf("manifest %v %v", m, err)
+	}
+
+	// nav.items (contract §2): the shell's sidebar sub-menu — at most 8, each href/match an in-app hash "#/…".
+	nav, _ := m["nav"].(map[string]any)
+	items, _ := nav["items"].([]any)
+	var hrefs []string
+	for _, raw := range items {
+		item, _ := raw.(map[string]any)
+		href, _ := item["href"].(string)
+		if label, _ := item["label"].(string); label == "" || !strings.HasPrefix(href, "#/") {
+			t.Fatalf("nav item %v: needs a label and a #/ href", item)
+		}
+		match, _ := item["match"].([]any)
+		for _, p := range match {
+			if s, _ := p.(string); !strings.HasPrefix(s, "#/") {
+				t.Fatalf("nav item %v: match %v is not a #/ hash", item, p)
+			}
+		}
+		hrefs = append(hrefs, href)
+	}
+	if got := strings.Join(hrefs, " "); got != "#/ #/map #/history" || len(items) > 8 {
+		t.Fatalf("nav.items hrefs %q", got)
 	}
 
 	entry := get("/static/remoteEntry.js")
