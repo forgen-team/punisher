@@ -22,10 +22,21 @@ var dist embed.FS
 
 // Manifest is the app's entry in the Witems shell (contract §2).
 var Manifest = map[string]any{
-	"contract":    1,
-	"name":        "punisher",
-	"title":       "학습",
-	"nav":         map[string]any{"label": "학습", "icon": "graduation-cap", "order": 10},
+	"contract": 1,
+	"name":     "punisher",
+	"title":    "학습",
+	// nav.items: 셸 사이드바의 하위 메뉴(contract §2). 앱은 셸 주소를 "경로#섹션"(/apps/punisher/map#/map)으로
+	// 두고, 셸이 해시만 바꾸면 hashchange 로 그 탭으로 간다(web/src/witems/sections.ts·RouteSync.tsx).
+	"nav": map[string]any{
+		"label": "학습",
+		"icon":  "graduation-cap",
+		"order": 10,
+		"items": []map[string]any{
+			{"label": "강의", "href": "#/", "match": []string{"#/", "#/lectures"}},
+			{"label": "지도", "href": "#/map", "match": []string{"#/map", "#/goals"}},
+			{"label": "기록", "href": "#/history"},
+		},
+	},
 	"remoteEntry": "/apps-static/punisher/remoteEntry.js",
 	"api":         "/apps-api/punisher/",
 	"health":      "/healthz",
