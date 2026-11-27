@@ -2,7 +2,8 @@
 import { useState } from "react";
 import { useReadingSignals } from "@/src/shared/lib/readingSignals";
 import { BookOpen } from "lucide-react";
-import { Button, Chip, Skeleton, cn, focusRing } from "@/src/shared/ui/kit";
+import { Button, Skeleton } from "@forgen-team/ui";
+import { cn, focusRing } from "@/src/shared/lib/cn";
 import { useCreateStudyRequest, useGloss } from "@/src/entities/punisher";
 import { SELECTION_MIN_CHARS, type ThreadMode } from "@/src/shared/api/punisher";
 import { InlineError, ReadingOverlay, toOverlayAnchor, type OverlayAnchor } from "@/src/shared/ui/punisher";
@@ -140,8 +141,8 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
         )}
         {canThread && text && (
           <div className="mt-3 flex flex-wrap gap-2">
-            <Chip onClick={() => startThread("easier")}>{t.easier}</Chip>
-            <Chip onClick={() => startThread("question")}>{t.askMore}</Chip>
+            <Button variant="outline" size="sm" onClick={() => startThread("easier")}>{t.easier}</Button>
+            <Button variant="outline" size="sm" onClick={() => startThread("question")}>{t.askMore}</Button>
           </div>
         )}
         <div aria-live="polite" className="mt-2">

@@ -13,6 +13,7 @@ export const messages = defineMessages({
     saved: "복습 카드를 만들었어요",
     loading: "불러오는 중",
     noAnswer: "아직 답이 없어요 — 답을 직접 적어 주세요.",
+    undoFailed: "되돌리지 못했어요",
   },
   en: {
     addToReview: "Add to review",
@@ -26,5 +27,6 @@ export const messages = defineMessages({
     saved: "Review card created",
     loading: "Loading",
     noAnswer: "No answer yet — write it yourself.",
+    undoFailed: "Couldn't undo",
   },
 });

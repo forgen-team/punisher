@@ -1,5 +1,5 @@
 
-import { BottomSheet, Button, EmptyState, ErrorState, ListSkeleton } from "@/src/shared/ui/kit";
+import { Button, EmptyState, ErrorState, ListSkeleton, Sheet } from "@forgen-team/ui";
 import { usePromptHistory } from "@/src/entities/punisher";
 import { describePunisherError, type PromptHistoryEntry } from "@/src/shared/api/punisher";
 import { formatDate, useLocale, translate } from "@/src/shared/i18n";
@@ -24,13 +24,13 @@ export function HistorySheet({ blockId, open, restoring, onClose, onRestore, onL
   const t = translate(messages, locale);
   const actionLabels = { save: t.historySave, reset: t.historyReset, restore: t.historyRestore };
   return (
-    <BottomSheet open={open} onClose={onClose} title={t.history} description={t.historyDescription} desktop="side">
+    <Sheet open={open} onOpenChange={(o) => { if (!o) { onClose(); } }} title={t.history} description={t.historyDescription} desktop="side">
       {history.isLoading ? (
         <ListSkeleton rows={3} />
       ) : history.error ? (
-        <ErrorState compact message={describePunisherError(history.error)} onRetry={() => history.refetch()} />
+        <ErrorState title={describePunisherError(history.error)} onRetry={() => { void history.refetch(); }} />
       ) : items.length === 0 ? (
-        <EmptyState compact title={t.historyEmpty} />
+        <EmptyState title={t.historyEmpty} />
       ) : (
         <ul role="list" className="flex flex-col gap-3">
           {items.map((entry) => (
@@ -51,6 +51,6 @@ export function HistorySheet({ blockId, open, restoring, onClose, onRestore, onL
           ))}
         </ul>
       )}
-    </BottomSheet>
+    </Sheet>
   );
 }

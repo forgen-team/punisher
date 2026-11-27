@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { Layers } from "lucide-react";
 import { Link } from "@/src/shared/lib/router";
-import { Button, Menu, Section, buttonVariants, cn, notifyUndo, type MenuItem } from "@/src/shared/ui/kit";
+import { Button, Menu, Section, useToast, type MenuItemDef } from "@forgen-team/ui";
+import { cn } from "@/src/shared/lib/cn";
 import { useActivity, useLeechAction, useLeeches, useReviewForecast } from "@/src/entities/punisher";
 import { useLaunchInstant } from "@/src/features/punisher/instant-start";
 import type { ActivityResponse, ForecastResponse, Leech } from "@/src/shared/api/punisher";
@@ -73,10 +74,12 @@ function TodayProgress({ activity: a }: { activity: ActivityResponse }) {
         {today.lecturesDone > 0 && <span>{t.goalLectures(today.lecturesDone)}</span>}
       </p>
       {today.cardsDue > 0 && (
-        <Link href="/cards" className={buttonVariants({ variant: "secondary", size: "sm", className: "w-fit" })}>
-          <Layers className="size-4" aria-hidden="true" />
-          {t.openCards(today.cardsDue)}
-        </Link>
+        <Button asChild variant="secondary" size="sm" className="w-fit">
+          <Link href="/cards">
+            <Layers className="size-4" aria-hidden="true" />
+            {t.openCards(today.cardsDue)}
+          </Link>
+        </Button>
       )}
     </div>
   );
@@ -185,6 +188,7 @@ function LeechList() {
   const t = useT(messages);
   const leeches = useLeeches();
   const action = useLeechAction();
+  const toast = useToast();
   const { launch, isPending, error } = useLaunchInstant();
   const list = leeches.data?.leeches ?? [];
   if (list.length === 0) { return null; }
@@ -200,7 +204,10 @@ function LeechList() {
 
   function suspend(l: Leech) {
     action.mutate({ objectiveId: l.objectiveId, action: "suspend" }, {
-      onSuccess: () => notifyUndo(t.leechSuspended, () => action.mutateAsync({ objectiveId: l.objectiveId, action: "resume" })),
+      onSuccess: () =>
+        toast.undo(t.leechSuspended, () => {
+          action.mutateAsync({ objectiveId: l.objectiveId, action: "resume" }).catch(() => toast.show(t.undoFailed, { tone: "danger" }));
+        }),
     });
   }
 
@@ -211,10 +218,10 @@ function LeechList() {
       <InlineError error={error ?? action.error} />
       <ul className="flex flex-col">
         {list.slice(0, 3).map((l) => {
-          const menu: MenuItem[] = [
+          const menu: MenuItemDef[] = [
             { key: "prereq", label: t.leechPrereq, href: `/map?concept=${encodeURIComponent(l.conceptId)}` },
             { key: "keep", label: t.leechKeep, onSelect: () => action.mutate({ objectiveId: l.objectiveId, action: "keep" }) },
-            { key: "suspend", label: t.leechSuspend, onSelect: () => suspend(l), separatorBefore: true },
+            { key: "suspend", label: t.leechSuspend, onSelect: () => suspend(l) },
           ];
           return (
             <li key={l.objectiveId} className="flex items-center gap-2 border-b border-line py-2 last:border-b-0">
@@ -225,7 +232,7 @@ function LeechList() {
               <Button variant="ghost" size="sm" loading={isPending} onClick={() => void relearn(l)}>
                 {t.leechRelearn}
               </Button>
-              <Menu items={menu} label={t.leechActions(l.objectiveText.slice(0, 30))} linkAs={Link} />
+              <Menu items={menu} label={t.leechActions(l.objectiveText.slice(0, 30))} />
             </li>
           );
         })}

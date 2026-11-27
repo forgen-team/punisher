@@ -2,7 +2,7 @@
 import { Link } from "@/src/shared/lib/router";
 import { forwardRef } from "react";
 import { ArrowLeft, Layers } from "lucide-react";
-import { List, ListRow, Section } from "@/src/shared/ui/kit";
+import { List, ListRow, Section } from "@forgen-team/ui";
 import { isReadThrough, readThroughLabel } from "@/src/entities/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import { lectureAnchorHref } from "@/src/entities/punisher";
@@ -72,7 +72,7 @@ export const DeeperLecturesSection = forwardRef<HTMLElement, LinkedLecturesSecti
               return r.current ? (
                 <ListRow key={r.id} selected leading={<Layers aria-hidden="true" />} title={title} meta={meta} />
               ) : (
-                <ListRow key={r.id} href={lectureHref(r.id)} linkAs={Link} leading={<Layers aria-hidden="true" />} title={title} meta={meta} />
+                <ListRow key={r.id} href={lectureHref(r.id)} leading={<Layers aria-hidden="true" />} title={title} meta={meta} />
               );
             })}
           </List>
@@ -88,7 +88,6 @@ export const DeeperLecturesSection = forwardRef<HTMLElement, LinkedLecturesSecti
             <ListRow
               key={l.id}
               href={lectureHref(l.id)}
-              linkAs={Link}
               leading={<Layers aria-hidden="true" />}
               title={l.conceptName || l.title}
               meta={[

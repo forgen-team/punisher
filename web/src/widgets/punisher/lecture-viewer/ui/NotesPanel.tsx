@@ -1,7 +1,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Trash2 } from "lucide-react";
-import { Button, EmptyState, ErrorState, Field, FieldTextarea, IconButton, ListSkeleton } from "@/src/shared/ui/kit";
+import { Button, EmptyState, ErrorState, IconButton, ListSkeleton, TextField } from "@forgen-team/ui";
 import { AddToReview } from "@/src/features/punisher/card-add";
 import { useCreateNote, useDeleteNote, useNotes } from "@/src/entities/punisher";
 import { scrollToAnchor } from "@/src/features/punisher/lecture-progress";
@@ -43,9 +43,14 @@ export function NotesPanel({ lectureId, conceptId, getAnchor, onJump }: NotesPan
   return (
     <div className="flex flex-col gap-3">
       <form onSubmit={submit} className="flex flex-col gap-2">
-        <Field label={t.noteLabel}>
-          <FieldTextarea value={body} rows={3} maxLength={10000} onChange={(event) => setBody(event.target.value)} />
-        </Field>
+        <TextField
+          multiline
+          label={t.noteLabel}
+          value={body}
+          onValueChange={({ value }) => setBody(value)}
+          hideCharacterCount
+          textareaProps={{ rows: 3, maxLength: 10000 }}
+        />
         <Button type="submit" size="sm" variant="secondary" loading={create.isPending} disabled={!body.trim()} className="self-end">
           {t.saveNote}
         </Button>
@@ -56,9 +61,9 @@ export function NotesPanel({ lectureId, conceptId, getAnchor, onJump }: NotesPan
       {notes.isLoading ? (
         <ListSkeleton rows={2} />
       ) : notes.error ? (
-        <ErrorState compact message={describePunisherError(notes.error)} onRetry={() => notes.refetch()} />
+        <ErrorState title={describePunisherError(notes.error)} onRetry={() => void notes.refetch()} />
       ) : items.length === 0 ? (
-        <EmptyState compact title={t.noNotes} />
+        <EmptyState title={t.noNotes} />
       ) : (
         <ul role="list">
           {items.map((n) => (
@@ -80,9 +85,7 @@ export function NotesPanel({ lectureId, conceptId, getAnchor, onJump }: NotesPan
                   <AddToReview kind="note" sourceId={n.id} className="-ml-2" />
                 </div>
               </div>
-              <IconButton aria-label={t.deleteNote} size="sm" disabled={remove.isPending} onClick={() => remove.mutate(n.id)}>
-                <Trash2 aria-hidden="true" />
-              </IconButton>
+              <IconButton aria-label={t.deleteNote} size="sm" disabled={remove.isPending} onClick={() => remove.mutate(n.id)} icon={<Trash2 aria-hidden="true" />} />
             </li>
           ))}
         </ul>

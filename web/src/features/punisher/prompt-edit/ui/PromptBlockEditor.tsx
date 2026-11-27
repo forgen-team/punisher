@@ -1,7 +1,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, History, Info } from "lucide-react";
-import { Badge, Button, IconButton, SegmentedTabs, Textarea, confirmAction } from "@/src/shared/ui/kit";
+import { Badge, Button, IconButton, SegmentedControl, SegmentedControlItem, TextField, useConfirm } from "@forgen-team/ui";
 import { useDraftState } from "@/src/shared/lib/drafts";
 import { useLeaveGuard } from "@/src/shared/lib/leave-guard";
 import { useChangePrompt } from "@/src/entities/punisher";
@@ -28,6 +28,7 @@ interface PromptBlockEditorProps {
  */
 export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps) {
   const change = useChangePrompt();
+  const confirm = useConfirm();
   const t = useT(messages);
   const tabLabels: Record<EditorTab, string> = { edit: t.tabEdit, diff: t.tabDiff, preview: t.tabPreview };
   // 초안은 블록·저장본(body)마다 이 기기에 보관한다 — 다른 블록·화면에 갔다 와도, 새로고침해도 이어서 쓴다(점검 5).
@@ -65,7 +66,7 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
     );
   }
   async function reset() {
-    const ok = await confirmAction({ title: t.resetConfirmTitle, description: t.resetConfirmBody, confirmLabel: t.reset, cancelLabel: t.cancel });
+    const ok = await confirm({ title: t.resetConfirmTitle, description: t.resetConfirmBody, confirmLabel: t.reset, cancelLabel: t.cancel, tone: "neutral" });
     if (!ok) { return; }
     change.mutate({ kind: "reset", id: block.id }, { onSuccess: () => { draftState.clear(); setNotice(t.resetNotice); } });
   }
@@ -84,7 +85,7 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
         <p className="text-xs font-semibold text-accent-text">{block.stageTitle}</p>
         <h2 className="flex items-center gap-2 text-lg font-semibold text-fg">
           {block.title}
-          {block.overridden && <Badge tone="accent">{t.modified}</Badge>}
+          {block.overridden && <Badge tone="brand" variant="weak">{t.modified}</Badge>}
           <IconButton
             size="sm"
             variant="ghost"
@@ -92,9 +93,8 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
             aria-haspopup="dialog"
             aria-expanded={scopeAnchor !== null}
             onClick={(event) => setScopeAnchor(toOverlayAnchor(event.currentTarget.getBoundingClientRect()))}
-          >
-            <Info aria-hidden="true" />
-          </IconButton>
+            icon={<Info aria-hidden="true" />}
+          />
         </h2>
         <ReadingOverlay open={scopeAnchor !== null} onClose={() => setScopeAnchor(null)} anchor={scopeAnchor} title={t.appliesToTitle}>
           <p className="break-keep text-sm text-fg">{t.appliesTo(block.appliesTo)}</p>
@@ -109,20 +109,27 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
         </p>
       )}
 
-      <SegmentedTabs aria-label={t.tabsLabel} items={tabs} value={tab} onChange={setTab} fill />
+      <SegmentedControl aria-label={t.tabsLabel} value={tab} onValueChange={(v) => setTab(v as EditorTab)}>
+        {tabs.map((item) => (
+          <SegmentedControlItem key={item.value} value={item.value}>{item.label}</SegmentedControlItem>
+        ))}
+      </SegmentedControl>
 
       {tab === "edit" && (
         <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
           <div className="flex min-w-0 flex-col gap-2">
             {/* 옆 '기본값과 비교'의 안내 줄과 높이를 맞춘다(라벨만) */}
             {wide && <p className="text-xs text-fg-muted">{t.body}</p>}
-            <Textarea
-              aria-label={t.bodyLabel(block.title)}
+            <TextField
+              multiline
               value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              rows={18}
-              spellCheck={false}
-              className="font-mono text-xs leading-5 xl:h-[60vh]"
+              onValueChange={({ value }) => setDraft(value)}
+              textareaProps={{
+                "aria-label": t.bodyLabel(block.title),
+                rows: 18,
+                spellCheck: false,
+                className: "font-mono text-xs leading-5 xl:h-[60vh]",
+              }}
             />
             {draftState.restored && dirty && (
               <p className="flex flex-wrap items-center gap-2 text-xs text-fg-secondary">
@@ -162,7 +169,7 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
-        <Button onClick={save} disabled={!dirty} loading={change.isPending && change.variables?.kind === "save"}>
+        <Button variant="primary" onClick={save} disabled={!dirty} loading={change.isPending && change.variables?.kind === "save"}>
           {t.save}
         </Button>
         {dirty && (

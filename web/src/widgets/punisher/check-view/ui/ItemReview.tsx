@@ -1,13 +1,13 @@
 
 import { Link } from "@/src/shared/lib/router";
 import type { ReactNode } from "react";
-import { Badge, Button } from "@/src/shared/ui/kit";
+import { Badge, Button } from "@forgen-team/ui";
 import { OUTCOME_LABELS_BY_LOCALE } from "@/src/entities/punisher";
 import type { CheckItem } from "@/src/shared/api/punisher";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 import { useLocale, useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
-import { OUTCOME_TONE } from "./constants";
+import { BADGE_TONE, OUTCOME_TONE } from "./constants";
 import { LectureSummary } from "./LectureSummary";
 
 interface ItemReviewProps {
@@ -41,7 +41,7 @@ export function ItemReview({ item, missing, anchorHref, anchorLabel, onDispute, 
     <div className="flex flex-col gap-3 rounded-lg border border-line p-3 text-sm">
       {item.outcome && (
         <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={OUTCOME_TONE[item.outcome]}>{OUTCOME_LABELS_BY_LOCALE[locale][item.outcome]}</Badge>
+          <Badge variant="weak" tone={BADGE_TONE[OUTCOME_TONE[item.outcome]]}>{OUTCOME_LABELS_BY_LOCALE[locale][item.outcome]}</Badge>
           {onDispute && (
             <Button size="sm" variant="ghost" loading={disputing} onClick={onDispute}>
               {t.dispute}

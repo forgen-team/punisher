@@ -1,4 +1,4 @@
-import { Button } from "@/src/shared/ui/kit";
+import { Button } from "@forgen-team/ui";
 import { useConceptDismiss } from "@/src/entities/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { useT } from "@/src/shared/i18n";

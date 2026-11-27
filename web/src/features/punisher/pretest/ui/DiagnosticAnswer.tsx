@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Button, Input } from "@/src/shared/ui/kit";
+import { Button, TextField } from "@forgen-team/ui";
 import { describeCheckError, useCheckAnswer, useCheckChoice } from "@/src/entities/punisher";
 import { CHECK_MAX_ANSWER_CHARS, type CheckDetail, type CheckItem } from "@/src/shared/api/punisher";
 import { choicesOf } from "../lib/diagnostic";
@@ -47,15 +47,14 @@ export function DiagnosticAnswer({ detail, item }: { detail: CheckDetail; item: 
         </div>
       ) : (
         <form onSubmit={submit} className="flex gap-2">
-          <Input
-            aria-label={t.answer}
+          <TextField
             value={text}
-            maxLength={CHECK_MAX_ANSWER_CHARS}
             disabled={busy}
-            onChange={(event) => setText(event.target.value)}
+            onValueChange={({ value }) => setText(value)}
+            inputProps={{ "aria-label": t.answer, maxLength: CHECK_MAX_ANSWER_CHARS }}
             className="min-w-0 flex-1"
           />
-          <Button type="submit" disabled={!text.trim() || busy} loading={answer.isPending}>
+          <Button type="submit" variant="primary" disabled={!text.trim() || busy} loading={answer.isPending}>
             {t.send}
           </Button>
         </form>

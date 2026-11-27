@@ -1,6 +1,6 @@
-import { useEffect } from "react";
-import { Link, useRouter } from "@/src/shared/lib/router";
-import { PageHeader, SegmentedTabs } from "@/src/shared/ui/kit";
+import { useEffect, type MouseEvent } from "react";
+import { LinkTabs } from "@forgen-team/ui";
+import { useRouter } from "@/src/shared/lib/router";
 import { useT } from "@/src/shared/i18n";
 import { useLocation } from "react-router-dom";
 import { HREFS, SEGMENTS, rememberTab, segmentOf, tabHref, tabScroll, type LearnSegment } from "./lib/tabMemory";
@@ -35,28 +35,32 @@ export function LearnNav() {
     router.push(tabHref(next), { restoreScroll: tabScroll(next) });
   }
 
+  const hrefOf = (value: LearnSegment) => (value === segment ? HREFS[value] : tabHref(value));
+  // ui LinkTabs 는 진짜 링크(⌘/Ctrl·가운데 클릭 새 탭)다. 보통 클릭만 감싼 곳에서 먼저 받아 탭 기억(주소·스크롤)으로 옮긴다.
+  function handleClickCapture(event: MouseEvent<HTMLDivElement>) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) { return; }
+    const link = event.target instanceof Element ? event.target.closest("a") : null;
+    const next = SEGMENTS.find((value) => link?.getAttribute("href") === hrefOf(value));
+    if (!next) { return; }
+    event.preventDefault();
+    event.stopPropagation();
+    select(next);
+  }
+
   return (
     <div className="shrink-0">
       {/* 단독판 셸 상단 바는 화면 제목을 보이지 않으므로 md 이상에서 여기 둔다. */}
-      <PageHeader title={t.title} className="hidden pb-2 md:flex" />
-      <div className="flex items-center gap-2">
-        <SegmentedTabs
-          aria-label={t.tabsLabel}
+      <h1 className="hidden truncate py-4 pb-2 text-xl font-semibold tracking-tight text-fg md:block md:text-2xl">{t.title}</h1>
+      <div className="flex min-w-0 items-center gap-2" onClickCapture={handleClickCapture}>
+        <LinkTabs
+          label={t.tabsLabel}
           items={SEGMENTS.map((value) => ({
             value,
-            label: value === "lectures" && due > 0 ? (
-              <span className="inline-flex items-center gap-1.5">
-                {t[value]}
-                <span aria-label={t.dueBadge(due)} className="min-w-5 rounded-full bg-accent px-1.5 text-xs font-medium leading-5 text-accent-on tabular-nums">{due}</span>
-              </span>
-            ) : t[value],
+            label: t[value],
+            href: hrefOf(value),
+            count: value === "lectures" && due > 0 ? due : undefined,
           }))}
           value={segment}
-          onChange={select}
-          hrefOf={(value) => (value === segment ? HREFS[value] : tabHref(value))}
-          linkAs={Link}
-          fill
-          className="min-w-0 flex-1 md:max-w-sm md:flex-none"
         />
       </div>
     </div>

@@ -1,7 +1,9 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
-import { IconButton, cn, focusRing, useFocusTrap, useMediaQuery } from "@/src/shared/ui/kit";
+import { IconButton, useMediaQuery } from "@forgen-team/ui";
+import { cn, focusRing } from "@/src/shared/lib/cn";
+import { useFocusTrap } from "@/src/shared/lib/useFocusTrap";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 import { placeOverlay, type OverlayPlacement } from "./overlayPlacement";
@@ -169,11 +171,16 @@ export function ReadingOverlay({ open, onClose, anchor, title, description, chil
         <h2 id={titleId} className="text-base font-semibold text-fg">{title}</h2>
         {description ? <p className="mt-0.5 text-xs text-fg-muted">{description}</p> : null}
       </div>
-      <IconButton aria-label={t.close} onClick={onClose} className="-mr-2 -mt-1">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
-      </IconButton>
+      <IconButton
+        aria-label={t.close}
+        onClick={onClose}
+        className="-mr-2 -mt-1"
+        icon={
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        }
+      />
     </div>
   );
   const body = <OverlayBody scrollRef={scrollRef} contentRef={contentRef} labelId={titleId}>{children}</OverlayBody>;

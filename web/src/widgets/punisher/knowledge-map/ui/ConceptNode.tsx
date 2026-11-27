@@ -2,7 +2,7 @@
 import { memo } from "react";
 import { MessageCircleQuestion } from "lucide-react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { cn } from "@/src/shared/ui/kit";
+import { cn } from "@/src/shared/lib/cn";
 import {
   MAP_STATE_LABELS,
   MAP_STATE_STYLES,

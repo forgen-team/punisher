@@ -2,7 +2,7 @@
 import { useRouter } from "@/src/shared/lib/router";
 import { useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
-import { Button, ErrorState, Section, Textarea } from "@/src/shared/ui/kit";
+import { Button, ErrorState, Section, TextField } from "@forgen-team/ui";
 import { useApplyChapterDraft, useChapterSuggestions, useCreateChapterDraft, useGraph, useStartDiagnostic } from "@/src/entities/punisher";
 import { checkHref } from "@/src/features/punisher/check-start";
 import { PunisherApiError, describePunisherError, type ChapterDraftResponse } from "@/src/shared/api/punisher";
@@ -138,7 +138,7 @@ export function ChapterPickerWidget() {
           {suggestions.isLoading ? (
             <SuggestionCardsSkeleton />
           ) : suggestions.error ? (
-            <ErrorState compact message={describePunisherError(suggestions.error)} onRetry={() => suggestions.refetch()} />
+            <ErrorState title={describePunisherError(suggestions.error)} onRetry={() => suggestions.refetch()} />
           ) : (
             <SuggestionCards suggestions={suggestions.data?.suggestions ?? []} selected={selected} onToggle={toggle} />
           )}
@@ -151,13 +151,13 @@ export function ChapterPickerWidget() {
         >
           {/* 좁은 폭과 같은 구성(상자 없이 입력란 + 오류) — 넓은 폭에서만 카드로 감싸면 두 폭의 모양이 달라진다. */}
           <div className="flex flex-col gap-5">
-            <Textarea
-              aria-label={t.freeText}
+            <TextField
+              multiline
               value={freeText}
-              maxLength={FREE_TEXT_MAX}
-              rows={3}
+              onValueChange={({ value }) => setFreeText(value)}
               placeholder={t.freeTextPlaceholder}
-              onChange={(event) => setFreeText(event.target.value)}
+              hideCharacterCount
+              textareaProps={{ "aria-label": t.freeText, maxLength: FREE_TEXT_MAX, rows: 3 }}
             />
 
             <div aria-live="polite" className="empty:hidden">
@@ -182,7 +182,7 @@ export function ChapterPickerWidget() {
         <p aria-live="polite" className="min-w-0 flex-1 truncate text-sm text-fg-secondary">
           {pickSummary(selected.size, freeText, locale)}
         </p>
-        <Button onClick={design} disabled={!canDesign} loading={create.isPending}>
+        <Button variant="primary" onClick={design} disabled={!canDesign} loading={create.isPending}>
           <Sparkles className="size-4" aria-hidden="true" />
           {create.isPending ? t.designing : t.design}
         </Button>

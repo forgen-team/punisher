@@ -2,7 +2,7 @@
 import { Link } from "@/src/shared/lib/router";
 import { useState } from "react";
 import { PencilLine } from "lucide-react";
-import { Chip } from "@/src/shared/ui/kit";
+import { Chip } from "@forgen-team/ui";
 import {
   FEEDBACK_LABELS,
   QUESTION_STATUS_LABELS,
@@ -64,7 +64,7 @@ export function FeedbackBar({ lectureId, getAnchor }: FeedbackBarProps) {
             key={kind}
             selected={last?.feedback === kind}
             disabled={mutation.isPending}
-            onClick={() => send(kind)}
+            onSelectedChange={() => send(kind)}
           >
             {FEEDBACK_LABELS[kind]}
           </Chip>

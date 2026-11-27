@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -30,6 +31,8 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: cd web && npm ci --no-audit --no-fund
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: make test
 
   image:
@@ -60,5 +63,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           # semver tag on releases, otherwise the short commit (shown in the manifest version)
           build-args: VERSION=${{ steps.meta.outputs.version }}
+          # @forgen-team/* npm packages (Dockerfile RUN --mount=type=secret,id=npm_token)
+          secrets: |
+            npm_token=${{ secrets.GITHUB_TOKEN }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

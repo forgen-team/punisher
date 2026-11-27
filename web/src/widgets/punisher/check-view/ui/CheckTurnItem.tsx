@@ -1,12 +1,12 @@
 
-import { Badge, Button, Spinner } from "@/src/shared/ui/kit";
+import { Badge, Button, ProgressCircle } from "@forgen-team/ui";
 import { SELF_VERDICT_LABELS_BY_LOCALE, VERDICT_LABELS_BY_LOCALE, type SelfVerdict } from "@/src/entities/punisher";
 import type { CheckTurn } from "@/src/shared/api/punisher";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 import { isRevealNotice, turnBody } from "../lib/checkView";
 import { translate, useLocale, useT, type Locale } from "@/src/shared/i18n";
 import { DISPUTE_RESULT_LABELS, PENDING_LABELS, messages } from "../i18n";
-import { VERDICT_TONE } from "./constants";
+import { BADGE_TONE, VERDICT_TONE } from "./constants";
 
 interface CheckTurnItemProps {
   turn: CheckTurn;
@@ -40,7 +40,7 @@ export function CheckTurnItem({ turn, onRetry, retrying }: CheckTurnItemProps) {
   if (turn.status === "pending") {
     return (
       <li className="flex items-center gap-2 text-sm text-fg-secondary">
-        <Spinner size="sm" label={null} />
+        <ProgressCircle size="24" tone="inherit" aria-hidden />
         {turn.move === "dispute" ? PENDING_LABELS[locale].dispute : PENDING_LABELS[locale].turn}
       </li>
     );
@@ -67,13 +67,13 @@ export function CheckTurnItem({ turn, onRetry, retrying }: CheckTurnItemProps) {
       <span className="sr-only">{t.tutor}</span>
       {(turn.verdict || accepted !== undefined) && (
         <span className="flex flex-wrap items-center gap-1.5">
-          {turn.verdict && <Badge tone={VERDICT_TONE[turn.verdict]}>{VERDICT_LABELS_BY_LOCALE[locale][turn.verdict]}</Badge>}
+          {turn.verdict && <Badge variant="weak" tone={BADGE_TONE[VERDICT_TONE[turn.verdict]]}>{VERDICT_LABELS_BY_LOCALE[locale][turn.verdict]}</Badge>}
           {accepted !== undefined && (
-            <Badge tone={accepted ? "success" : "neutral"}>
+            <Badge variant="weak" tone={accepted ? "positive" : "neutral"}>
               {accepted ? DISPUTE_RESULT_LABELS[locale].accepted : DISPUTE_RESULT_LABELS[locale].rejected}
             </Badge>
           )}
-          {accepted && turn.grade?.conflict && <Badge tone="warning">{DISPUTE_RESULT_LABELS[locale].conflict}</Badge>}
+          {accepted && turn.grade?.conflict && <Badge variant="weak" tone="warning">{DISPUTE_RESULT_LABELS[locale].conflict}</Badge>}
         </span>
       )}
       {body && <Markdown>{body}</Markdown>}

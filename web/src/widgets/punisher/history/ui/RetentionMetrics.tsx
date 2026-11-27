@@ -1,5 +1,5 @@
 
-import { ErrorState, ListSkeleton, Section } from "@/src/shared/ui/kit";
+import { ErrorState, ListSkeleton, Section } from "@forgen-team/ui";
 import { describeCheckError, useMasteryMetrics } from "@/src/entities/punisher";
 import { metricRows } from "../lib/checkHistory";
 import { METRIC_GRADER_LABELS, messages } from "../i18n";
@@ -21,7 +21,7 @@ export function RetentionMetrics() {
   function renderBody() {
     if (metrics.isLoading) { return <ListSkeleton rows={3} />; }
     if (metrics.error || !metrics.data) {
-      return <ErrorState compact message={describeCheckError(metrics.error)} onRetry={() => metrics.refetch()} retrying={metrics.isRefetching} />;
+      return <ErrorState title={describeCheckError(metrics.error)} onRetry={() => metrics.refetch()} />;
     }
     const rows = metricRows(metrics.data.buckets);
     return (

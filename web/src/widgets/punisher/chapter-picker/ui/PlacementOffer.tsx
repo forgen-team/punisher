@@ -1,5 +1,5 @@
 
-import { Button, Section } from "@/src/shared/ui/kit";
+import { Button, Section } from "@forgen-team/ui";
 import { describeCheckError } from "@/src/entities/punisher";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
@@ -20,7 +20,7 @@ export function PlacementOffer({ starting, error, onStart, onSkip }: PlacementOf
         <Button variant="ghost" onClick={onSkip} disabled={starting}>
           {t.placementSkip}
         </Button>
-        <Button onClick={onStart} loading={starting}>
+        <Button variant="primary" onClick={onStart} loading={starting}>
           {t.placementStart}
         </Button>
       </div>

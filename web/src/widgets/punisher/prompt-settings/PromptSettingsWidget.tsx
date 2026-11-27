@@ -1,7 +1,8 @@
 
 import { usePathname, useRouter, useSearchParams } from "@/src/shared/lib/router";
 import { useCallback, useRef } from "react";
-import { ErrorState, ListSkeleton, useIsSplitLayout } from "@/src/shared/ui/kit";
+import { ErrorState, ListSkeleton } from "@forgen-team/ui";
+import { useIsSplitLayout } from "@/src/shared/lib/useIsSplitLayout";
 import { usePrompts } from "@/src/entities/punisher";
 import { PromptBlockEditor, PromptBlockList } from "@/src/features/punisher/prompt-edit";
 import { describePunisherError, type FeedbackHints } from "@/src/shared/api/punisher";
@@ -43,7 +44,7 @@ export function PromptSettingsWidget() {
 
   if (prompts.isLoading) { return <ListSkeleton rows={8} />; }
   if (prompts.error || !prompts.data) {
-    return <ErrorState message={describePunisherError(prompts.error)} onRetry={() => prompts.refetch()} retrying={prompts.isRefetching} />;
+    return <ErrorState title={describePunisherError(prompts.error)} onRetry={() => void prompts.refetch()} />;
   }
 
   const blocks = prompts.data.blocks;

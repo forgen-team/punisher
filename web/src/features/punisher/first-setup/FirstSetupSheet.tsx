@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BottomSheet, Button } from "@/src/shared/ui/kit";
+import { Button, Sheet } from "@forgen-team/ui";
 import { describeSettingsError } from "@/src/entities/punisher";
 import type { ChosenReaderLevel, Familiarity, FamiliarityArea } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
@@ -78,7 +78,7 @@ export function FirstSetupSheet({ open, onClose, onDone }: FirstSetupSheetProps)
         <Button variant="ghost" onClick={handleSkip} loading={savingSettings} disabled={busy}>
           {t.skip}
         </Button>
-        <Button onClick={goAreas} disabled={!level || busy}>
+        <Button variant="primary" onClick={goAreas} disabled={!level || busy}>
           {t.next}
         </Button>
       </>
@@ -87,21 +87,21 @@ export function FirstSetupSheet({ open, onClose, onDone }: FirstSetupSheetProps)
         <Button variant="ghost" onClick={() => setStep(1)}>
           {t.back}
         </Button>
-        <Button onClick={() => setStep(3)}>{t.next}</Button>
+        <Button variant="primary" onClick={() => setStep(3)}>{t.next}</Button>
       </>
     ) : failed ? (
       <>
         <Button variant="ghost" onClick={onClose}>
           {t.close}
         </Button>
-        <Button onClick={handleRetry}>{t.retry}</Button>
+        <Button variant="primary" onClick={handleRetry}>{t.retry}</Button>
       </>
     ) : (
       <>
         <Button variant="ghost" onClick={() => setStep(2)} disabled={busy}>
           {t.back}
         </Button>
-        <Button onClick={handleStart} loading={busy}>
+        <Button variant="primary" onClick={handleStart} loading={busy}>
           {startLabel}
         </Button>
       </>
@@ -111,10 +111,9 @@ export function FirstSetupSheet({ open, onClose, onDone }: FirstSetupSheetProps)
   const description = step === 1 ? t.levelHelper : step === 2 ? t.areasHelper : undefined;
 
   return (
-    <BottomSheet
+    <Sheet
       open={open}
-      onClose={busy ? () => undefined : onClose}
-      dismissible={!busy}
+      onOpenChange={(o) => { if (!o && !busy) { onClose(); } }}
       title={
         <>
           <span className="block text-xs font-normal text-fg-muted">{t.eyebrow(step, TOTAL_STEPS)}</span>
@@ -140,7 +139,7 @@ export function FirstSetupSheet({ open, onClose, onDone }: FirstSetupSheetProps)
       {step === 1 && <LevelStep value={level} onChange={setLevel} disabled={busy} />}
       {step === 2 && familiarity && <AreasStep value={familiarity} onChange={pick} />}
       {step === 3 && level && familiarity && <SummaryStep level={level} familiarity={familiarity} />}
-    </BottomSheet>
+    </Sheet>
   );
 }
 

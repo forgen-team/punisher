@@ -1,5 +1,5 @@
 import { useState, type FocusEvent, type KeyboardEvent } from "react";
-import { Field, FieldInput, Select, Switch } from "@/src/shared/ui/kit";
+import { Select, Switch, TextField } from "@forgen-team/ui";
 import { MASTERY_LABELS, REVIEW_GRADER_LABELS } from "@/src/entities/punisher";
 import type { LearningSettings, LearningSettingsPatch, ReviewGrader } from "@/src/shared/api/punisher";
 import { MASTERY_TARGET_OPTIONS, REVIEW_MINUTE_OPTIONS, formatIntervals, parseIntervals, type SettingsField } from "./reviewSettings";
@@ -38,17 +38,20 @@ function IntervalsField({ value, onSave, serverError }: { value: number[]; onSav
   }
 
   return (
-    <Field label={t.reviewIntervals} error={localError ?? serverError}>
-      <FieldInput
-        inputMode="numeric"
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
+    <TextField
+      label={t.reviewIntervals}
+      errorMessage={localError ?? serverError}
+      invalid={Boolean(localError ?? serverError)}
+      value={text}
+      onValueChange={({ value: next }) => setText(next)}
+      inputProps={{
+        inputMode: "numeric",
+        onBlur: commit,
+        onKeyDown: (event) => {
           if (event.key === "Enter" && !event.nativeEvent.isComposing) { commit(event); }
-        }}
-      />
-    </Field>
+        },
+      }}
+    />
   );
 }
 
@@ -60,44 +63,45 @@ export function ReviewSettingsFields({ settings, onSave, fieldError }: ReviewSet
     : [...REVIEW_MINUTE_OPTIONS, settings.reviewMinutes].sort((a, b) => a - b);
   return (
     <>
-      <Field label={t.masteryTarget} error={fieldError("masteryTarget")}>
-        <Select value={String(settings.masteryTarget)} onChange={(event) => onSave({ masteryTarget: Number(event.target.value) })}>
-          {MASTERY_TARGET_OPTIONS.map((level) => (
-            <option key={level} value={level}>
-              {t.masteryOption(level, MASTERY_LABELS[level])}
-            </option>
-          ))}
-        </Select>
-      </Field>
+      <Select
+        label={t.masteryTarget}
+        errorMessage={fieldError("masteryTarget")}
+        invalid={Boolean(fieldError("masteryTarget"))}
+        value={String(settings.masteryTarget)}
+        onValueChange={(v) => onSave({ masteryTarget: Number(v) })}
+        options={MASTERY_TARGET_OPTIONS.map((level) => ({ value: String(level), label: t.masteryOption(level, MASTERY_LABELS[level]) }))}
+      />
       <IntervalsField
         value={settings.reviewIntervals ?? []}
         onSave={(days) => onSave({ reviewIntervals: days })}
         serverError={fieldError("reviewIntervals")}
       />
-      <Field label={t.reviewMinutes} error={fieldError("reviewMinutes")}>
-        <Select value={String(settings.reviewMinutes)} onChange={(event) => onSave({ reviewMinutes: Number(event.target.value) })}>
-          {minuteOptions.map((m) => (
-            <option key={m} value={m}>
-              {t.minutes(m)}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Field label={t.adaptiveIntervals} error={fieldError("adaptiveIntervals")}>
+      <Select
+        label={t.reviewMinutes}
+        errorMessage={fieldError("reviewMinutes")}
+        invalid={Boolean(fieldError("reviewMinutes"))}
+        value={String(settings.reviewMinutes)}
+        onValueChange={(v) => onSave({ reviewMinutes: Number(v) })}
+        options={minuteOptions.map((m) => ({ value: String(m), label: t.minutes(m) }))}
+      />
+      <div>
         <Switch
+          label={t.adaptiveIntervals}
           checked={settings.adaptiveIntervals ?? true}
           onCheckedChange={(checked) => onSave({ adaptiveIntervals: checked })}
         />
-      </Field>
-      <Field label={t.reviewGrader} error={fieldError("reviewGrader")}>
-        <Select value={settings.reviewGrader} onChange={(event) => onSave({ reviewGrader: event.target.value as ReviewGrader })}>
-          {GRADERS.map((g) => (
-            <option key={g} value={g}>
-              {REVIEW_GRADER_LABELS[g]}
-            </option>
-          ))}
-        </Select>
-      </Field>
+        {fieldError("adaptiveIntervals") && (
+          <p role="alert" className="text-xs text-danger">{fieldError("adaptiveIntervals")}</p>
+        )}
+      </div>
+      <Select
+        label={t.reviewGrader}
+        errorMessage={fieldError("reviewGrader")}
+        invalid={Boolean(fieldError("reviewGrader"))}
+        value={settings.reviewGrader}
+        onValueChange={(v) => onSave({ reviewGrader: v as ReviewGrader })}
+        options={GRADERS.map((g) => ({ value: g, label: REVIEW_GRADER_LABELS[g] }))}
+      />
     </>
   );
 }

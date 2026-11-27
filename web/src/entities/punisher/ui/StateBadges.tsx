@@ -1,9 +1,14 @@
 import { AlertTriangle } from "lucide-react";
-import { Badge, type BadgeTone } from "@/src/shared/ui/kit";
+import { Badge } from "@forgen-team/ui";
 import type { Lecture, UserConceptState } from "@/src/shared/api/punisher";
 import { useLocale, useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
 import { USER_STATE_LABELS_BY_LOCALE } from "./constants";
+
+type BadgeTone = "neutral" | "accent" | "success" | "warning" | "danger";
+
+/** 앱 배지 색 이름 → ui Badge tone */
+const BADGE_TONE = { neutral: "neutral", accent: "brand", success: "positive", warning: "warning", danger: "critical" } as const;
 
 const STATE_TONE: Record<UserConceptState, BadgeTone> = {
   completed: "success",
@@ -14,7 +19,7 @@ const STATE_TONE: Record<UserConceptState, BadgeTone> = {
 
 export function ConceptStateBadge({ state }: { state: UserConceptState }) {
   const locale = useLocale();
-  return <Badge tone={STATE_TONE[state] ?? "neutral"}>{USER_STATE_LABELS_BY_LOCALE[locale][state] ?? state}</Badge>;
+  return <Badge variant="weak" tone={BADGE_TONE[STATE_TONE[state] ?? "neutral"]}>{USER_STATE_LABELS_BY_LOCALE[locale][state] ?? state}</Badge>;
 }
 
 /**
@@ -24,17 +29,17 @@ export function ConceptStateBadge({ state }: { state: UserConceptState }) {
 export function LectureReviewBadges({ lecture }: { lecture: Pick<Lecture, "kind" | "status" | "flagged" | "flagReason" | "reviewState"> }) {
   const t = useT(messages);
   // v2.2 reviewState: 검수 전은 작은 배지, 문제 발견(flagged)은 본문 위 배너가 대신한다.
-  if (lecture.reviewState === "unreviewed") { return <Badge tone="neutral">{t.reviewUnreviewed}</Badge>; }
+  if (lecture.reviewState === "unreviewed") { return <Badge variant="weak" tone="neutral">{t.reviewUnreviewed}</Badge>; }
   if (lecture.reviewState === "flagged") { return null; }
   const unreviewed = !lecture.reviewState && (lecture.flagged || lecture.status === "needs_revision");
   if (unreviewed) {
     return (
-      <Badge tone="warning" title={lecture.flagReason || t.reviewNotPassed}>
+      <Badge variant="weak" tone="warning" title={lecture.flagReason || t.reviewNotPassed}>
         <AlertTriangle className="size-3" aria-hidden="true" />
         {t.reviewIncomplete}
       </Badge>
     );
   }
-  if (lecture.kind === "instant") { return <Badge tone="neutral">{t.instantLecture}</Badge>; }
+  if (lecture.kind === "instant") { return <Badge variant="weak" tone="neutral">{t.instantLecture}</Badge>; }
   return null;
 }

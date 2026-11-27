@@ -1,4 +1,4 @@
-import { Button } from "@/src/shared/ui/kit";
+import { Button } from "@forgen-team/ui";
 import { READER_LEVEL_LABELS_BY_LOCALE, describeSettingsError, useDismissLevelSuggestion, useLearningSettings, useSaveLearningSettings } from "@/src/entities/punisher";
 import { levelSuggestionOf } from "@/src/shared/api/punisher";
 import { useLocale, useT } from "@/src/shared/i18n";

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Layers } from "lucide-react";
-import { Button, Chip, Input, Skeleton } from "@/src/shared/ui/kit";
+import { Button, Skeleton, TextField } from "@forgen-team/ui";
 import { failedQuestionOf, useThreadFollowup } from "@/src/entities/punisher";
 import { localizeServerText, type Question, type ThreadFollowupInput, type ThreadMode } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
@@ -73,7 +73,7 @@ function Quote({ text }: { text: string }) {
 function AskForm({ label, pending, onSend, autoFocus }: { label: string; pending: boolean; onSend: (text: string) => void; autoFocus?: boolean }) {
   const t = useT(messages);
   const [text, setText] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   useEffect(() => {
     if (autoFocus) { inputRef.current?.focus({ preventScroll: true }); }
   }, [autoFocus]);
@@ -86,7 +86,14 @@ function AskForm({ label, pending, onSend, autoFocus }: { label: string; pending
   }
   return (
     <form onSubmit={submit} className="flex items-center gap-2">
-      <Input ref={inputRef} aria-label={label} placeholder={label} value={text} maxLength={2000} onChange={(event) => setText(event.target.value)} />
+      <TextField
+        inputRef={inputRef}
+        placeholder={label}
+        value={text}
+        onValueChange={({ value }) => setText(value)}
+        inputProps={{ "aria-label": label, maxLength: 2000 }}
+        className="min-w-0 flex-1"
+      />
       <Button type="submit" size="md" variant="secondary" loading={pending} disabled={!text.trim()}>
         {t.send}
       </Button>
@@ -152,12 +159,12 @@ function ThreadBody({ thread, showQuote, autoFocusInput }: { thread: ReadingThre
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <Chip disabled={followup.isPending || !answered} onClick={() => ask({ mode: "easier" })}>
+        <Button variant="outline" size="sm" disabled={followup.isPending || !answered} onClick={() => ask({ mode: "easier" })}>
           {t.moreEasier}
-        </Chip>
-        <Chip disabled={followup.isPending || !answered} onClick={() => ask({ mode: "deeper" })}>
+        </Button>
+        <Button variant="outline" size="sm" disabled={followup.isPending || !answered} onClick={() => ask({ mode: "deeper" })}>
           {t.moreDeeper}
-        </Chip>
+        </Button>
         {/* 구절 대화 → 복습 카드(W5a): 답이 있는 대화만 */}
         {answered && <AddToReview kind="thread" sourceId={rootId} />}
       </div>

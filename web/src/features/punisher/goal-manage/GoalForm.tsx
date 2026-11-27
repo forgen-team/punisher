@@ -1,6 +1,6 @@
 
 import { useState, type FormEvent } from "react";
-import { Button, Field, FieldInput } from "@/src/shared/ui/kit";
+import { Button, TextField } from "@forgen-team/ui";
 import { useCreateGoal } from "@/src/entities/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { ConceptCombobox } from "../concept-combobox";
@@ -30,14 +30,13 @@ export function GoalForm() {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
-      <Field label={t.goalName}>
-        <FieldInput
-          value={title}
-          maxLength={200}
-          onChange={(event) => setTitle(event.target.value)}
-          placeholder={t.goalNamePlaceholder}
-        />
-      </Field>
+      <TextField
+        label={t.goalName}
+        value={title}
+        onValueChange={({ value }) => setTitle(value)}
+        placeholder={t.goalNamePlaceholder}
+        inputProps={{ maxLength: 200 }}
+      />
       <ConceptCombobox label={t.targetConcepts} value={targets} onChange={setTargets} />
       <Button
         type="submit"

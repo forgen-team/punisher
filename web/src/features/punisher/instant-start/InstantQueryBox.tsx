@@ -1,7 +1,8 @@
 import { useRouter } from "@/src/shared/lib/router";
-import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { ArrowRight, BookOpen, MessageCircleQuestion } from "lucide-react";
-import { Chip, IconButton, Spinner, Textarea, cn } from "@/src/shared/ui/kit";
+import { IconButton, ProgressCircle, SegmentedControl, SegmentedControlItem, TextField } from "@forgen-team/ui";
+import { cn } from "@/src/shared/lib/cn";
 import { useCreateInquiry } from "@/src/entities/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { useDraftState } from "@/src/shared/lib/drafts";
@@ -39,7 +40,6 @@ export function InstantQueryBox() {
   const [result, setResult] = useState<InstantResponse | null>(null);
   // 해설 화면으로 넘어가는 동안 한 번 더 보내지 않게(mutation 이 끝난 뒤에도 이동 전까지 막는다).
   const [navigating, setNavigating] = useState(false);
-  const radios = useRef<(HTMLButtonElement | null)[]>([]);
   const instant = useLaunchInstant();
   const inquiry = useCreateInquiry();
   const current = MODES.find((m) => m.value === mode) ?? MODES[0];
@@ -92,16 +92,6 @@ export function InstantQueryBox() {
     }
   }
 
-  // radiogroup: 탭 정지는 선택된 것 하나, 방향키로 옮기며 고른다(WAI-ARIA radio 패턴).
-  function handleRadioKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
-    if (!step) { return; }
-    event.preventDefault();
-    const next = (index + step + MODES.length) % MODES.length;
-    pickMode(MODES[next].value);
-    radios.current[next]?.focus();
-  }
-
   function pickMode(next: QueryMode) {
     setMode(next);
     setResult(null);
@@ -111,38 +101,29 @@ export function InstantQueryBox() {
 
   return (
     <div className="flex flex-col gap-2">
-      <div role="radiogroup" aria-label={t.modeGroup} className="flex flex-wrap gap-2">
-        {MODES.map((m, index) => (
-          <Chip
-            key={m.value}
-            ref={(el) => {
-              radios.current[index] = el;
-            }}
-            role="radio"
-            aria-pressed={undefined}
-            aria-checked={mode === m.value}
-            tabIndex={mode === m.value ? 0 : -1}
-            selected={mode === m.value}
-            onClick={() => pickMode(m.value)}
-            onKeyDown={(event) => handleRadioKey(event, index)}
-            leading={<m.icon aria-hidden="true" />}
-          >
+      <SegmentedControl aria-label={t.modeGroup} value={mode} onValueChange={(v) => pickMode(v as QueryMode)}>
+        {MODES.map((m) => (
+          <SegmentedControlItem key={m.value} value={m.value}>
+            <m.icon className="size-4" aria-hidden="true" />
             {text(m.value, "Label")}
-          </Chip>
+          </SegmentedControlItem>
         ))}
-      </div>
+      </SegmentedControl>
       <form role="search" onSubmit={handleSubmit} className="relative">
-        <Textarea
-          aria-label={text(current.value, "Label")}
-          aria-describedby="instant-query-hint"
+        <TextField
+          multiline
           value={query}
-          maxLength={1000}
-          rows={3}
-          enterKeyHint={mode === "answer" ? "enter" : "send"}
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={handleKeyDown}
+          onValueChange={({ value }) => setQuery(value)}
           placeholder={text(current.value, "Placeholder")}
-          className="resize-y pr-12"
+          textareaProps={{
+            "aria-label": text(current.value, "Label"),
+            "aria-describedby": "instant-query-hint",
+            maxLength: 1000,
+            rows: 3,
+            enterKeyHint: mode === "answer" ? "enter" : "send",
+            onKeyDown: handleKeyDown,
+            className: "resize-y pr-12",
+          }}
         />
         <IconButton
           type="submit"
@@ -150,9 +131,8 @@ export function InstantQueryBox() {
           aria-label={isPending ? t.sending : text(current.value, "Label")}
           disabled={isPending || !query.trim() || tooLong}
           className="absolute bottom-2 right-2"
-        >
-          {isPending ? <Spinner size="sm" label={null} /> : <ArrowRight aria-hidden="true" />}
-        </IconButton>
+          icon={isPending ? <ProgressCircle size="24" tone="inherit" aria-hidden /> : <ArrowRight aria-hidden="true" />}
+        />
       </form>
       <div className="flex items-start justify-between gap-3 text-xs text-fg-muted">
         <p id="instant-query-hint" className="break-keep">

@@ -11,7 +11,8 @@ import {
   type AppStatus,
   type ProviderStatus,
 } from "@/src/shared/api/status";
-import { Button, Skeleton, cn } from "@/src/shared/ui/kit";
+import { Button, Skeleton } from "@forgen-team/ui";
+import { cn } from "@/src/shared/lib/cn";
 import { isWitems } from "@/src/shared/config/runtime";
 import { useT } from "@/src/shared/i18n";
 import { messages, panelMessages, statusText, witemsStatusText } from "./i18n";
@@ -27,7 +28,7 @@ export function AiConnectionPanel() {
   const status = useAppStatus();
   const save = useSaveLearningSettings();
   const queryClient = useQueryClient();
-  if (status.isLoading) { return <Skeleton variant="block" className="h-20" />; }
+  if (status.isLoading) { return <Skeleton lines={3} className="h-20" />; }
   if (!status.data) { return <p className="text-sm text-danger">{t.statusLoadFailed}</p>; }
 
   const data = status.data;

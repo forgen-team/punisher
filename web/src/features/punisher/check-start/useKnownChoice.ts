@@ -3,7 +3,7 @@ import { useRouter } from "@/src/shared/lib/router";
 import { useCallback, useRef, useState } from "react";
 import { useMarkKnown, useStartDiagnostic, useUndoKnown } from "@/src/entities/punisher";
 import type { UserConceptState } from "@/src/shared/api/punisher";
-import { notifyUndo } from "@/src/shared/ui/kit";
+import { useToast } from "@forgen-team/ui";
 import { useT } from "@/src/shared/i18n";
 import { checkHref } from "./useLaunchCheck";
 import { messages } from "./i18n";
@@ -17,6 +17,7 @@ import { messages } from "./i18n";
 export function useKnownChoice() {
   const router = useRouter();
   const t = useT(messages);
+  const toast = useToast();
   const known = useMarkKnown();
   const undo = useUndoKnown();
   const start = useStartDiagnostic();
@@ -39,9 +40,10 @@ export function useKnownChoice() {
     known.mutate(id, {
       onSuccess: () => {
         setConceptId(null);
-        notifyUndo(t.knownToast, async () => {
-          await undo.mutateAsync({ conceptId: id, previous: before });
-          known.reset();
+        toast.undo(t.knownToast, () => {
+          undo.mutateAsync({ conceptId: id, previous: before })
+            .then(() => known.reset())
+            .catch(() => toast.show(t.undoFailed, { tone: "danger" }));
         });
       },
     });

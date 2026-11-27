@@ -1,5 +1,5 @@
 
-import { EmptyState, ErrorState, List, ListRow, ListSkeleton, Section } from "@/src/shared/ui/kit";
+import { EmptyState, ErrorState, List, ListRow, ListSkeleton, Section } from "@forgen-team/ui";
 import { describeCheckError, useMisconceptions } from "@/src/entities/punisher";
 import { resolvedMeta } from "../lib/checkHistory";
 import { useLocale, useT } from "@/src/shared/i18n";
@@ -15,9 +15,9 @@ export function ResolvedMisconceptions() {
   function renderBody() {
     if (list.isLoading) { return <ListSkeleton rows={3} />; }
     if (list.error || !list.data) {
-      return <ErrorState compact message={describeCheckError(list.error)} onRetry={() => list.refetch()} retrying={list.isRefetching} />;
+      return <ErrorState title={describeCheckError(list.error)} onRetry={() => list.refetch()} />;
     }
-    if (list.data.length === 0) { return <EmptyState compact title={t.noResolved} />; }
+    if (list.data.length === 0) { return <EmptyState title={t.noResolved} />; }
     return (
       <List>
         {list.data.map((m) => (

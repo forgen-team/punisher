@@ -1,7 +1,6 @@
 
-import { Link } from "@/src/shared/lib/router";
 import { Inbox } from "lucide-react";
-import { BottomSheet, EmptyState, List, ListRow, Section } from "@/src/shared/ui/kit";
+import { EmptyState, List, ListRow, Section, Sheet } from "@forgen-team/ui";
 import {
   MAP_STATE_LABELS,
   MAP_STATE_ORDER,
@@ -34,7 +33,7 @@ export function MapStateSwatch({ state }: { state: MapNodeState }) {
 export function MapLegendSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT(messages);
   return (
-    <BottomSheet open={open} onClose={onClose} title={t.legend} desktop="dialog">
+    <Sheet open={open} onOpenChange={(o) => { if (!o) { onClose(); } }} title={t.legend} desktop="dialog">
       <ul className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
         {MAP_STATE_ORDER.map((state) => (
           <li key={state} className="flex items-center gap-2 text-fg-secondary">
@@ -44,7 +43,7 @@ export function MapLegendSheet({ open, onClose }: { open: boolean; onClose: () =
         ))}
       </ul>
       <p className="mt-4 text-xs text-fg-muted">{t.legendNote}</p>
-    </BottomSheet>
+    </Sheet>
   );
 }
 
@@ -103,7 +102,7 @@ export function FrontierList({ items, onSelect }: { items: FrontierItem[]; onSel
   return (
     <Section title={t.frontierTitle}>
       {items.length === 0 ? (
-        <EmptyState compact title={t.frontierEmptyTitle} description={t.frontierEmptyDescription} />
+        <EmptyState title={t.frontierEmptyTitle} description={t.frontierEmptyDescription} />
       ) : (
         <List>
           {items.map((f) => (
@@ -111,7 +110,6 @@ export function FrontierList({ items, onSelect }: { items: FrontierItem[]; onSel
               key={f.id}
               onClick={() => onSelect(f.id)}
               leading={<MapStateIcon state="recommended" className="size-4 text-accent-text" />}
-              titleLines={1}
               title={f.name}
               meta={t.frontierMeta(areaLabel(f.area), f.unlocks)}
             />
@@ -133,10 +131,8 @@ export function PendingRequestList({ requests, highlightId }: { requests: MapReq
           <ListRow
             key={r.id}
             href="/"
-            linkAs={Link}
             selected={r.id === highlightId}
             leading={<Inbox aria-hidden="true" />}
-            titleLines={1}
             title={r.query}
             meta={t.pendingRequestMeta(STUDY_REQUEST_SOURCE_LABELS[r.source] ?? r.source)}
           />

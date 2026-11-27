@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { useParams } from "react-router-dom";
-import { EmptyState, ListSkeleton, Skeleton } from "@/src/shared/ui/kit";
+import { EmptyState, ListSkeleton, Skeleton } from "@forgen-team/ui";
 import { Link } from "@/src/shared/lib/router";
 import { TodayWidget } from "@/src/widgets/punisher/today";
 import { KnowledgeMapWidget } from "@/src/widgets/punisher/knowledge-map";
@@ -30,7 +30,7 @@ export function TodayPage() {
 
 export function MapPage() {
   return (
-    <Suspense fallback={<Skeleton variant="block" className="h-96" />}>
+    <Suspense fallback={<Skeleton lines={3} className="h-96" />}>
       <KnowledgeMapWidget />
     </Suspense>
   );

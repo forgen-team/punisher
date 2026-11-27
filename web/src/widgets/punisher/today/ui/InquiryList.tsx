@@ -1,5 +1,4 @@
-import { Link } from "@/src/shared/lib/router";
-import { ErrorState, List, ListRow, Section } from "@/src/shared/ui/kit";
+import { ErrorState, List, ListRow, Section } from "@forgen-team/ui";
 import { INQUIRY_STATUS_LABELS_BY_LOCALE, InquiryStatusIcon, inquiryRowTitle } from "@/src/entities/punisher";
 import { inquiryHref } from "@/src/features/punisher/instant-start";
 import { describePunisherError, type Inquiry } from "@/src/shared/api/punisher";
@@ -25,7 +24,7 @@ export function InquiryList({ inquiries, error, onRetry }: InquiryListProps) {
   if (error) {
     return (
       <Section variant="card" title={t.inquiries}>
-        <ErrorState compact message={describePunisherError(error)} onRetry={onRetry} />
+        <ErrorState title={describePunisherError(error)} onRetry={onRetry} />
       </Section>
     );
   }
@@ -37,7 +36,6 @@ export function InquiryList({ inquiries, error, onRetry }: InquiryListProps) {
           <ListRow
             key={q.id}
             href={inquiryHref(q.id)}
-            linkAs={Link}
             leading={<InquiryStatusIcon status={q.status} />}
             title={inquiryRowTitle(q)}
             meta={`${INQUIRY_STATUS_LABELS_BY_LOCALE[locale][q.status] ?? q.status} · ${formatDate(new Date(q.createdAt), locale, DATE)}`}

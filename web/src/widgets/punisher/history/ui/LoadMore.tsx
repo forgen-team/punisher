@@ -1,5 +1,5 @@
 
-import { Button } from "@/src/shared/ui/kit";
+import { Button } from "@forgen-team/ui";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
 

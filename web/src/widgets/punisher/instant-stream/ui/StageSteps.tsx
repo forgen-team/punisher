@@ -1,4 +1,4 @@
-import { cn } from "@/src/shared/ui/kit";
+import { cn } from "@/src/shared/lib/cn";
 import { useLocale, translate } from "@/src/shared/i18n";
 import { currentStep, stageLabel, type StageState, type StepKey } from "../lib/stageState";
 import { messages } from "../i18n";

@@ -1,6 +1,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { cn } from "@/src/shared/ui/kit";
+import { cn } from "@/src/shared/lib/cn";
 import type { DiffData } from "../../lib/blockData";
 import { diffLines } from "../../lib/lineDiff";
 import { CodeBlock } from "./CodeBlock";

@@ -1,6 +1,6 @@
 
 import { Info } from "lucide-react";
-import { IconButton, Menu, SegmentedTabs, Select, type MenuItem } from "@/src/shared/ui/kit";
+import { IconButton, Menu, SegmentedControl, SegmentedControlItem, Select, type MenuItemDef } from "@forgen-team/ui";
 import { AREA_LABELS, GOAL_STATUS_LABELS } from "@/src/entities/punisher";
 import { PUNISHER_AREAS, type AreaCoverage, type Goal, type GraphChapter } from "@/src/shared/api/punisher";
 import { translate, useLocale } from "@/src/shared/i18n";
@@ -38,7 +38,7 @@ export function MapControls({
 }: MapControlsProps) {
   const locale = useLocale();
   const t = translate(messages, locale);
-  const menuItems: MenuItem[] = [
+  const menuItems: MenuItemDef[] = [
     { key: "chapter", label: t.openChapter, onSelect: onOpenChapter },
     { key: "goals", label: t.manageGoals, onSelect: onOpenGoals },
     { key: "known", label: t.markKnown, onSelect: onOpenKnown },
@@ -48,60 +48,44 @@ export function MapControls({
     <div className="flex flex-col gap-2 fold:flex-row fold:items-center">
       <div className="min-w-0 fold:flex-1">
         <Select
-          aria-label={t.area}
+          label={t.area}
           value={area}
           disabled={Boolean(goalId)}
-          title={goalId ? t.areaDisabledHint : undefined}
-          onChange={(event) => onAreaChange(event.target.value)}
-        >
-          <option value="all">{t.allAreas}</option>
-          {chapters.length > 0 && (
-            <optgroup label={t.myChapters}>
-              {chapters.map((c) => (
-                <option key={c.id} value={`${CHAPTER_OPTION_PREFIX}${c.id}`}>
-                  {t.chapterOption(c.title)}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          {PUNISHER_AREAS.map((a) => {
-            const signals = coverage.find((c) => c.area === a);
-            const summary = signals ? areaSignals(signals, locale) : "";
-            return (
-              <option key={a} value={a}>
-                {summary ? `${AREA_LABELS[a]} · ${summary}` : AREA_LABELS[a]}
-              </option>
-            );
-          })}
-        </Select>
+          description={goalId ? t.areaDisabledHint : undefined}
+          onValueChange={onAreaChange}
+          options={[
+            { value: "all", label: t.allAreas },
+            ...chapters.map((c) => ({ value: `${CHAPTER_OPTION_PREFIX}${c.id}`, label: t.chapterOption(c.title) })),
+            ...PUNISHER_AREAS.map((a) => {
+              const signals = coverage.find((c) => c.area === a);
+              const summary = signals ? areaSignals(signals, locale) : "";
+              return { value: a, label: summary ? `${AREA_LABELS[a]} · ${summary}` : AREA_LABELS[a] };
+            }),
+          ]}
+        />
       </div>
       <div className="flex min-w-0 items-center gap-2 fold:flex-1">
         {/* 목표가 없으면 고를 것이 '없음' 하나뿐이라 숨긴다(목표 관리는 ⋯ 메뉴). */}
         <div className="min-w-0 flex-1">
           {goals.length > 0 && (
-            <Select aria-label={t.goalPath} value={goalId} onChange={(event) => onGoalChange(event.target.value)}>
-              <option value="">{t.noGoalPath}</option>
-              {goals.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.title} ({GOAL_STATUS_LABELS[g.status]})
-                </option>
-              ))}
-            </Select>
+            <Select
+              label={t.goalPath}
+              value={goalId}
+              onValueChange={onGoalChange}
+              options={[
+                { value: "", label: t.noGoalPath },
+                ...goals.map((g) => ({ value: g.id, label: `${g.title} (${GOAL_STATUS_LABELS[g.status]})` })),
+              ]}
+            />
           )}
         </div>
-        <SegmentedTabs
-          aria-label={t.viewLabel}
-          value={view}
-          onChange={onViewChange}
-          items={[
-            { value: "graph", label: t.viewGraph },
-            { value: "list", label: t.viewList },
-          ]}
-          className="shrink-0"
-        />
-        <IconButton aria-label={t.legend} onClick={onOpenLegend}>
-          <Info aria-hidden="true" />
-        </IconButton>
+        <div className="shrink-0">
+          <SegmentedControl aria-label={t.viewLabel} value={view} onValueChange={(v) => onViewChange(v as MapView)}>
+            <SegmentedControlItem value="graph">{t.viewGraph}</SegmentedControlItem>
+            <SegmentedControlItem value="list">{t.viewList}</SegmentedControlItem>
+          </SegmentedControl>
+        </div>
+        <IconButton aria-label={t.legend} onClick={onOpenLegend} icon={<Info aria-hidden="true" />} />
         <Menu items={menuItems} label={t.mapMenu} />
       </div>
     </div>

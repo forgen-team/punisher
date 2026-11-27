@@ -1,5 +1,5 @@
 import { useRef, useState, type KeyboardEvent } from "react";
-import { Button, Textarea } from "@/src/shared/ui/kit";
+import { Button, TextField } from "@forgen-team/ui";
 import {
   SELF_VERDICT_LABELS_BY_LOCALE,
   SELF_VERDICT_ORDER,
@@ -69,7 +69,8 @@ function AnswerComposer({ detail }: { detail: CheckDetail }) {
   const id = detail.session.id;
   const [text, setText] = useState("");
   const [confidence, setConfidence] = useState<Confidence>();
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  // ui TextField 의 inputRef 는 input·textarea 겸용 타입이다.
+  const inputRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   const answer = useCheckAnswer(id);
   const reveal = useCheckReveal(id);
   const busy = answer.isPending || reveal.isPending;
@@ -102,14 +103,13 @@ function AnswerComposer({ detail }: { detail: CheckDetail }) {
         </p>
       )}
       {asksConfidence(detail) && <ConfidencePicker value={confidence} onChange={setConfidence} />}
-      <Textarea
-        ref={inputRef}
-        aria-label={t.answer}
+      <TextField
+        multiline
+        inputRef={inputRef}
         value={text}
-        maxLength={CHECK_MAX_ANSWER_CHARS}
-        rows={2}
-        onChange={(event) => setText(event.target.value)}
-        onKeyDown={handleKeyDown}
+        onValueChange={({ value }) => setText(value)}
+        hideCharacterCount
+        textareaProps={{ "aria-label": t.answer, maxLength: CHECK_MAX_ANSWER_CHARS, rows: 2, onKeyDown: handleKeyDown }}
       />
       <div className="flex items-center justify-end gap-2">
         {showReveal(detail) && (
@@ -117,7 +117,7 @@ function AnswerComposer({ detail }: { detail: CheckDetail }) {
             {t.reveal}
           </Button>
         )}
-        <Button onClick={send} disabled={!sendable} loading={answer.isPending}>
+        <Button variant="primary" onClick={send} disabled={!sendable} loading={answer.isPending}>
           {t.send}
         </Button>
       </div>

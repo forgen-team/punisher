@@ -1,7 +1,7 @@
 
 import { useId, useState } from "react";
 import { ChevronRight } from "lucide-react";
-import { cn, focusRing } from "@/src/shared/ui/kit";
+import { cn, focusRing } from "@/src/shared/lib/cn";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";

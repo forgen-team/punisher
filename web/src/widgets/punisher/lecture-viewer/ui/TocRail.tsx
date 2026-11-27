@@ -1,7 +1,8 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { ListOrdered } from "lucide-react";
-import { IconButton, cn, focusRing } from "@/src/shared/ui/kit";
+import { IconButton } from "@forgen-team/ui";
+import { cn, focusRing } from "@/src/shared/lib/cn";
 import { eventWithin } from "@/src/shared/lib/dom-root";
 import { SECTION_KIND_LABELS } from "@/src/entities/punisher";
 import { scrollToAnchor } from "@/src/features/punisher/lecture-progress";
@@ -45,9 +46,7 @@ export function TocRail({ sections, totalMinutes, activeAnchor }: TocRailProps) 
 
   return (
     <div ref={rootRef} className="relative flex flex-col items-center gap-2">
-      <IconButton aria-label={open ? t.tocCollapse : t.tocExpand} aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((v) => !v)}>
-        <ListOrdered aria-hidden="true" />
-      </IconButton>
+      <IconButton aria-label={open ? t.tocCollapse : t.tocExpand} aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((v) => !v)} icon={<ListOrdered aria-hidden="true" />} />
       <ol aria-label={t.sectionPositions} className="flex flex-col items-center">
         {sections.map((s, index) => {
           const label = `${index + 1}. ${s.title || SECTION_KIND_LABELS[s.kind] || s.kind}`;

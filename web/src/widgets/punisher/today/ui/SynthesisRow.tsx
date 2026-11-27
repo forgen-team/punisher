@@ -1,5 +1,5 @@
 import { ListChecks } from "lucide-react";
-import { ListRow } from "@/src/shared/ui/kit";
+import { ListRow } from "@forgen-team/ui";
 import { describeCheckError } from "@/src/entities/punisher";
 import { useLaunchSynthesis } from "@/src/features/punisher/check-start";
 import { useT } from "@/src/shared/i18n";
@@ -12,5 +12,5 @@ export function SynthesisRow() {
   const meta = synthesis.error ? (
     <span role="alert" className="block truncate text-danger">{describeCheckError(synthesis.error)}</span>
   ) : undefined;
-  return <ListRow leading={<ListChecks aria-hidden />} title={t.synthesis} meta={meta} disabled={synthesis.isPending} onClick={synthesis.launch} />;
+  return <ListRow leading={<ListChecks aria-hidden />} title={t.synthesis} meta={meta} onClick={() => { if (!synthesis.isPending) { synthesis.launch(); } }} />;
 }

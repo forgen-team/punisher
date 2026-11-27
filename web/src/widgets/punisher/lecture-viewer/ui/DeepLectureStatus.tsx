@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { Link } from "@/src/shared/lib/router";
-import { IconButton, Spinner } from "@/src/shared/ui/kit";
+import { IconButton, ProgressCircle } from "@forgen-team/ui";
 import { invalidateLearningState, useInquiry } from "@/src/entities/punisher";
 import { ResolutionChoices, inquiryHref, lectureHref, useLaunchInstant } from "@/src/features/punisher/instant-start";
 import { useReadingThreads } from "@/src/features/punisher/reading-assist";
@@ -19,12 +19,10 @@ function Shell({ children, busy, onClose }: { children: ReactNode; busy: boolean
   return (
     <section aria-label={t.deepStatusLabel} aria-busy={busy} className="mb-3 flex min-h-touch flex-wrap items-center gap-3 border-y border-line py-1 text-sm">
       <div role="status" aria-live="polite" className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-        {busy && <Spinner size="sm" label={null} />}
+        {busy && <ProgressCircle size="24" tone="inherit" aria-hidden />}
         {children}
       </div>
-      <IconButton aria-label={t.deepClose} size="sm" onClick={onClose}>
-        <X aria-hidden="true" />
-      </IconButton>
+      <IconButton aria-label={t.deepClose} size="sm" onClick={onClose} icon={<X aria-hidden="true" />} />
     </section>
   );
 }

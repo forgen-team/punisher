@@ -24,7 +24,8 @@ describe("지도 목록 보기", () => {
   it("groups concepts by depth layer in order, with the node state as row meta", () => {
     render(<MapConceptList nodes={visibleFoundations(nodes, true, null)} selectedId={null} showArea={false} onSelect={vi.fn()} />);
     expect(layers()).toEqual(["0단계 기초", "깊이 1 · 기본", "깊이 2 · 응용", "깊이 3 · 심화"]);
-    const basics = screen.getByRole("region", { name: "깊이 1 · 기본" });
+    // ui Section 은 이름 붙은 region 이 아니다 — 제목에서 감싼 section 을 찾는다.
+    const basics = screen.getByRole("heading", { name: "깊이 1 · 기본" }).closest("section") as HTMLElement;
     expect(within(basics).getAllByRole("button").map((b) => b.textContent)).toEqual(["프로세스진행 중", "스레드추천(다음 학습)"]);
     expect(screen.getByRole("button", { name: /페이징/ })).toHaveTextContent("잠김(선행 미완)");
     expect(screen.getByRole("button", { name: /NUMA/ })).toHaveTextContent("필요 없음 · 미학습");
@@ -41,6 +42,7 @@ describe("지도 목록 보기", () => {
     render(<MapConceptList nodes={nodes} selectedId="os.thread" showArea onSelect={onSelect} />);
     fireEvent.click(screen.getByRole("button", { name: /프로세스/ }));
     expect(onSelect).toHaveBeenCalledWith("os.process");
-    expect(screen.getByRole("button", { name: /스레드/ })).toHaveAttribute("aria-current", "true");
+    // ui ListRow 는 선택 표시(aria-current)를 행(li)에 둔다.
+    expect(screen.getByRole("button", { name: /스레드/ }).closest("li")).toHaveAttribute("aria-current", "true");
   });
 });

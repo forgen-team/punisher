@@ -1,8 +1,8 @@
-import { Link } from "@/src/shared/lib/router";
 import { usePathname, useRouter, useSearchParams } from "@/src/shared/lib/router";
 import { useEffect, useRef, useState } from "react";
 import { ChevronRight, Search } from "lucide-react";
-import { Chip, EmptyState, ErrorState, Input, List, ListRow, ListSkeleton, cn, focusRing } from "@/src/shared/ui/kit";
+import { Chip, EmptyState, ErrorState, List, ListRow, ListSkeleton, TextField } from "@forgen-team/ui";
+import { cn, focusRing } from "@/src/shared/lib/cn";
 import { InquiryStatusIcon, areaLabel, groupByParent, useCompleted, useCompletedAreas } from "@/src/entities/punisher";
 import { inquiryHref, lectureHref } from "@/src/features/punisher/instant-start";
 import { describePunisherError, type CompletedArea, type CompletedItem } from "@/src/shared/api/punisher";
@@ -24,7 +24,6 @@ function CompletedRow({ item }: { item: CompletedItem }) {
     return (
       <ListRow
         href={inquiryHref(item.id)}
-        linkAs={Link}
         leading={<InquiryStatusIcon status="answered" />}
         title={item.title}
         meta={[t.inquiry, item.followupCount ? t.followups(item.followupCount) : "", date].filter(Boolean).join(" · ")}
@@ -34,7 +33,6 @@ function CompletedRow({ item }: { item: CompletedItem }) {
   return (
     <ListRow
       href={lectureHref(item.id)}
-      linkAs={Link}
       title={item.title || item.conceptName}
       meta={[item.conceptName && item.conceptName !== item.title ? item.conceptName : "", item.lectureKind === "instant" ? t.instant : t.library, date].filter(Boolean).join(" · ")}
     />
@@ -47,7 +45,7 @@ function AreaItems({ area, q, twoColumns }: { area: string; q: string; twoColumn
   const items = completed.data?.pages.flatMap((p) => p.items) ?? [];
   if (completed.isLoading) { return <ListSkeleton rows={3} />; }
   if (completed.error) {
-    return <ErrorState compact message={describePunisherError(completed.error)} onRetry={() => completed.refetch()} />;
+    return <ErrorState title={describePunisherError(completed.error)} onRetry={() => completed.refetch()} />;
   }
   const groups = groupByParent(items, (it) => it.id, (it) => it.parentLectureId);
   return (
@@ -143,7 +141,7 @@ export function CompletedByArea() {
   if (areas.isLoading) {
     body = <ListSkeleton rows={5} />;
   } else if (areas.error) {
-    body = <ErrorState message={describePunisherError(areas.error)} onRetry={() => areas.refetch()} retrying={areas.isRefetching} />;
+    body = <ErrorState title={describePunisherError(areas.error)} onRetry={() => areas.refetch()} />;
   } else if (shown.length === 0) {
     body = urlQuery || selected ? (
       <EmptyState title={t.noMatchTitle} description={selected ? t.noMatchInArea : t.noMatch} />
@@ -162,17 +160,22 @@ export function CompletedByArea() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div role="search" className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden="true" />
-        <Input aria-label={t.searchLabel} value={text} onChange={(event) => changeText(event.target.value)} placeholder={t.searchPlaceholder} className="pl-9" />
+      <div role="search">
+        <TextField
+          value={text}
+          onValueChange={({ value }) => changeText(value)}
+          placeholder={t.searchPlaceholder}
+          prefixIcon={<Search aria-hidden="true" />}
+          inputProps={{ "aria-label": t.searchLabel }}
+        />
       </div>
       {/* 칩 줄은 불러오는 중에도, 결과가 없어도 자리를 지켜 아래가 밀리지 않는다. */}
       <div role="group" aria-label={t.areas} aria-busy={areas.isLoading} className="-mx-4 flex min-h-11 gap-2 overflow-x-auto px-4 py-1.5 fold:mx-0 fold:flex-wrap fold:px-0">
-        <Chip selected={!selected} onClick={() => setParam({ area: "" })}>
+        <Chip selected={!selected} onSelectedChange={() => setParam({ area: "" })}>
           {t.all}{areas.isLoading ? "" : ` ${total}`}
         </Chip>
         {list.map((a) => (
-          <Chip key={a.area} selected={selected === a.area} onClick={() => setParam({ area: selected === a.area ? "" : a.area })}>
+          <Chip key={a.area} selected={selected === a.area} onSelectedChange={() => setParam({ area: selected === a.area ? "" : a.area })}>
             {areaLabel(a.area)} {a.count}
           </Chip>
         ))}

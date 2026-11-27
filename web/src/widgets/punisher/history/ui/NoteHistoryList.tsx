@@ -1,7 +1,6 @@
 
-import { Link } from "@/src/shared/lib/router";
 import { useMemo } from "react";
-import { EmptyState, ErrorState, List, ListRow, ListSkeleton } from "@/src/shared/ui/kit";
+import { EmptyState, ErrorState, List, ListRow, ListSkeleton } from "@forgen-team/ui";
 import { useNotes } from "@/src/entities/punisher";
 import { lectureAnchorHref } from "@/src/entities/punisher";
 import { describePunisherError, type Note } from "@/src/shared/api/punisher";
@@ -22,7 +21,7 @@ export function NoteHistoryList() {
   const sorted = useMemo(() => [...(notes.data ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [notes.data]);
   if (notes.isLoading) { return <ListSkeleton rows={5} />; }
   if (notes.error) {
-    return <ErrorState message={describePunisherError(notes.error)} onRetry={() => notes.refetch()} />;
+    return <ErrorState title={describePunisherError(notes.error)} onRetry={() => notes.refetch()} />;
   }
   if (sorted.length === 0) {
     return <EmptyState title={t.noNotes} description={t.noNotesDescription} />;
@@ -35,7 +34,6 @@ export function NoteHistoryList() {
           <ListRow
             key={n.id}
             href={lectureAnchorHref(n.lectureId, n.anchor)}
-            linkAs={Link}
             title={n.body || n.quote}
             meta={metaOf(n, locale)}
           />

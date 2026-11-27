@@ -1,4 +1,4 @@
-import { Skeleton } from "@/src/shared/ui/kit";
+import { Skeleton } from "@forgen-team/ui";
 import { isWitems } from "@/src/shared/config/runtime";
 import { useT } from "@/src/shared/i18n";
 import { LECTURE_TITLE_ID } from "../../lecture-viewer";

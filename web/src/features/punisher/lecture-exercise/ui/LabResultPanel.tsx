@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Textarea } from "@/src/shared/ui/kit";
+import { Button, TextField } from "@forgen-team/ui";
 import { describePunisherError, LAB_MAX_OUTPUT_BYTES } from "@/src/shared/api/punisher";
 import { blockContentHash } from "../lib/contentHash";
 import { findAttempt, useExerciseContext } from "../model/ExerciseContext";
@@ -35,13 +35,16 @@ export function LabResultPanel({ anchor, text: labText }: { anchor: string; text
   const tooLong = new TextEncoder().encode(output).length > LAB_MAX_OUTPUT_BYTES;
   return (
     <div className="mt-2 flex flex-col gap-2">
-      <Textarea
-        aria-label={t.labOutput}
+      <TextField
+        multiline
         placeholder={t.labPlaceholder}
-        rows={3}
         value={output}
-        onChange={(event) => setOutput(event.target.value)}
-        className="resize-y font-mono text-xs placeholder:font-sans placeholder:text-sm"
+        onValueChange={({ value }) => setOutput(value)}
+        textareaProps={{
+          "aria-label": t.labOutput,
+          rows: 3,
+          className: "resize-y font-mono text-xs placeholder:font-sans placeholder:text-sm",
+        }}
       />
       <div className="flex flex-wrap items-center gap-2">
         <Button

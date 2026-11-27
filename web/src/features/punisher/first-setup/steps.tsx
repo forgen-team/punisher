@@ -1,4 +1,4 @@
-import { cn } from "@/src/shared/ui/kit";
+import { cn } from "@/src/shared/lib/cn";
 import { READER_LEVEL_LABELS_BY_LOCALE, areaLabel } from "@/src/entities/punisher";
 import { FAMILIARITY_LEVELS, FAMILIARITY_AREAS, READER_LEVELS, type ChosenReaderLevel, type Familiarity, type FamiliarityArea } from "@/src/shared/api/punisher";
 import { useLocale, useT } from "@/src/shared/i18n";

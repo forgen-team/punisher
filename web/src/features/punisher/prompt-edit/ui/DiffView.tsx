@@ -1,6 +1,6 @@
 
 import { useMemo } from "react";
-import { cn } from "@/src/shared/ui/kit";
+import { cn } from "@/src/shared/lib/cn";
 import { useT } from "@/src/shared/i18n";
 import { changedLines, lineDiff } from "../lib/lineDiff";
 import { messages } from "../i18n";

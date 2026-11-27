@@ -1,7 +1,6 @@
-import { Link } from "@/src/shared/lib/router";
 import { useState } from "react";
 import { GraduationCap, Map as MapIcon, Sparkles } from "lucide-react";
-import { IconButton, List, ListRow, Section, Spinner } from "@/src/shared/ui/kit";
+import { IconButton, List, ListRow, ProgressCircle, Section } from "@forgen-team/ui";
 import { USER_STATE_LABELS_BY_LOCALE, areaLabel } from "@/src/entities/punisher";
 import { useLaunchInstant } from "@/src/features/punisher/instant-start";
 import { useLocale, useT } from "@/src/shared/i18n";
@@ -30,7 +29,6 @@ export function InquiryConcepts({ concepts }: { concepts: InquiryConcept[] }) {
     <ListRow
       key={c.id}
       href={mapHref(c.id)}
-      linkAs={Link}
       leading={c.kind === "proposed" ? <Sparkles aria-hidden="true" /> : <MapIcon aria-hidden="true" />}
       title={c.name}
       meta={c.kind === "proposed" ? t.proposedConcept(areaLabel(c.area)) : `${areaLabel(c.area)} · ${USER_STATE_LABELS_BY_LOCALE[locale][c.userState as UserConceptState] ?? c.userState}`}
@@ -44,9 +42,8 @@ export function InquiryConcepts({ concepts }: { concepts: InquiryConcept[] }) {
             setLaunching(c.id);
             void launch({ conceptId: c.id }).catch(() => undefined);
           }}
-        >
-          {isPending && launching === c.id ? <Spinner size="sm" label={null} /> : <GraduationCap aria-hidden="true" />}
-        </IconButton>
+          icon={isPending && launching === c.id ? <ProgressCircle size="24" tone="inherit" aria-hidden /> : <GraduationCap aria-hidden="true" />}
+        />
       }
     />
   );

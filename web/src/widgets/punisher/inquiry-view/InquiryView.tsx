@@ -1,7 +1,7 @@
 import { Link } from "@/src/shared/lib/router";
 import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import { Button, ErrorState, Skeleton, Spinner, buttonVariants, confirmAction, type MenuItem } from "@/src/shared/ui/kit";
+import { Button, ErrorState, ProgressCircle, Skeleton, useConfirm, type MenuItemDef } from "@forgen-team/ui";
 import { useScreenTitle } from "@/src/shared/lib/screen-chrome";
 import { useInquiry, useRegenerateInquiry, useRetryFollowup, useSetInquiryRead } from "@/src/entities/punisher";
 import { INQUIRY_MAX_FOLLOWUPS, describePunisherError, type Inquiry, type InquiryFollowup, type LectureSection } from "@/src/shared/api/punisher";
@@ -31,7 +31,7 @@ function StatusRow({ inquiry, hasContent, unstable }: { inquiry: Inquiry | undef
   if (inquiry?.status === "pending") {
     content = (
       <>
-        <Spinner size="sm" label={null} />
+        <ProgressCircle size="24" tone="inherit" aria-hidden />
         {unstable && t.unstable}
         {!unstable && (hasContent ? t.rewriting : t.writing)}
       </>
@@ -72,6 +72,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
   const setRead = useSetInquiryRead();
   const [tocOpen, setTocOpen] = useState(false);
   const retryFollowup = useRetryFollowup(inquiryId);
+  const confirm = useConfirm();
   const [quote, setQuote] = useState("");
   const bodyRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -103,7 +104,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
 
   // 처음 불러오기에 실패했을 때만 오류 화면. 폴링 중 일시 오류는 본문을 지우지 않고 아래에 알린다.
   if (!q && inquiry.error) {
-    return <ErrorState message={describePunisherError(inquiry.error)} onRetry={() => inquiry.refetch()} retrying={inquiry.isRefetching} />;
+    return <ErrorState title={describePunisherError(inquiry.error)} onRetry={() => void inquiry.refetch()} />;
   }
 
   const hasContent = baseSections.length > 0;
@@ -113,18 +114,25 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
   // 해설이 있으면 앱 안 확인 창으로 무엇이 바뀌고 남는지 보인 뒤 다시 만든다(기본 포커스 취소).
   const askRegenerate = async () => {
     if (!q) { return; }
-    const ok = !hasContent || (await confirmAction({
+    const ok = !hasContent || (await confirm({
       title: t.confirmTitle,
-      description: t.confirmDescription,
-      details: [t.confirmReplace, t.confirmFollowups, t.confirmFailure, t.confirmUsage],
+      description: (
+        <>
+          {t.confirmDescription}
+          <ul className="mt-2 list-disc pl-4">
+            {[t.confirmReplace, t.confirmFollowups, t.confirmFailure, t.confirmUsage].map((d) => <li key={d}>{d}</li>)}
+          </ul>
+        </>
+      ),
       confirmLabel: t.regenerate,
       cancelLabel: t.cancel,
+      tone: "neutral",
     }));
     if (ok) { regenerate.mutate(q.id); }
   };
   const toggleRead = () => q && setRead.mutate({ id: q.id, read: !read });
 
-  const menuItems: MenuItem[] = q
+  const menuItems: MenuItemDef[] = q
     ? [
         { key: "read", label: read ? t.unread : t.markRead, disabled: generating || setRead.isPending, onSelect: toggleRead },
         { key: "regenerate", label: t.regenerate, disabled: generating || followupBusy || regenerate.isPending, onSelect: () => void askRegenerate() },
@@ -179,7 +187,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
               {f.status === "pending" ? (
                 <div className="flex flex-col gap-3">
                   <p className="flex items-center gap-2 text-sm text-fg-secondary">
-                    <Spinner size="sm" label={null} />
+                    <ProgressCircle size="24" tone="inherit" aria-hidden />
                     {t.followupWriting}
                   </p>
                   <Skeleton lines={3} />
@@ -208,16 +216,15 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
           {!hasContent && (!q || generating) && (
             <div className="mt-6 flex flex-col gap-6" aria-hidden="true">
               <Skeleton lines={4} />
-              <Skeleton variant="block" className="h-40" />
+              <Skeleton lines={3} className="h-40" />
               <Skeleton lines={5} />
             </div>
           )}
           {q && !hasContent && !generating && (
             <div className="mt-6">
               <ErrorState
-                message={t.noContent}
+                title={t.noContent}
                 onRetry={() => q && regenerate.mutate(q.id)}
-                retrying={regenerate.isPending}
               />
             </div>
           )}
@@ -246,9 +253,11 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
               {t.regenerate}
             </Button>
           )}
-          <Link href={HOME} className={buttonVariants({ variant: "ghost" })}>
-            {t.home}
-          </Link>
+          <Button asChild variant="ghost">
+            <Link href={HOME}>
+              {t.home}
+            </Link>
+          </Button>
         </div>
         {read && hasContent && <p className="mt-2 text-xs text-fg-muted">{t.readNotice}</p>}
         <div aria-live="polite" className="empty:hidden">

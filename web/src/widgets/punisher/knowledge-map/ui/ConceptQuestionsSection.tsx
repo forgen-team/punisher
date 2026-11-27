@@ -1,7 +1,6 @@
 
-import { Link } from "@/src/shared/lib/router";
 import { MessageSquare } from "lucide-react";
-import { ErrorState, List, ListRow, ListSkeleton, Section } from "@/src/shared/ui/kit";
+import { ErrorState, List, ListRow, ListSkeleton, Section } from "@forgen-team/ui";
 import { INQUIRY_STATUS_LABELS, InquiryStatusIcon, QUESTION_STATUS_LABELS, inquiryRowTitle, useInquiries, useMyQuestions } from "@/src/entities/punisher";
 import { inquiryHref } from "@/src/features/punisher/instant-start";
 import { lectureAnchorHref } from "@/src/entities/punisher";
@@ -24,8 +23,7 @@ function QuestionRows({ conceptId }: { conceptId: string }) {
   if (error) {
     return (
       <ErrorState
-        compact
-        message={describePunisherError(error)}
+        title={describePunisherError(error)}
         onRetry={() => {
           void questions.refetch();
           void inquiries.refetch();
@@ -40,7 +38,6 @@ function QuestionRows({ conceptId }: { conceptId: string }) {
         <ListRow
           key={q.id}
           href={inquiryHref(q.id)}
-          linkAs={Link}
           leading={<InquiryStatusIcon status={q.status} />}
           title={inquiryRowTitle(q)}
           meta={t.inquiryMeta(INQUIRY_STATUS_LABELS[q.status] ?? q.status)}
@@ -51,8 +48,7 @@ function QuestionRows({ conceptId }: { conceptId: string }) {
           <ListRow
             key={q.id}
             href={lectureAnchorHref(q.lectureId, q.anchor)}
-            linkAs={Link}
-            leading={<MessageSquare aria-hidden="true" />}
+              leading={<MessageSquare aria-hidden="true" />}
             title={q.question}
             meta={t.lectureQuestionMeta(QUESTION_STATUS_LABELS[q.status])}
           />

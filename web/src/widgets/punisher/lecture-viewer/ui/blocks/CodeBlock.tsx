@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { Copy } from "lucide-react";
-import { cn } from "@/src/shared/ui/kit";
+import { cn } from "@/src/shared/lib/cn";
 import { useT } from "@/src/shared/i18n";
 import { blockMessages } from "../../i18n";
 

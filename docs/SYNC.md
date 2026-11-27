@@ -48,14 +48,14 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
    범위 안에 단독판에 해당하지 않는 커밋(RSS 전용, 학습 요청 대기열 제거 등)이 섞여 있으면 범위 대신 커밋별로 뽑아 골라 적용합니다:
    `scripts/witems-sync.sh <witems> <커밋>^ <커밋> .sync/pick-<커밋>` (v0.2.1 에서 사용).
    '갈라진 곳' 파일이 `.rej` 로 남으면 `git merge-file -L standalone -L base -L witems <단독판 파일> <witems 이전판> <witems 새판>` 로 3-way 병합한다(witems 판은 같은 변환 규칙을 거친 것, v0.3.1 에서 사용).
-   `.sync/<범위>/` 에 `commits.txt` · `files.txt`(보고서용 목록) · `server.patch` · `web.patch` · `kit.patch` · `store.diff` · `web-other.txt` 가 생깁니다.
+   `.sync/<범위>/` 에 `commits.txt` · `files.txt`(보고서용 목록) · `server.patch` · `web.patch` · `store.diff` · `web-other.txt` 가 생깁니다.
 2. **서버 적용**: `git apply --recount --reject .sync/<범위>/server.patch` → `*.rej` 를 손으로 반영하고 지웁니다(대개 아래 '갈라진 곳' 파일).
 3. **저장소 포팅(손으로)**: `store.diff` 를 보고
    - `postgres_*.go` → `internal/store/sqlite_*.go` (같은 함수 이름·시그니처. `Store` 인터페이스 `internal/store/store.go` 에도 추가)
    - `migrations/NNN_*.sql` → 같은 번호의 SQLite 파일. 규칙은 아래 'SQL 변환표'.
    - `postgres_*_test.go` → `sqlite_*_test.go` (임시 DB, `newTestStore`). `PUNISHER_TEST_DATABASE_URL` 로 건너뛰는 테스트를 그대로 두지 않습니다.
    - 새 마이그레이션이 있으면 `TestUpgradeFromV010` 처럼 **이전 릴리스 DB → 새 버전** 업그레이드 테스트를 늘립니다.
-4. **웹 적용**: `git apply --recount --reject --directory=web .sync/<범위>/web.patch`, `git apply --recount --reject .sync/<범위>/kit.patch`.
+4. **웹 적용**: `git apply --recount --reject --directory=web .sync/<범위>/web.patch`. UI kit·토큰은 `@forgen-team/*` 패키지라 옮기지 않는다(`@witems/ui` import 는 `@forgen-team/ui` 부품으로 손으로 바꾼다).
    `web-other.txt` 의 `app/` 라우트 변경은 `web/src/pages/`·`web/src/app/App.tsx` 에 손으로 옮깁니다(Next 페이지 → React Router 라우트).
 5. **확인**: `make test` (go vet·go test·typecheck·lint·vitest) → `make build` → 실제 실행(`dist/punisher --data-dir <임시> --no-browser`)과 브라우저 확인.
 6. **기록**: 위 표, `CHANGELOG.md`, README 의 '바뀐 점'을 갱신하고 커밋 메시지에 witems 범위를 적습니다.
@@ -70,7 +70,7 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | `github.com/wooo-jin/witems/apps/punisher-server` | `github.com/forgen-team/punisher` (2026-11-16 forgen-team 으로 이전) |
 | `packages/go-shared/llm`, `llmjson` | `internal/llm`, `internal/llmjson` |
 | `*store.PostgresStore` | `store.Store` (인터페이스) |
-| `@witems/ui` | `@/src/shared/ui/kit` |
+| `@witems/ui`, `packages/config`(토큰·Tailwind preset) | `@forgen-team/*` 패키지(`@forgen-team/ui`·`tokens`·`tailwind-preset`) — 동기화 대상 아님. witems 쪽 kit·토큰 변경은 이식하지 않는다 |
 | `next/link`, `next/navigation` | `@/src/shared/lib/router` (같은 API의 React Router 래퍼) |
 | `/workspace/punisher/...` | `/...` |
 | `/api/punisher/v1` | `/v1` |
@@ -155,14 +155,14 @@ witems가 원본이고, 단독판은 정해진 규칙으로 옮겨 온 사본입
 | `web/src/shared/i18n/locale.ts`, `__tests__/noStrayKorean.test.ts`, `__tests__/storedLocale.test.ts` | `localeAtom` 초기값 = localStorage `punisher.locale`(없거나 못 쓰면 ko), `rememberLocale`. 검사는 `import.meta.glob` 으로 단독판 셸·화면까지 | 첫 화면 깜박임 방지, @types/node 없음 |
 | `web/src/widgets/punisher/chapter-picker/ui/BackToLearnLink.tsx` | `DesktopBackLink` 대신 단독판 `BackLink`(모든 폭) | 단독판 셸 상단 바에 ← 없음 |
 | `internal/store/sqlite_locale.go` `userLocaleSQL`, `internal/config/locale.go` | 설정을 저장한 적 없는 사용자의 locale = `store.SetDefaultLocale`(OS 로캘·`PUNISHER_LOCALE`), SQL 은 표지 치환. witems 는 `'ko'` 고정 | 설계 L2 |
-| `web/src/styles/brand.css`, `web/src/shared/ui/brand/*`, `assets/*`, `web/public/*` | forgen 패밀리 브랜딩(오렌지 액센트·로고). **단독판만** — Witems 앱 모드 빌드는 `design-tokens.css`·`brand.css` 가 선언하는 변수를 모두 지워 셸 토큰(인디고 강조색·셸 라이트/다크 값)을 쓴다(`web/src/witems/cssScope.ts`, 오너 결정 2026-11-27 — chiron 과 같은 방식). 제품 로고(`PunisherLogo`, 설정 > 정보)는 두 곳 모두 그대로 | 단독판 정체성. `design-tokens.css` 는 witems 원본 그대로 두고 `brand.css` 에서 액센트만 덮어쓴다. `make witems-web` 이 산출물에 토큰 선언·주황 CSS 값이 있으면 실패한다 |
+| `web/src/shared/ui/brand/*`, `assets/*`, `web/public/*` | forgen 패밀리 로고·아이콘. 토큰(강조색 포함)은 `@forgen-team/tokens` 에서 오고, Witems 앱 모드 빌드는 그 선언을 지워 셸 토큰을 쓴다(`@forgen-team/postcss-shadow-scope`, `web/vite.witems.config.ts`). 제품 로고(`PunisherLogo`, 설정 > 정보)는 두 곳 모두 그대로 | 단독판 정체성. `make witems-web` 이 산출물에 토큰 선언·주황 CSS 값이 있으면 실패한다 |
 | `internal/store/sqlite_undo.go`, `internal/http/handlers/undo.go`, `internal/services/check_session.go` `ResumeCheck`, `store.go` 인터페이스 3줄, `router.go` 3줄 | 되돌리기 API(`DELETE /lectures/{id}/complete`, `DELETE /concepts/{id}/known`, `POST /checks/{id}/resume`). witems 모노레포에는 아직 없음 | Witems 화면 배치 규칙 §5(되돌릴 수 있는 동작은 되돌리기 알림) — 이 저장소가 Witems 앱 모드 컨테이너이기도 해서 먼저 넣음. 모노레포에 들어가면 SQL 만 PostgreSQL 로 |
 | `web/src/pages/SettingsPage.tsx`, `widgets/punisher/cards/CardsWidget.tsx`, `widgets/punisher/search/SearchWidget.tsx` | 가운데 좁은 칸(`mx-auto max-w-2xl`)은 단독판만 — Witems 에서는 `standaloneColumnClass()`(`shared/config/runtime`)가 빈 값이라 왼쪽 정렬 전체 폭(witems `AppHost` `APP_CONTAINER_CLASS`, 본문 폭 제한 없음). 읽기 글 폭(`LectureLayout` `--reading-measure`)은 두 곳 모두 유지 | 단독판 셸은 1600px 칸 안 가운데 정렬 |
-| `web/src/shared/lib/{dom-root,drafts,leave-guard,screen-chrome,in-app-history}.ts`, `shared/ui/kit/components/{feedback,scroll-row}.tsx`, `chip.tsx` `ChipLink`, `menu.tsx` href·구분선, `segmented-tabs.tsx` 링크·화살표 포커스만 | Shadow DOM 헬퍼·초안 보관·이동 경고·화면 머리(제목·페이지 동작)·확인 창·되돌리기 알림. `in-app-history` 는 횟수 대신 방문 줄(index) | fix/witems-ux-complete(Witems UI-PAGE-LAYOUT·점검 31건). witems 판에 같은 문제가 있으면 이 파일들을 가져간다 |
+| `web/src/shared/lib/{dom-root,drafts,leave-guard,screen-chrome,in-app-history}.ts`(확인 창·알림·칩·메뉴·탭은 이제 `@forgen-team/ui`) | Shadow DOM 헬퍼·초안 보관·이동 경고·화면 머리(제목·페이지 동작)·확인 창·되돌리기 알림. `in-app-history` 는 횟수 대신 방문 줄(index) | fix/witems-ux-complete(Witems UI-PAGE-LAYOUT·점검 31건). witems 판에 같은 문제가 있으면 이 파일들을 가져간다 |
 | `web/src/widgets/punisher/today/lib/sessionTime.ts`, `today/i18n.ts` `session*` | "오늘 할 일 약 29분: 강의 20 · 확인 7 · 복습 2"(witems 는 "강의 약 20분 + …") | 운영 관찰 P1 — 합계가 무엇의 합인지 |
 | `migrations/023_study_features.sql`, `024_search.sql`, `internal/store/{sqlite_study,sqlite_cards,study_store}.go`, `internal/learning/{fsrs,study}.go`, `internal/http/{routes_study.go,handlers/study.go}`, `internal/reminder/*`, `sqlite_check_evidence.go` `applyMemory` 한 곳, `sqlite_reviews.go` `reviewScope` 한 줄 | W5a 학습 기능(FSRS·반복 실패·보류·예측·활동·기한·복습 카드·FTS5 검색·맥 알림). witems 모노레포에 없음. 검색은 SQLite FTS5 trigram 전용(PostgreSQL 로 옮기면 tsvector/pg_trgm 으로 다시) | 단독판·앱 모드 컨테이너가 먼저 가진다. 기존 `Store` 인터페이스·설정 upsert 는 넓히지 않고 `StudyStore`·`user_study_prefs` 로 따로 둠 |
 | `web/public/sw.js`, `web/src/main.tsx` 등록, `internal/webui` `sw.js` no-cache | 오프라인 읽기(단독판만) | Witems 에서 끈 이유는 `docs/WITEMS-APP.md` |
-| `web/src/witems/*`, `web/vite.witems.config.ts` | `ctx.setActions`(선택) 사용·폴백, 셸 레이아웃 변수·셸 토큰(`design-tokens.css`·`brand.css` 선언) 제거(`cssScope.ts`), 셸 이동 표지(`SHELL_NAV_STATE`) | 단독판 저장소에만 있는 앱 모드 |
+| `web/src/witems/*`, `web/vite.witems.config.ts` | `ctx.setActions`(선택) 사용·폴백, 셸 레이아웃 변수·셸 토큰(`@forgen-team/tokens` 선언·루트 `--seed-*`) 제거(`@forgen-team/postcss-shadow-scope`), 셸 이동 표지(`SHELL_NAV_STATE`) | 단독판 저장소에만 있는 앱 모드 |
 
 ## 앞으로 들어올 것
 

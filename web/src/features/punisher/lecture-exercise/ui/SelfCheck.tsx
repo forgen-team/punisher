@@ -1,5 +1,5 @@
-import { useId, useState, type ReactNode } from "react";
-import { Button, Chip, Input, Textarea } from "@/src/shared/ui/kit";
+import { useState, type ReactNode } from "react";
+import { Button, SegmentedControl, SegmentedControlItem, TextField } from "@forgen-team/ui";
 import { describePunisherError, PREDICTION_MAX_CHARS, type ExerciseInput, type PredictionConfidence } from "@/src/shared/api/punisher";
 import { blockContentHash } from "../lib/contentHash";
 import { parseRecall } from "../lib/recall";
@@ -42,7 +42,6 @@ export function PausePanel({ anchor, question, outputText, output, fallback }: P
   const [prediction, setPrediction] = useState("");
   const [confidence, setConfidence] = useState<PredictionConfidence | undefined>();
   const [revealed, setRevealed] = useState(false);
-  const groupId = useId();
   if (!ctx || !anchor) { return <>{fallback}</>; }
   const hash = blockContentHash(question, outputText);
   const attempt = findAttempt(ctx.attempts, anchor, hash);
@@ -68,23 +67,22 @@ export function PausePanel({ anchor, question, outputText, output, fallback }: P
   if (!revealed) {
     return (
       <div className="mt-2 flex flex-col gap-2">
-        <Input
-          aria-label={t.predictPlaceholder}
+        <TextField
           placeholder={t.predictPlaceholder}
-          maxLength={PREDICTION_MAX_CHARS}
           value={prediction}
-          onChange={(event) => setPrediction(event.target.value)}
+          onValueChange={({ value }) => setPrediction(value)}
+          inputProps={{ "aria-label": t.predictPlaceholder, maxLength: PREDICTION_MAX_CHARS }}
         />
-        <div role="radiogroup" aria-labelledby={groupId} className="flex flex-wrap items-center gap-2">
-          <span id={groupId} className="text-sm text-fg-secondary">{t.confidenceLabel}</span>
-          {CONFIDENCES.map((c) => (
-            <Chip key={c} role="radio" aria-checked={confidence === c} selected={confidence === c} onClick={() => setConfidence(c)}>
-              {t.confidence(c)}
-            </Chip>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-fg-secondary">{t.confidenceLabel}</span>
+          <SegmentedControl aria-label={t.confidenceLabel} value={confidence ?? ""} onValueChange={(v) => setConfidence(v as PredictionConfidence)}>
+            {CONFIDENCES.map((c) => (
+              <SegmentedControlItem key={c} value={c}>{t.confidence(c)}</SegmentedControlItem>
+            ))}
+          </SegmentedControl>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" disabled={!prediction.trim() && !confidence} onClick={() => setRevealed(true)}>
+          <Button variant="primary" size="sm" disabled={!prediction.trim() && !confidence} onClick={() => setRevealed(true)}>
             {t.revealOutput}
           </Button>
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => send({ anchor, contentHash: hash, skip: true })}>
@@ -159,7 +157,7 @@ export function RecallPanel({ anchor, text, renderBody }: RecallPanelProps) {
       {renderBody(question)}
       {!open ? (
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Button size="sm" onClick={() => setOpen(true)}>{t.recallReveal}</Button>
+          <Button variant="primary" size="sm" onClick={() => setOpen(true)}>{t.recallReveal}</Button>
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => send({ anchor, contentHash: hash, skip: true })}>{t.recallSkip}</Button>
         </div>
       ) : (
@@ -204,16 +202,15 @@ export function SummaryRecall({ anchor, text, summary }: SummaryRecallProps) {
   if (findAttempt(ctx.attempts, anchor, hash)) { return <>{summary}</>; }
   return (
     <div className="mt-2 flex flex-col gap-2">
-      <Textarea
-        aria-label={t.summaryRecallLabel}
+      <TextField
+        multiline
         placeholder={t.summaryRecallPlaceholder}
-        rows={3}
         value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        className="resize-y"
+        onValueChange={({ value }) => setDraft(value)}
+        textareaProps={{ "aria-label": t.summaryRecallLabel, rows: 3, className: "resize-y" }}
       />
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" loading={busy} disabled={!draft.trim() || busy} onClick={() => send({ anchor, contentHash: hash, answer: draft })}>
+        <Button variant="primary" size="sm" loading={busy} disabled={!draft.trim() || busy} onClick={() => send({ anchor, contentHash: hash, answer: draft })}>
           {t.summaryReveal}
         </Button>
         <Button size="sm" variant="ghost" disabled={busy} onClick={() => send({ anchor, contentHash: hash, skip: true })}>

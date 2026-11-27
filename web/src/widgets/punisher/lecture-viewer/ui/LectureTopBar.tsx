@@ -7,7 +7,8 @@ import { getAppElementById } from "@/src/shared/lib/dom-root";
 import { isWitems } from "@/src/shared/config/runtime";
 import { useCollapsingAppHeader } from "@/src/shared/lib/appHeaderCollapse";
 import { ArrowLeft, ListOrdered, MessagesSquare } from "lucide-react";
-import { IconButton, Menu, cn, iconButtonVariants, type MenuItem } from "@/src/shared/ui/kit";
+import { Button, IconButton, Menu, type MenuItemDef } from "@forgen-team/ui";
+import { cn } from "@/src/shared/lib/cn";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
 
@@ -47,7 +48,7 @@ interface LectureTopBarProps {
   onOpenAssist?: () => void;
   /** 질문 아이콘 위 개수 표시(스레드 수) */
   assistBadge?: ReactNode;
-  menuItems?: MenuItem[];
+  menuItems?: MenuItemDef[];
   /**
    * ⋯ 대신 글자 버튼으로 보일 메뉴 이름(강의: "학습 상태"/"완료함"). 셸 상단 바의 ⋯(페이지 동작) 바로 아래라
    * 두 ⋯ 가 붙어 헷갈리지 않게 한다. short 는 아주 좁은 폭(400px 미만)용.
@@ -73,7 +74,7 @@ export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, 
   const inWitems = isWitems();
   return (
     <div ref={barRef} data-lecture-topbar="" className="sticky top-[var(--app-header-offset)] z-nav -mx-4 flex h-12 transition-[top] duration-base ease-standard items-center gap-1 border-b border-line bg-canvas px-2 fold:-mx-6 fold:px-4 lg:-mx-8 lg:px-6">
-      {inWitems ? null : <Link
+      {inWitems ? null : <Button asChild variant="ghost" aria-label={t.back}><Link
         href={backHref}
         onClick={(event) => {
           // 앱 안에서 들어왔으면 들어온 곳(지도·기록 등)으로, 직접 들어왔으면 강의 화면으로.
@@ -83,9 +84,9 @@ export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, 
           }
         }}
         // 단독판: 셸 상단 바에 ← 가 없어 모든 폭에서 보인다(witems 는 lg 이상만 — docs/SYNC.md).
-        aria-label={t.back} className={iconButtonVariants({ variant: "ghost" })}>
+        aria-label={t.back}>
         <ArrowLeft aria-hidden="true" />
-      </Link>}
+      </Link></Button>}
       <p
         className={cn("min-w-0 flex-1 truncate text-sm font-semibold text-fg transition-opacity duration-150", titleAway ? "opacity-100" : "opacity-0")}
         aria-hidden="true"
@@ -93,26 +94,24 @@ export function LectureTopBar({ title, backHref = "/", onOpenToc, onOpenAssist, 
         {inWitems ? null : title}
       </p>
       {onOpenToc && (
-        <IconButton aria-label={t.toc} onClick={onOpenToc} className="lg:hidden">
-          <ListOrdered aria-hidden="true" />
-        </IconButton>
+        <IconButton aria-label={t.toc} onClick={onOpenToc} className="lg:hidden" icon={<ListOrdered aria-hidden="true" />} />
       )}
       {onOpenAssist && (
-        <IconButton aria-label={t.questionsAndNotes} onClick={onOpenAssist} className="relative xl:hidden">
-          <MessagesSquare aria-hidden="true" />
+        // ui IconButton 은 아이콘만 받는다 — 개수 표시는 감싼 상자에 겹쳐 둔다.
+        <span className="relative inline-flex xl:hidden">
+          <IconButton aria-label={t.questionsAndNotes} onClick={onOpenAssist} icon={<MessagesSquare aria-hidden="true" />} />
           {assistBadge}
-        </IconButton>
+        </span>
       )}
       {menuItems && menuItems.length > 0 && (
         <Menu
           items={menuItems}
           label={t.lectureMenu}
-          linkAs={Link}
-          triggerText={menuText ? (
-            <>
+          trigger={menuText ? (
+            <Button variant="ghost" size="sm">
               <span className="hidden min-[400px]:inline">{menuText.full}</span>
               <span className="min-[400px]:hidden">{menuText.short}</span>
-            </>
+            </Button>
           ) : undefined}
         />
       )}

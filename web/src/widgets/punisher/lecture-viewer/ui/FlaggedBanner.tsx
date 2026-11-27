@@ -1,6 +1,6 @@
 import { Link } from "@/src/shared/lib/router";
 import { AlertTriangle } from "lucide-react";
-import { Button, buttonVariants } from "@/src/shared/ui/kit";
+import { Button } from "@forgen-team/ui";
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import { describePunisherError, translateReasonCodes } from "@/src/shared/api/punisher";
 import { useStartRegenerate } from "./RegenerateSheet";
@@ -31,9 +31,11 @@ export function FlaggedBanner({ lectureId, reason, reasonCodes, newerId }: {
       {shown && <p className="line-clamp-3 break-words text-sm text-fg">{shown}</p>}
       <div className="flex flex-wrap items-center gap-2">
         {newerId ? (
-          <Link href={lectureHref(newerId)} className={buttonVariants({ variant: "secondary", size: "sm" })}>
-            {t.viewRegenerated}
-          </Link>
+          <Button asChild variant="secondary" size="sm">
+            <Link href={lectureHref(newerId)}>
+              {t.viewRegenerated}
+            </Link>
+          </Button>
         ) : (
           <Button size="sm" variant="secondary" loading={regenerate.isPending} onClick={regenerate.start}>
             {t.regenerate}

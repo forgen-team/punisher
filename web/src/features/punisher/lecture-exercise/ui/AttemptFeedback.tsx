@@ -1,4 +1,4 @@
-import { cn } from "@/src/shared/ui/kit";
+import { cn } from "@/src/shared/lib/cn";
 import { EXERCISE_POLL_LIMIT_MS } from "@/src/entities/punisher";
 import type { ExerciseAttempt } from "@/src/shared/api/punisher";
 import { useLocale, useT } from "@/src/shared/i18n";

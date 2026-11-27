@@ -3,7 +3,7 @@ import { Link } from "@/src/shared/lib/router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useAtom } from "jotai";
 import { ArrowLeft } from "lucide-react";
-import { Button, EmptyState, ErrorState, ListSkeleton, type MenuItem } from "@/src/shared/ui/kit";
+import { Button, EmptyState, ErrorState, ListSkeleton, type MenuItemDef } from "@forgen-team/ui";
 import { lectureAnchorHref, lectureBookmarkAtom, useConceptDetail, useLecture, useLectureExercises, useLectureLinks, useMastery, usePrompts } from "@/src/entities/punisher";
 import { shellHasActions } from "@/src/shared/config/runtime";
 import { usePageActions, useScreenTitle, type PageAction } from "@/src/shared/lib/screen-chrome";
@@ -113,7 +113,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
     // 단독판: 셸 상단 바에 뒤로 버튼이 없어, 강의를 못 불러오면 강의 화면으로 돌아갈 길을 함께 둔다(docs/SYNC.md).
     return (
       <div className="flex flex-col items-center gap-2">
-        <ErrorState message={describePunisherError(lectureQuery.error)} onRetry={() => lectureQuery.refetch()} />
+        <ErrorState title={describePunisherError(lectureQuery.error)} onRetry={() => void lectureQuery.refetch()} />
         <Link href="/" className="text-sm text-fg-secondary underline-offset-2 hover:text-fg hover:underline">
           {t.backToLectures}
         </Link>
@@ -134,7 +134,7 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
   const showReturn = !parentLecture && bookmark && bookmark.lectureId !== lectureId;
   const returnHref = bookmark ? lectureAnchorHref(bookmark.lectureId, bookmark.anchor) : "";
 
-  const menuItems: MenuItem[] = [
+  const menuItems: MenuItemDef[] = [
     { key: "complete", label: actions.done ? t.menuCompleted : t.menuComplete, disabled: actions.done || actions.complete.isPending, onSelect: actions.markComplete },
     { key: "check", label: t.menuCheck, disabled: check.isPending, onSelect: check.launch },
     { key: "known", label: actions.knownDone ? t.menuKnownDone : t.menuKnown, disabled: actions.knownDone || actions.known.isPending, onSelect: actions.markKnown },
@@ -164,11 +164,11 @@ export function LectureViewer({ lectureId }: { lectureId: string }) {
     ...(lecturePromptEdited
       ? [{ key: "regenerate", label: t.menuRegenerate, onSelect: () => setRegenOpen(true) }]
       : []),
-    // 셸이 페이지 동작을 그리지 않으면 이동·설정 링크를 구분선 뒤에 둔다.
+    // 셸이 페이지 동작을 그리지 않으면 이동·설정 링크를 메뉴 뒤쪽에 둔다.
     ...(shellActions
       ? []
       : [
-          ...pageActions.map((a, i) => ({ key: a.id, label: a.label, href: a.href, separatorBefore: i === 0 })),
+          ...pageActions.map((a) => ({ key: a.id, label: a.label, href: a.href })),
           { key: "example-language", label: t.menuExampleLanguage, href: "/settings" },
         ]),
   ];

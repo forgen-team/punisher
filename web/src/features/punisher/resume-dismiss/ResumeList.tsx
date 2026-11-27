@@ -1,6 +1,6 @@
-import { Link } from "@/src/shared/lib/router";
 import { PlayCircle } from "lucide-react";
-import { Button, List, ListRow, Menu, cn } from "@/src/shared/ui/kit";
+import { Button, List, ListRow, Menu } from "@forgen-team/ui";
+import { cn } from "@/src/shared/lib/cn";
 import { groupByParent, isReadThrough, lectureAnchorHref, readThroughLabel } from "@/src/entities/punisher";
 import type { Recommendation } from "@/src/shared/api/punisher";
 import { useLocale, useT } from "@/src/shared/i18n";
@@ -34,11 +34,10 @@ function ResumeRow({ item, onDismiss, dismissing }: ResumeRowProps) {
   return (
     <ListRow
       href={lectureAnchorHref(item.lectureId, item.anchor)}
-      linkAs={Link}
       emphasized
       leading={<PlayCircle aria-hidden="true" className="text-accent-text" />}
       title={title}
-      metaLines="all"
+      metaLines={2}
       meta={
         <>
           {subtitle && <span className="block whitespace-normal break-keep text-fg-secondary">{subtitle}</span>}

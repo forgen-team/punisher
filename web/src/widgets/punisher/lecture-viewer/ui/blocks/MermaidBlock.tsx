@@ -1,6 +1,6 @@
 
 import { useEffect, useId, useState } from "react";
-import { Skeleton } from "@/src/shared/ui/kit";
+import { Skeleton } from "@forgen-team/ui";
 import { useResolvedTheme } from "@/src/entities/punisher";
 import { CodeBlock } from "./CodeBlock";
 import { useT } from "@/src/shared/i18n";
@@ -111,7 +111,7 @@ export function MermaidBlock({ source, title }: { source: string; title?: string
         // w-full: 가운데 정렬 flex 안에서 폭이 내용에 맞춰 줄면 SVG(width=100%)가 함께 줄어 글자가 작아진다.
         <div className="w-full [&_svg]:mx-auto [&_svg]:h-auto [&_svg]:max-w-full" dangerouslySetInnerHTML={{ __html: svg }} />
       ) : (
-        <Skeleton variant="block" className="h-40" />
+        <Skeleton lines={3} className="h-40" />
       )}
     </figure>
   );

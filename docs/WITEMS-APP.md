@@ -45,8 +45,9 @@ manifest 는 `ai.claude.purpose`("강의·문제 생성과 다음 챕터 제안"
 
 ## 빌드
 
-- `make witems-web` — 화면 묶음을 `internal/witems/dist` 에(컴포넌트에서 CSS 를 import 하면 셸 `<head>` 로 새므로 실패시킨다. CSS 는 `web/src/styles/globals.css` 에서).
-- `docker build .` — 화면 묶음 + `punisher` + `punisher-witems-import` 이미지. CI(`.github/workflows/image.yml`)가 main·`v*` 태그를 `ghcr.io/forgen-team/punisher` 로 올린다.
+- `NODE_AUTH_TOKEN=$(gh auth token) make witems-web` — 화면 묶음을 `internal/witems/dist` 에(컴포넌트에서 CSS 를 import 하면 셸 `<head>` 로 새므로 실패시킨다. CSS 는 `web/src/styles/globals.css` 에서).
+- `NODE_AUTH_TOKEN=$(gh auth token) docker build --secret id=npm_token,env=NODE_AUTH_TOKEN .`(= `make image`) — 화면 묶음 + `punisher` + `punisher-witems-import` 이미지.
+  `@forgen-team/*` 패키지가 GitHub Packages(`web/.npmrc`)에 있어 `npm ci` 에 토큰이 필요하다 — BuildKit secret 으로만 넘기고 이미지 층에는 남기지 않는다. CI(`.github/workflows/image.yml`)가 main·`v*` 태그를 `ghcr.io/forgen-team/punisher` 로 올린다.
 
 ## 화면을 Witems 안에서 쓸 때 지킬 것
 
@@ -58,11 +59,11 @@ manifest 는 `ai.claude.purpose`("강의·문제 생성과 다음 챕터 제안"
   (`getAppElementById`·`queryApp(All)`·`activeAppElement`)를, document 에 단 리스너의 안/밖 판정은 `eventWithin`(composedPath)을,
   선택 글자는 `selectionRangeIn` 을 쓴다(`shared/lib/__tests__/shadowDom.test.tsx`).
 - `window.location`(hash 포함)은 셸 주소다 — 앱 주소는 라우터(`useLocation`)로 읽고, 강의 안 자리는 `?at=<앵커>`(`lectureAnchorHref`).
-- 셸 레이아웃 변수(`--app-header-offset`·`--app-bottom-offset`·`--app-topbar-h`)는 셸 것을 쓴다 — Witems 빌드가 앱 CSS 의 정의를 뺀다(`witems/scope.ts`).
-- 디자인 토큰(`--color-*`·`--radius-*`·`--shadow-*`·`--font-*` …)과 강조색도 셸 것이다 — Witems 빌드는 `design-tokens.css`·`brand.css` 가 선언하는
-  변수를 모두 지워(`witems/cssScope.ts`) Witems 인디고 강조색·셸 라이트/다크 값이 보인다. 단독판은 자기 토큰과 forgen 주황을 그대로 쓴다.
-  `make witems-web` 은 산출물에 토큰 선언이나 주황 CSS 값(`#f97316` 계열, Tailwind `rgb(…)` 포함)이 있으면 실패한다.
-  강조색은 선택·상태·진행 표시에만 쓰고 주 버튼은 무채색(`Button` primary = `bg-inverse`)이라 인디고로 바뀌어도 CTA 위계가 그대로다.
+- 셸 레이아웃 변수(`--app-header-offset`·`--app-bottom-offset`·`--app-topbar-h`)는 셸 것을 쓴다 — Witems 빌드가 앱 CSS 의 정의를 뺀다(`@forgen-team/postcss-shadow-scope`).
+- 디자인 토큰(`--color-*`·`--radius-*`·`--shadow-*`·`--font-*` …, SEED 연결 `--seed-*`)과 강조색도 셸 것이다 — 단독판은 `@forgen-team/tokens/tokens.css` 를
+  `<html>` 에 두고, Witems 빌드는 `@forgen-team/postcss-shadow-scope`(`vite.witems.config.ts`)가 `tokens.css`·`seed.css` 가 선언하는 변수와 루트의
+  `--seed-*` 를 모두 지워 셸 값(라이트/다크)을 이어받는다. `make witems-web` 은 산출물에 토큰 선언이나 주황 CSS 값(`#f97316` 계열, Tailwind `rgb(…)` 포함)이 있으면 실패한다.
+  주 버튼은 무채색(`@forgen-team/ui` `Button` primary)이고 강조색은 선택·상태·진행 표시에만 쓴다.
 - 본문 폭: 셸은 본문 자리 폭을 제한하지 않는다. 단독판의 가운데 좁은 칸은 `standaloneColumnClass()` 로만 쓴다(Witems 에서 빈 값).
 - 화면 제목은 `useScreenTitle`, 페이지 동작(이동·설정)은 `usePageActions`(`shared/lib/screen-chrome`). WitemsShell 이 `ctx.setTitle`·`ctx.setActions` 로
   보낸다(동작 끝에 '학습 설정', kind `settings`). `ctx.setActions` 가 없는 구버전 셸이면 보내지 않고 탭 옆 설정 링크·강의 ⋯ 메뉴의 이동 항목으로 폴백한다.
@@ -78,7 +79,7 @@ manifest 는 `ai.claude.purpose`("강의·문제 생성과 다음 챕터 제안"
   셸의 모든 요청을 가로채게 되어 셸·RSS 를 깨뜨릴 수 있다. 셸이 공용 서비스 워커를 갖게 되면 그때 다시 본다.
 - 복습 알림: Witems 에는 다른 앱이 보낼 알림 경로가 없다(rss-server 알림은 RSS 키워드 규칙 전용). 그래서 앱 안 배지('강의' 탭 숫자)만 쓴다.
   단독판은 macOS 알림(`internal/reminder`, 설정 > 학습에서 켬).
-- 확인은 `confirmAction`, 되돌리기는 `notifyUndo`(`shared/ui/kit` feedback — `FeedbackHost` 가 portal 에 그림). `window.confirm`·`alert` 는 쓰지 않는다.
+- 확인은 `useConfirm`, 알림·되돌리기는 `useToast`(`@forgen-team/ui` — 앱 뿌리 `app/UIRoot.tsx` 의 `FeedbackProvider`, 오버레이 자리는 `UIProvider portalRoot = ctx.portal`). `window.confirm`·`alert` 는 쓰지 않는다.
 
 ## 처음 옮길 때 (Witems PostgreSQL → SQLite, 한 번)
 

@@ -1,6 +1,6 @@
 
 import { useId } from "react";
-import { Badge, Button, Section } from "@/src/shared/ui/kit";
+import { Badge, Button, Section } from "@forgen-team/ui";
 import { areaLabel } from "@/src/entities/punisher";
 import type { ChapterDraft } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
@@ -36,7 +36,7 @@ export function DraftPreview({ draft, names, applying, onApply, onBack }: DraftP
   const actionLabels = useT(CONCEPT_ACTION_LABELS);
 
   return (
-    <Section variant="card" aria-labelledby={titleId}>
+    <Section variant="card" aria-label={draft.title}>
       <header className="flex flex-col gap-1 border-b border-line py-4">
         <p className="text-xs font-semibold text-accent-text">{t.previewLabel}</p>
         <h2 id={titleId} className="break-keep text-lg font-semibold text-fg">
@@ -53,7 +53,7 @@ export function DraftPreview({ draft, names, applying, onApply, onBack }: DraftP
             <div className="min-w-0 flex-1">
               <p className="flex flex-wrap items-center gap-1.5 text-base font-semibold text-fg">
                 {c.name}
-                <Badge tone={c.action === "create" ? "accent" : "neutral"}>{actionLabels[c.action]}</Badge>
+                <Badge variant="weak" tone={c.action === "create" ? "brand" : "neutral"}>{actionLabels[c.action]}</Badge>
               </p>
               {metaOf(c, t) && <p className="mt-0.5 text-xs text-fg-muted">{metaOf(c, t)}</p>}
               {c.summary && c.action !== "reuse" && <p className="mt-1 break-keep text-sm text-fg-secondary">{c.summary}</p>}
@@ -68,7 +68,7 @@ export function DraftPreview({ draft, names, applying, onApply, onBack }: DraftP
         <Button variant="ghost" onClick={onBack} disabled={applying}>
           {t.back}
         </Button>
-        <Button onClick={onApply} loading={applying}>
+        <Button variant="primary" onClick={onApply} loading={applying}>
           {t.apply}
         </Button>
       </div>

@@ -1,6 +1,5 @@
 
-import { Target } from "lucide-react";
-import { EmptyState, ErrorState, ListSkeleton, Section } from "@/src/shared/ui/kit";
+import { EmptyState, ErrorState, ListSkeleton, Section } from "@forgen-team/ui";
 import { useGoals } from "@/src/entities/punisher";
 import { describePunisherError } from "@/src/shared/api/punisher";
 import { GoalForm } from "./GoalForm";
@@ -26,9 +25,9 @@ export function GoalsManager({ onShowPath }: GoalsManagerProps) {
             <ListSkeleton rows={3} />
           </div>
         ) : goals.error ? (
-          <ErrorState compact message={describePunisherError(goals.error)} onRetry={() => goals.refetch()} />
+          <ErrorState title={describePunisherError(goals.error)} onRetry={() => { void goals.refetch(); }} />
         ) : list.length === 0 ? (
-          <EmptyState compact icon={<Target />} title={t.emptyTitle} description={t.emptyDescription} />
+          <EmptyState title={t.emptyTitle} description={t.emptyDescription} />
         ) : (
           <ul role="list">
             {list.map((g) => (

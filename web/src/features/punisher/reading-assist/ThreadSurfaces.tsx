@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { MessageCircle, X } from "lucide-react";
-import { IconButton, cn, focusRing, useMediaQuery } from "@/src/shared/ui/kit";
+import { IconButton, useMediaQuery } from "@forgen-team/ui";
+import { cn, focusRing } from "@/src/shared/lib/cn";
 import { eventWithin } from "@/src/shared/lib/dom-root";
 import { ReadingOverlay, toOverlayAnchor } from "@/src/shared/ui/punisher";
 import { useT } from "@/src/shared/i18n";
@@ -153,9 +154,7 @@ function threadPreview(thread: ReadingThread, t: typeof messages.ko): string {
 function CloseFocus({ onClose }: { onClose: () => void }) {
   const t = useT(messages);
   return (
-    <IconButton size="sm" aria-label={t.closeThread} onClick={onClose} className="shrink-0">
-      <X aria-hidden="true" />
-    </IconButton>
+    <IconButton size="sm" aria-label={t.closeThread} onClick={onClose} className="shrink-0" icon={<X aria-hidden="true" />} />
   );
 }
 

@@ -27,8 +27,8 @@ const ROOT_CLASS = ROOT_SELECTOR.slice(1);
 
 /**
  * Witems contract §3: mount(el, ctx) → unmount. Styles go into the Shadow DOM
- * (§4); el and the portal carry the root class and data-theme so the design
- * tokens and dark mode apply to both.
+ * (§4); el and the portal carry the root class, data-theme and
+ * data-seed-color-mode so the shell's tokens and dark mode apply to both.
  */
 export function mount(el: HTMLElement, ctx: AppContext): Unmount {
   const runtime: WitemsRuntime = {
@@ -57,6 +57,8 @@ export function mount(el: HTMLElement, ctx: AppContext): Unmount {
     for (const node of surfaces) {
       node.classList.add(ROOT_CLASS);
       node.setAttribute("data-theme", theme);
+      // SEED 부품의 연결하지 않은 값(비활성 색 등)도 같은 모드로(@forgen-team/ui README)
+      node.setAttribute("data-seed-color-mode", theme === "dark" ? "dark-only" : "light-only");
     }
   };
   applyTheme(ctx.theme);
@@ -65,7 +67,7 @@ export function mount(el: HTMLElement, ctx: AppContext): Unmount {
   const root = createRoot(el);
   root.render(
     <StrictMode>
-      <AppProviders>
+      <AppProviders inShell portal={ctx.portal}>
         <MemoryRouter basename={ctx.basePath} initialEntries={[`${ctx.basePath}${initialEntry(ctx)}`]}>
           <RouteSync ctx={ctx} />
           <ScrollToTopOnNavigate />
@@ -84,6 +86,7 @@ export function mount(el: HTMLElement, ctx: AppContext): Unmount {
     for (const node of surfaces) {
       node.classList.remove(ROOT_CLASS);
       node.removeAttribute("data-theme");
+      node.removeAttribute("data-seed-color-mode");
     }
     // 다시 시도 등으로 새 mount 가 먼저 runtime 을 바꿨으면 그대로 둔다
     if (witemsRuntime() === runtime) { setWitemsRuntime(null); }

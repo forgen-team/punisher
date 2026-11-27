@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Layers } from "lucide-react";
-import { BottomSheet, Button, Field, FieldTextarea, ListSkeleton, notifyUndo } from "@/src/shared/ui/kit";
+import { Button, ListSkeleton, Sheet, TextField, useToast } from "@forgen-team/ui";
 import { useCardDraft, useDeleteCard, useSaveCard } from "@/src/entities/punisher";
 import type { CardSourceKind } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
@@ -37,6 +37,7 @@ function CardSheet({ kind, sourceId, onClose }: { kind: CardSourceKind; sourceId
   const draft = useCardDraft(kind, sourceId);
   const save = useSaveCard();
   const remove = useDeleteCard();
+  const toast = useToast();
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const data = draft.data;
@@ -55,21 +56,25 @@ function CardSheet({ kind, sourceId, onClose }: { kind: CardSourceKind; sourceId
       onSuccess: (card) => {
         onClose();
         // 새로 만든 카드만 되돌린다(이미 있던 카드의 글 고침은 되돌리기 없음).
-        if (!existed) { notifyUndo(t.saved, () => remove.mutateAsync(card.id)); }
+        if (!existed) {
+          toast.undo(t.saved, () => {
+            remove.mutateAsync(card.id).catch(() => toast.show(t.undoFailed, { tone: "danger" }));
+          });
+        }
       },
     });
   }
 
   return (
-    <BottomSheet
+    <Sheet
       open
-      onClose={onClose}
+      onOpenChange={(o) => { if (!o) { onClose(); } }}
       title={t.sheetTitle}
       description={t.sheetDescription}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>{t.cancel}</Button>
-          <Button onClick={submit} disabled={!valid} loading={save.isPending}>{t.save}</Button>
+          <Button variant="primary" onClick={submit} disabled={!valid} loading={save.isPending}>{t.save}</Button>
         </>
       }
     >
@@ -78,14 +83,23 @@ function CardSheet({ kind, sourceId, onClose }: { kind: CardSourceKind; sourceId
       ) : (
         <div className="flex flex-col gap-3">
           <InlineError error={draft.error ?? save.error} />
-          <Field label={t.question}>
-            <FieldTextarea value={question} rows={3} maxLength={500} onChange={(e) => setQuestion(e.target.value)} />
-          </Field>
-          <Field label={t.answer} hint={data && !data.answer ? t.noAnswer : undefined}>
-            <FieldTextarea value={answer} rows={4} maxLength={2000} onChange={(e) => setAnswer(e.target.value)} />
-          </Field>
+          <TextField
+            multiline
+            label={t.question}
+            value={question}
+            onValueChange={({ value }) => setQuestion(value)}
+            textareaProps={{ rows: 3, maxLength: 500 }}
+          />
+          <TextField
+            multiline
+            label={t.answer}
+            description={data && !data.answer ? t.noAnswer : undefined}
+            value={answer}
+            onValueChange={({ value }) => setAnswer(value)}
+            textareaProps={{ rows: 4, maxLength: 2000 }}
+          />
         </div>
       )}
-    </BottomSheet>
+    </Sheet>
   );
 }

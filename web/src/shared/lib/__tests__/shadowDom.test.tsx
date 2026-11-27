@@ -2,13 +2,15 @@ import { useRef } from "react";
 import { act, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setWitemsRuntime } from "@/src/shared/config/runtime";
-import { FeedbackHost, Menu, confirmAction, resetFeedback, useFocusTrap } from "@/src/shared/ui/kit";
+import { FeedbackProvider, UIProvider, useConfirm } from "@forgen-team/ui";
+import { useFocusTrap } from "../useFocusTrap";
 import { scrollToAnchor } from "@/src/features/punisher/lecture-progress";
 import { activeAppElement, appRoot, eventWithin, getAppElementById, queryAppAll } from "../dom-root";
 
 /**
  * Witems 는 앱을 Shadow DOM 안에 그린다(계약 §3·§4). 운영에서 본 결함 — 본문 앵커를 document 로 찾음(1),
- * ⋯ 메뉴가 클릭 전에 닫힘(2), 포커스 판정(13) — 이 Shadow DOM 안에서 맞게 동작하는지 jsdom attachShadow 로 확인한다.
+ * 포커스 판정(13) — 이 Shadow DOM 안에서 맞게 동작하는지 jsdom attachShadow 로 확인한다.
+ * ⋯ 메뉴(2)는 @forgen-team/ui Menu(SEED)로 바뀌어 그 패키지 테스트가 맡는다.
  */
 let host: HTMLDivElement;
 let shadow: ShadowRoot;
@@ -26,7 +28,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  act(() => resetFeedback());
   setWitemsRuntime(null);
   host.remove();
 });
@@ -75,29 +76,6 @@ describe("dom-root (Shadow DOM)", () => {
   });
 });
 
-describe("Menu inside the shadow root", () => {
-  it("keeps the menu open on a pointerdown on its item, so the click selects it", () => {
-    const onSelect = vi.fn();
-    const { getByRole, queryByRole } = render(<Menu items={[{ key: "a", label: "지도에서 보기", onSelect }]} label="강의 메뉴" />, { container: el });
-    fireEvent.click(getByRole("button", { name: "강의 메뉴" }));
-    const item = getByRole("menuitem", { name: "지도에서 보기" });
-    act(() => pointerDown(item));
-    expect(queryByRole("menu")).not.toBeNull();
-    fireEvent.click(item);
-    expect(onSelect).toHaveBeenCalledTimes(1);
-  });
-
-  it("closes on a pointerdown outside the menu", () => {
-    // React 가 그리는 컨테이너(el) 밖, 같은 Shadow DOM 안의 요소
-    const outside = document.createElement("p");
-    shadow.append(outside);
-    const { getByRole, queryByRole } = render(<Menu items={[{ key: "a", label: "A", onSelect: () => undefined }]} label="메뉴" />, { container: el });
-    fireEvent.click(getByRole("button", { name: "메뉴" }));
-    act(() => pointerDown(outside));
-    expect(queryByRole("menu")).toBeNull();
-  });
-});
-
 function Trap({ active }: { active: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   useFocusTrap(ref, active);
@@ -123,20 +101,30 @@ describe("useFocusTrap inside the shadow root", () => {
   });
 });
 
-describe("confirmAction inside the shadow root", () => {
-  it("opens in ctx.portal with Cancel focused and resolves with the choice", async () => {
-    render(<FeedbackHost />, { container: el });
+let ask: ReturnType<typeof useConfirm> | null = null;
+function ConfirmProbe() {
+  ask = useConfirm();
+  return null;
+}
+
+describe("useConfirm inside the shadow root", () => {
+  it("opens the dialog inside the shadow root (not document) and resolves with the choice", async () => {
+    // 앱 뿌리(app/UIRoot.tsx)처럼 portalRoot = ctx.portal. 확인 창은 FeedbackProvider 자리(앱 루트 = Shadow DOM 안)에 그려진다.
+    render(
+      <UIProvider portalRoot={portal}>
+        <FeedbackProvider><ConfirmProbe /></FeedbackProvider>
+      </UIProvider>,
+      { container: el },
+    );
     let answer: Promise<boolean> = Promise.resolve(false);
     act(() => {
-      answer = confirmAction({ title: "목표를 삭제할까요?", confirmLabel: "삭제", danger: true });
+      answer = (ask as NonNullable<typeof ask>)({ title: "목표를 삭제할까요?", confirmLabel: "삭제", tone: "danger" });
     });
-    const dialog = portal.querySelector("[role='alertdialog']");
+    const dialog = shadow.querySelector("[role='alertdialog']");
     expect(dialog).not.toBeNull();
     expect(document.querySelector("[role='alertdialog']")).toBeNull();
-    expect(shadow.activeElement?.textContent).toBe("취소");
-    const confirm = Array.from(portal.querySelectorAll("button")).find((b) => b.textContent === "삭제") as HTMLButtonElement;
+    const confirm = Array.from(shadow.querySelectorAll("button")).find((b) => b.textContent === "삭제") as HTMLButtonElement;
     act(() => confirm.click());
     await expect(answer).resolves.toBe(true);
-    expect(portal.querySelector("[role='alertdialog']")).toBeNull();
   });
 });

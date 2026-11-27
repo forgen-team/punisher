@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { Input, ListRow, Menu, confirmAction, type MenuItem } from "@/src/shared/ui/kit";
+import { List, ListRow, Menu, TextField, useConfirm, type MenuItemDef } from "@forgen-team/ui";
 import { GOAL_STATUS_LABELS, useDeleteGoal, useUpdateGoal } from "@/src/entities/punisher";
 import type { Goal, GoalStatus } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
@@ -25,6 +25,7 @@ export function GoalItem({ goal, onShowPath }: GoalItemProps) {
   const [title, setTitle] = useState(goal.title);
   const update = useUpdateGoal();
   const remove = useDeleteGoal();
+  const confirm = useConfirm();
   const t = useT(messages);
 
   function saveTitle() {
@@ -37,7 +38,7 @@ export function GoalItem({ goal, onShowPath }: GoalItemProps) {
     update.mutate({ id: goal.id, input: { title: next } }, { onSuccess: () => setEditing(false) });
   }
 
-  const menuItems: MenuItem[] = [
+  const menuItems: MenuItemDef[] = [
     { key: "map", label: t.showOnMap, onSelect: () => onShowPath(goal.id) },
     { key: "rename", label: t.rename, onSelect: () => setEditing(true) },
     ...STATUSES.filter((s) => s !== goal.status).map((s) => ({
@@ -51,10 +52,9 @@ export function GoalItem({ goal, onShowPath }: GoalItemProps) {
       label: t.delete,
       danger: true,
       disabled: remove.isPending,
-      separatorBefore: true,
       // 삭제는 되돌릴 수 없어 앱 안 확인 창으로 묻는다(기본 포커스 취소).
       onSelect: () => {
-        void confirmAction({ title: t.confirmDelete(goal.title), confirmLabel: t.delete, danger: true }).then((ok) => {
+        void confirm({ title: t.confirmDelete(goal.title), confirmLabel: t.delete, tone: "danger" }).then((ok) => {
           if (ok) { remove.mutate(goal.id); }
         });
       },
@@ -65,32 +65,35 @@ export function GoalItem({ goal, onShowPath }: GoalItemProps) {
     <li className="border-b border-line last:border-b-0">
       {editing ? (
         <div className="py-2">
-          <Input
-            aria-label={t.goalName}
+          <TextField
             value={title}
-            maxLength={200}
-            autoFocus
-            onChange={(event) => setTitle(event.target.value)}
-            onBlur={saveTitle}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") { saveTitle(); }
-              if (event.key === "Escape") {
-                event.stopPropagation();
-                setTitle(goal.title);
-                setEditing(false);
-              }
+            onValueChange={({ value }) => setTitle(value)}
+            inputProps={{
+              "aria-label": t.goalName,
+              maxLength: 200,
+              autoFocus: true,
+              onBlur: saveTitle,
+              onKeyDown: (event) => {
+                if (event.key === "Enter") { saveTitle(); }
+                if (event.key === "Escape") {
+                  event.stopPropagation();
+                  setTitle(goal.title);
+                  setEditing(false);
+                }
+              },
             }}
           />
         </div>
       ) : (
-        <ListRow
-          className="border-b-0"
-          onClick={() => setOpen((v) => !v)}
-          leading={open ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
-          title={goal.title}
-          meta={t.goalMeta(GOAL_STATUS_LABELS[goal.status], goal.targetConceptIds.length)}
-          trailing={<Menu items={menuItems} label={t.goalMenu(goal.title)} />}
-        />
+        <List>
+          <ListRow
+            onClick={() => setOpen((v) => !v)}
+            leading={open ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+            title={goal.title}
+            meta={t.goalMeta(GOAL_STATUS_LABELS[goal.status], goal.targetConceptIds.length)}
+            trailing={<Menu items={menuItems} label={t.goalMenu(goal.title)} />}
+          />
+        </List>
       )}
       <InlineError error={update.error ?? remove.error} />
       {open && !editing && (

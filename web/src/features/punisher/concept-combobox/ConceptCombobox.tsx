@@ -1,7 +1,8 @@
 
 import { useId, useMemo, useState, type KeyboardEvent } from "react";
 import { X } from "lucide-react";
-import { Input, cn } from "@/src/shared/ui/kit";
+import { TextField } from "@forgen-team/ui";
+import { cn } from "@/src/shared/lib/cn";
 import { areaLabel, useConcepts } from "@/src/entities/punisher";
 import type { Concept } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
@@ -105,24 +106,26 @@ export function ConceptCombobox({ label, value, onChange, max = 10 }: ConceptCom
           ))}
         </ul>
       )}
-      <Input
-        id={inputId}
-        role="combobox"
-        aria-expanded={open && options.length > 0}
-        aria-controls={listId}
-        aria-autocomplete="list"
-        aria-activedescendant={activeId}
+      <TextField
         disabled={full}
         value={text}
         placeholder={full ? t.full : isLoading ? t.loading : t.search}
-        onChange={(event) => {
-          setText(event.target.value);
+        onValueChange={({ value: next }) => {
+          setText(next);
           setOpen(true);
           setActive(0);
         }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-        onKeyDown={onKeyDown}
+        inputProps={{
+          id: inputId,
+          role: "combobox",
+          "aria-expanded": open && options.length > 0,
+          "aria-controls": listId,
+          "aria-autocomplete": "list",
+          "aria-activedescendant": activeId,
+          onFocus: () => setOpen(true),
+          onBlur: () => setOpen(false),
+          onKeyDown,
+        }}
       />
       {open && options.length > 0 && (
         <ul

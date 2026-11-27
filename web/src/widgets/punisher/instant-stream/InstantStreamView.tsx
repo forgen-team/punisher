@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "@/src/shared/lib/router";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
-import { Button, Spinner } from "@/src/shared/ui/kit";
+import { Button, ProgressCircle } from "@forgen-team/ui";
 import { invalidateLearningState } from "@/src/entities/punisher";
 import { punisherApi } from "@/src/shared/api/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
@@ -59,7 +59,7 @@ function FailurePanel({ state, jobId }: { state: StageState; jobId: string }) {
         </ul>
       )}
       {retry.available && (
-        <Button size="sm" className="self-start" loading={retry.isPending} onClick={retry.run}>
+        <Button variant="primary" size="sm" className="self-start" loading={retry.isPending} onClick={retry.run}>
           {t.retry}
         </Button>
       )}
@@ -96,7 +96,7 @@ export function InstantStreamView({ jobId }: { jobId: string }) {
             <div className="flex min-h-touch flex-wrap items-center gap-3 border-y border-line py-2">
               {/* 단계가 바뀔 때만 읽히도록, 매초 바뀌는 경과 시간은 알림 영역 밖에 둔다. */}
               <div role="status" aria-live="polite" className="flex flex-wrap items-center gap-3">
-                {busy && <Spinner size="sm" label={null} />}
+                {busy && <ProgressCircle size="24" tone="inherit" aria-hidden />}
                 <StageSteps state={state} />
                 {stage === "published" && <span className="text-sm font-medium text-success">{stageLabel(state, locale)}</span>}
               </div>

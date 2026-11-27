@@ -1,5 +1,6 @@
 
-import { BottomSheet, cn, focusRing } from "@/src/shared/ui/kit";
+import { Sheet } from "@forgen-team/ui";
+import { cn, focusRing } from "@/src/shared/lib/cn";
 import type { LectureSection } from "@/src/shared/api/punisher";
 import { SECTION_KIND_LABELS } from "@/src/entities/punisher";
 import { scrollToAnchor } from "@/src/features/punisher/lecture-progress";
@@ -72,8 +73,8 @@ interface TocSheetProps {
 export function TocSheet({ open, onClose, sections, totalMinutes }: TocSheetProps) {
   const t = useT(messages);
   return (
-    <BottomSheet open={open} onClose={onClose} title={t.toc} description={t.totalMinutes(totalMinutes)} desktop="sheet">
+    <Sheet open={open} onOpenChange={(o) => { if (!o) { onClose(); } }} title={t.toc} description={t.totalMinutes(totalMinutes)}>
       <SectionToc sections={sections} totalMinutes={totalMinutes} onNavigate={onClose} hideHeading />
-    </BottomSheet>
+    </Sheet>
   );
 }

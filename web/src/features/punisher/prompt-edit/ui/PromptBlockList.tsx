@@ -1,6 +1,6 @@
 
 import { ChevronRight } from "lucide-react";
-import { Badge, List, ListRow } from "@/src/shared/ui/kit";
+import { Badge, List, ListRow } from "@forgen-team/ui";
 import type { PromptBlock } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
 import { STAGE_ORDER } from "./constants";
@@ -22,7 +22,7 @@ function BlockRow({ block, selected, onSelect }: { block: PromptBlock; selected:
       meta={<span className="line-clamp-2 whitespace-normal break-keep">{block.purpose}</span>}
       trailing={
         <>
-          {block.overridden && <Badge tone="accent">{t.modified}</Badge>}
+          {block.overridden && <Badge tone="brand" variant="weak">{t.modified}</Badge>}
           <ChevronRight className="size-4 text-fg-muted" aria-hidden="true" />
         </>
       }

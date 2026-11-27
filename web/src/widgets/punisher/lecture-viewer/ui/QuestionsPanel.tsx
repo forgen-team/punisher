@@ -1,7 +1,7 @@
 
 import { Link } from "@/src/shared/lib/router";
 import { useState, type FormEvent } from "react";
-import { Button, EmptyState, ErrorState, Field, FieldTextarea, ListSkeleton } from "@/src/shared/ui/kit";
+import { Button, EmptyState, ErrorState, ListSkeleton, TextField } from "@forgen-team/ui";
 import { QUESTION_STATUS_LABELS, useAskQuestion, useQuestions } from "@/src/entities/punisher";
 import { scrollToAnchor } from "@/src/features/punisher/lecture-progress";
 import { PassageThreadList, passageQuestionIds, useReadingThreads } from "@/src/features/punisher/reading-assist";
@@ -100,9 +100,14 @@ export function QuestionsPanel({ lectureId, getAnchor, onJump }: QuestionsPanelP
   return (
     <div className="flex flex-col gap-3">
       <form onSubmit={submit} className="flex flex-col gap-2">
-        <Field label={t.askLabel}>
-          <FieldTextarea value={text} maxLength={2000} rows={3} onChange={(event) => setText(event.target.value)} />
-        </Field>
+        <TextField
+          multiline
+          label={t.askLabel}
+          value={text}
+          onValueChange={({ value }) => setText(value)}
+          hideCharacterCount
+          textareaProps={{ rows: 3, maxLength: 2000 }}
+        />
         <Button type="submit" size="sm" variant="secondary" loading={ask.isPending} disabled={!text.trim()} className="self-end">
           {ask.isPending ? t.asking : t.ask}
         </Button>
@@ -114,9 +119,9 @@ export function QuestionsPanel({ lectureId, getAnchor, onJump }: QuestionsPanelP
       {list.isLoading ? (
         <ListSkeleton rows={2} />
       ) : list.error ? (
-        <ErrorState compact message={describePunisherError(list.error)} onRetry={() => list.refetch()} />
+        <ErrorState title={describePunisherError(list.error)} onRetry={() => void list.refetch()} />
       ) : items.length === 0 ? (
-        hasPassages ? null : <EmptyState compact title={t.noQuestions} />
+        hasPassages ? null : <EmptyState title={t.noQuestions} />
       ) : (
         <ul role="list">
           {[...items].reverse().map((q) => (

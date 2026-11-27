@@ -5,7 +5,8 @@ import { Search, Settings } from "lucide-react";
 import { useSearchShortcut } from "@/src/shared/lib/shortcuts";
 import { useRouter } from "@/src/shared/lib/router";
 import { Link } from "@/src/shared/lib/router";
-import { FeedbackHost, ListSkeleton, cn, focusRing } from "@/src/shared/ui/kit";
+import { ListSkeleton } from "@forgen-team/ui";
+import { cn, focusRing } from "@/src/shared/lib/cn";
 import { useScreenChrome } from "@/src/shared/lib/screen-chrome";
 import { useOnline } from "@/src/shared/lib/useOnline";
 import { LearnNav } from "@/src/widgets/punisher/nav";
@@ -89,7 +90,6 @@ export function AppShell() {
           </Suspense>
         </div>
       </main>
-      <FeedbackHost />
     </div>
   );
 }

@@ -1,8 +1,7 @@
 
-import { Link } from "@/src/shared/lib/router";
 import { useEffect, useId, useState } from "react";
 import { Check, Circle, Lock, X } from "lucide-react";
-import { BottomSheet, Button, ErrorState, IconButton, List, ListRow, ListSkeleton, Section } from "@/src/shared/ui/kit";
+import { Button, ErrorState, IconButton, List, ListRow, ListSkeleton, Section, Sheet } from "@forgen-team/ui";
 import {
   MasteryDots,
   STUDY_REQUEST_SOURCE_LABELS,
@@ -66,7 +65,6 @@ function NotesGroup({ conceptId }: { conceptId: string }) {
               <ListRow
                 key={n.id}
                 href={lectureAnchorHref(n.lectureId, n.anchor)}
-                linkAs={Link}
                 title={n.body || n.quote}
               />
             ) : (
@@ -130,7 +128,7 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
       <Button variant="secondary" disabled={learned || known.isSuccess} loading={known.isPending} onClick={() => knownChoice.ask(c.id, c.userState)}>
         {known.isSuccess ? t.knownDone : t.known}
       </Button>
-      <Button loading={isPending} onClick={() => start(c.id)}>
+      <Button variant="primary" loading={isPending} onClick={() => void start(c.id)}>
         {t.startLecture}
       </Button>
       <ConceptDismissAction conceptId={c.id} dismissed={Boolean(c.dismissed)} learned={learned} />
@@ -142,7 +140,7 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
       {detail.isLoading ? (
         <ListSkeleton rows={3} />
       ) : detail.error ? (
-        <ErrorState compact message={describePunisherError(detail.error)} onRetry={() => detail.refetch()} />
+        <ErrorState title={describePunisherError(detail.error)} onRetry={() => void detail.refetch()} />
       ) : c ? (
         <div className="flex flex-col gap-4">
           <div aria-live="polite">
@@ -216,9 +214,7 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
             <h2 id={titleId} className="break-keep text-lg font-semibold text-fg">{title}</h2>
             {description && <p className="mt-0.5 text-xs text-fg-muted">{description}</p>}
           </div>
-          <IconButton aria-label={t.closeDetail} onClick={onClose} className="-mr-2 -mt-1">
-            <X aria-hidden="true" />
-          </IconButton>
+          <IconButton aria-label={t.closeDetail} onClick={onClose} className="-mr-2 -mt-1" icon={<X aria-hidden="true" />} />
         </header>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
         {body}
@@ -227,8 +223,8 @@ export function ConceptDetailSheet({ conceptId, requests = [], onClose, onSelect
   }
 
   return (
-    <BottomSheet open={Boolean(conceptId)} onClose={onClose} title={title} description={description} desktop="side" footer={actions}>
+    <Sheet open={Boolean(conceptId)} onOpenChange={(o) => { if (!o) { onClose(); } }} title={title} description={description} desktop="side" footer={actions}>
       {body}
-    </BottomSheet>
+    </Sheet>
   );
 }

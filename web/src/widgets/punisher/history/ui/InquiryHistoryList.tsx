@@ -1,5 +1,4 @@
-import { Link } from "@/src/shared/lib/router";
-import { EmptyState, ErrorState, List, ListRow, ListSkeleton } from "@/src/shared/ui/kit";
+import { EmptyState, ErrorState, List, ListRow, ListSkeleton } from "@forgen-team/ui";
 import { INQUIRY_STATUS_LABELS_BY_LOCALE, InquiryStatusIcon, inquiryRowTitle, useInquiries } from "@/src/entities/punisher";
 import { inquiryHref } from "@/src/features/punisher/instant-start";
 import { describePunisherError, type Inquiry } from "@/src/shared/api/punisher";
@@ -22,7 +21,7 @@ export function InquiryHistoryList() {
   const items = inquiries.data ?? [];
   if (inquiries.isLoading) { return <ListSkeleton rows={5} />; }
   if (inquiries.error) {
-    return <ErrorState message={describePunisherError(inquiries.error)} onRetry={() => inquiries.refetch()} />;
+    return <ErrorState title={describePunisherError(inquiries.error)} onRetry={() => inquiries.refetch()} />;
   }
   if (items.length === 0) {
     return <EmptyState title={t.noInquiries} description={t.noInquiriesDescription} />;
@@ -34,7 +33,6 @@ export function InquiryHistoryList() {
         <ListRow
           key={q.id}
           href={inquiryHref(q.id)}
-          linkAs={Link}
           leading={<InquiryStatusIcon status={q.status} />}
           title={inquiryRowTitle(q)}
           meta={metaOf(q, locale)}

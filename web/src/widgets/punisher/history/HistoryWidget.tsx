@@ -1,6 +1,6 @@
 
-import { Link, usePathname, useSearchParams } from "@/src/shared/lib/router";
-import { ChipLink, ScrollRow } from "@/src/shared/ui/kit";
+import { usePathname, useSearchParams } from "@/src/shared/lib/router";
+import { LinkTabs } from "@forgen-team/ui";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 import { CheckHistoryList } from "./ui/CheckHistoryList";
@@ -46,15 +46,11 @@ export function HistoryWidget() {
 
   return (
     <div className="flex w-full flex-col gap-3">
-      <nav aria-label={t.tabsLabel}>
-        <ScrollRow className="-mx-4 fold:mx-0" innerClassName="px-4 py-1.5 fold:px-0">
-          {TABS.map((item) => (
-            <ChipLink key={item.id} href={`${pathname}?tab=${item.id}`} linkAs={Link} selected={tab === item.id}>
-              {t[item.label]}
-            </ChipLink>
-          ))}
-        </ScrollRow>
-      </nav>
+      <LinkTabs
+        label={t.tabsLabel}
+        value={tab}
+        items={TABS.map((item) => ({ value: item.id, label: t[item.label], href: `${pathname}?tab=${item.id}` }))}
+      />
       <div aria-live="polite" className="sr-only">
         {t.showing(t[TABS.find((item) => item.id === tab)?.label ?? "tabLectures"])}
       </div>

@@ -1,7 +1,7 @@
 import { ChevronLeft } from "lucide-react";
 import { Link, useRouter } from "@/src/shared/lib/router";
 import { canGoBack } from "@/src/shared/lib/in-app-history";
-import { cn, focusRing } from "@/src/shared/ui/kit";
+import { cn, focusRing } from "@/src/shared/lib/cn";
 import { isWitems } from "@/src/shared/config/runtime";
 
 /**

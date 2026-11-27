@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ErrorState, Field, ListSkeleton, Select, Spinner, Switch } from "@/src/shared/ui/kit";
+import { ErrorState, ListSkeleton, ProgressCircle, Select, Switch } from "@forgen-team/ui";
 import { READER_LEVEL_LABELS_BY_LOCALE, describeSettingsError, useLearningSettings, useSaveLearningSettings } from "@/src/entities/punisher";
 import {
   READER_LEVELS,
@@ -40,10 +40,8 @@ export function LearningSettingsForm() {
   if (settings.error || !settings.data) {
     return (
       <ErrorState
-        compact
-        message={describePunisherError(settings.error)}
-        onRetry={() => settings.refetch()}
-        retrying={settings.isRefetching}
+        title={describePunisherError(settings.error)}
+        onRetry={() => { void settings.refetch(); }}
       />
     );
   }
@@ -75,80 +73,64 @@ export function LearningSettingsForm() {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-4">
-        <Field label={LANGUAGE_LABEL} error={fieldError("locale")}>
-          <Select
-            value={shown.locale ?? DEFAULT_LOCALE}
-            onChange={(event) => { if (isLocale(event.target.value)) { saveField({ locale: event.target.value }); } }}
-          >
-            {LOCALES.map((l) => (
-              <option key={l} value={l}>
-                {LOCALE_NAMES[l]}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label={t.readerLevel} hint={t.readerLevelHint} error={fieldError("readerLevel")}>
-          <Select
-            value={shown.readerLevel ?? ""}
-            onChange={(event) => { if (isReaderLevel(event.target.value)) { saveField({ readerLevel: event.target.value }); } }}
-          >
-            {!shown.readerLevel && (
-              <option value="" disabled>
-                {t.readerLevelUnset}
-              </option>
-            )}
-            {READER_LEVELS.map((level) => (
-              <option key={level} value={level}>
-                {readerLevelLabels[level]}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field
+        <Select
+          label={LANGUAGE_LABEL}
+          errorMessage={fieldError("locale")}
+          invalid={Boolean(fieldError("locale"))}
+          value={shown.locale ?? DEFAULT_LOCALE}
+          onValueChange={(v) => { if (isLocale(v)) { saveField({ locale: v }); } }}
+          options={LOCALES.map((l) => ({ value: l, label: LOCALE_NAMES[l] }))}
+        />
+        <Select
+          label={t.readerLevel}
+          description={t.readerLevelHint}
+          errorMessage={fieldError("readerLevel")}
+          invalid={Boolean(fieldError("readerLevel"))}
+          value={shown.readerLevel ?? ""}
+          placeholder={t.readerLevelUnset}
+          onValueChange={(v) => { if (isReaderLevel(v)) { saveField({ readerLevel: v }); } }}
+          options={READER_LEVELS.map((level) => ({ value: level, label: readerLevelLabels[level] }))}
+        />
+        <Select
           label={t.exampleLanguage}
-          hint={t.exampleLanguageHint}
-          error={fieldError("exampleLanguage")}
-        >
-          <Select value={current} onChange={(event) => saveField({ exampleLanguage: event.target.value as ExampleLanguage })}>
-            {settings.data.exampleLanguages.map((lang) => (
-              <option key={lang.id} value={lang.id}>
-                {lang.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field
+          description={t.exampleLanguageHint}
+          errorMessage={fieldError("exampleLanguage")}
+          invalid={Boolean(fieldError("exampleLanguage"))}
+          value={current}
+          onValueChange={(v) => saveField({ exampleLanguage: v as ExampleLanguage })}
+          options={settings.data.exampleLanguages.map((lang) => ({ value: lang.id, label: lang.label }))}
+        />
+        <Select
           label={t.dailyMinutes}
-          hint={t.dailyMinutesHint}
-          error={fieldError("dailyMinutes")}
-        >
-          <Select value={String(daily)} onChange={(event) => saveField({ dailyMinutes: Number(event.target.value) })}>
-            {DAILY_MINUTE_OPTIONS.map((m) => (
-              <option key={m} value={m}>
-                {t.dailyOption(m)}
-              </option>
-            ))}
-          </Select>
-        </Field>
+          description={t.dailyMinutesHint}
+          errorMessage={fieldError("dailyMinutes")}
+          invalid={Boolean(fieldError("dailyMinutes"))}
+          value={String(daily)}
+          onValueChange={(v) => saveField({ dailyMinutes: Number(v) })}
+          options={DAILY_MINUTE_OPTIONS.map((m) => ({ value: String(m), label: t.dailyOption(m) }))}
+        />
         <ReviewSettingsFields settings={shown} onSave={saveField} fieldError={fieldError} />
-        <Field label={t.labOs} error={fieldError("labOs")}>
-          <Select value={shown.labOs ?? "macos"} onChange={(event) => saveField({ labOs: event.target.value as LabOS })}>
-            {LAB_OS_OPTIONS.map((os) => (
-              <option key={os} value={os}>
-                {labOsLabels[os]}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label={t.pretest} error={fieldError("pretestEnabled")}>
+        <Select
+          label={t.labOs}
+          errorMessage={fieldError("labOs")}
+          invalid={Boolean(fieldError("labOs"))}
+          value={shown.labOs ?? "macos"}
+          onValueChange={(v) => saveField({ labOs: v as LabOS })}
+          options={LAB_OS_OPTIONS.map((os) => ({ value: os, label: labOsLabels[os] }))}
+        />
+        <div>
           <Switch
+            label={t.pretest}
             checked={shown.pretestEnabled ?? true}
             onCheckedChange={(checked) => saveField({ pretestEnabled: checked })}
           />
-        </Field>
+          {fieldError("pretestEnabled") && (
+            <p role="alert" className="text-xs text-danger">{fieldError("pretestEnabled")}</p>
+          )}
+        </div>
       </div>
       <p aria-live="polite" className="flex min-h-5 items-center gap-1.5 text-xs text-fg-muted">
-        {save.isPending && <Spinner size="sm" label={null} />}
+        {save.isPending && <ProgressCircle size="24" tone="inherit" aria-hidden />}
         {save.isPending && t.saving}
         {!save.isPending && save.isSuccess && t.saved}
       </p>

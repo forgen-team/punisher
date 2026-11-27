@@ -1,7 +1,6 @@
 
-import { Link } from "@/src/shared/lib/router";
 import { ListChecks } from "lucide-react";
-import { ListRow } from "@/src/shared/ui/kit";
+import { ListRow } from "@forgen-team/ui";
 import { areaLabel, describeCheckError } from "@/src/entities/punisher";
 import { useLaunchCheck, useLaunchReview } from "@/src/features/punisher/check-start";
 import type { RecheckCard } from "@/src/shared/api/punisher";
@@ -25,15 +24,18 @@ export function RecheckRow({ card }: { card: RecheckCard }) {
     </>
   );
   if (action === "map") {
-    return <ListRow leading={<ListChecks aria-hidden />} href={mapHref(card.conceptId)} linkAs={Link} title={title} meta={meta} />;
+    return <ListRow leading={<ListChecks aria-hidden />} href={mapHref(card.conceptId)} title={title} meta={meta} />;
   }
   return (
     <ListRow
       leading={<ListChecks aria-hidden />}
       title={title}
       meta={meta}
-      disabled={review.isPending || check.isPending}
-      onClick={action === "review" ? review.launch : check.launch}
+      onClick={() => {
+        // ui ListRow 는 disabled 가 없다 — 시작 중에는 다시 눌러도 무시한다.
+        if (review.isPending || check.isPending) { return; }
+        (action === "review" ? review.launch : check.launch)();
+      }}
     />
   );
 }

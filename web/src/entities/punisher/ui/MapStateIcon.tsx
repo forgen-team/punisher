@@ -1,5 +1,5 @@
 import { Check, CheckCheck, Circle, CircleDashed, Lock, Star, type LucideIcon } from "lucide-react";
-import { cn } from "@/src/shared/ui/kit";
+import { cn } from "@/src/shared/lib/cn";
 import type { MapNodeState } from "./constants";
 
 const ICONS: Record<MapNodeState, LucideIcon> = {
