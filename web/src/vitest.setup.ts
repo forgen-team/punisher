@@ -16,7 +16,7 @@ vi.mock("@testing-library/react", async (importOriginal) => {
     };
   return {
     ...actual,
-    render: ((ui, options) => actual.render(ui, { ...options, wrapper: withUI(options?.wrapper as ComponentType<{ children: ReactNode }> | undefined) })) as typeof actual.render,
+    render: ((ui: Parameters<typeof actual.render>[0], options?: Parameters<typeof actual.render>[1]) => actual.render(ui, { ...options, wrapper: withUI(options?.wrapper as ComponentType<{ children: ReactNode }> | undefined) })) as typeof actual.render,
     renderHook: ((hook, options) => actual.renderHook(hook, { ...options, wrapper: withUI(options?.wrapper as ComponentType<{ children: ReactNode }> | undefined) })) as typeof actual.renderHook,
   };
 });
@@ -25,3 +25,12 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
+
+// @forgen-team/ui(SEED) 가 쓰는데 jsdom 에 없는 것들 — 디자인 패키지 test/setup.ts 와 같다
+class ResizeObserverStub { observe() {} unobserve() {} disconnect() {} }
+(globalThis as unknown as { ResizeObserver: typeof ResizeObserverStub }).ResizeObserver ??= ResizeObserverStub;
+(Element.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView ??= () => {};
+(HTMLElement.prototype as unknown as { hasPointerCapture: () => boolean }).hasPointerCapture ??= () => false;
+const cssGlobal = globalThis as unknown as { CSS?: { supports?: (...a: string[]) => boolean } };
+cssGlobal.CSS ??= {};
+cssGlobal.CSS.supports ??= () => false;
