@@ -4,4 +4,4 @@ export { LectureViewer } from "./lecture-viewer";
 export { InstantStreamView } from "./instant-stream";
 export { KnowledgeMapWidget } from "./knowledge-map";
 export { HistoryWidget } from "./history";
-export { LearnNav } from "./nav";
+export { useSectionTabs } from "./nav";

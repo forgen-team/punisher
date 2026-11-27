@@ -3,7 +3,6 @@ import { defineMessages } from "@/src/shared/i18n";
 /** 앱 틀(상단 바·화면 제목·문서 제목·페이지 동작·⌘K 명령) 문구 — 두 셸이 같이 쓴다 */
 export const messages = defineMessages({
   ko: {
-    home: "punisher 처음으로",
     appName: "punisher",
     appSettings: "punisher 설정",
     titleToday: "오늘",
@@ -31,12 +30,10 @@ export const messages = defineMessages({
     cmdPrompts: "강의 프롬프트",
     cmdGroupReview: "복습",
     moreActions: "동작 더 보기",
-    settingsShort: "설정",
     noReviews: "지금 볼 복습은 없어요",
     offline: "오프라인이에요. 한 번 연 강의·오늘 카드는 읽을 수 있고, 채점·저장은 연결된 뒤에 돼요.",
   },
   en: {
-    home: "punisher home",
     appName: "punisher",
     appSettings: "punisher settings",
     titleToday: "Today",
@@ -64,7 +61,6 @@ export const messages = defineMessages({
     cmdPrompts: "Lecture prompts",
     cmdGroupReview: "Review",
     moreActions: "More actions",
-    settingsShort: "Settings",
     noReviews: "Nothing to review right now",
     offline: "You're offline. Lectures you've opened and today's cards stay readable; grading and saving wait for the connection.",
   },

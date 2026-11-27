@@ -219,7 +219,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
           )}
 
           {hasContent && q?.concepts && q.concepts.length > 0 && (
-            <div className="mt-10 xl:hidden">
+            <div className="mt-10 lg:hidden">
               <InquiryConcepts concepts={q.concepts} />
             </div>
           )}

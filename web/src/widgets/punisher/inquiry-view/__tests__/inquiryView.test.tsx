@@ -29,7 +29,7 @@ vi.mock("@/src/shared/lib/router", async (importOriginal) => ({
 }));
 vi.mock("@forgen-team/ui", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@forgen-team/ui")>()),
-  useMediaQuery: (query: string) => (query === "(min-width: 1280px)" ? wide : false),
+  useMediaQuery: (query: string) => (query === "(min-width: 1024px)" ? wide : false),
 }));
 vi.mock("@/src/shared/lib/screen-chrome", () => ({
   usePageActions: (actions: PageAction[] | null) => { pageActions = actions; },

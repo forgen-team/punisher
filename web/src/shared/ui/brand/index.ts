@@ -1,1 +1,1 @@
-export { BRAND_LINE, BrandMark, PunisherLogo } from "./BrandMark";
+export { BRAND_LINE, PunisherLogo } from "./BrandMark";
