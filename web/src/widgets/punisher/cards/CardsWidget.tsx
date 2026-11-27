@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useRouter, useSearchParams } from "@/src/shared/lib/router";
-import { Badge, Button, ChipLink, EmptyState, ErrorState, List, ListRow, ListSkeleton, Menu, buttonVariants, confirmAction, type MenuItem } from "@/src/shared/ui/kit";
+import { Badge, Button, ChipLink, EmptyState, ErrorState, List, ListRow, ListSkeleton, Menu, buttonVariants, cn, confirmAction, type MenuItem } from "@/src/shared/ui/kit";
+import { standaloneColumnClass } from "@/src/shared/config/runtime";
 import { lectureAnchorHref, useCards, useDeleteCard, useGradeCard } from "@/src/entities/punisher";
 import { describePunisherError, type CardRating, type ReviewCard } from "@/src/shared/api/punisher";
 import { useStudyShortcuts } from "@/src/shared/lib/shortcuts";
@@ -21,7 +22,7 @@ export function CardsWidget() {
   const params = useSearchParams();
   const tab: CardsTab = params.get("tab") === "all" ? "all" : "review";
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+    <div className={cn("flex w-full flex-col gap-4", standaloneColumnClass())}>
       <nav aria-label={t.tabsLabel} className="flex gap-2">
         <ChipLink href="/cards" linkAs={Link} selected={tab === "review"}>{t.tabReview}</ChipLink>
         <ChipLink href="/cards?tab=all" linkAs={Link} selected={tab === "all"}>{t.tabAll}</ChipLink>

@@ -1,7 +1,7 @@
 import * as React from "react";
-import { cn } from "../lib/utils";
 import { useT } from "@/src/shared/i18n";
 import { kitMessages } from "../lib/messages";
+import { cn } from "../lib/utils";
 import { Button } from "./button";
 
 export interface EmptyStateProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
@@ -29,8 +29,8 @@ export function EmptyState({ icon, title, description, action, compact = false, 
           {icon}
         </div>
       ) : null}
-      <p className="text-sm font-semibold tracking-tight text-fg">{title}</p>
-      {description ? <p className="mt-1 max-w-sm text-sm text-fg-muted">{description}</p> : null}
+      <p className="break-keep text-sm font-semibold tracking-tight text-fg">{title}</p>
+      {description ? <p className="mt-1 max-w-sm break-keep text-sm text-fg-muted">{description}</p> : null}
       {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );
@@ -55,7 +55,7 @@ export function ErrorState({
       className={cn("flex flex-col items-center px-4 text-center", compact ? "py-8" : "py-16", className)}
       {...props}
     >
-      <p className="text-sm font-medium text-fg">{message ?? t.loadFailed}</p>
+      <p className="break-keep text-sm font-medium text-fg">{message ?? t.loadFailed}</p>
       {onRetry ? (
         <Button variant="secondary" size="sm" className="mt-3" onClick={onRetry} loading={retrying}>
           {t.retry}
@@ -92,9 +92,14 @@ export function ListSkeleton({ rows = 5, className }: { rows?: number; className
   return (
     <div aria-hidden="true" className={className}>
       {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="space-y-2 border-b border-line py-3 last:border-b-0">
-          <Skeleton className="w-4/5" />
-          <Skeleton className="w-2/5 [&>div]:h-3" />
+        // 줄 상자 높이를 ListRow(제목 20px + 메타 16px)와 맞춰 데이터가 와도 행 높이가 그대로다.
+        <div key={i} className="border-b border-line py-3 last:border-b-0">
+          <div className="flex h-5 items-center">
+            <Skeleton className="w-4/5" />
+          </div>
+          <div className="mt-0.5 flex h-4 items-center">
+            <Skeleton className="w-2/5 [&>div]:h-3" />
+          </div>
         </div>
       ))}
     </div>

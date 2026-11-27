@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { Link, useRouter, useSearchParams } from "@/src/shared/lib/router";
-import { EmptyState, ErrorState, Input, List, ListRow, ListSkeleton } from "@/src/shared/ui/kit";
+import { EmptyState, ErrorState, Input, List, ListRow, ListSkeleton, cn } from "@/src/shared/ui/kit";
+import { standaloneColumnClass } from "@/src/shared/config/runtime";
 import { useSearch } from "@/src/entities/punisher";
 import { describePunisherError } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
@@ -102,7 +103,7 @@ export function SearchWidget() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
+    <div className={cn("flex w-full flex-col gap-3", standaloneColumnClass())}>
       <div role="search" className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden="true" />
         <Input ref={inputRef} type="search" aria-label={t.label} placeholder={t.placeholder} value={text} maxLength={100}

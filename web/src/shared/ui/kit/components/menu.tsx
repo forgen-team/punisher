@@ -59,6 +59,7 @@ function ChevronDownIcon() {
 /**
  * Menu — 오버플로("⋯") 메뉴. role=menu/menuitem, ↑↓/Home/End, Esc 닫기 후 트리거로 포커스 복귀.
  * 행 안의 보조 동작은 여기에 모은다(행당 노출 버튼 최소화).
+ * 위험 항목(danger)은 맨 아래에 두면 앞에 구분선이 자동으로 붙는다(Witems docs/UI-PAGE-LAYOUT.md 5절).
  */
 export function Menu({ items, label, align = "end", icon, className, linkAs, triggerText }: MenuProps) {
   const t = useT(kitMessages);
@@ -146,6 +147,7 @@ export function Menu({ items, label, align = "end", icon, className, linkAs, tri
         <IconButton
           ref={triggerRef}
           aria-label={triggerLabel}
+          title={triggerLabel}
           aria-haspopup="menu"
           aria-expanded={open}
           aria-controls={open ? menuId : undefined}
@@ -167,10 +169,12 @@ export function Menu({ items, label, align = "end", icon, className, linkAs, tri
           )}
         >
           {items.map((item, index) => {
+            const separated = index > 0 && (item.separatorBefore || (item.danger && !items[index - 1]?.danger));
             const itemClass = cn(
               "flex min-h-touch w-full items-center gap-2 rounded-md px-2.5 text-left text-sm outline-none md:min-h-8",
-              "hover:bg-canvas-hover focus-visible:bg-canvas-hover disabled:opacity-50 aria-disabled:opacity-50",
-              "[&_svg]:h-4 [&_svg]:w-4",
+              // 포커스는 배경색만으로는 대비가 모자라 안쪽 링을 함께 그린다.
+              "hover:bg-canvas-hover focus-visible:bg-canvas-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
+              "disabled:opacity-50 aria-disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4",
               item.danger ? "text-danger" : "text-fg"
             );
             const body = (
@@ -185,7 +189,7 @@ export function Menu({ items, label, align = "end", icon, className, linkAs, tri
             const LinkTag: React.ElementType = linkAs ?? "a";
             return (
               <React.Fragment key={item.key}>
-                {item.separatorBefore && index > 0 ? <div role="separator" className="my-1 h-px bg-line" /> : null}
+                {separated ? <div role="separator" className="my-1 h-px bg-line" /> : null}
                 {item.href && !item.disabled ? (
                   <LinkTag
                     ref={setRef}

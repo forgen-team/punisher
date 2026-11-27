@@ -25,6 +25,8 @@ type PressableProps =
 export type ListRowProps = Omit<React.HTMLAttributes<HTMLElement>, "title" | "onClick"> &
   PressableProps & {
     title: React.ReactNode;
+    /** 제목 위 작은 머리표(예: "보안 권고 — 프론트엔드"). 같은 머리표가 여러 행에 반복돼도 제목으로 구분되게 할 때 */
+    eyebrow?: React.ReactNode;
     /** 둘째 줄: 출처·시간 등 한 줄 메타. 배지 대신 여기에 */
     meta?: React.ReactNode;
     leading?: React.ReactNode;
@@ -47,7 +49,7 @@ export type ListRowProps = Omit<React.HTMLAttributes<HTMLElement>, "title" | "on
  */
 export function ListRow(props: ListRowProps) {
   const {
-    title, meta, leading, trailing, selected = false, emphasized = false, titleLines = 2, metaLines = 1,
+    title, eyebrow, meta, leading, trailing, selected = false, emphasized = false, titleLines = 2, metaLines = 1,
     href, linkAs, onClick, disabled, className, ...rest
   } = props;
   const inList = React.useContext(ListContext);
@@ -57,6 +59,7 @@ export function ListRow(props: ListRowProps) {
     <>
       {leading ? <span className="flex shrink-0 items-center text-fg-muted [&_svg]:h-5 [&_svg]:w-5">{leading}</span> : null}
       <span className="min-w-0 flex-1">
+        {eyebrow ? <span className="mb-0.5 block truncate text-xs font-medium text-fg-secondary">{eyebrow}</span> : null}
         <span
           className={cn(
             "block text-sm text-fg",
@@ -70,7 +73,7 @@ export function ListRow(props: ListRowProps) {
           <span
             className={cn(
               "mt-0.5 block text-xs text-fg-muted",
-              metaLines === 1 ? "truncate" : metaLines === 2 ? "line-clamp-2 whitespace-pre-line break-keep" : "whitespace-pre-line break-keep",
+              metaLines === 1 ? "truncate" : metaLines === 2 ? "line-clamp-2 whitespace-pre-line break-keep" : "whitespace-pre-line break-keep"
             )}
           >
             {meta}

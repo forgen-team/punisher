@@ -1,7 +1,7 @@
 import { useState, type MouseEvent } from "react";
 import { Download, ScrollText } from "lucide-react";
-import { List, ListRow, PageHeader, Section, ThemeSelect, notify } from "@/src/shared/ui/kit";
-import { isWitems } from "@/src/shared/config/runtime";
+import { List, ListRow, PageHeader, Section, ThemeSelect, cn, notify } from "@/src/shared/ui/kit";
+import { isWitems, standaloneColumnClass } from "@/src/shared/config/runtime";
 import { Link } from "@/src/shared/lib/router";
 import { LearningSettingsForm, ReadingSettingsFields, StudySettingsFields } from "@/src/features/punisher/learning-settings";
 import { punisherApiBase } from "@/src/shared/api/punisher";
@@ -56,7 +56,7 @@ export function SettingsPage() {
   const t = useT(messages);
   const inWitems = isWitems();
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+    <div className={cn("flex w-full flex-col gap-6", standaloneColumnClass())}>
       {inWitems ? null : <PageHeader title={t.settings} />}
       <Section title={t.sectionLearning}>
         <LearningSettingsForm />

@@ -1,9 +1,9 @@
 
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "../lib/utils";
 import { useT } from "@/src/shared/i18n";
 import { kitMessages } from "../lib/messages";
+import { cn } from "../lib/utils";
 
 const toastVariants = cva(
   // D1: 토큰만 사용. 상태색은 아이콘에만, 상자는 중립(elevated + hairline + overlay 그림자)
@@ -39,44 +39,73 @@ interface ToastProps extends VariantProps<typeof toastVariants> {
   message: string;
   onDismiss: (id: string) => void;
   duration?: number;
+  /** 알림 안의 동작 버튼(예: 되돌리기). 누르면 실행 후 알림을 닫는다. */
+  action?: ToastAction;
+}
+
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
 }
 
 export const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
-  ({ id, message, variant = "info", onDismiss, duration = 5000 }, ref) => {
+  ({ id, message, variant = "info", onDismiss, duration = 5000, action }, ref) => {
     const t = useT(kitMessages);
     const [isExiting, setIsExiting] = React.useState(false);
+    // 마우스를 올리거나 안쪽에 포커스가 있으면 자동 닫힘을 멈춘다(남은 시간은 이어서 센다).
+    const [hovered, setHovered] = React.useState(false);
+    const [focused, setFocused] = React.useState(false);
+    const paused = hovered || focused;
+    const remainingRef = React.useRef(duration);
 
-    React.useEffect(() => {
-      if (duration <= 0) return;
-
-      const timer = setTimeout(() => {
-        setIsExiting(true);
-        setTimeout(() => onDismiss(id), 300);
-      }, duration);
-
-      return () => clearTimeout(timer);
-    }, [id, duration, onDismiss]);
-
-    function handleDismiss() {
+    const dismiss = React.useCallback(() => {
       setIsExiting(true);
       setTimeout(() => onDismiss(id), 300);
-    }
+    }, [id, onDismiss]);
+
+    React.useEffect(() => {
+      if (duration <= 0 || paused) return;
+      const startedAt = Date.now();
+      const timer = setTimeout(dismiss, Math.max(0, remainingRef.current));
+      return () => {
+        clearTimeout(timer);
+        remainingRef.current -= Date.now() - startedAt;
+      };
+    }, [duration, paused, dismiss]);
 
     const IconComponent = getIconForVariant(variant ?? "info");
 
     return (
       <div
         ref={ref}
-        role={variant === "error" ? "alert" : "status"}
-        aria-live={variant === "error" ? "assertive" : "polite"}
+        // 낭독은 항상 있는 ToastContainer 의 live 영역이 맡는다(조건부로 생기는 live 영역은 놓칠 수 있다). 오류만 즉시 알림(alert).
+        role={variant === "error" ? "alert" : undefined}
         aria-atomic="true"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onFocus={() => setFocused(true)}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
+        }}
         className={cn(toastVariants({ variant }), isExiting && "opacity-0")}
       >
         <IconComponent className={cn(toastIconVariants({ variant }))} />
         <div className="flex-1 py-0.5 text-sm font-medium">{message}</div>
+        {action ? (
+          <button
+            type="button"
+            onClick={() => {
+              action.onClick();
+              dismiss();
+            }}
+            className="shrink-0 rounded-sm px-1.5 py-0.5 text-sm font-semibold text-accent-text transition-colors hover:bg-canvas-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            {action.label}
+          </button>
+        ) : null}
         <button
           type="button"
-          onClick={handleDismiss}
+          onClick={dismiss}
           className="relative -m-1 shrink-0 rounded-sm p-1 text-fg-muted transition-colors before:absolute before:-inset-2.5 before:content-[''] hover:bg-canvas-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           aria-label={t.closeToast}
         >
@@ -107,14 +136,20 @@ interface ToastContainerProps {
     message: string;
     variant: ToastVariant;
     duration?: number;
+    action?: ToastAction;
   }>;
   onDismiss: (id: string) => void;
 }
 
+/**
+ * 알림 자리 — 화면 아래(넓은 화면 오른쪽 위) 한 곳. 알림이 없어도 live 영역은 늘 DOM 에 있어 새 알림이 낭독된다.
+ * 자동으로 닫히는 알림도 마우스를 올리거나 포커스가 있으면 멈춘다(2.2.1). 동작(되돌리기 등) 알림은 10초 권장(RSS notify 기본).
+ */
 export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
+  const t = useT(kitMessages);
   return (
     <div className="pointer-events-none fixed inset-x-3 bottom-[calc(var(--safe-bottom)+16px)] z-toast flex justify-center md:inset-x-auto md:bottom-auto md:right-4 md:top-4 md:block">
-      <div className="pointer-events-auto flex flex-col gap-2">
+      <div role="status" aria-live="polite" aria-relevant="additions text" aria-label={t.notifications} className="pointer-events-auto flex flex-col gap-2">
         {toasts.map((toast) => (
           <Toast
             key={toast.id}
@@ -122,6 +157,7 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
             message={toast.message}
             variant={toast.variant}
             duration={toast.duration}
+            action={toast.action}
             onDismiss={onDismiss}
           />
         ))}
@@ -155,6 +191,7 @@ function getIconForVariant(variant: ToastVariant) {
 function SuccessIcon({ className }: { className?: string }) {
   return (
     <svg
+      aria-hidden="true"
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"
@@ -173,6 +210,7 @@ function SuccessIcon({ className }: { className?: string }) {
 function ErrorIcon({ className }: { className?: string }) {
   return (
     <svg
+      aria-hidden="true"
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"
@@ -192,6 +230,7 @@ function ErrorIcon({ className }: { className?: string }) {
 function WarningIcon({ className }: { className?: string }) {
   return (
     <svg
+      aria-hidden="true"
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"
@@ -211,6 +250,7 @@ function WarningIcon({ className }: { className?: string }) {
 function InfoIcon({ className }: { className?: string }) {
   return (
     <svg
+      aria-hidden="true"
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"

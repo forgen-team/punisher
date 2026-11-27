@@ -59,6 +59,11 @@ manifest 는 `ai.claude.purpose`("강의·문제 생성과 다음 챕터 제안"
   선택 글자는 `selectionRangeIn` 을 쓴다(`shared/lib/__tests__/shadowDom.test.tsx`).
 - `window.location`(hash 포함)은 셸 주소다 — 앱 주소는 라우터(`useLocation`)로 읽고, 강의 안 자리는 `?at=<앵커>`(`lectureAnchorHref`).
 - 셸 레이아웃 변수(`--app-header-offset`·`--app-bottom-offset`·`--app-topbar-h`)는 셸 것을 쓴다 — Witems 빌드가 앱 CSS 의 정의를 뺀다(`witems/scope.ts`).
+- 디자인 토큰(`--color-*`·`--radius-*`·`--shadow-*`·`--font-*` …)과 강조색도 셸 것이다 — Witems 빌드는 `design-tokens.css`·`brand.css` 가 선언하는
+  변수를 모두 지워(`witems/cssScope.ts`) Witems 인디고 강조색·셸 라이트/다크 값이 보인다. 단독판은 자기 토큰과 forgen 주황을 그대로 쓴다.
+  `make witems-web` 은 산출물에 토큰 선언이나 주황 CSS 값(`#f97316` 계열, Tailwind `rgb(…)` 포함)이 있으면 실패한다.
+  강조색은 선택·상태·진행 표시에만 쓰고 주 버튼은 무채색(`Button` primary = `bg-inverse`)이라 인디고로 바뀌어도 CTA 위계가 그대로다.
+- 본문 폭: 셸은 본문 자리 폭을 제한하지 않는다. 단독판의 가운데 좁은 칸은 `standaloneColumnClass()` 로만 쓴다(Witems 에서 빈 값).
 - 화면 제목은 `useScreenTitle`, 페이지 동작(이동·설정)은 `usePageActions`(`shared/lib/screen-chrome`). WitemsShell 이 `ctx.setTitle`·`ctx.setActions` 로
   보낸다(동작 끝에 '학습 설정', kind `settings`). `ctx.setActions` 가 없는 구버전 셸이면 보내지 않고 탭 옆 설정 링크·강의 ⋯ 메뉴의 이동 항목으로 폴백한다.
 - 화면 제목·← 는 셸이 그린다: Witems 모드에서 앱은 본문 h1(강의·해설 제목, 설정 제목)과 자기 ←(`BackLink`, 강의 상단 바 ←·제목)를 그리지 않는다.

@@ -34,22 +34,35 @@ const buttonVariants = cva(
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
-  /** true면 Spinner 표시 + 비활성 + aria-busy */
+  /**
+   * true면 Spinner 표시 + aria-busy + aria-disabled. disabled 속성은 쓰지 않아 누른 버튼에 포커스가 남는다(키보드 위치 유지).
+   * 진행 중에는 클릭·제출을 막는다.
+   */
   loading?: boolean;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { className, variant, size, block, loading = false, disabled, type = "button", children, ...props },
+  { className, variant, size, block, loading = false, disabled, type = "button", children, onClick, "aria-disabled": ariaDisabled, ...props },
   ref
 ) {
+  function handleClick(event: React.MouseEvent<HTMLButtonElement>) {
+    if (loading) {
+      // aria-disabled 는 동작을 막지 않으므로 직접 막는다(type=submit 의 폼 제출 포함).
+      event.preventDefault();
+      return;
+    }
+    onClick?.(event);
+  }
   return (
     <button
       ref={ref}
       type={type}
-      disabled={disabled || loading}
+      disabled={disabled}
       aria-busy={loading || undefined}
-      className={cn(buttonVariants({ variant, size, block }), className)}
+      aria-disabled={loading || ariaDisabled || undefined}
+      className={cn(buttonVariants({ variant, size, block }), loading && "cursor-progress opacity-70", className)}
       {...props}
+      onClick={handleClick}
     >
       {loading ? <Spinner size="sm" label={null} /> : null}
       {children}
