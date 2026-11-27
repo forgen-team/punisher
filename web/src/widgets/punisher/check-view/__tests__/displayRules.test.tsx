@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { CheckTurn, Prediction } from "@/src/shared/api/punisher";
-import { isRevealNotice, showPrediction, topBarTitle } from "../lib/checkView";
+import { isRevealNotice, showPrediction } from "../lib/checkView";
 import { CheckTurnItem } from "../ui/CheckTurnItem";
 import { messages } from "../i18n";
 
@@ -10,15 +10,6 @@ function turn(patch: Partial<CheckTurn>): CheckTurn {
 }
 
 const prediction: Prediction = { objectiveId: "c#1", prompt: "어디서 읽을까요?", answer: "디스크", dontKnow: false, at: "" };
-
-describe("상단 바 제목", () => {
-  it("확인·복습·진단 모두 '제목 · 문항 n/N' 한 형식", () => {
-    expect(topBarTitle("페이지 캐시", "문항 4/4")).toBe("페이지 캐시 · 문항 4/4");
-    expect(topBarTitle("복습", "문항 3/3")).toBe("복습 · 문항 3/3");
-    expect(topBarTitle("이미 앎 확인", "문항 3/3")).toBe("이미 앎 확인 · 문항 3/3");
-    expect(topBarTitle("확인하기", "")).toBe("확인하기");
-  });
-});
 
 describe("처음 예측 → 지금 답 줄", () => {
   it("예측과 지금 답이 모두 있을 때만 보인다", () => {

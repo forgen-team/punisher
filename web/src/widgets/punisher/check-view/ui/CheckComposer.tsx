@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Button, TextField } from "@forgen-team/ui";
 import {
   SELF_VERDICT_LABELS_BY_LOCALE,
@@ -12,14 +12,28 @@ import { CHECK_MAX_ANSWER_CHARS, type CheckDetail, type Confidence } from "@/src
 import { useLocale, useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
 import { ConfidencePicker } from "./ConfidencePicker";
-import { asksConfidence, canSend, selfGradeStep, showReveal } from "../lib/checkView";
+import { asksConfidence, canSend, showReveal } from "../lib/checkView";
 import { useStudyShortcuts } from "@/src/shared/lib/shortcuts";
 
-const COMPOSER_CLASS =
+const FOOTER_CLASS =
   "sticky bottom-[var(--app-bottom-offset)] z-nav -mx-4 mt-6 flex flex-col gap-2 border-t border-line bg-canvas px-4 py-3 fold:-mx-6 fold:px-6 lg:mx-0 lg:px-0";
 
-/** 자기 채점 — 모범답·기준을 본 뒤 맞음 / 부분 / 틀림. 단축키 1·2·3(설정에서 끌 수 있음)은 버튼 순서와 같다. */
-function SelfGradeBar({ id }: { id: string }) {
+/** 고정 Footer — 하단 탭 위(--app-bottom-offset)에 붙는다. 안은 한 줄(왼쪽 보조 … 오른쪽 주). */
+export function StepFooter({ children, error }: { children: ReactNode; error?: unknown }) {
+  return (
+    <div className={FOOTER_CLASS}>
+      {error ? (
+        <p role="alert" className="text-sm text-danger">
+          {describeCheckError(error)}
+        </p>
+      ) : null}
+      <div className="flex items-center gap-2">{children}</div>
+    </div>
+  );
+}
+
+/** 자기 채점 Footer — 모범답·기준을 본 뒤 맞음 / 부분 / 틀림. 단축키 1·2·3(설정에서 끌 수 있음)은 버튼 순서와 같다. */
+export function SelfGradeFooter({ id }: { id: string }) {
   const locale = useLocale();
   const t = useT(messages);
   const grade = useCheckSelfGrade(id);
@@ -29,13 +43,8 @@ function SelfGradeBar({ id }: { id: string }) {
   };
   const keys = useStudyShortcuts({ "1": pick(0), "2": pick(1), "3": pick(2) });
   return (
-    <div className={COMPOSER_CLASS}>
-      {grade.error && (
-        <p role="alert" className="text-sm text-danger">
-          {describeCheckError(grade.error)}
-        </p>
-      )}
-      <div role="group" aria-label={t.selfGrade} className="grid grid-cols-3 gap-2">
+    <StepFooter error={grade.error}>
+      <div role="group" aria-label={t.selfGrade} className="grid flex-1 grid-cols-3 gap-2">
         {SELF_VERDICT_ORDER.map((verdict, index) => (
           <Button
             key={verdict}
@@ -50,22 +59,12 @@ function SelfGradeBar({ id }: { id: string }) {
           </Button>
         ))}
       </div>
-    </div>
+    </StepFooter>
   );
 }
 
-/** 하단 고정 입력창 — 자기 채점에서 답을 보냈으면 채점 버튼으로 바뀐다. */
-export function CheckComposer({ detail }: { detail: CheckDetail }) {
-  if (selfGradeStep(detail) === "grade") { return <SelfGradeBar key={detail.current?.itemId} id={detail.session.id} />; }
-  return <AnswerComposer detail={detail} />;
-}
-
-/**
- * 답 입력창 — 하단 탭 위(--app-bottom-offset)에 붙어 휴대폰에서도 본문을 읽으며 답한다.
- * Enter 는 줄바꿈, ⌘/Ctrl+Enter 로 보낸다(질문 해설의 이어서 묻기와 같다). '그냥 알려줘'는 서버가 허용할 때만.
- */
-function AnswerComposer({ detail }: { detail: CheckDetail }) {
-  const t = useT(messages);
+/** 답 입력 상태 — 입력란(본문)과 Footer 버튼이 함께 쓴다. */
+export function useAnswerForm(detail: CheckDetail) {
   const id = detail.session.id;
   const [text, setText] = useState("");
   const [confidence, setConfidence] = useState<Confidence>();
@@ -87,40 +86,51 @@ function AnswerComposer({ detail }: { detail: CheckDetail }) {
     });
   }
 
+  return { text, setText, confidence, setConfidence, inputRef, answer, reveal, busy, sendable, send, error: answer.error ?? reveal.error };
+}
+
+export type AnswerForm = ReturnType<typeof useAnswerForm>;
+
+/**
+ * 답 입력란 + 확신도 칩(본문, 문항 아래). Enter 는 줄바꿈, ⌘/Ctrl+Enter 로 보낸다(질문 해설의 이어서 묻기와 같다).
+ */
+export function AnswerFields({ detail, form }: { detail: CheckDetail; form: AnswerForm }) {
+  const t = useT(messages);
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.nativeEvent.isComposing) {
       event.preventDefault();
-      send();
+      form.send();
     }
   }
-
-  const error = answer.error ?? reveal.error;
   return (
-    <div className={COMPOSER_CLASS}>
-      {error && (
-        <p role="alert" className="text-sm text-danger">
-          {describeCheckError(error)}
-        </p>
-      )}
-      {asksConfidence(detail) && <ConfidencePicker value={confidence} onChange={setConfidence} />}
+    <div className="flex flex-col gap-3">
       <TextField
         multiline
-        inputRef={inputRef}
-        value={text}
-        onValueChange={({ value }) => setText(value)}
+        inputRef={form.inputRef}
+        value={form.text}
+        onValueChange={({ value }) => form.setText(value)}
         hideCharacterCount
-        textareaProps={{ "aria-label": t.answer, maxLength: CHECK_MAX_ANSWER_CHARS, rows: 2, onKeyDown: handleKeyDown }}
+        textareaProps={{ "aria-label": t.answer, maxLength: CHECK_MAX_ANSWER_CHARS, rows: 4, onKeyDown: handleKeyDown }}
       />
-      <div className="flex items-center justify-end gap-2">
-        {showReveal(detail) && (
-          <Button variant="ghost" onClick={() => reveal.mutate()} disabled={busy} loading={reveal.isPending}>
-            {t.reveal}
-          </Button>
-        )}
-        <Button variant="primary" onClick={send} disabled={!sendable} loading={answer.isPending}>
-          {t.send}
-        </Button>
-      </div>
+      {asksConfidence(detail) && <ConfidencePicker value={form.confidence} onChange={form.setConfidence} />}
     </div>
+  );
+}
+
+/** 답 Footer — 왼쪽 '그냥 알려줘'(서버가 허용할 때만), 오른쪽 '보내기'. */
+export function AnswerFooter({ detail, form }: { detail: CheckDetail; form: AnswerForm }) {
+  const t = useT(messages);
+  return (
+    <StepFooter error={form.error}>
+      {showReveal(detail) && (
+        <Button variant="ghost" onClick={() => form.reveal.mutate()} disabled={form.busy} loading={form.reveal.isPending}>
+          {t.reveal}
+        </Button>
+      )}
+      <span className="flex-1" />
+      <Button variant="primary" onClick={form.send} disabled={!form.sendable} loading={form.answer.isPending}>
+        {t.send}
+      </Button>
+    </StepFooter>
   );
 }

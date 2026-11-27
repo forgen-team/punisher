@@ -10,8 +10,6 @@ import {
   type ObjectiveMastery,
   type Prediction,
 } from "@/src/shared/api/punisher";
-import { translate, type Locale } from "@/src/shared/i18n";
-import { messages } from "../i18n";
 
 /** 세션의 문항 순서(itemIds)대로 정렬한 문항. */
 export function orderedItems(detail: CheckDetail): CheckItem[] {
@@ -25,11 +23,24 @@ export function currentItemId(detail: CheckDetail): string | null {
   return detail.current?.itemId ?? detail.session.itemIds[detail.session.cursor] ?? null;
 }
 
-/** 상단 진행 "문항 n/N" — 끝난 세션은 N/N. */
+/** 진행 "n/N" — 끝난 세션은 N/N. */
 export function progressOf(detail: CheckDetail): { index: number; total: number } {
   const total = detail.session.itemIds.length;
   if (detail.session.status === "finished") { return { index: total, total }; }
   return { index: Math.min(detail.session.cursor + 1, total), total };
+}
+
+/** 이 문항이 세션에서 몇 번째인지(1부터)와 전체 — 끝난 문항을 보는 중에도 그 문항의 자리를 가리킨다. */
+export function progressAt(detail: CheckDetail, itemId: string | null): { index: number; total: number } {
+  const total = detail.session.itemIds.length;
+  const at = itemId ? detail.session.itemIds.indexOf(itemId) : -1;
+  return at < 0 ? progressOf(detail) : { index: at + 1, total };
+}
+
+/** 진행 막대 비율(0~1) — 보는 문항이 끝났으면 그 문항까지 찬 것으로 센다. */
+export function progressRatio(index: number, total: number, itemDone: boolean): number {
+  if (total === 0) { return 0; }
+  return Math.min(1, (itemDone ? index : index - 1) / total);
 }
 
 /** 복습 세션인가(같은 check/[id] 화면을 쓴다). */
@@ -42,16 +53,29 @@ export function sessionLectureSummary(detail: CheckDetail): string | undefined {
   return detail.items.find((item) => item.lectureSummary)?.lectureSummary;
 }
 
-/** 상단 진행 글자 "문항 n/N"(확인·복습·진단 모두 같다). 문항이 없으면 "". */
-export function progressLabel(detail: CheckDetail, locale: Locale): string {
-  const { index, total } = progressOf(detail);
-  if (total === 0) { return ""; }
-  return translate(messages, locale).itemProgress(index, total);
+/** 진행 줄 "3/12 · 복습" — 문항이 없으면 제목만. */
+export function stepMeta(progress: { index: number; total: number }, title: string): string {
+  return progress.total === 0 ? title : `${progress.index}/${progress.total} · ${title}`;
 }
 
-/** 상단 바 제목 — 모든 세션이 "제목 · 문항 n/N" 한 형식(진행이 없으면 제목만). */
-export function topBarTitle(title: string, progress: string): string {
-  return [title, progress].filter(Boolean).join(" · ");
+/** 목적격 조사(을/를) — 마지막 글자 받침으로 가른다. 한글이 아니면 '를'. */
+export function objectParticle(word: string): string {
+  const last = word.trim().slice(-1).charCodeAt(0);
+  const isHangul = last >= 0xac00 && last <= 0xd7a3;
+  return isHangul && (last - 0xac00) % 28 !== 0 ? "을" : "를";
+}
+
+/** 결과 목표 줄 중 가장 이른 다음 복습일(밀려 대기인 것·날짜 없는 것 제외). 없으면 null. */
+export function earliestNextReview(items: readonly CheckResultItem[] | undefined): string | null {
+  const dates = (items ?? []).filter((r) => !r.queued && r.nextReviewAt).map((r) => r.nextReviewAt as string).sort();
+  return dates[0] ?? null;
+}
+
+/** 그만두기 확인 창에 쓸 개수 — 답한 문항(끝낸 것 + 지금 문항에 답을 보낸 것)과 남은 문항. */
+export function stopCounts(detail: CheckDetail, answeredCurrent: boolean): { answered: number; remaining: number } {
+  const total = detail.session.itemIds.length;
+  const answered = Math.min(total, detail.items.filter((item) => item.done).length + (answeredCurrent ? 1 : 0));
+  return { answered, remaining: total - answered };
 }
 
 export type SelfGradeStep = "answer" | "grade";
