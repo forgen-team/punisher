@@ -57,7 +57,7 @@ type todayCardsInput struct {
 	NextLectureID string
 }
 
-// buildTodayCards makes the cards of GET /v1/today-cards: 복습(todo) then 이어보기(study).
+// buildTodayCards makes the cards of GET /v1/today-cards: 복습(todo) then 오늘 공부(study).
 // A card with no rows is left out; with nothing at all the result is an empty slice, not nil.
 func buildTodayCards(in todayCardsInput) []TodayCard {
 	cards := []TodayCard{}
@@ -119,9 +119,9 @@ func reviewTodo(in todayCardsInput) string {
 	return strings.Join(todo, " · ")
 }
 
-// studyCard: 읽던 강의 이어보기 + 다음 강의. 둘 다 없으면 카드를 뺀다.
+// studyCard: "오늘 공부" — 읽던 강의 이어보기 + 다음 강의(두 종류라 묶음 이름을 이어보기로 두지 않는다). 둘 다 없으면 카드를 뺀다.
 func studyCard(in todayCardsInput) (TodayCard, bool) {
-	card := TodayCard{ID: "study", Kind: "study", Title: inLocale(in.Locale, "이어보기", "Continue")}
+	card := TodayCard{ID: "study", Kind: "study", Title: inLocale(in.Locale, "오늘 공부", "Study today")}
 	if r := in.Resume; r != nil {
 		card.Rows = append(card.Rows, resumeRow(in.Locale, *r))
 	}
