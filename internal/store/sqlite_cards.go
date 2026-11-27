@@ -141,7 +141,7 @@ func (s *SQLiteStore) SaveCard(ctx context.Context, userID, kind, sourceID, ques
 		INSERT INTO review_cards (id, user_id, source_kind, source_id, lecture_id, concept_id, anchor, question, answer, next_review_at, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), $7, $8, $9, $10, $11, $11)
 		ON CONFLICT (user_id, source_kind, source_id) DO UPDATE SET question = excluded.question, answer = excluded.answer,
-			suspended_at = NULL, deleted_at = NULL, updated_at = excluded.updated_at
+			suspended_at = NULL, updated_at = excluded.updated_at, `+reviveFresh+`
 		RETURNING `+cardColumns,
 		NewID(), userID, kind, sourceID, d.LectureID, d.ConceptID, d.Anchor, strings.TrimSpace(question), strings.TrimSpace(answer), due, now))
 }
@@ -163,9 +163,9 @@ func (s *SQLiteStore) DeleteCard(ctx context.Context, userID, cardID string, now
 
 // RestoreCard undoes DeleteCard and returns the card. A card that is not
 // deleted is returned as it is (so a repeated undo is harmless). ErrNotFound
-// when there is no such card of the user's.
+// when there is no such card of the user's or it was already emptied (CardTrashDays).
 func (s *SQLiteStore) RestoreCard(ctx context.Context, userID, cardID string) (ReviewCard, error) {
-	c, err := scanCard(s.c().row(ctx, `UPDATE review_cards SET deleted_at = NULL WHERE id = $1 AND user_id = $2 RETURNING `+cardColumns, cardID, userID))
+	c, err := scanCard(s.c().row(ctx, `UPDATE review_cards SET deleted_at = NULL WHERE id = $1 AND user_id = $2 AND purged_at IS NULL RETURNING `+cardColumns, cardID, userID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return ReviewCard{}, ErrNotFound
 	}
@@ -173,37 +173,42 @@ func (s *SQLiteStore) RestoreCard(ctx context.Context, userID, cardID string) (R
 }
 
 // CardTrashDays: a deleted card can be restored for this long; after that the
-// scheduler removes the card row for good (PurgeDeletedCards).
+// scheduler empties it (PurgeDeletedCards).
 const CardTrashDays = 30
 
-// PurgeDeletedCards removes the card rows deleted CardTrashDays or more before
-// now and keeps their review log: the activity heat map, the day counts and the
-// like are history of what the user did and must not shrink. A card restored in
-// time has no deleted_at and is never touched. Returns the cards removed.
-//
-// review_card_log.card_id is ON DELETE CASCADE (the schema is not changed), so
-// the delete runs on one pinned connection with foreign keys off — otherwise the
-// log would go with the card. The log rows then point at a card that no longer
-// exists; every query on the log reads it alone (no JOIN with review_cards), and
-// the migration runner ignores exactly this orphan kind in its foreign key check.
+// PurgeDeletedCards empties the cards deleted CardTrashDays or more before now:
+// the question, answer, anchor, source link and lecture/concept links go, the
+// row stays (purged_at marks it). The review log points at the row, so it and
+// every stat built on it are untouched and no foreign key is bent. A card
+// restored in time has no deleted_at and is never touched; an emptied card can
+// no longer be restored (RestoreCard) — saving the same source again starts it
+// fresh (see reviveFresh). Returns the cards emptied.
 func (s *SQLiteStore) PurgeDeletedCards(ctx context.Context, now time.Time) (int64, error) {
-	conn, err := s.db.Conn(ctx)
+	res, err := s.c().exec(ctx, `UPDATE review_cards SET question = '', answer = '', anchor = '',
+			lecture_id = NULL, concept_id = NULL, source_url = NULL, purged_at = $1
+		WHERE deleted_at IS NOT NULL AND deleted_at <= $2 AND purged_at IS NULL`, now, now.AddDate(0, 0, -CardTrashDays))
 	if err != nil {
 		return 0, fmt.Errorf("purge deleted cards: %w", err)
 	}
-	defer conn.Close()
-	// PRAGMA foreign_keys is per connection and a no-op inside a transaction.
-	if _, err := conn.ExecContext(ctx, `PRAGMA foreign_keys = OFF`); err != nil {
-		return 0, fmt.Errorf("purge deleted cards: foreign keys off: %w", err)
-	}
-	defer func() { _, _ = conn.ExecContext(context.Background(), `PRAGMA foreign_keys = ON`) }()
-	res, err := conn.ExecContext(ctx, `DELETE FROM review_cards WHERE deleted_at IS NOT NULL AND deleted_at <= ?`,
-		FormatTime(now.AddDate(0, 0, -CardTrashDays)))
-	if err != nil {
-		return 0, fmt.Errorf("purge deleted cards: %w", err)
-	}
-	return res.RowsAffected()
+	return affected(res), nil
 }
+
+// reviveFresh is the tail of the ON CONFLICT … DO UPDATE of SaveCard and
+// SaveExternalCard: the card comes back (deleted_at cleared). A card that was
+// emptied (purged_at set) has nothing of the old one left but its id and source,
+// so it starts as a new card — schedule reset, first review tomorrow, lecture
+// links taken from the new save, listed as new; a card only deleted keeps its schedule.
+const reviveFresh = `deleted_at = NULL, purged_at = NULL,
+	stability = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.stability ELSE 0 END,
+	difficulty = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.difficulty ELSE 0 END,
+	reps = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.reps ELSE 0 END,
+	lapses = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.lapses ELSE 0 END,
+	last_review_at = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.last_review_at ELSE NULL END,
+	next_review_at = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.next_review_at ELSE excluded.next_review_at END,
+	created_at = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.created_at ELSE excluded.created_at END,
+	lecture_id = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.lecture_id ELSE excluded.lecture_id END,
+	concept_id = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.concept_id ELSE excluded.concept_id END,
+	anchor = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.anchor ELSE excluded.anchor END`
 
 // DueCards returns the user's cards due by now (oldest due first, at most limit).
 func (s *SQLiteStore) DueCards(ctx context.Context, userID string, now time.Time, limit int) ([]ReviewCard, error) {

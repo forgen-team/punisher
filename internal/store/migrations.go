@@ -86,19 +86,7 @@ func (s *SQLiteStore) applyOne(ctx context.Context, files fs.FS, version string)
 		if err != nil {
 			return fmt.Errorf("migration %s: foreign key check: %w", version, err)
 		}
-		bad := false
-		for rows.Next() {
-			var table, parent string
-			var rowid, fkid sql.NullInt64
-			if err := rows.Scan(&table, &rowid, &parent, &fkid); err != nil {
-				_ = rows.Close()
-				return fmt.Errorf("migration %s: foreign key check: %w", version, err)
-			}
-			// 30일 지나 정리한 카드(PurgeDeletedCards)의 복습 기록은 일부러 남긴다 — 이 고아 행은 위반으로 세지 않는다.
-			if table != "review_card_log" {
-				bad = true
-			}
-		}
+		bad := rows.Next()
 		_ = rows.Close()
 		if bad {
 			return fmt.Errorf("migration %s: foreign key check failed; rolled back", version)

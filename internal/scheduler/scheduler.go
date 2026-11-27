@@ -1,6 +1,6 @@
 // Package scheduler runs Punisher's background jobs for the owner account:
 // stale-job recovery, study-request resolution, the backfill review of stored
-// lectures, library pre-generation and the final removal of long-deleted cards.
+// lectures, library pre-generation and emptying cards deleted long ago.
 // All work is idempotent (generation_jobs keys), so restarts never duplicate.
 package scheduler
 
@@ -111,8 +111,8 @@ func (s *Scheduler) sweepChecks(ctx context.Context) {
 	}
 }
 
-// sweepDeletedCards removes the cards the user deleted more than
-// store.CardTrashDays ago (with their review log) — at boot and every
+// sweepDeletedCards empties the cards the user deleted more than
+// store.CardTrashDays ago (their text and source; the row and review log stay) — at boot and every
 // cardPurgeInterval. Runs without an owner too.
 func (s *Scheduler) sweepDeletedCards(ctx context.Context) {
 	st, ok := s.Svc.Store.(store.StudyStore)
@@ -123,7 +123,7 @@ func (s *Scheduler) sweepDeletedCards(ctx context.Context) {
 		if n, err := st.PurgeDeletedCards(ctx, time.Now()); err != nil {
 			log.Printf("[scheduler] purge deleted cards: %v", err)
 		} else if n > 0 {
-			log.Printf("[scheduler] removed %d cards deleted over %d days ago", n, store.CardTrashDays)
+			log.Printf("[scheduler] emptied %d cards deleted over %d days ago", n, store.CardTrashDays)
 		}
 	}
 	purge()
