@@ -40,6 +40,8 @@ const (
 	MoveDispute   = "dispute"
 	// MoveDontKnow: '모르겠어요' on a diagnostic item (no answer text).
 	MoveDontKnow = "dont_know"
+	// MoveSkip: '건너뛰기' on an item before its first answer (outcome skipped, no evidence).
+	MoveSkip = "skip"
 )
 
 // Rubric is how an item is graded (check_items.rubric).
