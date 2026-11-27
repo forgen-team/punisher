@@ -232,6 +232,7 @@ export const OUTCOME_LABELS_BY_LOCALE: Record<Locale, Record<CheckOutcome, strin
     failed: "놓침",
     held: "판정 보류",
     recorded: "기록함",
+    skipped: "건너뜀",
   },
   en: {
     "unaided_correct": "Got it alone",
@@ -240,6 +241,7 @@ export const OUTCOME_LABELS_BY_LOCALE: Record<Locale, Record<CheckOutcome, strin
     failed: "Missed",
     held: "Verdict on hold",
     recorded: "Recorded",
+    skipped: "Skipped",
   },
 };
 export const OUTCOME_LABELS = liveLabels(OUTCOME_LABELS_BY_LOCALE);

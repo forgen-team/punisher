@@ -105,7 +105,7 @@ func (s *SQLiteStore) CardDraftFor(ctx context.Context, userID, kind, sourceID s
 		return d, fmt.Errorf("card source: %w", err)
 	}
 	d.Question, d.Answer = clip(strings.TrimSpace(d.Question), CardQuestionMax), clip(strings.TrimSpace(d.Answer), CardAnswerMax)
-	err = s.c().row(ctx, `SELECT id FROM review_cards WHERE user_id = $1 AND source_kind = $2 AND source_id = $3`, userID, kind, sourceID).Scan(&d.CardID)
+	err = s.c().row(ctx, `SELECT id FROM review_cards WHERE user_id = $1 AND source_kind = $2 AND source_id = $3 AND deleted_at IS NULL`, userID, kind, sourceID).Scan(&d.CardID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return d, err
 	}
@@ -126,7 +126,8 @@ func ValidCardText(question, answer string) bool {
 }
 
 // SaveCard creates the card of a source (or updates its text when it exists).
-// A new card is first due CardFirstReviewDays later.
+// A new card is first due CardFirstReviewDays later. A card the user deleted
+// (deleted_at set) comes back with its schedule and history.
 func (s *SQLiteStore) SaveCard(ctx context.Context, userID, kind, sourceID, question, answer string, now time.Time) (ReviewCard, error) {
 	if !ValidCardText(question, answer) {
 		return ReviewCard{}, ErrInvalidCard
@@ -140,14 +141,17 @@ func (s *SQLiteStore) SaveCard(ctx context.Context, userID, kind, sourceID, ques
 		INSERT INTO review_cards (id, user_id, source_kind, source_id, lecture_id, concept_id, anchor, question, answer, next_review_at, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), $7, $8, $9, $10, $11, $11)
 		ON CONFLICT (user_id, source_kind, source_id) DO UPDATE SET question = excluded.question, answer = excluded.answer,
-			suspended_at = NULL, updated_at = excluded.updated_at
+			suspended_at = NULL, updated_at = excluded.updated_at, `+reviveFresh+`
 		RETURNING `+cardColumns,
 		NewID(), userID, kind, sourceID, d.LectureID, d.ConceptID, d.Anchor, strings.TrimSpace(question), strings.TrimSpace(answer), due, now))
 }
 
-// DeleteCard removes a card (its log goes with it). ErrNotFound when not the user's.
-func (s *SQLiteStore) DeleteCard(ctx context.Context, userID, cardID string) error {
-	res, err := s.c().exec(ctx, `DELETE FROM review_cards WHERE id = $1 AND user_id = $2`, cardID, userID)
+// DeleteCard marks a card deleted (deleted_at) — the row and its review log
+// stay so RestoreCard can bring it back with its schedule. A deleted card is
+// left out of lists, due cards and counts. ErrNotFound when not the user's or
+// already deleted.
+func (s *SQLiteStore) DeleteCard(ctx context.Context, userID, cardID string, now time.Time) error {
+	res, err := s.c().exec(ctx, `UPDATE review_cards SET deleted_at = $3 WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`, cardID, userID, now)
 	if err != nil {
 		return err
 	}
@@ -157,15 +161,64 @@ func (s *SQLiteStore) DeleteCard(ctx context.Context, userID, cardID string) err
 	return nil
 }
 
+// RestoreCard undoes DeleteCard and returns the card. A card that is not
+// deleted is returned as it is (so a repeated undo is harmless). ErrNotFound
+// when there is no such card of the user's or it was already emptied (CardTrashDays).
+func (s *SQLiteStore) RestoreCard(ctx context.Context, userID, cardID string) (ReviewCard, error) {
+	c, err := scanCard(s.c().row(ctx, `UPDATE review_cards SET deleted_at = NULL WHERE id = $1 AND user_id = $2 AND purged_at IS NULL RETURNING `+cardColumns, cardID, userID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return ReviewCard{}, ErrNotFound
+	}
+	return c, err
+}
+
+// CardTrashDays: a deleted card can be restored for this long; after that the
+// scheduler empties it (PurgeDeletedCards).
+const CardTrashDays = 30
+
+// PurgeDeletedCards empties the cards deleted CardTrashDays or more before now:
+// the question, answer, anchor, source link and lecture/concept links go, the
+// row stays (purged_at marks it). The review log points at the row, so it and
+// every stat built on it are untouched and no foreign key is bent. A card
+// restored in time has no deleted_at and is never touched; an emptied card can
+// no longer be restored (RestoreCard) — saving the same source again starts it
+// fresh (see reviveFresh). Returns the cards emptied.
+func (s *SQLiteStore) PurgeDeletedCards(ctx context.Context, now time.Time) (int64, error) {
+	res, err := s.c().exec(ctx, `UPDATE review_cards SET question = '', answer = '', anchor = '',
+			lecture_id = NULL, concept_id = NULL, source_url = NULL, purged_at = $1
+		WHERE deleted_at IS NOT NULL AND deleted_at <= $2 AND purged_at IS NULL`, now, now.AddDate(0, 0, -CardTrashDays))
+	if err != nil {
+		return 0, fmt.Errorf("purge deleted cards: %w", err)
+	}
+	return affected(res), nil
+}
+
+// reviveFresh is the tail of the ON CONFLICT … DO UPDATE of SaveCard and
+// SaveExternalCard: the card comes back (deleted_at cleared). A card that was
+// emptied (purged_at set) has nothing of the old one left but its id and source,
+// so it starts as a new card — schedule reset, first review tomorrow, lecture
+// links taken from the new save, listed as new; a card only deleted keeps its schedule.
+const reviveFresh = `deleted_at = NULL, purged_at = NULL,
+	stability = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.stability ELSE 0 END,
+	difficulty = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.difficulty ELSE 0 END,
+	reps = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.reps ELSE 0 END,
+	lapses = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.lapses ELSE 0 END,
+	last_review_at = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.last_review_at ELSE NULL END,
+	next_review_at = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.next_review_at ELSE excluded.next_review_at END,
+	created_at = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.created_at ELSE excluded.created_at END,
+	lecture_id = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.lecture_id ELSE excluded.lecture_id END,
+	concept_id = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.concept_id ELSE excluded.concept_id END,
+	anchor = CASE WHEN review_cards.purged_at IS NULL THEN review_cards.anchor ELSE excluded.anchor END`
+
 // DueCards returns the user's cards due by now (oldest due first, at most limit).
 func (s *SQLiteStore) DueCards(ctx context.Context, userID string, now time.Time, limit int) ([]ReviewCard, error) {
 	return collect(s.c().query(ctx, `SELECT `+cardColumns+` FROM review_cards
-		WHERE user_id = $1 AND suspended_at IS NULL AND next_review_at <= $2 ORDER BY next_review_at, id LIMIT $3`, userID, now, limit), scanCard)
+		WHERE user_id = $1 AND deleted_at IS NULL AND suspended_at IS NULL AND next_review_at <= $2 ORDER BY next_review_at, id LIMIT $3`, userID, now, limit), scanCard)
 }
 
 // ListCards returns every card of the user, newest first.
 func (s *SQLiteStore) ListCards(ctx context.Context, userID string) ([]ReviewCard, error) {
-	return collect(s.c().query(ctx, `SELECT `+cardColumns+` FROM review_cards WHERE user_id = $1 ORDER BY created_at DESC, id`, userID), scanCard)
+	return collect(s.c().query(ctx, `SELECT `+cardColumns+` FROM review_cards WHERE user_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC, id`, userID), scanCard)
 }
 
 // GradeCard applies a self-grade (1 again · 2 hard · 3 good) with FSRS at the
@@ -178,7 +231,7 @@ func (s *SQLiteStore) GradeCard(ctx context.Context, userID, cardID string, rati
 	err := s.tx(ctx, func(c conn) error {
 		var m learning.Memory
 		var lapses int
-		err := c.row(ctx, `SELECT stability, difficulty, reps, last_review_at, lapses FROM review_cards WHERE id = $1 AND user_id = $2`,
+		err := c.row(ctx, `SELECT stability, difficulty, reps, last_review_at, lapses FROM review_cards WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
 			cardID, userID).Scan(&m.Stability, &m.Difficulty, &m.Reps, nts(&m.LastReviewAt), &lapses)
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
@@ -214,10 +267,11 @@ func (s *SQLiteStore) GradeCard(ctx context.Context, userID, cardID string, rati
 	return out, err
 }
 
-// CardCounts: cards due now and cards reviewed today (KST).
+// CardCounts: cards due now (a deleted card is not due) and reviews done today (KST) — the review
+// log counts whatever became of the card afterwards.
 func (s *SQLiteStore) CardCounts(ctx context.Context, userID string, now time.Time) (due, doneToday int, err error) {
 	err = s.c().row(ctx, `SELECT
-			(SELECT COUNT(*) FROM review_cards WHERE user_id = $1 AND suspended_at IS NULL AND next_review_at <= $2),
+			(SELECT COUNT(*) FROM review_cards WHERE user_id = $1 AND deleted_at IS NULL AND suspended_at IS NULL AND next_review_at <= $2),
 			(SELECT COUNT(*) FROM review_card_log WHERE user_id = $1 AND reviewed_at >= $3)`,
 		userID, now, learning.KSTDayStart(now)).Scan(&due, &doneToday)
 	return due, doneToday, err

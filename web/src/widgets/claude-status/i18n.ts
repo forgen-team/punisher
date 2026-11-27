@@ -12,7 +12,7 @@ export const messages = defineMessages({
     "steps_claude_unavailable": [
       "Claude Code를 설치합니다: 터미널에서 curl -fsSL https://claude.ai/install.sh | bash",
       "터미널에서 claude 를 실행하고 안내에 따라 로그인합니다.",
-      "이 화면을 새로고침합니다(Punisher를 다시 켤 필요는 없습니다).",
+      "이 화면을 새로고침합니다(punisher를 다시 켤 필요는 없습니다).",
     ].join("\n"),
     "steps_claude_not_logged_in": ["터미널에서 claude 를 실행합니다.", "안내에 따라 로그인(/login)을 마칩니다.", "이 화면을 새로고침합니다."].join("\n"),
     "steps_claude_rate_limited": "",
@@ -22,7 +22,7 @@ export const messages = defineMessages({
     "steps_codex_unavailable": [
       "Codex CLI를 설치합니다: 터미널에서 npm install -g @openai/codex (또는 brew install codex)",
       "터미널에서 codex login 을 실행해 로그인합니다.",
-      "이 화면을 새로고침합니다(Punisher를 다시 켤 필요는 없습니다).",
+      "이 화면을 새로고침합니다(punisher를 다시 켤 필요는 없습니다).",
     ].join("\n"),
     "steps_codex_not_logged_in": [
       "터미널에서 codex login 을 실행합니다.",
@@ -36,7 +36,7 @@ export const messages = defineMessages({
     "steps_agy_unavailable": [
       "Antigravity CLI(agy)를 설치합니다: antigravity.google 의 안내를 따릅니다.",
       "터미널에서 agy 를 한 번 실행해 로그인합니다.",
-      "이 화면을 새로고침합니다(Punisher를 다시 켤 필요는 없습니다).",
+      "이 화면을 새로고침합니다(punisher를 다시 켤 필요는 없습니다).",
     ].join("\n"),
     "steps_agy_not_logged_in": ["터미널에서 agy 를 실행합니다.", "안내에 따라 로그인을 마칩니다.", "이 화면을 새로고침합니다."].join("\n"),
     "steps_agy_rate_limited": "",
@@ -52,7 +52,7 @@ export const messages = defineMessages({
     "steps_claude_unavailable": [
       "Install Claude Code: in a terminal, run curl -fsSL https://claude.ai/install.sh | bash",
       "Run claude in a terminal and follow the prompts to sign in.",
-      "Refresh this page (no need to restart Punisher).",
+      "Refresh this page (no need to restart punisher).",
     ].join("\n"),
     "steps_claude_not_logged_in": ["Run claude in a terminal.", "Finish signing in (/login) as prompted.", "Refresh this page."].join("\n"),
     "steps_claude_rate_limited": "",
@@ -62,7 +62,7 @@ export const messages = defineMessages({
     "steps_codex_unavailable": [
       "Install the Codex CLI: in a terminal, run npm install -g @openai/codex (or brew install codex)",
       "Run codex login in a terminal to sign in.",
-      "Refresh this page (no need to restart Punisher).",
+      "Refresh this page (no need to restart punisher).",
     ].join("\n"),
     "steps_codex_not_logged_in": [
       "Run codex login in a terminal.",
@@ -76,7 +76,7 @@ export const messages = defineMessages({
     "steps_agy_unavailable": [
       "Install the Antigravity CLI (agy): follow the instructions at antigravity.google.",
       "Run agy once in a terminal and sign in.",
-      "Refresh this page (no need to restart Punisher).",
+      "Refresh this page (no need to restart punisher).",
     ].join("\n"),
     "steps_agy_not_logged_in": ["Run agy in a terminal.", "Finish signing in as prompted.", "Refresh this page."].join("\n"),
     "steps_agy_rate_limited": "",
@@ -102,7 +102,7 @@ export const panelMessages = defineMessages({
     activeJobs: "진행 중 생성",
     activeCount: (active: number, queued: number) => `${active}개${queued > 0 ? ` · 대기 ${queued}개` : ""}`,
     dataDir: "데이터 위치",
-    version: "Punisher 버전",
+    version: "punisher 버전",
     witemsConnected: "Witems AI 연결을 써요(셸을 따름).",
   },
   en: {
@@ -118,7 +118,7 @@ export const panelMessages = defineMessages({
     activeJobs: "Generating now",
     activeCount: (active: number, queued: number) => `${active}${queued > 0 ? ` · ${queued} queued` : ""}`,
     dataDir: "Data folder",
-    version: "Punisher version",
+    version: "punisher version",
     witemsConnected: "Uses the Witems AI connection (follows the shell).",
   },
 });

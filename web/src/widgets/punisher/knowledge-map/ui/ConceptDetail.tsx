@@ -7,6 +7,7 @@ import {
   startLectureHref,
   useConceptDetail,
   useConceptLectures,
+  useConceptDismiss,
   useCreateStudyRequest,
   useInquiries,
   useMarkKnown,
@@ -47,8 +48,10 @@ function NotesLink({ conceptId, name }: { conceptId: string; name: string }) {
   );
 }
 
+/** 상태를 정하는 값 — 지도 노드가 있으면 그것, 없으면 개념 상세. 뺀 개념(필요 없음)은 방금 다시 읽은 상세 쪽을 따른다. */
 function stateFrom(c: ConceptDetailData, node: GraphNode | undefined) {
-  return node ?? { state: c.userState, locked: c.locked, frontier: false };
+  const base = node ?? { state: c.userState, locked: c.locked, frontier: false };
+  return { ...base, dismissed: c.dismissed ?? node?.dismissed };
 }
 
 function DetailBody({ c, node, onSelect }: { c: ConceptDetailData; node?: GraphNode; onSelect: (id: string) => void }) {
@@ -60,6 +63,7 @@ function DetailBody({ c, node, onSelect }: { c: ConceptDetailData; node?: GraphN
   const mark = useMarkKnown();
   const undo = useUndoKnown();
   const later = useCreateStudyRequest();
+  const dismiss = useConceptDismiss();
   const state = mapDisplayState(stateFrom(c, node));
   const completed = c.userState === "completed";
   const known = c.userState === "known";
@@ -100,6 +104,17 @@ function DetailBody({ c, node, onSelect }: { c: ConceptDetailData; node?: GraphN
     });
   }
 
+  // 빼는 동작은 오늘에만 있다(재설계 D7) — 지도에는 뺀 개념을 되돌리는 버튼만.
+  function restore() {
+    dismiss.mutate(
+      { conceptId: c.id, dismissed: false },
+      {
+        onSuccess: () => toast.show(t.restoreToast),
+        onError: () => toast.show(t.restoreFailed, { tone: "danger" }),
+      },
+    );
+  }
+
   let lectureAction;
   if (lectures.isLoading) {
     lectureAction = <Button variant="primary" className="w-full" disabled loading>{t.openLecture}</Button>;
@@ -118,6 +133,11 @@ function DetailBody({ c, node, onSelect }: { c: ConceptDetailData; node?: GraphN
       <p className="text-sm text-fg-secondary">{`${areaLabel(c.area)} · ${stateLabel(t, state)}`}</p>
       <div className="flex flex-col gap-2">
         {lectureAction}
+        {state === "dismissed" && (
+          <Button variant="secondary" className="w-full" loading={dismiss.isPending} onClick={restore}>
+            {t.restoreRecommend}
+          </Button>
+        )}
         {state !== "requested" && !completed && (
           <Button variant="secondary" className="w-full" loading={later.isPending} disabled={later.isSuccess} onClick={studyLater}>
             {t.studyLater}

@@ -66,7 +66,7 @@ func ValidSourceURL(raw string) bool {
 
 // SaveExternalCard creates the external card of in.ExternalID or, when the
 // user already has it, replaces its text, link and stale flag (its schedule is
-// kept; a suspended card comes back). A new card is first due CardFirstReviewDays later.
+// kept; a suspended or deleted card comes back). A new card is first due CardFirstReviewDays later.
 func (s *SQLiteStore) SaveExternalCard(ctx context.Context, userID string, in ExternalCard, now time.Time) (ReviewCard, error) {
 	if !ValidCardText(in.Question, in.Answer) || !ValidExternalID(in.ExternalID) || !ValidSourceURL(in.SourceURL) {
 		return ReviewCard{}, ErrInvalidCard
@@ -76,7 +76,7 @@ func (s *SQLiteStore) SaveExternalCard(ctx context.Context, userID string, in Ex
 		INSERT INTO review_cards (id, user_id, source_kind, source_id, external_id, source_url, stale, question, answer, next_review_at, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $4, NULLIF($5, ''), $6, $7, $8, $9, $10, $10)
 		ON CONFLICT (user_id, source_kind, source_id) DO UPDATE SET question = excluded.question, answer = excluded.answer,
-			source_url = excluded.source_url, stale = excluded.stale, suspended_at = NULL, updated_at = excluded.updated_at
+			source_url = excluded.source_url, stale = excluded.stale, suspended_at = NULL, updated_at = excluded.updated_at, `+reviveFresh+`
 		RETURNING `+cardColumns,
 		NewID(), userID, CardSourceExternal, in.ExternalID, in.SourceURL, in.Stale,
 		strings.TrimSpace(in.Question), strings.TrimSpace(in.Answer), due, now))
@@ -96,7 +96,7 @@ func (s *SQLiteStore) PatchExternalCard(ctx context.Context, userID, externalID 
 func (s *SQLiteStore) patchCard(ctx context.Context, userID, where, key string, p CardPatch, now time.Time) (ReviewCard, error) {
 	var out ReviewCard
 	err := s.tx(ctx, func(c conn) error {
-		cur, err := scanCard(c.row(ctx, `SELECT `+cardColumns+` FROM review_cards WHERE user_id = $1 AND `+where, userID, key))
+		cur, err := scanCard(c.row(ctx, `SELECT `+cardColumns+` FROM review_cards WHERE user_id = $1 AND deleted_at IS NULL AND `+where, userID, key))
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
 		}

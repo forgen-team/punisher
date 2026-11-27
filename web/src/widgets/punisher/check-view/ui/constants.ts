@@ -19,4 +19,5 @@ export const OUTCOME_TONE: Record<CheckOutcome, BadgeTone> = {
   failed: "danger",
   held: "neutral",
   recorded: "neutral",
+  skipped: "neutral",
 };

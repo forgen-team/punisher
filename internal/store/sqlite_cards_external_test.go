@@ -12,7 +12,7 @@ import (
 
 // TestUpgradeFromV031ExternalCards: 032 rebuilds review_cards keeping the
 // cards, their schedule, the review log (its foreign key) and the due index;
-// then external cards can be stored.
+// then external cards can be stored (and 033 soft delete works on the old card).
 func TestUpgradeFromV031ExternalCards(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 11, 25, 3, 0, 0, 0, time.UTC)
@@ -62,12 +62,12 @@ func TestUpgradeFromV031ExternalCards(t *testing.T) {
 	if err := s.c().row(ctx, `SELECT COUNT(*) FROM review_card_log WHERE card_id = $1`, cardID).Scan(&logs); err != nil || logs != 1 {
 		t.Fatalf("review log kept: %d %v", logs, err)
 	}
-	// 로그의 외래 키가 새 표로 이어졌는지: 카드를 지우면 로그도 지워진다.
-	if err := s.DeleteCard(ctx, testUser, cardID); err != nil {
+	// 지우면 표시만 하고(033) 로그는 남는다 — 되돌리면 일정이 이어진다.
+	if err := s.DeleteCard(ctx, testUser, cardID, now); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.c().row(ctx, `SELECT COUNT(*) FROM review_card_log WHERE card_id = $1`, cardID).Scan(&logs); err != nil || logs != 0 {
-		t.Fatalf("log cascades with the card: %d %v", logs, err)
+	if err := s.c().row(ctx, `SELECT COUNT(*) FROM review_card_log WHERE card_id = $1`, cardID).Scan(&logs); err != nil || logs != 1 {
+		t.Fatalf("log stays with a deleted card: %d %v", logs, err)
 	}
 	if _, err := s.SaveExternalCard(ctx, testUser, ExternalCard{ExternalID: "atlas:c1", Question: "q", Answer: "a"}, now); err != nil {
 		t.Fatalf("external card after upgrade: %v", err)

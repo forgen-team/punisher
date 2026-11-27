@@ -3,7 +3,7 @@ import type { CheckDetail } from "@/src/shared/api/punisher";
 export interface SynthesisRow {
   itemId: string;
   prompt: string;
-  result: "passed" | "pulled" | "recorded";
+  result: "passed" | "pulled" | "skipped" | "recorded";
 }
 
 /** 종합 문제 결과 줄 — 문항(통합)마다 통과 · 복습 당김 · 기록만. */
@@ -17,4 +17,4 @@ export function synthesisRows(detail: CheckDetail): SynthesisRow[] {
   }));
 }
 
-const SYNTHESIS_RESULT: Partial<Record<string, SynthesisRow["result"]>> = { "unaided_correct": "passed", failed: "pulled" };
+const SYNTHESIS_RESULT: Partial<Record<string, SynthesisRow["result"]>> = { "unaided_correct": "passed", failed: "pulled", skipped: "skipped" };

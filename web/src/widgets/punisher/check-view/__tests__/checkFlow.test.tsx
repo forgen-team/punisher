@@ -8,6 +8,7 @@ import type { PageAction } from "@/src/shared/lib/screen-chrome";
 const idle = { mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false, isSuccess: false, error: null, variables: undefined };
 const abandon = { ...idle, mutate: vi.fn() };
 const startCheck = { ...idle, mutate: vi.fn() };
+let skip: { mutate: ReturnType<typeof vi.fn>; isPending: boolean; error: unknown } = { ...idle, mutate: vi.fn() };
 const replace = vi.fn();
 let pageActions: PageAction[] | null = null;
 let titleSet: string | null | undefined;
@@ -52,6 +53,7 @@ vi.mock("@/src/entities/punisher", async (importOriginal) => ({
   useCheckDispute: () => idle,
   useCheckAnswer: () => idle,
   useCheckReveal: () => idle,
+  useCheckSkip: () => skip,
   useCheckSelfGrade: () => idle,
   useToday: () => ({ data: today }),
   useStartCheck: () => startCheck,
@@ -182,5 +184,73 @@ describe("복습 끝 화면의 다음 행동 1개", () => {
     fireEvent.click(screen.getByRole("button", { name: "확인 대기 2개 이어서" }));
     expect(startCheck.mutate).toHaveBeenCalledWith("l7", expect.anything());
     expect(replace).toHaveBeenCalledWith("/check/c9");
+  });
+});
+
+describe("문항 건너뛰기", () => {
+  const skippable: CheckDetail = { ...review, current: { ...review.current!, canSkip: true } };
+
+  it("Footer 는 보내기 전 [건너뛰기] … [그냥 알려줘][보내기] 순서", () => {
+    detail = skippable;
+    skip = { ...idle, mutate: vi.fn() };
+    render(<CheckView checkId="s1" />, { wrapper });
+    const names = screen.getAllByRole("button").map((b) => b.textContent);
+    const order = ["건너뛰기", "그냥 알려줘", "보내기"].map((name) => names.indexOf(name));
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+
+  it("서버가 허용하지 않으면(첫 답 뒤) [건너뛰기]가 없다", () => {
+    detail = { ...review, current: { ...review.current!, answers: 1, canSkip: false } };
+    render(<CheckView checkId="s1" />, { wrapper });
+    expect(screen.queryByRole("button", { name: "건너뛰기" })).toBeNull();
+  });
+
+  it("누르면 지금 문항을 건너뛰고, 모범답 없이 바로 다음 문항", () => {
+    detail = skippable;
+    skip = { ...idle, mutate: vi.fn() };
+    const { rerender } = render(<CheckView checkId="s1" />, { wrapper });
+    fireEvent.click(screen.getByRole("button", { name: "건너뛰기" }));
+    expect(skip.mutate).toHaveBeenCalledWith("i2");
+    detail = {
+      ...review,
+      session: { ...review.session, cursor: 2 },
+      items: [review.items[0]!, { ...review.items[1]!, done: true, outcome: "skipped" }, review.items[2]!],
+      turns: [{ id: "t9", itemId: "i2", seq: 3, role: "learner", move: "skip", text: "", status: "ready", outcome: "skipped", aided: false, reusedItem: false, createdAt: "" }],
+      current: { itemId: "i3", answers: 0, canAnswer: true, canReveal: true, canSelfGrade: false, canSkip: true },
+    };
+    rerender(<CheckView checkId="s1" />);
+    expect(screen.getByText("셋째 질문")).toBeInTheDocument();
+    expect(screen.getByText("3/3 · 복습")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "다음 문항" })).toBeNull();
+  });
+
+  it("실패하면 Footer 에 인라인 오류", () => {
+    detail = skippable;
+    skip = { ...idle, mutate: vi.fn(), error: new Error("boom") };
+    render(<CheckView checkId="s1" />, { wrapper });
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    skip = { ...idle, mutate: vi.fn() };
+  });
+
+  it("끝 화면 요약에 맞힘 · 다시 볼 것 · 건너뜀 수", () => {
+    const row = { levelBefore: 1, levelAfter: 1, missing: [], anchor: "", misconception: "", nextReviewAt: null, lapses: 0 };
+    detail = {
+      ...review,
+      session: {
+        ...review.session, status: "finished", cursor: 3,
+        result: { items: [
+          { ...row, itemId: "i1", objectiveId: "o1", outcome: "unaided_correct" },
+          { ...row, itemId: "i2", objectiveId: "o2", outcome: "skipped" },
+          { ...row, itemId: "i3", objectiveId: "o3", outcome: "failed" },
+        ] },
+      },
+      items: review.items.map((it) => ({ ...it, done: true })),
+      current: null,
+    };
+    today = { unchecked: [] };
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    render(<CheckView checkId="s1" />, { wrapper });
+    expect(screen.getByText("맞힘 1 · 다시 볼 것 1 · 건너뜀 1")).toBeInTheDocument();
   });
 });

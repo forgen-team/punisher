@@ -444,17 +444,31 @@ func (h *StudyHandler) PatchCard(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, c)
 }
 
-// DeleteCard handles DELETE /v1/cards/{id}.
+// DeleteCard handles DELETE /v1/cards/{id} — marks the card deleted (RestoreCard undoes it).
 func (h *StudyHandler) DeleteCard(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUser(w, r)
 	if !ok {
 		return
 	}
-	if err := h.Study.DeleteCard(r.Context(), userID, chi.URLParam(r, "id")); err != nil {
+	if err := h.Study.DeleteCard(r.Context(), userID, chi.URLParam(r, "id"), h.now()); err != nil {
 		writeServiceError(w, r, "delete card", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// RestoreCard handles POST /v1/cards/{id}/restore — brings a deleted card back with its schedule.
+func (h *StudyHandler) RestoreCard(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	c, err := h.Study.RestoreCard(r.Context(), userID, chi.URLParam(r, "id"))
+	if err != nil {
+		writeServiceError(w, r, "restore card", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, c)
 }
 
 // Search handles GET /v1/search?q=&limit=20.

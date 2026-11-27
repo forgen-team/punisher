@@ -7,12 +7,13 @@ import {
   useCheckAnswer,
   useCheckReveal,
   useCheckSelfGrade,
+  useCheckSkip,
 } from "@/src/entities/punisher";
 import { CHECK_MAX_ANSWER_CHARS, type CheckDetail, type Confidence } from "@/src/shared/api/punisher";
 import { useLocale, useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
 import { ConfidencePicker } from "./ConfidencePicker";
-import { asksConfidence, canSend, showReveal } from "../lib/checkView";
+import { asksConfidence, canSend, showReveal, showSkip } from "../lib/checkView";
 import { useStudyShortcuts } from "@/src/shared/lib/shortcuts";
 
 const FOOTER_CLASS =
@@ -72,7 +73,8 @@ export function useAnswerForm(detail: CheckDetail) {
   const inputRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   const answer = useCheckAnswer(id);
   const reveal = useCheckReveal(id);
-  const busy = answer.isPending || reveal.isPending;
+  const skip = useCheckSkip(id);
+  const busy = answer.isPending || reveal.isPending || skip.isPending;
   const sendable = canSend(detail, text) && !busy;
 
   function send() {
@@ -86,7 +88,17 @@ export function useAnswerForm(detail: CheckDetail) {
     });
   }
 
-  return { text, setText, confidence, setConfidence, inputRef, answer, reveal, busy, sendable, send, error: answer.error ?? reveal.error };
+  /** 지금 문항을 건너뛴다 — 성공하면 서버가 다음 문항을 묻는다(입력란은 문항마다 새로 그린다). */
+  function skipItem() {
+    const itemId = detail.current?.itemId;
+    if (!itemId || busy) { return; }
+    skip.mutate(itemId);
+  }
+
+  return {
+    text, setText, confidence, setConfidence, inputRef, answer, reveal, skip, skipItem, busy, sendable, send,
+    error: answer.error ?? reveal.error ?? skip.error,
+  };
 }
 
 export type AnswerForm = ReturnType<typeof useAnswerForm>;
@@ -117,17 +129,22 @@ export function AnswerFields({ detail, form }: { detail: CheckDetail; form: Answ
   );
 }
 
-/** 답 Footer — 왼쪽 '그냥 알려줘'(서버가 허용할 때만), 오른쪽 '보내기'. */
+/** 답 Footer — `[건너뛰기] … [그냥 알려줘][보내기]`. 건너뛰기·그냥 알려줘는 서버가 허용할 때만. */
 export function AnswerFooter({ detail, form }: { detail: CheckDetail; form: AnswerForm }) {
   const t = useT(messages);
   return (
     <StepFooter error={form.error}>
+      {showSkip(detail) && (
+        <Button variant="ghost" onClick={form.skipItem} disabled={form.busy} loading={form.skip.isPending}>
+          {t.skip}
+        </Button>
+      )}
+      <span className="flex-1" />
       {showReveal(detail) && (
         <Button variant="ghost" onClick={() => form.reveal.mutate()} disabled={form.busy} loading={form.reveal.isPending}>
           {t.reveal}
         </Button>
       )}
-      <span className="flex-1" />
       <Button variant="primary" onClick={form.send} disabled={!form.sendable} loading={form.answer.isPending}>
         {t.send}
       </Button>
