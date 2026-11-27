@@ -10,10 +10,16 @@ import { RouteSync } from "./RouteSync";
 import { ROOT_SELECTOR } from "./scope";
 import { WitemsShell } from "./WitemsShell";
 import { witemsRoutes } from "./routes";
+import { legacyHashPath } from "./legacyHash";
 
-/** MemoryRouter 첫 주소(basePath 뒤) = ctx.path + ctx.search. "/" 는 "" 로. */
+/**
+ * MemoryRouter 첫 주소(basePath 뒤) = ctx.path + ctx.search. "/" 는 "" 로.
+ * 옛 해시 주소(/apps/punisher#/map — D8 이전)로 들어오면 그 경로로 셸 주소를 바로잡는다(replace, 한 릴리스용).
+ */
 function initialEntry(ctx: AppContext): string {
-  const path = `${ctx.path}${ctx.search}`;
+  const legacy = legacyHashPath(ctx.path, ctx.search, window.location.hash);
+  if (legacy) { ctx.navigate(legacy, { replace: true }); }
+  const path = legacy ?? `${ctx.path}${ctx.search}`;
   return path.startsWith("/?") || path === "/" ? path.slice(1) : path;
 }
 
