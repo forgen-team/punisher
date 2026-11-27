@@ -1,2 +1,2 @@
-export { LectureActionStatus, LectureWrapup, useLectureActions, type LectureActionsState } from "./LectureActions";
+export { LectureWrapup, useLectureActions, type CheckOutcomeSummary, type LectureActionsState, type NextLectureLink } from "./LectureActions";
 export { FeedbackBar } from "./FeedbackBar";

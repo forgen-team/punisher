@@ -55,9 +55,9 @@ describe("수준 보정 카드", () => {
     await waitFor(() => expect(screen.queryByText("설명을 더 풀어 쓸까요?")).toBeNull());
   });
 
-  it("괜찮아요 dismisses the suggestion", async () => {
+  it("닫기 dismisses the suggestion", async () => {
     renderCard();
-    fireEvent.click(await screen.findByRole("button", { name: "괜찮아요" }));
+    fireEvent.click(await screen.findByRole("button", { name: "닫기" }));
     await waitFor(() => expect(api.dismissLevelSuggestion).toHaveBeenCalled());
     expect(api.saveLearningSettings).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByText("설명을 더 풀어 쓸까요?")).toBeNull());

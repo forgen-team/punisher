@@ -1,7 +1,7 @@
 
 import { Link } from "@/src/shared/lib/router";
 import { forwardRef } from "react";
-import { ArrowLeft, Layers } from "lucide-react";
+import { Layers } from "lucide-react";
 import { List, ListRow, Section } from "@forgen-team/ui";
 import { isReadThrough, readThroughLabel } from "@/src/entities/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
@@ -20,20 +20,13 @@ function progressLabel(l: LinkedLecture, t: T): string {
   return t.unread;
 }
 
-/** 심화 강의 상단: "← 원 강의로" (더 깊게 누른 위치로 돌아간다). */
+/** 메타 줄의 "○○ 강의에서 이어짐" — 더 깊게 누른 위치(원 강의)로 간다. 다시 만든 판이면 원래 판으로. */
 export function ParentLectureLink({ parent }: { parent: LinkedLecture }) {
   const t = useT(messages);
-  const href = lectureAnchorHref(parent.id, parent.anchor);
   return (
-    <div className="border-b border-line py-1 text-sm">
-      <Link href={href} className="inline-flex min-h-touch min-w-0 max-w-full items-center gap-1 text-accent-text">
-        <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
-        <span className="truncate">
-          {parent.linkKind === "regenerated" ? t.backToOriginalVersion : t.backToParent}: {parent.conceptName}
-          {parent.title && parent.title !== parent.conceptName ? ` · ${parent.title}` : ""}
-        </span>
-      </Link>
-    </div>
+    <Link href={lectureAnchorHref(parent.id, parent.anchor)} className="text-accent-text underline-offset-2 hover:underline">
+      {parent.linkKind === "regenerated" ? t.fromOriginalVersion : t.continuedFrom(parent.conceptName || parent.title)}
+    </Link>
   );
 }
 

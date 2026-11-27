@@ -11,8 +11,8 @@ import { useT } from "@/src/shared/i18n";
 interface SectionTocProps {
   sections: LectureSection[];
   totalMinutes: number;
-  /** 항목 선택 후 (시트 닫기 등) */
-  onNavigate?: () => void;
+  /** 항목 선택 후 (시트 닫기 등). scroll 을 받으면 닫힌 뒤 직접 부른다(안 받으면 다음 프레임에 스크롤) */
+  onNavigate?: (scroll: () => void) => void;
   /** 시트 안에서는 제목 줄을 생략 */
   hideHeading?: boolean;
   /** 지금 읽는 섹션(강조) */
@@ -37,10 +37,10 @@ export function SectionToc({ sections, totalMinutes, onNavigate, hideHeading = f
               aria-current={activeAnchor && s.anchor === activeAnchor ? "location" : undefined}
               onClick={(event) => {
                 if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) { return; }
-                onNavigate?.();
-                // 시트가 닫히며 스크롤 잠금이 풀린 다음 프레임에 이동한다.
                 event.preventDefault();
-                requestAnimationFrame(() => scrollToAnchor(s.anchor));
+                const scroll = () => scrollToAnchor(s.anchor);
+                // 시트가 닫히며 스크롤 잠금이 풀린 다음에 이동한다.
+                if (onNavigate) { onNavigate(scroll); } else { requestAnimationFrame(scroll); }
               }}
               className={cn(
                 // 두 줄 제목: 번호 칸을 따로 둬 둘째 줄이 제목 첫 글자에 맞춰지고(내어쓰기), 위아래 여백으로 항목 사이를 띄운다.
@@ -74,7 +74,12 @@ export function TocSheet({ open, onClose, sections, totalMinutes }: TocSheetProp
   const t = useT(messages);
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) { onClose(); } }} title={t.toc} description={t.totalMinutes(totalMinutes)}>
-      <SectionToc sections={sections} totalMinutes={totalMinutes} onNavigate={onClose} hideHeading />
+      <SectionToc
+        sections={sections}
+        totalMinutes={totalMinutes}
+        onNavigate={(scroll) => { onClose(); requestAnimationFrame(scroll); }}
+        hideHeading
+      />
     </Sheet>
   );
 }
