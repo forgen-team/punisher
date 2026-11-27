@@ -1,7 +1,7 @@
 import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { Link, useRouter, useSearchParams } from "@/src/shared/lib/router";
-import { Badge, Button, EmptyState, ErrorState, LinkTabs, List, ListRow, ListSkeleton, Menu, useConfirm, type MenuItemDef } from "@forgen-team/ui";
-import { lectureAnchorHref, useCards, useDeleteCard, useGradeCard } from "@/src/entities/punisher";
+import { Badge, Button, EmptyState, ErrorState, LinkTabs, List, ListRow, ListSkeleton, Menu, useToast, type MenuItemDef } from "@forgen-team/ui";
+import { lectureAnchorHref, useCards, useDeleteCard, useGradeCard, useRestoreCard } from "@/src/entities/punisher";
 import { describePunisherError, type CardRating, type ReviewCard } from "@/src/shared/api/punisher";
 import { useStudyShortcuts } from "@/src/shared/lib/shortcuts";
 import { useOnline } from "@/src/shared/lib/useOnline";
@@ -151,29 +151,33 @@ function CardReview() {
   );
 }
 
-/** 모든 카드 — 목록. 행 ⋯ "카드 삭제"는 확인 창을 거친다(삭제하면 복습 기록도 지워져 되돌리기 API 가 없다). */
+/** 모든 카드 — 목록. 행 ⋯ "카드 삭제"는 확인 없이 바로 지우고 토스트 [되돌리기] 로 되살린다(서버는 표시만 하고 복습 기록을 남긴다). */
 function CardList() {
   const t = useT(messages);
   const locale = useLocale();
   const cards = useCards(false);
   const remove = useDeleteCard();
-  const confirm = useConfirm();
+  const restore = useRestoreCard();
+  const toast = useToast();
   const items = useMemo(() => cards.data ?? [], [cards.data]);
   if (cards.isLoading) { return <ListSkeleton rows={5} />; }
   if (cards.error) {
     return <ErrorState title={describePunisherError(cards.error)} onRetry={() => cards.refetch()} />;
   }
   if (items.length === 0) { return <EmptyState title={t.allEmpty} />; }
-  async function del(card: ReviewCard) {
-    const ok = await confirm({ title: t.deleteTitle, description: t.deleteBody, confirmLabel: t.deleteConfirm, tone: "danger" });
-    if (ok) { remove.mutate(card.id); }
+  function del(card: ReviewCard) {
+    remove.mutate(card.id, {
+      onSuccess: () => toast.undo(t.deleted, () => {
+        restore.mutateAsync(card.id).catch(() => toast.show(t.undoFailed, { tone: "danger" }));
+      }),
+    });
   }
   return (
     <>
       <InlineError error={remove.error} />
       <List>
         {items.map((card) => {
-          const menu: MenuItemDef[] = [{ key: "delete", label: t.delete, danger: true, onSelect: () => void del(card) }];
+          const menu: MenuItemDef[] = [{ key: "delete", label: t.delete, danger: true, onSelect: () => del(card) }];
           return (
             <ListRow
               key={card.id}

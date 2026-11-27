@@ -280,7 +280,7 @@ func (s *SQLiteStore) ReviewForecast(ctx context.Context, userID string, now tim
 		return nil, 0, fmt.Errorf("forecast objectives: %w", err)
 	}
 	if err := add(`SELECT next_review_at FROM review_cards
-		WHERE user_id = $1 AND next_review_at IS NOT NULL AND next_review_at < $2 AND suspended_at IS NULL`, true); err != nil {
+		WHERE user_id = $1 AND next_review_at IS NOT NULL AND next_review_at < $2 AND suspended_at IS NULL AND deleted_at IS NULL`, true); err != nil {
 		return nil, 0, fmt.Errorf("forecast cards: %w", err)
 	}
 	var queued int

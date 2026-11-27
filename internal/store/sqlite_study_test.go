@@ -192,10 +192,10 @@ func TestReviewCardsFromNote(t *testing.T) {
 	if d, _ := s.CardDraftFor(ctx, testUser, "note", note); d.CardID != c.ID {
 		t.Fatal("draft points at the existing card")
 	}
-	if err := s.DeleteCard(ctx, "other", c.ID); !errors.Is(err, ErrNotFound) {
+	if err := s.DeleteCard(ctx, "other", c.ID, now); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("another user's card: %v", err)
 	}
-	if err := s.DeleteCard(ctx, testUser, c.ID); err != nil {
+	if err := s.DeleteCard(ctx, testUser, c.ID, now); err != nil {
 		t.Fatal(err)
 	}
 }

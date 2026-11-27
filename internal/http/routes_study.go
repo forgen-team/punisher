@@ -30,5 +30,6 @@ func registerStudyRoutes(r chi.Router, deps RouterDependencies) {
 	r.Patch("/cards/{id}", h.PatchCard)
 	r.Patch("/cards/external/{externalId}", h.PatchCard)
 	r.Delete("/cards/{id}", h.DeleteCard)
+	r.Post("/cards/{id}/restore", h.RestoreCard)
 	r.Get("/search", h.Search)
 }
