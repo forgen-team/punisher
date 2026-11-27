@@ -106,6 +106,8 @@ type Service struct {
 	Links *quality.LinkChecker
 	// SourceHosts: the curriculum's doc_links hosts, allowed as sources besides quality.OfficialHosts.
 	SourceHosts map[string]bool
+	// runs: cancel funcs of the generations running in this process ([취소]).
+	runs jobRuns
 }
 
 func (s *Service) now() time.Time {

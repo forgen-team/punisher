@@ -114,6 +114,8 @@ export const punisherApi = {
   startInstant: (body: InstantRequest) =>
     punisherFetch<InstantResponse>("/lectures/instant", { method: "POST", json: body }),
   getJob: (jobId: string) => punisherFetch<GenerationJob>(`/jobs/${enc(jobId)}`),
+  /** 생성 중 [취소] — 실행 중인 AI 를 멈추고 작업을 '취소됨'(failed/cancelled)으로 둔다. 이미 끝났으면 409. */
+  cancelJob: (jobId: string) => punisherFetch<GenerationJob>(`/jobs/${enc(jobId)}/cancel`, { method: "POST" }),
   getLecture: (id: string) => punisherFetch<Lecture>(`/lectures/${enc(id)}`),
   saveProgress: (id: string, anchor: string, percent: number) =>
     punisherFetch<{ anchor: string; percent: number }>(`/lectures/${enc(id)}/progress`, {
@@ -250,6 +252,8 @@ export const punisherApi = {
     }),
   retryCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/retry`, { method: "POST" }),
   abandonCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/abandon`, { method: "POST" }),
+  /** 문항 만드는 중 [취소] — 생성을 멈추고 세션을 abandoned 로. 준비 중이 아니면 409. */
+  cancelCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/cancel`, { method: "POST" }),
   /** '그만하기' 되돌리기(10분 안, 반쯤 답한 문항을 닫지 않은 경우만 — 아니면 409). */
   resumeCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/resume`, { method: "POST" }),
   /** 자기 채점 — 답을 보낸 뒤(current.canSelfGrade)에만. */

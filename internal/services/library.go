@@ -166,12 +166,17 @@ func (s *Service) libraryCandidates(ctx context.Context, userID string) ([]strin
 func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Target, onStage func(string, int)) (models.Lecture, error) {
 	ctx, cancel := context.WithTimeout(ctx, libraryJobTimeout)
 	defer cancel()
+	ctx, end := s.runs.begin(ctx, jobID)
+	defer end()
 	if err := s.Store.StartJob(ctx, jobID); err != nil {
 		return models.Lecture{}, err
 	}
 	var u usage
 	var result LoopResult
 	fail := func(err error) (models.Lecture, error) {
+		if s.jobCancelled(ctx, jobID) { // [취소]: the row stays cancelled (FinishJob adds the tokens only)
+			err = fmt.Errorf("%w: %w", ErrJobCancelled, err)
+		}
 		o := u.outcome("failed", "", err, "")
 		if len(result.Attempts) > 0 {
 			o.Attempts = result.AttemptLog()
@@ -195,6 +200,9 @@ func (s *Service) runLibraryJob(ctx context.Context, apiKey, jobID string, t Tar
 	result, err = RunReviewLoop(ctx, libraryAttempts, loop)
 	if err != nil {
 		return fail(err)
+	}
+	if !s.runs.commit(jobID) { // cancelled after the last call: nothing is saved
+		return fail(ErrJobCancelled)
 	}
 
 	final, err := s.storeAttempts(ctx, t, jobID, result, u.model, u.provider)
