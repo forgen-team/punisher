@@ -45,7 +45,9 @@ type ItemFinish struct {
 	Adaptive bool
 	// Synthesis: a synthesis session item — a failure pulls the covered reviews forward (v3 §5).
 	Synthesis bool
-	Now       time.Time
+	// Skip: '건너뛰기' — outcome skipped, no evidence; the review comes back soon (skipItem).
+	Skip bool
+	Now  time.Time
 }
 
 // ResultEntry is one item's line of the session result (check_sessions.result.items).
@@ -123,6 +125,9 @@ func applyItemEvidence(ctx context.Context, c conn, f ItemFinish) (ResultEntry, 
 		entry.Outcome = learning.OutcomeRecorded
 		return entry, grade, nil
 	}
+	if f.Skip {
+		return skipItem(ctx, c, f, entry, grade)
+	}
 	if f.Item.ObjectiveID == "" { // 통합 문항: 상자는 움직이지 않고 covers 에 integrative_ok 만.
 		entry.Outcome = learning.ItemOutcome(f.Result, nil, f.Now)
 		if f.IntegrativeOK {
@@ -176,6 +181,50 @@ func applyItemEvidence(ctx context.Context, c conn, f ItemFinish) (ResultEntry, 
 	}
 	entry.LevelAfter, entry.NextReviewAt, entry.Lapses, entry.Queued = learning.DisplayLevel(m), m.NextReviewAt, m.Lapses, m.Queued
 	return entry, grade, nil
+}
+
+// skipItem records a skipped item: no evidence (box, best, lapses, ease, FSRS
+// memory and the evidence marker stay), only the review date is pulled to the
+// nearest one (learning.ApplySkip) — for a synthesis item, of the objectives it
+// covers. An objective without a mastery row enters the review schedule (or
+// waits, under inflow control).
+func skipItem(ctx context.Context, c conn, f ItemFinish, entry ResultEntry, grade GradeRecord) (ResultEntry, GradeRecord, error) {
+	entry.Outcome = learning.OutcomeSkipped
+	if f.Item.ObjectiveID == "" {
+		if f.Synthesis {
+			return entry, grade, pullDueCovers(ctx, c, f.UserID, f.Item.Rubric.Covers, f.Now, f.Intervals)
+		}
+		return entry, grade, nil
+	}
+	l, err := lockMastery(ctx, c, f.UserID, f.Item.ObjectiveID)
+	if err != nil {
+		return entry, grade, fmt.Errorf("load mastery: %w", err)
+	}
+	m := learning.ApplySkip(l.M, f.Now, f.Intervals)
+	if !l.M.Queued {
+		m = learning.QueueEntry(l.M, m, f.Hold)
+	}
+	switch {
+	case !l.Exists:
+		_, err = saveMastery(ctx, c, f.UserID, f.Item.ObjectiveID, f.Turn.Grader, m, "")
+	case !sameTime(m.NextReviewAt, l.M.NextReviewAt) || m.Queued != l.M.Queued:
+		// 근거가 아니므로 updated_at·근거 표지는 그대로 둔다(이의 충돌 판정이 흔들리지 않게).
+		_, err = c.exec(ctx, `UPDATE user_objective_mastery SET next_review_at = $3, queued = $4 WHERE user_id = $1 AND objective_id = $2`,
+			f.UserID, f.Item.ObjectiveID, m.NextReviewAt, m.Queued)
+	}
+	if err != nil {
+		return entry, grade, fmt.Errorf("skip item: %w", err)
+	}
+	entry.LevelBefore, entry.LevelAfter = learning.DisplayLevel(l.M), learning.DisplayLevel(m)
+	entry.NextReviewAt, entry.Lapses, entry.Queued = m.NextReviewAt, m.Lapses, m.Queued
+	return entry, grade, nil
+}
+
+func sameTime(a, b *time.Time) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return a.Equal(*b)
 }
 
 func advanceSession(ctx context.Context, c conn, f ItemFinish, cursor, items int, entry ResultEntry) error {

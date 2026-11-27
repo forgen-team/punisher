@@ -8,7 +8,7 @@ import { InlineError } from "@/src/shared/ui/punisher";
 import { DIAGNOSTIC_MESSAGES } from "@/src/features/punisher/pretest";
 import { formatDate, useLocale, useT } from "@/src/shared/i18n";
 import { SYNTHESIS_RESULT_LABELS, messages } from "../i18n";
-import { confidentErrors, showPrediction, suggestRelearn, type ResultRow } from "../lib/checkView";
+import { confidentErrors, showPrediction, suggestRelearn, type ResultRow, type ResultTally } from "../lib/checkView";
 import type { SynthesisRow } from "../lib/synthesis";
 import { LectureSummary } from "./LectureSummary";
 import { MisconceptionList } from "./MisconceptionList";
@@ -24,6 +24,8 @@ interface CheckResultProps {
   headline: string;
   /** 가장 이른 다음 복습일(ISO, 없으면 null) */
   nextReviewAt: string | null;
+  /** 집계 "맞힘 n · 다시 볼 것 n · 건너뜀 n"(건너뜀은 있을 때만) */
+  tally?: ResultTally;
   rows: ResultRow[];
   /** 이 세션에서 오개념을 인정한 턴 */
   acknowledgedTurnIds: ReadonlySet<string>;
@@ -152,7 +154,7 @@ function NextReview({ row }: { row: ResultRow }) {
 
 /** 결과 요약(design §4.4, 끝난 세션의 맨 위): 목표별 레벨 변화 · 놓친 기준 한 줄 · 다시 볼 곳 · 드러난 오개념 · 다음 복습일 · 다시 배우기 + 아래 동작. */
 export const CheckResult = forwardRef<HTMLDivElement, CheckResultProps>(function CheckResult(
-  { checkId, headline, nextReviewAt, rows, acknowledgedTurnIds, anchorLink, lectureSummary, synthesis, children },
+  { checkId, headline, nextReviewAt, tally, rows, acknowledgedTurnIds, anchorLink, lectureSummary, synthesis, children },
   ref,
 ) {
   const locale = useLocale();
@@ -166,6 +168,7 @@ export const CheckResult = forwardRef<HTMLDivElement, CheckResultProps>(function
     <div ref={ref} tabIndex={-1} className="mt-4 scroll-mt-28 outline-none">
     <div className="flex flex-col gap-1 pb-4">
       <p className="text-xl font-semibold text-fg">{headline}</p>
+      {tally && <p className="text-sm text-fg-secondary tabular-nums">{t.tally(tally.correct, tally.again, tally.skipped)}</p>}
       {nextReviewAt && <p className="text-sm text-fg-secondary">{t.nextReview(formatDate(new Date(nextReviewAt), locale, HEADLINE_DATE))}</p>}
       <div className="mt-3 flex flex-wrap items-center gap-2 empty:hidden">{children}</div>
     </div>
@@ -185,6 +188,7 @@ export const CheckResult = forwardRef<HTMLDivElement, CheckResultProps>(function
                 <span>
                   {masteryLabel(row.levelBefore)} → {masteryLabel(row.levelAfter)}
                 </span>
+                {row.outcome === "skipped" && <span>· {t.skippedRow}</span>}
               </p>
               {missing && (
                 <p className="truncate text-fg-secondary" title={missing}>
