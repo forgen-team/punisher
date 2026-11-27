@@ -8,8 +8,8 @@ import { InlineError } from "@/src/shared/ui/punisher";
 import { messages } from "../i18n";
 import type { InquiryConcept, UserConceptState } from "@/src/shared/api/punisher";
 
-function mapHref(id: string): string {
-  return `/map?concept=${encodeURIComponent(id)}`;
+export function mapHref(id: string): string {
+  return `/map?node=${encodeURIComponent(id)}`;
 }
 
 /**
