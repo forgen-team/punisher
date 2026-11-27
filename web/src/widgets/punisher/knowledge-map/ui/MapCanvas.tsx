@@ -5,6 +5,7 @@ import { Background, Controls, MiniMap, Panel, ReactFlow, type Edge, type ReactF
 import { Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "@forgen-team/ui";
 import { MAP_STATE_STYLES, mapNodeState, useResolvedTheme } from "@/src/entities/punisher";
+import { mapDisplayState, stateLabel } from "../lib/displayState";
 import type { GraphEdge, GraphNode } from "@/src/shared/api/punisher";
 import { NODE_HEIGHT, layoutGraph, nodeWidth, type LaidOutNode } from "../lib/elkLayout";
 import { FIT_MAX_ZOOM, FIT_MIN_ZOOM, FIT_PADDING, fitCandidates, fitsAtMinZoom, type FitBox } from "../lib/initialFit";
@@ -74,8 +75,8 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, mast
           name: n.name,
           depth: n.depth,
           displayState: mapNodeState(n),
+          stateLabel: stateLabel(t, mapDisplayState(n)),
           unlocks: n.unlocks,
-          requested: n.requests?.length ?? 0,
           proposed: n.status === "proposed",
           inquiries: n.inquiries?.length ?? 0,
           mastered: masteredIds.has(n.id),
@@ -87,7 +88,7 @@ export default function MapCanvas({ nodes, edges, highlightIds, selectedId, mast
         },
       };
     });
-  }, [nodes, positions, highlightIds, selectedId, masteredIds, onSelect]);
+  }, [nodes, positions, highlightIds, selectedId, masteredIds, onSelect, t]);
 
   // 첫 화면: 후보(고른 개념 / 좁힌 보기 전체 → 진행·추천 / 최근 진행 1개 …) 가운데 FIT_MIN_ZOOM 으로 다 들어가는 첫 묶음,
   // 하나도 안 들어가면 기준 노드 하나를 가운데에 둔다. fitView 는 캔버스가 처음 그려질 때 한 번만 쓰인다.

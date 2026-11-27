@@ -1,25 +1,24 @@
-
-import { usePathname, useRouter, useSearchParams } from "@/src/shared/lib/router";
 import { Suspense, lazy, useCallback, useMemo, useState } from "react";
-import { EmptyState, ErrorState, ListSkeleton, Sheet, Skeleton } from "@forgen-team/ui";
-import { useIsSplitLayout } from "@/src/shared/lib/useIsSplitLayout";
-import { useFrontier, useGoalPath, useGoals, useGraph, useMasteryBatch, useToday } from "@/src/entities/punisher";
+import { useLocation } from "react-router-dom";
+import { Button, EmptyState, ErrorState, ListSkeleton, Sheet, Skeleton, useIsSplit } from "@forgen-team/ui";
+import { useConceptDetail, useGoalPath, useGoals, useGraph, useMasteryBatch, useToday } from "@/src/entities/punisher";
 import { GoalsManager } from "@/src/features/punisher/goal-manage";
 import { KnownAreasSheet } from "@/src/features/punisher/known-onboarding";
 import { FOUNDATIONS_AREA, describePunisherError } from "@/src/shared/api/punisher";
-import { useWideLayout } from "@/src/shared/lib/useWideLayout";
-import { ConceptDetailSheet } from "./ui/ConceptDetailSheet";
+import { useT } from "@/src/shared/i18n";
+import { Link, usePathname, useRouter, useSearchParams } from "@/src/shared/lib/router";
+import { usePageActions, useScreenTitle, type PageAction } from "@/src/shared/lib/screen-chrome";
+import { ConceptDetail } from "./ui/ConceptDetail";
 import { CHAPTER_OPTION_PREFIX, MapControls, type MapView } from "./ui/MapControls";
 import { MapConceptList } from "./ui/MapConceptList";
+import { MapLegendSheet } from "./ui/MapPanels";
+import { FoundationsToggle } from "./ui/FoundationsToggle";
 import { chapterView } from "./lib/chapterView";
 import { FOUNDATIONS_SHOWN, hiddenFoundationsCount, visibleFoundations } from "./lib/foundationsView";
-import { FoundationsToggle } from "./ui/FoundationsToggle";
+import { closeOverlay, openOverlay } from "./lib/overlayHistory";
 import { messages } from "./i18n";
-import { useT } from "@/src/shared/i18n";
 
 const NEW_CHAPTER_PATH = "/chapters/new";
-import { CoverageList, FrontierList, MapLegendSheet, PendingRequestList } from "./ui/MapPanels";
-
 const LazyMapCanvas = lazy(() => import("./ui/MapCanvas"));
 
 function MapCanvas(props: React.ComponentProps<typeof LazyMapCanvas>) {
@@ -33,26 +32,31 @@ function MapCanvas(props: React.ComponentProps<typeof LazyMapCanvas>) {
 /** 기본은 전체 영역(전체가 한 화면에 들어오게 fitView). 영역 필터는 선택 사항. */
 const DEFAULT_AREA = "all";
 
+type MapPanel = "goals" | "known";
+
 /**
- * 지식 지도: 모바일은 컨트롤 한 줄 + 전체 폭 캔버스, 그 아래 "다음에 공부하면 좋은 것"·커버리지.
- * 노드 상세·범례·목표 관리·아는 개념 표시는 시트. URL 상태(?area=&goal=&concept=&request=&panel=goals&view=).
- * 보기: 그래프 | 목록(깊이 층별) — ?view= 가 없으면 휴대폰(fold 미만)은 목록, 그 밖은 그래프.
- * 그래프는 항상 전체를 한 번 받아(약 170개) 영역은 클라이언트에서 거른다 — 영역 요약(학습·요청 수)도 함께 쓴다.
+ * 지식 지도 `/map` (T-canvas): Toolbar 한 줄 + 본문.
+ * 폰은 목록 보기(영역별 묶음)가 기본이고 개념을 고르면 전체 화면 상세, 넓은 화면(1024+)은 그래프가 기본이고 오른쪽 옆 패널이 상세다.
+ * 주소 = 상태: ?view=list|graph &area= &goal= &node= &panel=goals|known (옛 ?concept= 도 읽는다).
+ * `?node=` 는 처음 열 때 push, 열린 채 다른 개념은 replace. `?panel=` 시트는 push 로 열고 닫으면 뒤로 간다.
+ * 새 챕터·목표 관리·이미 아는 개념 표시는 셸의 페이지 동작(usePageActions)이다.
  */
 export function KnowledgeMapWidget() {
   const t = useT(messages);
   const router = useRouter();
   const pathname = usePathname();
+  const { search } = useLocation();
   const params = useSearchParams();
+  const split = useIsSplit();
   const goalId = params.get("goal") ?? "";
   const areaParam = params.get("area") ?? DEFAULT_AREA;
   const requestId = params.get("request");
-  const goalsOpen = params.get("panel") === "goals";
   const chapterParam = params.get("chapter");
+  const panelParam = params.get("panel");
+  const panel: MapPanel | null = panelParam === "goals" || panelParam === "known" ? panelParam : null;
   const areaFilter = goalId || chapterParam || areaParam === "all" ? null : areaParam;
   // 0단계 기초: 내 수준에서 기본 숨김이면 ?foundations=shown 으로 펼친다(목표·챕터 보기에는 끼지 않는다).
   const foundationsExpanded = params.get("foundations") === FOUNDATIONS_SHOWN;
-  const split = useIsSplitLayout();
   const viewParam = params.get("view");
   const view: MapView = viewParam === "graph" || viewParam === "list" ? viewParam : split ? "graph" : "list";
 
@@ -62,12 +66,13 @@ export function KnowledgeMapWidget() {
     () => (requestId ? graph.data?.nodes.find((n) => n.requests?.some((r) => r.id === requestId))?.id ?? null : null),
     [graph.data, requestId],
   );
-  const selectedId = params.get("concept") ?? requestConceptId;
+  const selectedId = params.get("node") ?? params.get("concept") ?? requestConceptId;
+  const selectedNode = useMemo(() => graph.data?.nodes.find((n) => n.id === selectedId), [graph.data, selectedId]);
+  const selectedDetail = useConceptDetail(selectedId ?? undefined);
   // 숙달 링: 지도 전체 개념을 한 번에(300개씩) 받아 숙달한 개념에 그린다(영역을 바꿔도 다시 받지 않게 전체 기준).
   const allIds = useMemo(() => (graph.data?.nodes ?? []).map((n) => n.id), [graph.data]);
   const mastery = useMasteryBatch(allIds);
   const masteredIds = useMemo(() => new Set((mastery.data ?? []).filter((m) => m.mastered).map((m) => m.conceptId)), [mastery.data]);
-  const frontier = useFrontier(10);
   // 이어보기(최근에 본 순) — 진행 중인 개념이 여럿이면 첫 화면을 가장 최근 것에 맞춘다.
   const today = useToday();
   const recentConceptIds = useMemo(
@@ -77,29 +82,50 @@ export function KnowledgeMapWidget() {
   const goals = useGoals();
   const goalPath = useGoalPath(goalId || undefined);
   const [legendOpen, setLegendOpen] = useState(false);
-  const [knownOpen, setKnownOpen] = useState(false);
 
-  const setParams = useCallback(
-    (patch: Record<string, string | null>, replace = false) => {
+  const here = `${pathname}${search}`;
+  const hrefWith = useCallback(
+    (patch: Record<string, string | null>) => {
       const next = new URLSearchParams(params.toString());
       for (const [key, value] of Object.entries(patch)) {
         if (value) { next.set(key, value); } else { next.delete(key); }
       }
       const qs = next.toString();
-      // 화면=주소: 개념 시트·필터 모두 기록에 쌓는다(뒤로 = 앞 시트·앞 필터). 같은 값이면 이동하지 않는다.
-      // 시트 닫기(×)는 교체 — 닫은 뒤 뒤로 가기가 방금 닫은 시트를 다시 열지 않게.
-      const href = qs ? `${pathname}?${qs}` : pathname;
-      if (replace) { router.replace(href, { scroll: false }); } else { router.push(href, { scroll: false }); }
+      return qs ? `${pathname}?${qs}` : pathname;
     },
-    [params, pathname, router],
+    [params, pathname],
   );
-  const onSelect = useCallback((id: string) => setParams({ concept: id }), [setParams]);
-  const closeDetail = useCallback(() => setParams({ concept: null, request: null }, true), [setParams]);
-  const wide = useWideLayout();
+  // 보기·영역·목표 같은 필터는 기록에 쌓는다(뒤로 = 앞 필터). 같은 값이면 이동하지 않는다.
+  const setParams = useCallback((patch: Record<string, string | null>) => router.push(hrefWith(patch), { scroll: false }), [router, hrefWith]);
+  const onSelect = useCallback(
+    (id: string) => openOverlay(router, hrefWith({ node: id, concept: null, request: null }), selectedId ? here : undefined),
+    [router, hrefWith, selectedId, here],
+  );
+  const closeDetail = useCallback(
+    () => closeOverlay(router, here, hrefWith({ node: null, concept: null, request: null })),
+    [router, here, hrefWith],
+  );
+  const openPanel = useCallback(
+    (next: MapPanel) => openOverlay(router, hrefWith({ panel: next, node: null, concept: null, request: null })),
+    [router, hrefWith],
+  );
+  const closePanel = useCallback(() => closeOverlay(router, here, hrefWith({ panel: null })), [router, here, hrefWith]);
   const showGoalPath = useCallback(
-    (id: string, conceptId?: string) => setParams({ goal: id, concept: conceptId ?? null, panel: null }),
+    (id: string, conceptId?: string) => setParams({ goal: id, node: conceptId ?? null, concept: null, panel: null }),
     [setParams],
   );
+
+  const fullScreenDetail = !split && Boolean(selectedId);
+  useScreenTitle(fullScreenDetail ? (selectedNode?.name ?? selectedDetail.data?.name) : null);
+  const pageActions = useMemo<PageAction[] | null>(
+    () => fullScreenDetail ? null : [
+      { id: "new-chapter", label: t.newChapter, icon: "plus", href: NEW_CHAPTER_PATH, kind: "default" },
+      { id: "manage-goals", label: t.manageGoals, onSelect: () => openPanel("goals") },
+      { id: "mark-known", label: t.markKnown, onSelect: () => openPanel("known") },
+    ],
+    [fullScreenDetail, t, openPanel],
+  );
+  usePageActions(pageActions);
 
   const pathIds = useMemo(() => {
     if (!goalId || !goalPath.data) { return null; }
@@ -125,10 +151,7 @@ export function KnowledgeMapWidget() {
     return hideFoundations ? rows.filter((c) => c.area !== FOUNDATIONS_AREA) : rows;
   }, [graph.data, foundationsExpanded]);
   const showFoundationsToggle = foundationsCount > 0 && !goalId && !chapterParam && areaFilter === null;
-  const selectedRequests = useMemo(
-    () => graph.data?.nodes.find((n) => n.id === selectedId)?.requests ?? [],
-    [graph.data, selectedId],
-  );
+  const mapIsEmpty = graph.isSuccess && (graph.data?.nodes.length ?? 0) === 0;
 
   function renderCanvas() {
     if (graph.isLoading || (goalId && goalPath.isLoading)) {
@@ -145,11 +168,19 @@ export function KnowledgeMapWidget() {
         />
       );
     }
+    if (mapIsEmpty) {
+      return (
+        <EmptyState
+          title={t.emptyMapTitle}
+          action={<Button asChild variant="primary"><Link href={NEW_CHAPTER_PATH}>{t.openChapter}</Link></Button>}
+        />
+      );
+    }
     if (nodes.length === 0) {
-      return <EmptyState title={t.emptyTitle} description={t.emptyDescription} />;
+      return <EmptyState title={t.emptyTitle} />;
     }
     if (view === "list") {
-      return <MapConceptList nodes={nodes} selectedId={selectedId} showArea={!areaFilter && !chapterParam} onSelect={onSelect} />;
+      return <MapConceptList nodes={nodes} coverage={coverageRows} selectedId={selectedId} onSelect={onSelect} />;
     }
     return (
       <MapCanvas
@@ -164,72 +195,74 @@ export function KnowledgeMapWidget() {
     );
   }
 
-  return (
-    // lg+: 위젯이 화면 남은 높이(단독판: 상단 바·학습 머리 영역·아래 여백 14rem 제외 — witems 11.25rem)를 차지하고, 컨트롤·안내 줄을 뺀 나머지를 캔버스 줄이 채운다.
-    <div className="flex w-full flex-col gap-3 lg:h-[calc(100dvh-14rem)] lg:min-h-[28rem]">
-      <MapControls
-        area={chapterParam ? `${CHAPTER_OPTION_PREFIX}${chapterParam}` : areaParam}
-        view={view}
-        onViewChange={(v) => setParams({ view: v })}
-        chapters={graph.data?.chapters ?? []}
-        goalId={goalId}
-        goals={goals.data ?? []}
-        coverage={graph.data?.coverage ?? []}
-        onAreaChange={(a) =>
-          a.startsWith(CHAPTER_OPTION_PREFIX)
-            ? setParams({ chapter: a.slice(CHAPTER_OPTION_PREFIX.length), area: null })
-            : setParams({ area: a, chapter: null })
-        }
-        onOpenChapter={() => router.push(NEW_CHAPTER_PATH)}
-        onGoalChange={(g) => setParams({ goal: g || null })}
-        onOpenLegend={() => setLegendOpen(true)}
-        onOpenGoals={() => setParams({ panel: "goals" })}
-        onOpenKnown={() => setKnownOpen(true)}
-      />
-      {goalId && <p className="text-xs text-fg-muted">{t.goalPathHint}</p>}
-      {showFoundationsToggle && (
-        <FoundationsToggle
-          count={foundationsCount}
-          expanded={foundationsExpanded}
-          onToggle={() => setParams({ foundations: foundationsExpanded ? null : FOUNDATIONS_SHOWN })}
-        />
-      )}
-
-      {/* lg: 캔버스 | 18rem 목록, 상세는 오른쪽 시트. xl: 캔버스 | 22rem(2xl 26rem) 열 — 개념을 고르면 그 열이 상세 패널로 바뀐다(캔버스 폭 그대로).
-          lg+: 이 줄이 남은 높이를 채우고(안내 줄이 있으면 그만큼 줄어든다), xl 오른쪽 열은 그 높이를 넘지 않고 넘치면 세로로만 스크롤한다. */}
-      <div className="grid gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_18rem] lg:grid-rows-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
-        {view === "list" ? (
-          // 목록: 높이를 고정하지 않고 페이지와 함께 스크롤(lg+ 는 캔버스 자리 안에서 스크롤).
-          <div className="min-w-0 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-3">{renderCanvas()}</div>
-        ) : (
-          <div className="-mx-4 h-[60dvh] min-h-80 overflow-hidden border-y border-line fold:mx-0 fold:rounded-lg fold:border lg:h-full lg:min-h-0">
-            {renderCanvas()}
-          </div>
-        )}
-        <div className="flex min-w-0 flex-col gap-6 xl:max-h-full xl:self-start xl:overflow-y-auto xl:overflow-x-hidden xl:pr-3">
-          {wide && selectedId ? (
-            <ConceptDetailSheet variant="panel" conceptId={selectedId} requests={selectedRequests} onClose={closeDetail} onSelect={onSelect} />
-          ) : (
-            <>
-              <PendingRequestList requests={graph.data?.pendingRequests ?? []} highlightId={requestId} />
-              <FrontierList items={frontier.data?.items ?? []} onSelect={onSelect} />
-              <CoverageList coverage={coverageRows} />
-            </>
-          )}
-        </div>
-      </div>
-
-      <ConceptDetailSheet
-        conceptId={wide === false ? selectedId : null}
-        requests={selectedRequests}
-        onClose={closeDetail}
-        onSelect={onSelect}
-      />
+  const sheets = (
+    <>
       <MapLegendSheet open={legendOpen} onClose={() => setLegendOpen(false)} />
-      <Sheet open={goalsOpen} onOpenChange={(o) => { if (!o) { setParams({ panel: null }, true); } }} title={t.manageGoals} desktop="side">
+      <Sheet open={panel === "goals"} onOpenChange={(o) => { if (!o) { closePanel(); } }} title={t.manageGoals} desktop="dialog">
         <GoalsManager onShowPath={showGoalPath} />
       </Sheet>
-      <KnownAreasSheet open={knownOpen} onClose={() => setKnownOpen(false)} />
+      <KnownAreasSheet open={panel === "known"} onClose={closePanel} />
+    </>
+  );
+
+  // 폰: 개념 상세는 전체 화면(제목 = 개념 이름, ← = 닫기는 셸이 그린다).
+  if (fullScreenDetail && selectedId) {
+    return (
+      <>
+        <ConceptDetail conceptId={selectedId} node={selectedNode} variant="screen" onClose={closeDetail} onSelect={onSelect} />
+        {sheets}
+      </>
+    );
+  }
+
+  const toolbar = (
+    <MapControls
+      area={chapterParam ? `${CHAPTER_OPTION_PREFIX}${chapterParam}` : areaParam}
+      view={view}
+      onViewChange={(v) => setParams({ view: v })}
+      chapters={graph.data?.chapters ?? []}
+      goalId={goalId}
+      goals={goals.data ?? []}
+      coverage={graph.data?.coverage ?? []}
+      onAreaChange={(a) =>
+        a.startsWith(CHAPTER_OPTION_PREFIX)
+          ? setParams({ chapter: a.slice(CHAPTER_OPTION_PREFIX.length), area: null })
+          : setParams({ area: a, chapter: null })
+      }
+      onGoalChange={(g) => setParams({ goal: g || null })}
+      onOpenLegend={() => setLegendOpen(true)}
+    />
+  );
+  const foundationsToggle = showFoundationsToggle && (
+    <FoundationsToggle
+      count={foundationsCount}
+      expanded={foundationsExpanded}
+      onToggle={() => setParams({ foundations: foundationsExpanded ? null : FOUNDATIONS_SHOWN })}
+    />
+  );
+
+  return (
+    // 넓은 화면: 위젯이 화면 남은 높이(Toolbar 포함)를 차지하고, 캔버스 | 상세 패널 줄이 나머지를 채운다.
+    <div className="flex w-full flex-col gap-3 lg:h-[calc(100dvh-14rem)] lg:min-h-[28rem]">
+      {toolbar}
+      {foundationsToggle}
+      {split ? (
+        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_20rem] grid-rows-[minmax(0,1fr)] border border-line xl:grid-cols-[minmax(0,1fr)_24rem]">
+          <div className={view === "list" ? "min-w-0 overflow-y-auto p-4" : "min-w-0 overflow-hidden bg-canvas-subtle"}>{renderCanvas()}</div>
+          <aside aria-label={t.detailLabel} className="min-w-0 overflow-y-auto overflow-x-hidden border-l border-line p-4">
+            {selectedId ? (
+              <ConceptDetail conceptId={selectedId} node={selectedNode} variant="panel" onClose={closeDetail} onSelect={onSelect} />
+            ) : (
+              <p className="py-6 text-sm text-fg-muted">{t.detailPlaceholder}</p>
+            )}
+          </aside>
+        </div>
+      ) : view === "list" ? (
+        <div className="min-w-0">{renderCanvas()}</div>
+      ) : (
+        <div className="-mx-4 h-[60dvh] min-h-80 overflow-hidden border-y border-line fold:mx-0 fold:border">{renderCanvas()}</div>
+      )}
+      {sheets}
     </div>
   );
 }

@@ -4,7 +4,6 @@ import { MessageCircleQuestion } from "lucide-react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { cn } from "@/src/shared/lib/cn";
 import {
-  MAP_STATE_LABELS,
   MAP_STATE_STYLES,
   MapStateIcon,
   type MapNodeState,
@@ -17,9 +16,9 @@ export interface ConceptNodeData extends Record<string, unknown> {
   name: string;
   depth: number;
   displayState: MapNodeState;
+  /** 상태 이름(배움·읽는 중·이미 앎·요청됨·추천·잠김) — 목록·상세·범례와 같은 말 */
+  stateLabel: string;
   unlocks: number;
-  /** 대기 중인 학습 요청 수(RSS "30분 학습" 등) */
-  requested: number;
   /** 커리큘럼 밖에서 요청으로 제안된 개념 */
   proposed: boolean;
   /** 이 개념에 대한 내 질문('이 질문에 답하기' 해설) 수 */
@@ -53,7 +52,7 @@ function ConceptNodeImpl({ id, data }: NodeProps<ConceptFlowNode>) {
         type="button"
         onClick={() => data.onSelect(id)}
         aria-pressed={data.selected}
-        aria-label={`${data.name}, ${MAP_STATE_LABELS[data.displayState]}${recommended ? t.nodeUnlocks(data.unlocks) : ""}${data.requested > 0 ? t.nodeRequested : ""}${data.proposed ? t.nodeProposed : ""}${data.inquiries > 0 ? t.nodeInquiries(data.inquiries) : ""}${data.mastered ? t.nodeMastered : ""}${data.dismissed ? t.nodeDismissed : ""}`}
+        aria-label={`${data.name}, ${data.stateLabel}${recommended ? t.nodeUnlocks(data.unlocks) : ""}${data.proposed ? t.nodeProposed : ""}${data.inquiries > 0 ? t.nodeInquiries(data.inquiries) : ""}${data.mastered ? t.nodeMastered : ""}${data.dismissed ? t.nodeDismissed : ""}`}
         style={{
           width: nodeWidth(data.depth),
           height: NODE_HEIGHT,
@@ -78,11 +77,8 @@ function ConceptNodeImpl({ id, data }: NodeProps<ConceptFlowNode>) {
           {data.dismissed && (
             <span className="shrink-0 rounded-sm border border-line px-1 font-medium text-fg-muted">{t.dismissedBadge}</span>
           )}
-          {data.requested > 0 && (
-            <span className="shrink-0 rounded-sm bg-accent-solid px-1 font-semibold text-accent-on">{t.requestedBadge}</span>
-          )}
           <span className="min-w-0 truncate">
-            {data.proposed ? t.proposed : MAP_STATE_LABELS[data.displayState]}
+            {data.proposed ? t.proposed : data.stateLabel}
             {recommended && data.unlocks > 0 && t.nodeUnlocksShort(data.unlocks)}
           </span>
           {data.inquiries > 0 && (
