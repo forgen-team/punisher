@@ -51,7 +51,7 @@ export interface AppContext {
    * items and n ≤ 0 are ignored.
    */
   setBadges?(badges: Record<string, number>): void;
-  /** Optional: older shells don't have it — the app then keeps its own settings link (LearnNav). */
+  /** Optional: older shells don't have it — the app then can't show its page actions inside the shell. */
   setActions?(actions: AppAction[] | null): void;
   /** Optional: ⌘K commands. The shell owns ⌘K (captures it); older shells lack this and the app keeps its own ⌘K. */
   setCommands?(commands: AppCommand[] | null): void;

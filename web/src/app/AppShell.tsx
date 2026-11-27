@@ -1,94 +1,64 @@
-import { Suspense, useEffect } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { Outlet } from "react-router-dom";
 import { useTrackInAppNavigation } from "@/src/shared/lib/in-app-history";
-import { Search, Settings } from "lucide-react";
 import { useSearchShortcut } from "@/src/shared/lib/shortcuts";
-import { useRouter } from "@/src/shared/lib/router";
-import { Link } from "@/src/shared/lib/router";
-import { ListSkeleton } from "@forgen-team/ui";
+import { Link, useRouter } from "@/src/shared/lib/router";
 import { cn, focusRing } from "@/src/shared/lib/cn";
-import { useScreenChrome } from "@/src/shared/lib/screen-chrome";
 import { useOnline } from "@/src/shared/lib/useOnline";
 import { LearnNav } from "@/src/widgets/punisher/nav";
-import { ClaudeStatusBanner } from "@/src/widgets/claude-status";
 import { BrandMark } from "@/src/shared/ui/brand";
 import { LocaleSync } from "@/src/entities/punisher";
 import { useT } from "@/src/shared/i18n";
+import { AppPage, useFrameActions, useFrameTitle } from "./AppPage";
 import { messages } from "./i18n";
-import { titleKeyFor } from "./titles";
+import { PageActions } from "./PageActions";
 
-/** 문서 제목: 화면이 정한 구체적인 제목(강의 제목 등) → 없으면 경로별 제목. */
-function useDocumentTitle(pathname: string) {
+/** 문서 제목: "화면 제목 · punisher". */
+function useDocumentTitle() {
   const t = useT(messages);
-  const { title } = useScreenChrome();
+  const title = useFrameTitle();
   useEffect(() => {
-    document.title = `${title ?? t[titleKeyFor(pathname)]} · Punisher`;
-  }, [pathname, t, title]);
+    document.title = `${title} · ${t.appName}`;
+  }, [t.appName, title]);
 }
 
 /**
- * 앱 셸: 고정 상단 바(로고 · 설정) + 고른 AI 상태 배너 + 학습 탭(강의·지도·기록) + 본문.
- * LocaleSync 가 학습 설정의 언어를 화면 언어로 맞춘다(witems 는 punisher layout).
- * 폭·좌우 여백은 witems 학습 레이아웃과 같다(최대 1600px, px-4 → fold 6 → lg 8). 본문은 화면별로 가독 폭을 둔다.
- * 강의 뷰어·즉석 강의·설정 화면은 LearnNav 가 스스로 숨는다.
+ * 단독판 앱 틀(policy/20 §2 단독판 열): 고정 머리 = 앱 이름 줄(브랜드만) + 섹션 탭 줄 [오늘·지도·기록],
+ * 그 아래 Page(← · 제목 · 페이지 동작 · Claude 배너 · 본문). 설정은 페이지 동작 "punisher 설정"으로만 들어간다.
+ * ⌘K: 명령 팔레트가 없어 기록(찾기)으로 보낸다. LocaleSync 가 학습 설정의 언어를 화면 언어로 맞춘다.
+ * 폭·좌우 여백은 witems 학습 레이아웃과 같다(최대 1600px, px-4 → fold 6 → lg 8). 본문 폭 상한은 Page width(app/frame).
  */
 export function AppShell() {
-  const { pathname } = useLocation();
   const t = useT(messages);
-  useDocumentTitle(pathname);
+  useDocumentTitle();
   useTrackInAppNavigation();
   const router = useRouter();
-  useSearchShortcut(() => router.push("/search"));
-  const onSettings = pathname.startsWith("/settings");
+  useSearchShortcut(() => router.push("/history"));
+  const actions = useFrameActions();
   const online = useOnline();
 
   return (
     // overflow-x-clip: 넓은 코드·표는 제 상자 안에서 스크롤하고 화면 전체가 옆으로 밀리지는 않게(clip 은 sticky 를 깨지 않는다).
     <div className="flex min-h-screen flex-col overflow-x-clip">
       <LocaleSync />
-      {/* data-app-header: 휴대폰 강의 화면에서 아래로 읽는 동안 숨긴다 — 상태는 <html data-app-header-state>(shared/lib/appHeaderCollapse · globals.css). */}
-      <header data-app-header="" className="sticky top-0 z-nav border-b border-line bg-canvas-translucent pt-safe-top backdrop-blur">
-        <div className="mx-auto flex h-12 w-full max-w-[1600px] items-center justify-between px-4 fold:px-6 lg:px-8">
-          <Link href="/" aria-label={t.home} className={cn("flex items-center rounded-md", focusRing)}>
+      {/* data-app-header: 휴대폰 강의 화면에서 아래로 읽는 동안 숨긴다 — 상태는 <html data-app-header-state>(shared/lib/appHeaderCollapse · globals.css).
+          높이 = 앱 이름 줄 48 + 탭 줄 44 = --app-topbar-h. */}
+      <header data-app-header="" className="sticky top-0 z-nav bg-canvas-translucent pt-safe-top backdrop-blur">
+        <div className="mx-auto flex h-12 w-full max-w-[1600px] items-center px-4 fold:px-6 lg:px-8">
+          <Link href="/" aria-label={t.home} className={cn("flex items-center", focusRing)}>
             <BrandMark />
           </Link>
-          <div className="flex items-center gap-1">
-          <Link
-            href="/search"
-            aria-label={t.search}
-            aria-keyshortcuts="Meta+K Control+K"
-            aria-current={pathname.startsWith("/search") ? "page" : undefined}
-            className={cn("inline-flex min-h-touch items-center gap-1.5 rounded-md px-2 text-sm text-fg-secondary hover:bg-canvas-hover hover:text-fg", focusRing)}
-          >
-            <Search className="h-4 w-4" aria-hidden="true" />
-            <span className="hidden sm:inline">{t.search}</span>
-          </Link>
-          <Link
-            href="/settings"
-            aria-label={t.settings}
-            aria-current={onSettings ? "page" : undefined}
-            className={cn(
-              "inline-flex min-h-touch items-center gap-1.5 rounded-md px-2 text-sm text-fg-secondary hover:bg-canvas-hover hover:text-fg",
-              onSettings && "text-fg",
-              focusRing,
-            )}
-          >
-            <Settings className="h-4 w-4" aria-hidden="true" />
-            <span className="hidden sm:inline">{t.settings}</span>
-          </Link>
-          </div>
+        </div>
+        <div className="mx-auto flex h-11 w-full max-w-[1600px] flex-col justify-end px-4 fold:px-6 lg:px-8">
+          <LearnNav />
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 px-4 pb-[calc(3rem+var(--safe-bottom))] pt-3 fold:px-6 lg:px-8">
+      <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 px-4 pb-[calc(3rem+var(--safe-bottom))] pt-4 fold:px-6 lg:px-8">
         {/* 오프라인 읽기(sw.js): 저장해 둔 화면만 읽을 수 있고 채점·저장은 연결된 뒤에 */}
-        {online ? null : <p role="status" className="rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">{t.offline}</p>}
-        <ClaudeStatusBanner />
-        <LearnNav />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <Suspense fallback={<ListSkeleton rows={6} />}>
-            <Outlet />
-          </Suspense>
-        </div>
+        {online ? null : <p role="status" className="border border-line bg-warning-subtle px-3 py-2 text-sm text-warning">{t.offline}</p>}
+        <AppPage actions={actions.length > 0 ? <PageActions actions={actions} /> : undefined}>
+          <Outlet />
+        </AppPage>
       </main>
     </div>
   );
