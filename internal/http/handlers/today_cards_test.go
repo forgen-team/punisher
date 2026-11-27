@@ -116,7 +116,7 @@ func TestTodayCardsStudy(t *testing.T) {
 	t.Run("이어보기 + 다음 강의(강의 없음 → start)", func(t *testing.T) {
 		cards := buildTodayCards(todayCardsInput{Locale: "ko", Now: cardsNow, Resume: resumeRec(), Next: nextRec()})
 		c := cardByID(cards, "study")
-		if len(cards) != 1 || c == nil || c.Kind != "study" || c.Title != "이어보기" || len(c.Rows) != 2 {
+		if len(cards) != 1 || c == nil || c.Kind != "study" || c.Title != "오늘 공부" || len(c.Rows) != 2 {
 			t.Fatalf("cards %+v", cards)
 		}
 		want := []TodayRow{
