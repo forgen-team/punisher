@@ -2,6 +2,7 @@
 
 ## 다음 버전 (작업 중)
 
+- **Witems 오늘 홈 요약 카드**: manifest 에 `today`(`/v1/today-cards`, 카드 2장 이하)를 선언하고 `GET /v1/today-cards` 가 복습(복습·확인 대기·카드 수와 예상 시간, 쉬는 날은 숫자 없이)·이어보기(읽던 강의·다음 강의) 카드를 셸 계약 모양으로 돌려줘요. 할 것이 없으면 `[]`. manifest 이름·섹션도 punisher · 오늘/지도/기록 으로 바꿨어요.
 - **빈칸 강의(witems 지식 카드 연동, DB 변경 없음)**: 학습 요청 `context` 가 `{"kind":"knowledge_gap","gaps":[{type:"unknown"|"conflict",text,sides?,grade}]}` 이면, 그 요청의 '시작'으로 만드는 즉석 강의 프롬프트에 "학습자의 지식 카드에서 모르는 것·충돌하는 것" 절이 들어가요(최대 8개·줄당 300자, 사용자 소유 강의만). 빈칸이 있는 요청은 같은 목표의 기존 강의를 재사용하지 않고 새로 만들어요. `POST /v1/lectures/instant` 에 선택 필드 `studyRequestId` 추가, 프롬프트 미리보기에 예시 빈칸 표시.
 - **외부 카드(atlas 연동, 마이그레이션 032)**: 다른 앱이 `POST /v1/cards` 에 `sourceKind:"external"`·`externalId`(예 `atlas:<id>`)·`sourceUrl`·`front`/`back` 으로 복습 카드를 보낼 수 있어요(같은 externalId 는 같은 카드를 고쳐요). `PATCH /v1/cards/{id}`·`PATCH /v1/cards/external/{externalId}` 로 앞/뒤와 "근거 바뀜"(`stale`)을 바꿔요. 카드 화면에 "출처: atlas" 링크와 "근거 바뀜" 표시. 인증은 기존 규칙 그대로(단독판은 이 Mac 에서 온 호출만, Witems 는 내부 토큰 + 오너).
 - 강의 품질 v2 마무리(마이그레이션 031): '다음에 배울 개념'은 요약을 떠올린 뒤에 보여요(이전 강의도). 본문 블록별 체류 시간과 용어 설명을 연 횟수를 기록해 다시 만들기의 '막힌 곳'에 쓰고, `punisher quality gaps` 로 감수의 '막힌 곳'과 비교해요. 즉석 강의의 예측 질문은 처음 열 때 답이 있는 본문 위치로 연결돼요.
