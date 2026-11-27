@@ -12,6 +12,9 @@ import { messages } from "./i18n";
 
 type CardsTab = "review" | "all";
 
+/** 자기 채점 — SRS 등급 값 1·2·3(FSRS Again·Hard·Good)과 그 단축키. 주 버튼은 3 하나. */
+const RATINGS: ReadonlyArray<readonly [CardRating, "again" | "hard" | "good"]> = [[1, "again"], [2, "hard"], [3, "good"]];
+
 const FOOTER_CLASS =
   "sticky bottom-[var(--app-bottom-offset)] z-nav -mx-4 mt-6 flex items-center gap-2 border-t border-line bg-canvas px-4 py-3 fold:-mx-6 fold:px-6 lg:mx-0 lg:px-0";
 
@@ -22,7 +25,7 @@ function Footer({ children }: { children: ReactNode }) {
 
 /**
  * 카드 복습 — 탭 [복습 n | 모든 카드](?tab=all). 탭 전환은 기록을 쌓지 않는다(replace).
- * 복습: 앞면 → Footer [답 보기] → [다시][알았음]. 단축키(Space/Enter 답 보기 · 1 다시 · 3 알았음)는 설정에서 끌 수 있다.
+ * 복습: 앞면 → Footer [답 보기] → [다시][어려움][알았음](SRS 등급 1·2·3, 주 버튼은 [알았음]). 단축키(Space/Enter 답 보기 · 1 다시 · 2 어려움 · 3 알았음)는 설정에서 끌 수 있다.
  * 제목·←·설정은 틀이 그린다.
  */
 export function CardsWidget() {
@@ -81,6 +84,7 @@ function CardReview() {
     " ": card ? show : undefined,
     Enter: card ? (s.revealed ? undefined : show) : () => router.push("/"),
     "1": () => rate(1),
+    "2": () => rate(2),
     "3": () => rate(3),
   }, Boolean(list));
 
@@ -101,7 +105,7 @@ function CardReview() {
     return (
       <div className="flex flex-col items-start gap-2 pt-4">
         <p className="text-xl font-semibold text-fg">{t.doneTitle}</p>
-        <p className="text-sm text-fg-secondary">{t.doneBody(s.graded - s.again, s.again)}</p>
+        <p className="text-sm text-fg-secondary">{t.doneBody(s.graded - s.again - s.hard, s.hard, s.again)}</p>
         <Button asChild variant="primary" className="mt-3"><Link href="/">{t.toToday}</Link></Button>
       </div>
     );
@@ -134,14 +138,13 @@ function CardReview() {
         <span className="flex-1" />
         {s.revealed ? (
           <>
-            <Button variant="secondary" disabled={!online || grade.isPending} loading={grade.isPending && grade.variables?.rating === 1}
-              onClick={() => rate(1)} aria-keyshortcuts={keys ? "1" : undefined}>
-              {t.again}
-            </Button>
-            <Button variant="primary" disabled={!online || grade.isPending} loading={grade.isPending && grade.variables?.rating === 3}
-              onClick={() => rate(3)} aria-keyshortcuts={keys ? "3" : undefined}>
-              {t.good}
-            </Button>
+            {RATINGS.map(([rating, label]) => (
+              <Button key={rating} variant={rating === 3 ? "primary" : "secondary"} disabled={!online || grade.isPending}
+                loading={grade.isPending && grade.variables?.rating === rating} onClick={() => rate(rating)}
+                aria-keyshortcuts={keys ? String(rating) : undefined}>
+                {t[label]}
+              </Button>
+            ))}
           </>
         ) : (
           <Button variant="primary" onClick={show} aria-keyshortcuts={keys ? "Space Enter" : undefined}>{t.reveal}</Button>
