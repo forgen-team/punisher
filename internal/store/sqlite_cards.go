@@ -105,7 +105,7 @@ func (s *SQLiteStore) CardDraftFor(ctx context.Context, userID, kind, sourceID s
 		return d, fmt.Errorf("card source: %w", err)
 	}
 	d.Question, d.Answer = clip(strings.TrimSpace(d.Question), CardQuestionMax), clip(strings.TrimSpace(d.Answer), CardAnswerMax)
-	err = s.c().row(ctx, `SELECT id FROM review_cards WHERE user_id = $1 AND source_kind = $2 AND source_id = $3`, userID, kind, sourceID).Scan(&d.CardID)
+	err = s.c().row(ctx, `SELECT id FROM review_cards WHERE user_id = $1 AND source_kind = $2 AND source_id = $3 AND deleted_at IS NULL`, userID, kind, sourceID).Scan(&d.CardID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return d, err
 	}
@@ -126,7 +126,8 @@ func ValidCardText(question, answer string) bool {
 }
 
 // SaveCard creates the card of a source (or updates its text when it exists).
-// A new card is first due CardFirstReviewDays later.
+// A new card is first due CardFirstReviewDays later. A card the user deleted
+// (deleted_at set) comes back with its schedule and history.
 func (s *SQLiteStore) SaveCard(ctx context.Context, userID, kind, sourceID, question, answer string, now time.Time) (ReviewCard, error) {
 	if !ValidCardText(question, answer) {
 		return ReviewCard{}, ErrInvalidCard
@@ -140,14 +141,17 @@ func (s *SQLiteStore) SaveCard(ctx context.Context, userID, kind, sourceID, ques
 		INSERT INTO review_cards (id, user_id, source_kind, source_id, lecture_id, concept_id, anchor, question, answer, next_review_at, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), $7, $8, $9, $10, $11, $11)
 		ON CONFLICT (user_id, source_kind, source_id) DO UPDATE SET question = excluded.question, answer = excluded.answer,
-			suspended_at = NULL, updated_at = excluded.updated_at
+			suspended_at = NULL, deleted_at = NULL, updated_at = excluded.updated_at
 		RETURNING `+cardColumns,
 		NewID(), userID, kind, sourceID, d.LectureID, d.ConceptID, d.Anchor, strings.TrimSpace(question), strings.TrimSpace(answer), due, now))
 }
 
-// DeleteCard removes a card (its log goes with it). ErrNotFound when not the user's.
-func (s *SQLiteStore) DeleteCard(ctx context.Context, userID, cardID string) error {
-	res, err := s.c().exec(ctx, `DELETE FROM review_cards WHERE id = $1 AND user_id = $2`, cardID, userID)
+// DeleteCard marks a card deleted (deleted_at) — the row and its review log
+// stay so RestoreCard can bring it back with its schedule. A deleted card is
+// left out of lists, due cards and counts. ErrNotFound when not the user's or
+// already deleted.
+func (s *SQLiteStore) DeleteCard(ctx context.Context, userID, cardID string, now time.Time) error {
+	res, err := s.c().exec(ctx, `UPDATE review_cards SET deleted_at = $3 WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`, cardID, userID, now)
 	if err != nil {
 		return err
 	}
@@ -157,15 +161,26 @@ func (s *SQLiteStore) DeleteCard(ctx context.Context, userID, cardID string) err
 	return nil
 }
 
+// RestoreCard undoes DeleteCard and returns the card. A card that is not
+// deleted is returned as it is (so a repeated undo is harmless). ErrNotFound
+// when there is no such card of the user's.
+func (s *SQLiteStore) RestoreCard(ctx context.Context, userID, cardID string) (ReviewCard, error) {
+	c, err := scanCard(s.c().row(ctx, `UPDATE review_cards SET deleted_at = NULL WHERE id = $1 AND user_id = $2 RETURNING `+cardColumns, cardID, userID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return ReviewCard{}, ErrNotFound
+	}
+	return c, err
+}
+
 // DueCards returns the user's cards due by now (oldest due first, at most limit).
 func (s *SQLiteStore) DueCards(ctx context.Context, userID string, now time.Time, limit int) ([]ReviewCard, error) {
 	return collect(s.c().query(ctx, `SELECT `+cardColumns+` FROM review_cards
-		WHERE user_id = $1 AND suspended_at IS NULL AND next_review_at <= $2 ORDER BY next_review_at, id LIMIT $3`, userID, now, limit), scanCard)
+		WHERE user_id = $1 AND deleted_at IS NULL AND suspended_at IS NULL AND next_review_at <= $2 ORDER BY next_review_at, id LIMIT $3`, userID, now, limit), scanCard)
 }
 
 // ListCards returns every card of the user, newest first.
 func (s *SQLiteStore) ListCards(ctx context.Context, userID string) ([]ReviewCard, error) {
-	return collect(s.c().query(ctx, `SELECT `+cardColumns+` FROM review_cards WHERE user_id = $1 ORDER BY created_at DESC, id`, userID), scanCard)
+	return collect(s.c().query(ctx, `SELECT `+cardColumns+` FROM review_cards WHERE user_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC, id`, userID), scanCard)
 }
 
 // GradeCard applies a self-grade (1 again · 2 hard · 3 good) with FSRS at the
@@ -178,7 +193,7 @@ func (s *SQLiteStore) GradeCard(ctx context.Context, userID, cardID string, rati
 	err := s.tx(ctx, func(c conn) error {
 		var m learning.Memory
 		var lapses int
-		err := c.row(ctx, `SELECT stability, difficulty, reps, last_review_at, lapses FROM review_cards WHERE id = $1 AND user_id = $2`,
+		err := c.row(ctx, `SELECT stability, difficulty, reps, last_review_at, lapses FROM review_cards WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
 			cardID, userID).Scan(&m.Stability, &m.Difficulty, &m.Reps, nts(&m.LastReviewAt), &lapses)
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNotFound
@@ -214,11 +229,12 @@ func (s *SQLiteStore) GradeCard(ctx context.Context, userID, cardID string, rati
 	return out, err
 }
 
-// CardCounts: cards due now and cards reviewed today (KST).
+// CardCounts: cards due now and cards reviewed today (KST) — deleted cards count in neither.
 func (s *SQLiteStore) CardCounts(ctx context.Context, userID string, now time.Time) (due, doneToday int, err error) {
 	err = s.c().row(ctx, `SELECT
-			(SELECT COUNT(*) FROM review_cards WHERE user_id = $1 AND suspended_at IS NULL AND next_review_at <= $2),
-			(SELECT COUNT(*) FROM review_card_log WHERE user_id = $1 AND reviewed_at >= $3)`,
+			(SELECT COUNT(*) FROM review_cards WHERE user_id = $1 AND deleted_at IS NULL AND suspended_at IS NULL AND next_review_at <= $2),
+			(SELECT COUNT(*) FROM review_card_log l WHERE l.user_id = $1 AND l.reviewed_at >= $3
+				AND EXISTS (SELECT 1 FROM review_cards c WHERE c.id = l.card_id AND c.deleted_at IS NULL))`,
 		userID, now, learning.KSTDayStart(now)).Scan(&due, &doneToday)
 	return due, doneToday, err
 }

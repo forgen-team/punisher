@@ -24,7 +24,8 @@ type StudyStore interface {
 	SaveExternalCard(ctx context.Context, userID string, in ExternalCard, now time.Time) (ReviewCard, error)
 	PatchCard(ctx context.Context, userID, cardID string, p CardPatch, now time.Time) (ReviewCard, error)
 	PatchExternalCard(ctx context.Context, userID, externalID string, p CardPatch, now time.Time) (ReviewCard, error)
-	DeleteCard(ctx context.Context, userID, cardID string) error
+	DeleteCard(ctx context.Context, userID, cardID string, now time.Time) error
+	RestoreCard(ctx context.Context, userID, cardID string) (ReviewCard, error)
 	DueCards(ctx context.Context, userID string, now time.Time, limit int) ([]ReviewCard, error)
 	ListCards(ctx context.Context, userID string) ([]ReviewCard, error)
 	GradeCard(ctx context.Context, userID, cardID string, rating int, now time.Time) (ReviewCard, error)

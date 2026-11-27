@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { ReviewCard } from "@/src/shared/api/punisher";
@@ -10,13 +10,15 @@ const card = (id: string, question: string): ReviewCard => ({
 const due = [card("c1", "첫 카드"), card("c2", "둘째 카드")];
 const all = [...due, card("c3", "셋째 카드")];
 const grade = { mutate: vi.fn((_v: unknown, o?: { onSuccess?: () => void }) => o?.onSuccess?.()), isPending: false, error: null, variables: undefined };
-const remove = { mutate: vi.fn(), error: null };
+const remove = { mutate: vi.fn((_id: string, o?: { onSuccess?: () => void }) => o?.onSuccess?.()), error: null };
+const restore = { mutateAsync: vi.fn((_id: string) => Promise.resolve()) };
 
 vi.mock("@/src/entities/punisher", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/src/entities/punisher")>()),
   useCards: (dueOnly: boolean) => ({ data: dueOnly ? due : all, isLoading: false, error: null, refetch: vi.fn() }),
   useGradeCard: () => grade,
   useDeleteCard: () => remove,
+  useRestoreCard: () => restore,
 }));
 
 const { CardsWidget } = await import("../CardsWidget");
@@ -60,5 +62,36 @@ describe("카드 복습", () => {
     await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("/cards?tab=all"));
     expect(screen.getByText("셋째 카드")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "답 보기" })).toBeNull();
+  });
+});
+
+describe("모든 카드 — 삭제 되돌리기", () => {
+  async function pickDelete(question: string) {
+    renderAt("/cards?tab=all");
+    const trigger = await screen.findByRole("button", { name: `카드 메뉴: ${question}` });
+    act(() => {
+      fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
+      fireEvent.click(trigger);
+    });
+    const menu = await screen.findByRole("menu", { name: `카드 메뉴: ${question}` });
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "카드 삭제" }));
+  }
+
+  it("⋯ 카드 삭제 → 확인 창 없이 바로 삭제 + '카드를 삭제했어요 [되돌리기]'", async () => {
+    await pickDelete("셋째 카드");
+    expect(remove.mutate).toHaveBeenCalledWith("c3", expect.anything());
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(await screen.findByText("카드를 삭제했어요")).toBeInTheDocument();
+    expect(restore.mutateAsync).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "되돌리기" }));
+    await waitFor(() => expect(restore.mutateAsync).toHaveBeenCalledWith("c3"));
+  });
+
+  it("되돌리기가 실패하면 '되돌리지 못했어요'", async () => {
+    restore.mutateAsync.mockRejectedValueOnce(new Error("boom"));
+    await pickDelete("첫 카드");
+    fireEvent.click(await screen.findByRole("button", { name: "되돌리기" }));
+    expect(await screen.findByText("되돌리지 못했어요")).toBeInTheDocument();
   });
 });

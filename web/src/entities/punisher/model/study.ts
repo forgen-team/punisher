@@ -113,6 +113,17 @@ export function useDeleteCard() {
   });
 }
 
+export function useRestoreCard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => studyApi.restoreCard(id),
+    onSuccess: () => {
+      invalidateStudy(queryClient);
+      void queryClient.invalidateQueries({ queryKey: ["punisher", "card-draft"] });
+    },
+  });
+}
+
 export function useCards(due: boolean) {
   return useQuery({ queryKey: studyKeys.cards(due), queryFn: () => studyApi.listCards(due), ...punisherQueryDefaults });
 }
