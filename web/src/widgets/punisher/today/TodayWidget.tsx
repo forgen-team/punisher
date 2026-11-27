@@ -1,211 +1,133 @@
-
-import { Link, useRouter, useSearchParams } from "@/src/shared/lib/router";
-import { canGoBack } from "@/src/shared/lib/in-app-history";
-import { useState } from "react";
-import { Button, EmptyState, ErrorState, List, ListSkeleton, Section } from "@forgen-team/ui";
-import { cn } from "@/src/shared/lib/cn";
-import { HeightReserve } from "@/src/shared/lib/HeightReserve";
-import { useInquiries, useLearningSettings, useReviewSummary, useToday } from "@/src/entities/punisher";
-import { InstantQueryBox, ResolutionChoices, useLaunchInstant } from "@/src/features/punisher/instant-start";
-import { DismissedNotice, ResumeList, useResumeDismiss } from "@/src/features/punisher/resume-dismiss";
-import { describePunisherError, type InstantResponse, type Recommendation } from "@/src/shared/api/punisher";
-import { useLocale, useT } from "@/src/shared/i18n";
-import { InlineError } from "@/src/shared/ui/punisher";
-import { AddStudyRequestForm } from "@/src/features/punisher/study-request-add";
+import { useState, type ReactNode } from "react";
+import { ErrorState } from "@forgen-team/ui";
+import { useActivity, useLearningSettings, useReviewSummary, useToday } from "@/src/entities/punisher";
+import { AskBox, ResolutionChoices, useLaunchInstant } from "@/src/features/punisher/instant-start";
 import { FirstSetup } from "@/src/features/punisher/first-setup";
+import { describePunisherError, type InstantResponse, type Recommendation, type TodayResponse } from "@/src/shared/api/punisher";
+import { formatDate, useLocale, useT } from "@/src/shared/i18n";
+import { InlineError } from "@/src/shared/ui/punisher";
 import { messages } from "./i18n";
-import { todayRows, type TodayRow } from "./lib/recheck";
-import { reviewCardState } from "./lib/reviewCard";
-import { sessionTimeLabel } from "./lib/sessionTime";
-import { ExplanationRequestList, InquiryList, NEW_CHAPTER_PATH, NextChapterCard, RECOMMENDATION_PARAM, RecheckRow, RecommendationRow, RecommendationSheet, ReviewCard, StudyRequestList, StudyToday, SynthesisRow, UncheckedRow } from "./ui";
-import { isWitems } from "@/src/shared/config/runtime";
+import { recheckWithoutLecture, reviewBundleState, reviewTotal } from "./lib/reviewBundle";
+import { lectureMinutes } from "./lib/recommendations";
+import { BoxPad, BoxSkeleton, RecentInquiries, RecommendationBundle, ResumeBundle, ReviewBundle, StudyTopicsBundle, TodayBox } from "./ui";
 
-/** 추천 목록의 한 줄 — 확인하기 · 다시 확인 · 추천(상세 시트 주소로 가는 링크). */
-function renderRow(row: TodayRow) {
-  switch (row.type) {
-    case "synthesis":
-      return <SynthesisRow key="synthesis" />;
-    case "unchecked":
-      return <UncheckedRow key={`unchecked-${row.card.conceptId}`} card={row.card} />;
-    case "recheck":
-      return <RecheckRow key={`recheck-${row.card.conceptId}`} card={row.card} />;
-    default:
-      return <RecommendationRow key={`${row.item.kind}-${row.item.conceptId}`} item={row.item} />;
-  }
+const DATE: Intl.DateTimeFormatOptions = { month: "long", day: "numeric", weekday: "long" };
+
+/** 강의가 없는 '다시 확인' 개념은 오늘의 추천 강의 행으로 더한다(이미 추천에 있으면 그대로). */
+function withRecheck(recommendations: Recommendation[], today: TodayResponse | undefined, reason: string): Recommendation[] {
+  const seen = new Set(recommendations.map((item) => item.conceptId));
+  const extra = recheckWithoutLecture(today?.recheck)
+    .filter((card) => !seen.has(card.conceptId))
+    .map((card): Recommendation => ({
+      kind: "goal_path", conceptId: card.conceptId, conceptName: card.conceptName, area: card.area, depth: 0, goalId: card.goalId,
+      title: "", reason, practicalSituation: "", estimatedMinutes: 0,
+    }));
+  return [...extra, ...recommendations];
 }
 
-/** 강의(오늘): 복습 카드 → 궁금한 것 입력 한 줄 → 이어보기 → 추천 목록 → 학습 요청(단독판: 직접 입력. witems 는 이 자리가 RSS '학습 요청' — docs/SYNC.md). */
+function BoxError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  return (
+    <BoxPad>
+      <ErrorState title={describePunisherError(error)} onRetry={onRetry} />
+    </BoxPad>
+  );
+}
+
+/**
+ * 오늘(T-home) — 종류 상자 3개: 처리할 것(복습) · 공부할 것(이어보기 → 오늘의 추천) · 묻기·새 주제(입력 → 공부할 주제 → 최근 질문).
+ * 폰 1열(처리할 것 → 공부할 것 → 묻기·새 주제), 본문 1024 이상 2열 3fr/2fr(왼쪽 처리할 것·공부할 것, 오른쪽 묻기·새 주제).
+ * 제목·설정·배너·섹션 탭은 틀이 그린다. 셸 안·단독판 구성이 같다.
+ */
 export function TodayWidget() {
   const locale = useLocale();
   const t = useT(messages);
   const today = useToday();
+  const summary = useReviewSummary();
+  const activity = useActivity();
+  const settings = useLearningSettings();
   const { launch, isPending, error } = useLaunchInstant();
   const [pickResult, setPickResult] = useState<InstantResponse | null>(null);
-  // 추천 상세 시트는 주소(?rec=<개념>)에 남는다 — 뒤로 가면 닫히고, 새 탭으로 열어도 같은 시트.
-  const router = useRouter();
-  const params = useSearchParams();
-  const detailId = params.get(RECOMMENDATION_PARAM);
-  // 닫기: 행에서 열었으면(앱 안 기록이 있으면) 뒤로 — 기록에 같은 화면이 두 번 쌓이지 않게. 직접 들어왔으면 시트 없는 주소로 교체.
-  const closeDetail = () => {
-    if (!detailId) { return; }
-    if (canGoBack()) { router.back(); } else { router.replace("/", { guard: false }); }
-  };
-  const settings = useLearningSettings();
-  const resumeDismiss = useResumeDismiss();
-  const [resumeExpanded, setResumeExpanded] = useState(false);
-  const inquiries = useInquiries({ open: true });
-  const reviewToday = today.data?.review;
-  const reviewSummary = useReviewSummary(Boolean(reviewToday));
 
   async function start(conceptId: string, query?: string, studyRequestId?: string) {
     setPickResult(null);
     try {
-      const result = await launch({ conceptId, query, studyRequestId });
-      setPickResult(result);
-      if (result) { closeDetail(); }
+      setPickResult(await launch({ conceptId, query, studyRequestId }));
     } catch {
       // 오류는 <InlineError error={error}> 가 표시한다.
-      closeDetail();
     }
   }
 
-  const items = today.data?.items ?? [];
+  const data = today.data;
+  const items = data?.items ?? [];
   const resume = items.filter((item) => item.kind === "resume");
-  const recommendations = items.filter((item) => item.kind !== "resume");
-  const rows = todayRows(recommendations, today.data?.recheck, today.data?.unchecked, Boolean(today.data?.synthesis?.due));
-  const detail: Recommendation | null = (detailId && recommendations.find((item) => item.conceptId === detailId)) || null;
-  const ready = !today.isLoading && !today.error;
-  // 복습 카드는 열들 위 전체 폭 띠(맨 앞) — 3단에서도 열 배치를 바꾸지 않고, '추천 소진' 안내와 다른 칸에 둔다.
-  // 완료 여부(오늘 세션)를 받기 전에는 그리지 않는다(숨김 ↔ 접힌 완료가 깜빡이지 않게).
-  const reviewState = reviewCardState(reviewToday, reviewSummary.data?.today);
-  // 세션 시간 합계(서버 계산 — 강의는 다음에 볼 강의, 이어보기가 있으면 그 남은 시간)는 '오늘의 추천' 밖 한 줄에만 보이고
-  // 복습 카드의 합계 줄은 뺀다. 추천 목록의 설명 자리에 두면 추천 항목들의 합으로 읽혀 헷갈린다.
-  const sessionTime = sessionTimeLabel(today.data?.session, locale);
-  const reviewReady = ready && (!reviewToday || !reviewSummary.isLoading);
-  const showResume = ready && (resume.length > 0 || resumeDismiss.dismissed || resumeDismiss.error);
+  const recommendations = withRecheck(items.filter((item) => item.kind !== "resume"), data, t.recheckReason);
+  const dailyMinutes = settings.data?.settings.dailyMinutes ?? activity.data?.dailyMinutes ?? 0;
 
-  const resumeSection = showResume ? (
-    <Section variant="card" title={t.resume}>
-      <ResumeList items={resume} columns dismissing={resumeDismiss.pending} onDismiss={resumeDismiss.dismiss} expanded={resumeExpanded} onExpandedChange={setResumeExpanded} />
-      <div aria-live="polite">
-        <DismissedNotice
-          dismissed={resumeDismiss.dismissed}
-          error={resumeDismiss.error}
-          pending={resumeDismiss.pending}
-          onUndo={resumeDismiss.undo}
-          onClose={resumeDismiss.clear}
-        />
-      </div>
-    </Section>
-  ) : null;
+  // 처리할 것 — 숫자는 /today, 오늘 세션은 /reviews/summary, 카드·쉬는 날은 /study/activity. 셋 다 받아야 상태가 정해진다.
+  // 상자는 그대로 두고 안만 바꾼다(로딩 → 내용으로 바뀔 때 상자가 다시 그려지지 않게).
+  let reviewContent: ReactNode;
+  let reviewCount = 0;
+  if (today.isLoading || summary.isLoading || activity.isLoading) {
+    reviewContent = <BoxSkeleton rows={2} />;
+  } else if (today.error || summary.error) {
+    reviewContent = <BoxError error={today.error ?? summary.error} onRetry={() => { void today.refetch(); void summary.refetch(); }} />;
+  } else {
+    const state = reviewBundleState({
+      today: data,
+      session: summary.data?.today,
+      cardsDue: activity.data?.today.cardsDue ?? 0,
+      restToday: activity.data?.restToday ?? false,
+    });
+    reviewCount = state.kind === "due" || state.kind === "rest" ? reviewTotal(state.counts) : 0;
+    reviewContent = <ReviewBundle state={state} />;
+  }
 
-  const recommendSection = today.isLoading ? (
-    // 실제 화면(섹션 제목 + 카드 안 추천 5줄)과 같은 높이로 자리를 잡아 아래 '학습 요청'이 밀리지 않게 한다.
-    <div aria-busy="true">
-      <Section variant="card" title={t.recommendations}>
-        <ListSkeleton rows={5} />
-      </Section>
-    </div>
-  ) : today.error ? (
-    <ErrorState title={describePunisherError(today.error)} onRetry={() => today.refetch()} />
-  ) : (
-    <Section variant="card" title={t.recommendations}>
-      {rows.length > 0 ? (
-        <List>
-          {rows.map((row) => renderRow(row))}
-        </List>
-      ) : today.data?.exhausted ? (
-        <EmptyState
-          title={t.exhaustedTitle}
-          description={t.exhaustedDescription}
-          action={
-            <Button asChild variant="secondary" size="sm">
-              <Link href={NEW_CHAPTER_PATH}>{t.pickNextChapter}</Link>
-            </Button>
-          }
+  let studyContent: ReactNode;
+  let studyCount = 0;
+  if (today.isLoading) {
+    studyContent = <BoxSkeleton rows={4} />;
+  } else if (today.error) {
+    studyContent = <BoxError error={today.error} onRetry={() => void today.refetch()} />;
+  } else {
+    studyCount = resume.length + recommendations.length;
+    studyContent = (
+      <>
+        <ResumeBundle items={resume} />
+        <RecommendationBundle
+          items={recommendations}
+          exhausted={Boolean(data?.exhausted)}
+          nextChapter={data?.nextChapter}
+          lectureMinutes={lectureMinutes(data?.session, recommendations)}
+          dailyMinutes={dailyMinutes}
         />
-      ) : (
-        <EmptyState title={t.noRecommendations} />
-      )}
-    </Section>
+      </>
+    );
+  }
+
+  const askBox = (
+    <TodayBox title={t.ask}>
+      <BoxPad className="pt-3">
+        <AskBox />
+        <div aria-live="polite" className="mt-2 flex flex-col gap-2 empty:hidden">
+          <InlineError error={error} />
+          {pickResult && <ResolutionChoices response={pickResult} disabled={isPending} onPick={(id) => void start(id)} />}
+        </div>
+      </BoxPad>
+      <StudyTopicsBundle starting={isPending} onStart={(id, query, requestId) => void start(id, query, requestId)} />
+      <RecentInquiries />
+    </TodayBox>
   );
 
-  // 입력·선택 결과는 열들 위에 한 줄(전체 폭)로 둔다 — 2단에서 왼쪽 열만 입력 상자만큼 내려가
-  // '오늘의 추천'과 오른쪽 '이어보기/학습 요청' 제목 높이가 어긋나던 문제(2026-11-09).
-  // 이어보기는 몇 개든 열들 위 전체 폭 띠로 둔다(폭이 넓으면 항목을 2~3열로 펼쳐 세로로만 길어지지 않게).
-  // 한 단: 입력 → 이어보기 → 질문 해설 → (다음 챕터) → 오늘의 추천 → 학습 요청.
-  // 2단(fold): 왼쪽 (다음 챕터)·오늘의 추천 / 오른쪽 질문 해설·학습 요청.
-  // 3단(xl): 오늘의 추천 | 질문 해설·다음 챕터 | 학습 요청.
-  // 열 묶음은 좁은 폭에서 display:contents 라 order 로 위 순서를 지킨다(폭이 바뀌어도 같은 DOM 을 재배치만 → 상태 유지).
-  // 다음 챕터 카드는 2단·3단에서 놓이는 열이 달라 두 자리에 두고 폭에 따라 하나만 보인다(상태 없는 카드).
-  const nextChapter = today.data?.nextChapter;
-  const showInquiries = Boolean(inquiries.error) || (inquiries.data?.length ?? 0) > 0;
-  const middle = Boolean(nextChapter || showInquiries);
   return (
-    <div className="flex w-full flex-col gap-6">
-      <HeightReserve id="learn-review" ready={reviewReady} skeleton={null} className="[&:empty:not([style])]:hidden">
-        {reviewState.kind !== "hidden" ? <ReviewCard state={reviewState} showTotal={!sessionTime} /> : null}
-      </HeightReserve>
-      {/* 오늘 목표·지난 12주·복습 예측·자꾸 막히는 목표(W5a) */}
-      <StudyToday />
-      <InstantQueryBox />
-      <div aria-live="polite" className="empty:hidden">
-        <InlineError error={error} />
-        {pickResult && <ResolutionChoices response={pickResult} disabled={isPending} onPick={(id) => start(id)} />}
-      </div>
-      <HeightReserve id="learn-resume" ready={ready} skeleton={null} remember={!resumeExpanded && !resumeDismiss.dismissed} className="[&:empty:not([style])]:hidden">{resumeSection}</HeightReserve>
-      {sessionTime && (
-        // 합계가 무엇의 합인지 라벨로 보이고, 하루 학습량 설정으로 이어 둔다(P1).
-        <p className="-my-3 flex flex-wrap items-center gap-x-2 text-sm tabular-nums text-fg-secondary">
-          <span>{sessionTime}</span>
-          {settings.data?.settings.dailyMinutes ? (
-            <Link href="/settings" title={t.dailyGoalLink} className="text-fg-muted underline-offset-2 hover:text-fg hover:underline">
-              {t.dailyGoal(settings.data.settings.dailyMinutes)}
-            </Link>
-          ) : null}
-        </p>
-      )}
-      <div className={cn("flex flex-col gap-6 fold:grid fold:grid-cols-2 fold:items-start fold:gap-4 md:gap-6", middle && "xl:grid-cols-3")}>
-        <div className="contents fold:flex fold:min-w-0 fold:flex-col fold:gap-4 md:gap-6">
-          {nextChapter && (
-            <div className="order-2 fold:order-none xl:hidden">
-              <NextChapterCard prompt={nextChapter} />
-            </div>
-          )}
-          <div className="order-3 fold:order-none">{recommendSection}</div>
+    <div className="flex w-full flex-col gap-3 [container-type:inline-size]">
+      <p className="text-xs text-fg-muted">{formatDate(new Date(), locale, DATE)}</p>
+      <div className="grid grid-cols-1 items-start gap-6 [@container(min-width:1024px)]:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <TodayBox title={t.process} count={reviewCount}>{reviewContent}</TodayBox>
+          <TodayBox title={t.study} count={studyCount}>{studyContent}</TodayBox>
         </div>
-        <div className="contents fold:flex fold:min-w-0 fold:flex-col fold:gap-4 md:gap-6 xl:contents">
-          {middle && (
-            <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-6">
-              {showInquiries && (
-                <div className="order-1 fold:order-none">
-                  <InquiryList inquiries={inquiries.data} error={inquiries.error} onRetry={() => void inquiries.refetch()} />
-                </div>
-              )}
-              {nextChapter && (
-                <div className="hidden xl:block">
-                  <NextChapterCard prompt={nextChapter} />
-                </div>
-              )}
-            </div>
-          )}
-          <div className="order-4 min-w-0 fold:order-none">
-            {isWitems() ? (
-              // Witems 안: RSS '이 글 깊게 읽기'로 만든 글 해설(학습 요청 자리를 대신 — witems 와 같은 구성).
-              <Section variant="card" title={t.explanations}>
-                <ExplanationRequestList />
-              </Section>
-            ) : (
-              <Section variant="card" title={t.studyRequests}>
-                <AddStudyRequestForm />
-                <StudyRequestList starting={isPending} onStart={(id, query, requestId) => start(id, query, requestId)} />
-              </Section>
-            )}
-          </div>
-        </div>
+        <div className="flex min-w-0 flex-col gap-6">{askBox}</div>
       </div>
-
-      <RecommendationSheet item={detail} starting={isPending} onClose={closeDetail} onStart={(id) => start(id)} />
       <FirstSetup />
     </div>
   );

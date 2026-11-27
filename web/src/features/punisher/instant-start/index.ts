@@ -1,3 +1,3 @@
-export { InstantQueryBox } from "./InstantQueryBox";
+export { AskBox } from "./AskBox";
 export { ResolutionChoices } from "./ResolutionChoices";
-export { useLaunchInstant, lectureHref, instantHref, inquiryHref } from "./useLaunchInstant";
+export { useLaunchInstant, lectureHref, instantHref, inquiryHref, type LaunchInstantOptions } from "./useLaunchInstant";

@@ -16,6 +16,8 @@ interface ResolutionChoicesProps {
   response: InstantResponse;
   disabled: boolean;
   onPick: (conceptId: string) => void;
+  /** 주면 [나중에 공부] — 고르지 않고 공부할 주제(학습 요청)에 남긴다 */
+  onLater?: () => void;
 }
 
 function mapHref(id: string): string {
@@ -23,7 +25,7 @@ function mapHref(id: string): string {
 }
 
 /** 자유 질의 해석 결과: 오늘의 출발점 · 관련 개념 · 선행 경로. */
-export function ResolutionChoices({ response, disabled, onPick }: ResolutionChoicesProps) {
+export function ResolutionChoices({ response, disabled, onPick, onLater }: ResolutionChoicesProps) {
   const { data: concepts } = useConcepts();
   const t = useT(messages);
   const resolution = response.resolution;
@@ -42,12 +44,21 @@ export function ResolutionChoices({ response, disabled, onPick }: ResolutionChoi
     );
   }
 
+  const laterButton = onLater ? (
+    <Button variant="ghost" size="sm" disabled={disabled} onClick={onLater}>
+      {t.studyLater}
+    </Button>
+  ) : null;
+
   const conceptIds = resolution?.conceptIds ?? [];
   if (!resolution || conceptIds.length === 0) {
     return (
-      <p role="status" className="text-sm text-fg-secondary">
-        {t.noMatch(resolution?.error ? ` (${resolution.error})` : "")}
-      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <p role="status" className="text-sm text-fg-secondary">
+          {t.noMatch(resolution?.error ? ` (${resolution.error})` : "")}
+        </p>
+        {laterButton}
+      </div>
     );
   }
 
@@ -66,11 +77,14 @@ export function ResolutionChoices({ response, disabled, onPick }: ResolutionChoi
             t.pathAllLearned
           )}
         </p>
-        {start && (
-          <Button variant="primary" size="sm" disabled={disabled} onClick={() => onPick(start)}>
-            {t.startFromStart}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {laterButton}
+          {start && (
+            <Button variant="primary" size="sm" disabled={disabled} onClick={() => onPick(start)}>
+              {t.startFromStart}
+            </Button>
+          )}
+        </div>
       </div>
       <p className="text-xs text-fg-muted">{t.method(RESOLUTION_METHOD_LABELS[resolution.method] ?? resolution.method)}</p>
       <div role="group" aria-label={t.pickRelated} className="flex gap-2 overflow-x-auto pb-1">

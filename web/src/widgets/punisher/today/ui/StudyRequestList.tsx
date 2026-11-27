@@ -1,24 +1,18 @@
-
 import { useState, type ReactNode } from "react";
-import { Badge, Button, EmptyState, ErrorState, List, ListRow, ListSkeleton, Menu, ProgressCircle } from "@forgen-team/ui";
-import {
-  STUDY_REQUEST_SOURCE_LABELS,
-  STUDY_REQUEST_STATUS_LABELS,
-  useConcepts,
-  useDismissStudyRequest,
-  useRetryStudyRequest,
-  useStudyRequests,
-} from "@/src/entities/punisher";
+import { Button, ErrorState, ListRow, ListSkeleton, Menu, ProgressCircle, useToast, type MenuItemDef } from "@forgen-team/ui";
+import { useConcepts, useDismissStudyRequest, useRetryStudyRequest, useStudyRequests } from "@/src/entities/punisher";
 import { describePunisherError, type StudyRequest } from "@/src/shared/api/punisher";
 import { translate, useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
+import { BUNDLE_LIMIT } from "../lib/recommendations";
+import { BoxPad, Bundle, BundleList, MoreToggle } from "./TodayBox";
 
-/** 요청한 주제 자체(첫 해석 개념) — '시작'은 여기로 간다. */
+/** 요청한 주제 자체(첫 해석 개념) — [강의 시작]은 여기로 간다. */
 function topicConcept(req: StudyRequest): string {
   return req.resolvedConceptIds?.[0] || req.startingConceptId || "";
 }
 
-/** 주제로 가는 길에서 아직 안 배운 첫 선행 개념 — 주제와 다를 때만 '기초부터'로 제안한다. */
+/** 주제로 가는 길에서 아직 안 배운 첫 선행 개념 — 주제와 다를 때만 ⋯ "기초부터 시작"으로 둔다. */
 function prerequisiteConcept(req: StudyRequest): string {
   const topic = topicConcept(req);
   return req.startingConceptId && req.startingConceptId !== topic ? req.startingConceptId : "";
@@ -42,24 +36,19 @@ function failureText(error?: string): string {
   return t.requestFailed;
 }
 
-function metaOf(req: StudyRequest, phase: ResolvePhase, names: ReadonlyMap<string, string>): string {
+/** meta: (RSS 글에서 · ) 상태 — 준비됨이면 주제 개념 이름. */
+export function studyRequestMeta(req: StudyRequest, names: ReadonlyMap<string, string>): string {
   const t = translate(messages);
-  const source = STUDY_REQUEST_SOURCE_LABELS[req.source] ?? req.source;
-  let status = req.learned ? "" : (STUDY_REQUEST_STATUS_LABELS[req.status] ?? req.status);
-  if (phase === "ready" && !req.learned) {
+  const phase = phaseOf(req);
+  let status = t.requestReady;
+  if (phase === "ready") {
     const topic = names.get(topicConcept(req));
-    const prereq = names.get(prerequisiteConcept(req));
-    if (topic) {status = prereq ? t.requestTopicWithPrereq(topic, prereq) : topic;}
+    if (topic) {status = topic;}
   }
   if (phase === "searching") {status = t.requestSearching;}
   if (phase === "queued") {status = t.requestQueued;}
   if (phase === "failed") {status = failureText(req.resolveError);}
-  return [source, status].filter(Boolean).join(" · ");
-}
-
-interface StudyRequestListProps {
-  starting: boolean;
-  onStart: (conceptId: string, query: string, studyRequestId: string) => void;
+  return [req.source === "rss" ? t.fromRss : "", status].filter(Boolean).join(" · ");
 }
 
 /** 진행 중(아직 안 배움)과 완료(요청한 주제 개념을 다 배움)를 나눈다. 목록에서 뺀 요청은 숨긴다. */
@@ -68,39 +57,53 @@ export function splitStudyRequests(list: readonly StudyRequest[]): { active: Stu
   return { active: visible.filter((r) => !r.learned), done: visible.filter((r) => r.learned) };
 }
 
+interface StudyTopicsBundleProps {
+  starting: boolean;
+  onStart: (conceptId: string, query: string, studyRequestId: string) => void;
+}
+
 /**
- * 학습 요청(단독판: 직접 입력, witems: RSS 등) (design §3.7) — 행: 요청 문구 / 출처 · 상태, 오른쪽에 시작 + ⋯(목록에서 빼기).
- * 요청한 주제 개념의 강의를 다 보면 아래 접힌 '완료 N'으로 옮긴다.
+ * 묻기·새 주제 › 공부할 주제 — 학습 요청(직접 입력·RSS "30분 학습"·용어/지도 [나중에 공부]) 중 아직 안 배운 것.
+ * 셸 안·단독판이 같다. 최대 3 + "n개 더". 비면 묶음 자체가 없다(입력 칸이 곧 안내).
  */
-export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
+export function StudyTopicsBundle({ starting, onStart }: StudyTopicsBundleProps) {
   const t = useT(messages);
-  const { data, isLoading, error, refetch, isRefetching } = useStudyRequests(50);
+  const toast = useToast();
+  const { data, isLoading, error, refetch } = useStudyRequests(50);
   const retry = useRetryStudyRequest();
   const dismiss = useDismissStudyRequest();
-  const [lastDismissed, setLastDismissed] = useState<StudyRequest | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const { data: concepts } = useConcepts();
   const names = new Map((concepts ?? []).map((c) => [c.id, c.name] as const));
   if (isLoading) {
     return (
-      <div aria-busy="true">
-        <ListSkeleton rows={2} />
-      </div>
+      <Bundle name={t.studyTopics}>
+        <div aria-busy="true" className="px-4">
+          <ListSkeleton rows={2} />
+        </div>
+      </Bundle>
     );
   }
   if (error) {
-    return <ErrorState title={describePunisherError(error)} onRetry={() => refetch()} />;
+    return (
+      <Bundle name={t.studyTopics}>
+        <BoxPad>
+          <ErrorState title={describePunisherError(error)} onRetry={() => refetch()} />
+        </BoxPad>
+      </Bundle>
+    );
   }
-  const { active, done } = splitStudyRequests(data ?? []);
+  const { active } = splitStudyRequests(data ?? []);
+  if (active.length === 0) { return null; }
 
   const remove = (req: StudyRequest) => {
-    setLastDismissed(req);
-    dismiss.mutate({ id: req.id, dismissed: true });
+    dismiss.mutate({ id: req.id, dismissed: true }, {
+      onSuccess: () => toast.undo(t.requestDismissed, () => dismiss.mutate({ id: req.id, dismissed: false }), t.undo),
+      onError: (err) => toast.show(describePunisherError(err), { tone: "danger" }),
+    });
   };
-  const menu = (req: StudyRequest) => (
-    <Menu label={t.requestActions(req.query)} items={[{ key: "dismiss", label: t.requestDismiss, onSelect: () => remove(req) }]} />
-  );
 
-  function renderActive(req: StudyRequest) {
+  function renderRow(req: StudyRequest) {
     const conceptId = topicConcept(req);
     const prereqId = prerequisiteConcept(req);
     const phase = phaseOf(req);
@@ -110,83 +113,41 @@ export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
     } else if (phase === "failed") {
       action = (
         <Button size="sm" variant="secondary" loading={retry.isPending && retry.variables === req.id} onClick={() => retry.mutate(req.id)}>
-          {t.requestRetry}
+          {t.retry}
         </Button>
       );
     } else if (conceptId) {
       action = (
-        <>
-          {prereqId ? (
-            <Button size="sm" variant="ghost" disabled={starting} onClick={() => onStart(prereqId, req.query, req.id)}>
-              {t.requestFromBasics}
-            </Button>
-          ) : null}
-          <Button size="sm" variant="secondary" disabled={starting} onClick={() => onStart(conceptId, req.query, req.id)}>
-            {t.requestStart}
-          </Button>
-        </>
+        <Button size="sm" variant="secondary" disabled={starting} onClick={() => onStart(conceptId, req.query, req.id)}>
+          {t.startLecture}
+        </Button>
       );
     }
+    const items: MenuItemDef[] = [
+      ...(phase === "ready" && prereqId ? [{ key: "basics", label: t.requestFromBasics, disabled: starting, onSelect: () => onStart(prereqId, req.query, req.id) }] : []),
+      { key: "dismiss", label: t.requestDismiss, onSelect: () => remove(req) },
+    ];
     return (
       <ListRow
         key={req.id}
         title={req.query}
-        meta={metaOf(req, phase, names)}
+        meta={studyRequestMeta(req, names)}
         trailing={
           <span className="flex items-center gap-1">
             {action}
-            {menu(req)}
+            <Menu label={t.requestActions(req.query)} items={items} />
           </span>
         }
       />
     );
   }
 
+  const visible = expanded ? active : active.slice(0, BUNDLE_LIMIT);
+  const hidden = active.length - BUNDLE_LIMIT;
   return (
-    <div className="space-y-2">
-      {active.length === 0 ? (
-        <EmptyState title={t.requestEmptyTitle} description={t.requestEmptyDescription} />
-      ) : (
-        <List>{active.map((req) => renderActive(req))}</List>
-      )}
-      {lastDismissed && (
-        <p role="status" className="flex items-center gap-2 text-sm text-fg-secondary">
-          {t.requestDismissed(lastDismissed.query)}
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              dismiss.mutate({ id: lastDismissed.id, dismissed: false });
-              setLastDismissed(null);
-            }}
-          >
-            {t.requestUndo}
-          </Button>
-        </p>
-      )}
-      {done.length > 0 && (
-        <details className="group">
-          <summary className="flex min-h-touch cursor-pointer list-none items-center justify-between text-sm font-medium text-fg-secondary">
-            {t.requestDone(done.length)}
-            <span className="text-xs font-normal text-fg-muted">{t.requestDoneHint}</span>
-          </summary>
-          <List>
-            {done.map((req) => (
-              <ListRow
-                key={req.id}
-                title={req.query}
-                meta={metaOf(req, "ready", names)}
-                trailing={
-                  <span className="flex items-center gap-1">
-                    <Badge variant="weak" tone="positive">{t.requestLearned}</Badge>
-                    {menu(req)}
-                  </span>
-                }
-              />
-            ))}
-          </List>
-        </details>
-      )}
-    </div>
+    <Bundle name={t.studyTopics} info={String(active.length)}>
+      <BundleList>{visible.map((req) => renderRow(req))}</BundleList>
+      <MoreToggle hidden={hidden} expanded={expanded} onToggle={() => setExpanded((v) => !v)} />
+    </Bundle>
   );
 }
