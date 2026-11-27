@@ -2,6 +2,7 @@
 
 ## 다음 버전 (작업 중)
 
+- **생성 중 [취소](DB 변경 없음)**: 강의 만드는 화면에 [취소]가 생겼어요. 누르면 확인 없이 바로 멈추고 오늘 화면으로 돌아가며 "강의 만들기를 취소했어요" 알림이 떠요. 서버는 `POST /v1/jobs/{id}/cancel` 로 작업을 `failed`/`reason=cancelled` 로 두고, 돌던 AI CLI(claude·codex·agy)를 자식 프로세스까지 프로세스 그룹째 끝내며 Witems 의 claude-gateway 요청도 끊어요. 만들던 강의·문항은 저장하지 않고, 같은 개념으로 바로 다시 시작할 수 있어요. 이미 끝난 작업은 409. 문항 만들기(`check_items`)도 같은 API 로 취소돼요(확인 세션은 '그만둠').
 - **Witems 오늘 홈 요약 카드**: manifest 에 `today`(`/v1/today-cards`, 카드 2장 이하)를 선언하고 `GET /v1/today-cards` 가 복습(행 제목은 할 일 — "문항 12개 · 카드 8장 복습 · 강의 3개 확인", meta 는 예상 시간만, 쉬는 날은 숫자 없이)·오늘 공부(읽던 강의 이어보기·다음 강의) 카드를 셸 계약 모양으로 돌려줘요. 할 것이 없으면 `[]`. manifest 이름·섹션도 punisher · 오늘/지도/기록 으로 바꿨어요.
 - **빈칸 강의(witems 지식 카드 연동, DB 변경 없음)**: 학습 요청 `context` 가 `{"kind":"knowledge_gap","gaps":[{type:"unknown"|"conflict",text,sides?,grade}]}` 이면, 그 요청의 '시작'으로 만드는 즉석 강의 프롬프트에 "학습자의 지식 카드에서 모르는 것·충돌하는 것" 절이 들어가요(최대 8개·줄당 300자, 사용자 소유 강의만). 빈칸이 있는 요청은 같은 목표의 기존 강의를 재사용하지 않고 새로 만들어요. `POST /v1/lectures/instant` 에 선택 필드 `studyRequestId` 추가, 프롬프트 미리보기에 예시 빈칸 표시.
 - **외부 카드(atlas 연동, 마이그레이션 032)**: 다른 앱이 `POST /v1/cards` 에 `sourceKind:"external"`·`externalId`(예 `atlas:<id>`)·`sourceUrl`·`front`/`back` 으로 복습 카드를 보낼 수 있어요(같은 externalId 는 같은 카드를 고쳐요). `PATCH /v1/cards/{id}`·`PATCH /v1/cards/external/{externalId}` 로 앞/뒤와 "근거 바뀜"(`stale`)을 바꿔요. 카드 화면에 "출처: atlas" 링크와 "근거 바뀜" 표시. 인증은 기존 규칙 그대로(단독판은 이 Mac 에서 온 호출만, Witems 는 내부 토큰 + 오너).

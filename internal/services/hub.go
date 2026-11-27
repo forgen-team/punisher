@@ -87,6 +87,16 @@ func (h *Hub) ActiveJob(target string) (string, bool) {
 	return id, ok
 }
 
+// Release frees jobID's target before the job ends (a cancelled job still
+// winding down), so a new job for the same target can start at once.
+func (h *Hub) Release(jobID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if st, ok := h.streams[jobID]; ok && h.targets[st.target] == jobID {
+		delete(h.targets, st.target)
+	}
+}
+
 // Start runs fn in a goroutine for jobID unless target already has a running
 // job, in which case that job id is returned with started=false.
 func (h *Hub) Start(jobID, target string, fn func(emit func(Event))) (string, bool) {

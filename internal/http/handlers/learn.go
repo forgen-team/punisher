@@ -57,7 +57,7 @@ func writeServiceError(w http.ResponseWriter, r *http.Request, op string, err er
 		writeError(w, r, http.StatusForbidden, ErrorForbidden, err.Error())
 	case errors.Is(err, services.ErrBudgetExceeded):
 		writeError(w, r, http.StatusTooManyRequests, ErrorBudgetExceeded, err.Error())
-	case errors.Is(err, services.ErrTargetBusy), errors.Is(err, store.ErrJobActive):
+	case errors.Is(err, services.ErrTargetBusy), errors.Is(err, store.ErrJobActive), errors.Is(err, services.ErrJobNotActive):
 		writeError(w, r, http.StatusConflict, ErrorConflict, err.Error())
 	case errors.Is(err, llm.ErrGenerationUnavailable):
 		log.Printf("%s: %v", op, err)

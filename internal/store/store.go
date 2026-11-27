@@ -85,6 +85,7 @@ type Store interface {
 	GetJob(ctx context.Context, userID, jobID string) (models.GenerationJob, error)
 	StartJob(ctx context.Context, jobID string) error
 	FinishJob(ctx context.Context, jobID string, o JobOutcome) error
+	CancelJob(ctx context.Context, userID, jobID string) (bool, error)
 	RecordUsage(ctx context.Context, userID, kind, conceptID string, o JobOutcome) error
 	UsageSince(ctx context.Context, userID string, since time.Time) (lectures int, tokens int, err error)
 	UsageSinceChecks(ctx context.Context, userID string, since time.Time) (tokens int, err error)

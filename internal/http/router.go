@@ -114,6 +114,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Post("/lectures/instant", learn.InstantCreate)
 		r.Get("/lectures/instant/{jobId}/stream", learn.InstantStream)
 		r.Get("/jobs/{jobId}", learn.JobStatus)
+		r.Post("/jobs/{jobId}/cancel", learn.JobCancel)
 		r.Get("/lectures/{id}", learn.GetLecture)
 		r.Put("/lectures/{id}/progress", learn.Progress)
 		r.Post("/lectures/{id}/complete", learn.Complete)

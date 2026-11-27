@@ -145,6 +145,23 @@ func (h *LearnHandler) JobStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, job)
 }
 
+// JobCancel handles POST /v1/jobs/{jobId}/cancel ([취소] while generating):
+// 200 with the job (status failed, reason cancelled); the running AI CLI
+// process group / gateway request is stopped and nothing it made is saved.
+// 404 unknown job, 409 already finished (or saving its result).
+func (h *LearnHandler) JobCancel(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	job, err := h.Svc.CancelJob(r.Context(), userID, chi.URLParam(r, "jobId"))
+	if err != nil {
+		writeServiceError(w, r, "job cancel", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, job)
+}
+
 var uuidRe = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // validateParentLink normalizes the optional "더 깊게" origin of an instant request.

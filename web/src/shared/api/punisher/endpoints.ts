@@ -114,6 +114,8 @@ export const punisherApi = {
   startInstant: (body: InstantRequest) =>
     punisherFetch<InstantResponse>("/lectures/instant", { method: "POST", json: body }),
   getJob: (jobId: string) => punisherFetch<GenerationJob>(`/jobs/${enc(jobId)}`),
+  /** 생성 중 [취소] — 실행 중인 AI 를 멈추고 작업을 '취소됨'(failed/cancelled)으로 둔다. 이미 끝났으면 409. */
+  cancelJob: (jobId: string) => punisherFetch<GenerationJob>(`/jobs/${enc(jobId)}/cancel`, { method: "POST" }),
   getLecture: (id: string) => punisherFetch<Lecture>(`/lectures/${enc(id)}`),
   saveProgress: (id: string, anchor: string, percent: number) =>
     punisherFetch<{ anchor: string; percent: number }>(`/lectures/${enc(id)}/progress`, {
