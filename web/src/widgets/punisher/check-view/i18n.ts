@@ -69,6 +69,10 @@ export const messages = defineMessages({
     misconceptionAcknowledge: "맞아요, 그렇게 알았어요",
     misconceptionAcknowledged: "인정함",
     revealedNotice: "답을 공개했어요",
+    skippedNotice: "건너뛰었어요",
+    skippedRow: "건너뜀",
+    tally: (correct: number, again: number, skipped: number) =>
+      [`맞힘 ${correct}`, `다시 볼 것 ${again}`, ...(skipped > 0 ? [`건너뜀 ${skipped}`] : [])].join(" · "),
     lectureSummary: "이 강의 한 장 요약",
   },
   en: {
@@ -131,6 +135,10 @@ export const messages = defineMessages({
     misconceptionAcknowledge: "Yes, that's what I thought",
     misconceptionAcknowledged: "Acknowledged",
     revealedNotice: "Answer revealed",
+    skippedNotice: "Skipped",
+    skippedRow: "Skipped",
+    tally: (correct: number, again: number, skipped: number) =>
+      [`Correct ${correct}`, `To revisit ${again}`, ...(skipped > 0 ? [`Skipped ${skipped}`] : [])].join(" · "),
     lectureSummary: "One-page lecture summary",
   },
 });
@@ -199,7 +207,7 @@ export const DIAGNOSTIC_TITLES: Record<Locale, Record<DiagnosticKind, string>> =
 };
 
 /** 종합 문제 결과(v3 §5) — 상자는 움직이지 않는다. */
-export const SYNTHESIS_RESULT_LABELS: Record<Locale, Record<"passed" | "pulled" | "recorded", string>> = {
-  ko: { passed: "통과 — 함께 설명할 수 있어요", pulled: "관련 복습을 앞당겼어요", recorded: "기록만 남겼어요" },
-  en: { passed: "Passed — you can explain them together", pulled: "Related reviews moved up", recorded: "Recorded only" },
+export const SYNTHESIS_RESULT_LABELS: Record<Locale, Record<"passed" | "pulled" | "skipped" | "recorded", string>> = {
+  ko: { passed: "통과 — 함께 설명할 수 있어요", pulled: "관련 복습을 앞당겼어요", skipped: "건너뜀 — 관련 복습을 앞당겼어요", recorded: "기록만 남겼어요" },
+  en: { passed: "Passed — you can explain them together", pulled: "Related reviews moved up", skipped: "Skipped — related reviews moved up", recorded: "Recorded only" },
 };

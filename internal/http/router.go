@@ -159,6 +159,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Post("/checks/{id}/reveal", learn.RevealCheck)
 		r.Post("/checks/{id}/self-grade", learn.SelfGradeCheck)
 		r.Post("/checks/{id}/turns/{turnId}/dispute", learn.DisputeCheck)
+		r.Post("/checks/{id}/items/{itemId}/skip", learn.SkipCheckItem)
 		r.Post("/checks/{id}/retry", learn.RetryCheck)
 		r.Post("/checks/{id}/abandon", learn.AbandonCheck)
 		r.Post("/checks/{id}/cancel", learn.CancelCheck)

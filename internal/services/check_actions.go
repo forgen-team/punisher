@@ -112,6 +112,30 @@ func (s *Service) RevealCheck(ctx context.Context, userID, id string) (models.Ch
 	return s.GetCheck(ctx, userID, id)
 }
 
+// SkipCheck is '건너뛰기' on the current item (itemID must be it): only before
+// its first answer, with nothing running, and not on a pretest / placement
+// (they have '모르겠어요'). The item ends as skipped — recorded in the
+// session result and history, never evidence — and the session moves to the
+// next item; the objective's review comes back soon (learning.ApplySkip).
+func (s *Service) SkipCheck(ctx context.Context, userID, id, itemID string) (models.CheckDetail, error) {
+	st, err := s.loadCheckState(ctx, userID, id)
+	if err != nil {
+		return models.CheckDetail{}, err
+	}
+	item := st.current()
+	if item == nil || st.pending() {
+		return models.CheckDetail{}, checkStateErr(st)
+	}
+	if item.ID != itemID || !currentView(st, *item, false).CanSkip {
+		return models.CheckDetail{}, ErrCheckState
+	}
+	turn := store.TurnWrite{ItemID: item.ID, Role: "learner", Move: check.MoveSkip, Grader: st.sess.Grader}
+	if err := s.finishItem(ctx, userID, st, *item, learning.ItemResult{}, false, turn, false); err != nil {
+		return models.CheckDetail{}, checkBusy(err)
+	}
+	return s.GetCheck(ctx, userID, id)
+}
+
 var selfVerdicts = map[string]bool{learning.VerdictCorrect: true, learning.VerdictPartial: true, learning.VerdictIncorrect: true}
 
 // SelfGradeCheck records the learner's own grade (P2 self-graded reviews):

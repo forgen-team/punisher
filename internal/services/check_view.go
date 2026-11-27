@@ -127,7 +127,9 @@ func (s *Service) checkDetail(ctx context.Context, userID string, st checkState)
 		p := progressOf(st.turns, it.ID)
 		v := models.CheckItemView{ID: it.ID, ObjectiveID: it.ObjectiveID, Format: it.Format, Prompt: it.Prompt,
 			Material: it.Material, Done: p.done, Outcome: p.outcome}
-		if !check.Recorded(st.sess.Kind) && (p.done || (st.sess.Grader == learning.GraderSelf && len(p.answers) > 0)) {
+		// 건너뛴 문항은 모범답을 보이지 않는다(공개하면 '그냥 알려줘'를 벌 없이 쓰는 길이 된다).
+		revealed := p.done && p.outcome != learning.OutcomeSkipped
+		if !check.Recorded(st.sess.Kind) && (revealed || (st.sess.Grader == learning.GraderSelf && len(p.answers) > 0)) {
 			v.Answer, v.Must, v.Anchor = it.Rubric.Answer, it.Rubric.Must, it.Rubric.Anchor
 		}
 		d.Items = append(d.Items, v)
@@ -202,10 +204,12 @@ func currentView(st checkState, it store.CheckItem, pending bool) *models.CheckC
 	}
 	if st.sess.Grader == learning.GraderSelf || check.Recorded(st.sess.Kind) {
 		c.CanAnswer, c.CanSelfGrade = len(p.answers) == 0, len(p.answers) > 0 && !check.Recorded(st.sess.Kind)
-		return c
+	} else {
+		kind := st.itemKind(it)
+		c.CanAnswer, c.CanReveal = p.awaitingAnswer(kind), p.canReveal(kind)
 	}
-	kind := st.itemKind(it)
-	c.CanAnswer, c.CanReveal = p.awaitingAnswer(kind), p.canReveal(kind)
+	// 건너뛰기는 첫 답 전에만(답한 뒤 건너뛰면 판정을 피하는 길이 된다). 예측·배치는 '모르겠어요'가 있다.
+	c.CanSkip = c.CanAnswer && len(p.answers) == 0 && !check.Recorded(st.sess.Kind)
 	return c
 }
 

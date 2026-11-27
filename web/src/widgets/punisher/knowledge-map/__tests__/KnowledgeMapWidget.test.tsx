@@ -41,10 +41,12 @@ const state = {
   lectures: [] as Array<{ id: string }>,
   userState: "not_started" as ConceptDetail["userState"],
   locked: false,
+  dismissed: false,
 };
 const markKnown = vi.fn();
 const undoKnown = vi.fn();
 const createStudyRequest = vi.fn();
+const restoreConcept = vi.fn();
 
 const ok = <T,>(data: T) => ({ data, isLoading: false, isSuccess: true, error: null, refetch: vi.fn() });
 const idle = () => ({ mutate: vi.fn(), mutateAsync: vi.fn(async () => undefined), isPending: false, isSuccess: false, error: null });
@@ -56,7 +58,7 @@ vi.mock("@/src/entities/punisher", async (importOriginal) => ({
   useGoalPath: () => ({ ...ok(undefined), data: undefined }),
   useMasteryBatch: () => ok([]),
   useToday: () => ok({ items: [] }),
-  useConceptDetail: (id?: string) => (id ? ok(detail(id, { userState: state.userState, locked: state.locked })) : { ...ok(undefined), data: undefined }),
+  useConceptDetail: (id?: string) => (id ? ok(detail(id, { userState: state.userState, locked: state.locked, dismissed: state.dismissed })) : { ...ok(undefined), data: undefined }),
   useConceptLectures: () => ok(state.lectures),
   useNotes: () => ok([{ id: "n1" }]),
   useMyQuestions: () => ({ ...ok({ pages: [{ items: [{ id: "q1" }, { id: "q2" }] }] }), hasNextPage: false }),
@@ -64,6 +66,7 @@ vi.mock("@/src/entities/punisher", async (importOriginal) => ({
   useMarkKnown: () => ({ ...idle(), mutate: markKnown }),
   useUndoKnown: () => ({ ...idle(), mutate: undoKnown }),
   useCreateStudyRequest: () => ({ ...idle(), mutate: createStudyRequest }),
+  useConceptDismiss: () => ({ ...idle(), mutate: restoreConcept }),
 }));
 
 // 시트 본문은 각자 테스트가 있다 — 여기서는 주소 → 시트 열림만 본다.
@@ -129,6 +132,8 @@ beforeEach(() => {
   state.lectures = [];
   state.userState = "not_started";
   state.locked = false;
+  state.dismissed = false;
+  restoreConcept.mockReset();
   Object.defineProperty(window, "scrollTo", { value: () => undefined, writable: true });
   setSplit(true);
 });
@@ -175,6 +180,15 @@ describe("지도 툴바와 본문", () => {
     expect(screen.queryByText("다음에 공부하면 좋은 것")).toBeNull();
     expect(screen.queryByText("분류 중인 학습 요청")).toBeNull();
     expect(screen.queryByText("영역별 커버리지")).toBeNull();
+  });
+
+  it("lists 필요 없음 in the legend next to the other states", async () => {
+    renderMap("/map");
+    fireEvent.click(await screen.findByRole("button", { name: "범례" }));
+    const legend = await screen.findByRole("dialog", { name: "범례" });
+    expect(within(legend).getByText("필요 없음")).toBeInTheDocument();
+    expect(within(legend).getByText("추천에서 뺐어요")).toBeInTheDocument();
+    expect(within(legend).getAllByRole("listitem")).toHaveLength(8);
   });
 
   it("shows the graph and the empty detail panel on a wide screen, the list on a phone", async () => {
@@ -244,6 +258,37 @@ describe("개념 상세 ?node=", () => {
     renderMap("/map?node=os.thread");
     fireEvent.click(await screen.findByRole("switch", { name: "스레드 이미 앎" }));
     expect(markKnown).toHaveBeenCalledWith("os.thread", expect.anything());
+  });
+
+  it("shows 필요 없음 and [다시 추천받기] for a concept taken off the picks, and puts it back (dismissed=false)", async () => {
+    state.dismissed = true;
+    state.nodes = graphNodes.map((n) => (n.id === "os.thread" ? { ...n, frontier: false, dismissed: true } : n));
+    renderMap("/map?node=os.thread");
+    const panel = await screen.findByRole("region", { name: "스레드" });
+    expect(within(panel).getByText("운영체제 · 필요 없음")).toBeInTheDocument();
+    // 빼는 동작은 지도에 없다 — 되돌리는 버튼만.
+    expect(within(panel).queryByRole("button", { name: /필요 없음으로|추천에서 빼/ })).toBeNull();
+    restoreConcept.mockImplementation((_vars, options: { onSuccess?: () => void }) => options.onSuccess?.());
+    fireEvent.click(within(panel).getByRole("button", { name: "다시 추천받기" }));
+    expect(restoreConcept).toHaveBeenCalledWith({ conceptId: "os.thread", dismissed: false }, expect.anything());
+    expect(await screen.findByText("추천에 다시 넣었어요")).toBeInTheDocument();
+  });
+
+  it("has no [다시 추천받기] for a concept that was never taken off", async () => {
+    renderMap("/map?node=os.thread");
+    const panel = await screen.findByRole("region", { name: "스레드" });
+    expect(within(panel).getByText("운영체제 · 추천")).toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: "다시 추천받기" })).toBeNull();
+  });
+
+  it("keeps 배움 for a finished concept even if it was dismissed earlier — no restore button", async () => {
+    state.dismissed = true;
+    state.userState = "completed";
+    state.nodes = graphNodes.map((n) => (n.id === "os.thread" ? { ...n, state: "completed", frontier: false, dismissed: true } : n));
+    renderMap("/map?node=os.thread");
+    const panel = await screen.findByRole("region", { name: "스레드" });
+    expect(within(panel).getByText("운영체제 · 배움")).toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: "다시 추천받기" })).toBeNull();
   });
 
   it("puts the concept on the study list with 나중에 공부", async () => {

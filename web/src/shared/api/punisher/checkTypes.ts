@@ -19,11 +19,12 @@ export type CheckMove =
   | "reveal"
   | "self_grade"
   | "dispute"
-  | "dont_know";
+  | "dont_know"
+  | "skip";
 export type CheckTurnStatus = "pending" | "ready" | "failed";
 export type CheckVerdict = "correct" | "partial" | "incorrect" | "revealed" | "held";
-/** recorded: 예측·배치 답(기록만, 숙달 근거 아님) */
-export type CheckOutcome = "unaided_correct" | "unaided_partial" | "aided" | "failed" | "held" | "recorded";
+/** recorded: 예측·배치 답(기록만, 숙달 근거 아님) · skipped: 건너뛴 문항(근거 아님, 복습만 가까운 날로) */
+export type CheckOutcome = "unaided_correct" | "unaided_partial" | "aided" | "failed" | "held" | "recorded" | "skipped";
 /** none: 기록만 하는 세션(예측 질문 · 배치 진단) */
 export type CheckGrader = "llm" | "self" | "llm_regrade" | "none";
 export type MasteryBest = "none" | "revealed" | "aided" | "unaided";
@@ -170,6 +171,8 @@ export interface CheckCurrent {
   canAnswer: boolean;
   canReveal: boolean;
   canSelfGrade: boolean;
+  /** '건너뛰기' — 첫 답 전, 실행 중이 아닐 때(예측·배치 제외) */
+  canSkip?: boolean;
 }
 
 /** 모든 확인 동작의 응답(pending=true 면 202 — 끝날 때까지 GET 으로 다시 확인). */

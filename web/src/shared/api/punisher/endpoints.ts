@@ -242,6 +242,9 @@ export const punisherApi = {
   answerCheck: (id: string, text: string, confidence?: Confidence) =>
     punisherFetch<CheckDetail>(`/checks/${enc(id)}/answers`, { method: "POST", json: confidence ? { text, confidence } : { text } }),
   revealCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/reveal`, { method: "POST" }),
+  /** '건너뛰기' — 지금 문항(itemId)을 첫 답 전에 건너뛴다(지금 문항이 아니면 409). */
+  skipCheckItem: (id: string, itemId: string) =>
+    punisherFetch<CheckDetail>(`/checks/${enc(id)}/items/${enc(itemId)}/skip`, { method: "POST" }),
   disputeCheck: (id: string, turnId: string, reason?: string) =>
     punisherFetch<CheckDetail>(`/checks/${enc(id)}/turns/${enc(turnId)}/dispute`, {
       method: "POST",

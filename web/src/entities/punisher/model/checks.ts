@@ -103,6 +103,11 @@ export function useCheckReveal(id: string) {
   return useCheckAction<void>(() => punisherApi.revealCheck(id));
 }
 
+/** '건너뛰기' — 지금 문항을 답하지 않고 넘긴다(근거 아님, 그 목표 복습은 가까운 날로). */
+export function useCheckSkip(id: string) {
+  return useCheckAction((itemId: string) => punisherApi.skipCheckItem(id, itemId));
+}
+
 /** '내 답이 맞아요' — 그 문항의 마지막 판정 턴을 다른 모델이 다시 채점한다(202). */
 export function useCheckDispute(id: string) {
   return useCheckAction(({ turnId, reason }: { turnId: string; reason?: string }) =>
