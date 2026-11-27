@@ -11,6 +11,8 @@ export interface WitemsRuntime {
   portal: HTMLElement;
   /** shell top-bar title (null = the app's title) */
   setTitle(title: string | null): void;
+  /** shell page subtitle under the title (ctx.setSubtitle, witems#54) — undefined when the shell predates it */
+  setSubtitle?: (subtitle: string | null) => void;
   /** shell page actions (ctx.setActions) — undefined when the shell predates it */
   setActions?: (actions: ShellAction[] | null) => void;
   /** shell ⌘K commands (ctx.setCommands) — undefined when the shell predates it */

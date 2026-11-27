@@ -38,8 +38,11 @@ vi.mock("@/src/pages", async () => {
   };
 });
 
-function mountAt(path: string) {
-  const runtime = { apiBase: "/apps-api/punisher/", portal: document.body, setTitle: vi.fn(), setActions: vi.fn(), setCommands: vi.fn(), setBadges: vi.fn() };
+function mountAt(path: string, withSubtitle = true) {
+  const runtime = {
+    apiBase: "/apps-api/punisher/", portal: document.body, setTitle: vi.fn(), setActions: vi.fn(), setCommands: vi.fn(), setBadges: vi.fn(),
+    ...(withSubtitle ? { setSubtitle: vi.fn() } : {}),
+  };
   setWitemsRuntime(runtime);
   render(
     <UIProvider linkAs={Link} inShell>
@@ -66,7 +69,8 @@ describe("WitemsShell (inside the shell)", () => {
     expect(screen.getByText("claude-banner")).toBeInTheDocument();
     const commands = runtime.setCommands.mock.lastCall?.[0] as Array<{ id: string; href?: string }>;
     expect(commands.find((c) => c.id === "next-lecture")?.href).toBe("/start?concept=c1");
-    // 셸에 부제를 넘기는 계약이 아직 없다 — 셸 안에서는 날짜를 그리지 않는다
+    // 부제(오늘 날짜)는 셸이 머리에 그린다(ctx.setSubtitle) — 앱 본문에는 그리지 않는다
+    expect(runtime.setSubtitle).toHaveBeenLastCalledWith("11월 27일 금요일");
     expect(screen.queryByText("11월 27일 금요일")).toBeNull();
   });
 
@@ -79,6 +83,13 @@ describe("WitemsShell (inside the shell)", () => {
     const commands = runtime.setCommands.mock.lastCall?.[0] as Array<{ id: string; onSelect?: () => void }>;
     expect(commands.map((c) => c.id)).toContain("history");
     expect(typeof commands.find((c) => c.id === "review")?.onSelect).toBe("function");
+  });
+
+  it("clears the subtitle on screens without one, and skips it on shells without setSubtitle", () => {
+    const runtime = mountAt("/map");
+    expect(runtime.setSubtitle).toHaveBeenLastCalledWith(null);
+    setWitemsRuntime(null);
+    expect(() => mountAt("/", false)).not.toThrow();
   });
 
   it("leaves the settings action out on the settings screen", () => {

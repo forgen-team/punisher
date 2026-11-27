@@ -290,7 +290,8 @@ func TestAppHandler(t *testing.T) {
 
 	// today (셸 계약 rss.md §8-3): 요약 카드 endpoint 와 앱당 카드 수.
 	today, _ := m["today"].(map[string]any)
-	if today["endpoint"] != "/v1/today-cards" || today["maxCards"] != float64(2) {
+	kinds, _ := today["kinds"].([]any)
+	if today["endpoint"] != "/v1/today-cards" || today["maxCards"] != float64(2) || len(kinds) != 2 || kinds[0] != "todo" || kinds[1] != "study" {
 		t.Fatalf("today %v", today)
 	}
 

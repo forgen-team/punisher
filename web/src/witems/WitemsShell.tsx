@@ -3,7 +3,7 @@ import { Outlet } from "react-router-dom";
 import { LocaleSync } from "@/src/entities/punisher";
 import { shellHasActions, shellHasCommands, witemsRuntime } from "@/src/shared/config/runtime";
 import { useTrackInAppNavigation } from "@/src/shared/lib/in-app-history";
-import { actionsSignature } from "@/src/shared/lib/screen-chrome";
+import { actionsSignature, useScreenChrome } from "@/src/shared/lib/screen-chrome";
 import { useSearchShortcut } from "@/src/shared/lib/shortcuts";
 import { useRouter } from "@/src/shared/lib/router";
 import { AppPage, useFrameActions, useFrameTitle } from "@/src/app/AppPage";
@@ -28,6 +28,12 @@ export function WitemsShell() {
   useEffect(() => {
     witemsRuntime()?.setTitle(title);
   }, [title]);
+
+  // 부제(오늘 날짜 등) — 셸 머리 제목 아래(ctx.setSubtitle, witems#54). 없는 셸이면 건너뛴다.
+  const { subtitle } = useScreenChrome();
+  useEffect(() => {
+    witemsRuntime()?.setSubtitle?.(subtitle);
+  }, [subtitle]);
 
   const actions = useFrameActions();
   const sent = useRef("");

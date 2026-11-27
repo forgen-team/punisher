@@ -34,6 +34,8 @@ export function mount(el: HTMLElement, ctx: AppContext): Unmount {
     apiBase: ctx.apiBase,
     portal: ctx.portal,
     setTitle: (title) => ctx.setTitle(title),
+    // 구버전 셸에는 setSubtitle 이 없다 — 그때는 부제를 넘기지 않는다(셸 안에서 날짜가 안 보일 뿐).
+    setSubtitle: typeof ctx.setSubtitle === "function" ? (subtitle) => ctx.setSubtitle?.(subtitle) : undefined,
     // 구버전 셸에는 setActions 가 없다 — 그때는 undefined 로 둔다(셸이 페이지 동작을 그리지 않는다).
     setActions: typeof ctx.setActions === "function" ? (actions) => ctx.setActions?.(actions) : undefined,
     setCommands: typeof ctx.setCommands === "function" ? (commands) => ctx.setCommands?.(commands) : undefined,
@@ -77,6 +79,7 @@ export function mount(el: HTMLElement, ctx: AppContext): Unmount {
   );
 
   return () => {
+    runtime.setSubtitle?.(null);
     runtime.setActions?.(null);
     runtime.setCommands?.(null);
     offTheme();
