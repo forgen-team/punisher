@@ -181,9 +181,36 @@ func insertCheckItem(ctx context.Context, c conn, key CheckItemKey, conceptID, j
 // ActiveCheckItemsJob is userID's pending/running item-set generation for key
 // (ErrNotFound when none runs).
 func (s *SQLiteStore) ActiveCheckItemsJob(ctx context.Context, userID string, key CheckItemKey) (models.GenerationJob, error) {
+	return s.activeItemsJob(ctx, userID, key.JobKey())
+}
+
+// SessionItemsJobKey is the objective_key of a session's own item generation
+// (diagnostic, synthesis): one generation per session, found by the session.
+func SessionItemsJobKey(sessionID string) string { return "session:" + sessionID }
+
+// StartSessionItemsJob records a running item generation of one session
+// (kind check_items, objective_key SessionItemsJobKey) so it can be cancelled.
+func (s *SQLiteStore) StartSessionItemsJob(ctx context.Context, userID, conceptID, sessionID string) (models.GenerationJob, error) {
+	var concept any
+	if conceptID != "" {
+		concept = conceptID
+	}
+	key := SessionItemsJobKey(sessionID)
+	return scanJob(s.c().row(ctx, `
+		INSERT INTO generation_jobs (id, idempotency_key, kind, user_id, concept_id, objective_key, status, attempts, started_at)
+		VALUES ($1, $2, 'check_items', NULLIF($3, ''), (SELECT id FROM concepts WHERE id = $4), $5, 'running', 1, NOW())
+		RETURNING `+jobColumns, NewID(), "check_items:"+key+":"+RandomToken(), userID, concept, key))
+}
+
+// ActiveSessionItemsJob is the running item generation of a session (ErrNotFound when none runs).
+func (s *SQLiteStore) ActiveSessionItemsJob(ctx context.Context, userID, sessionID string) (models.GenerationJob, error) {
+	return s.activeItemsJob(ctx, userID, SessionItemsJobKey(sessionID))
+}
+
+func (s *SQLiteStore) activeItemsJob(ctx context.Context, userID, objectiveKey string) (models.GenerationJob, error) {
 	job, err := scanJob(s.c().row(ctx, `SELECT `+jobColumns+` FROM generation_jobs
 		WHERE kind = 'check_items' AND objective_key = $1 AND user_id = $2 AND status IN ('pending', 'running')
-		ORDER BY created_at DESC LIMIT 1`, key.JobKey(), userID))
+		ORDER BY created_at DESC LIMIT 1`, objectiveKey, userID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.GenerationJob{}, ErrNotFound
 	}

@@ -221,7 +221,23 @@ describe("문항 만드는 중 [취소]", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
-  it("생성 작업이 없는(진단 등) 준비 화면에는 [취소]가 없다", () => {
+  it.each([
+    ["pretest", "문항을 만드는 중이에요"],
+    ["placement", "문항을 만드는 중이에요"],
+    ["synthesis", "문항을 만드는 중이에요"],
+  ] as const)("진단·종합(%s) 준비 화면에도 [취소] — 누르면 바로 취소하고 오늘로 replace + 토스트", async (kind, label) => {
+    detail = { ...preparing, session: { ...preparing.session, kind, lectureId: "" }, generationJobId: `job-${kind}` };
+    replace.mockClear();
+    cancel = { ...idle, error: null, mutate: vi.fn((_: unknown, opts?: { onSuccess?: () => void }) => opts?.onSuccess?.()) };
+    render(<CheckView checkId="s1" />, { wrapper });
+    expect(screen.getByText(label)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "취소" }));
+    expect(cancel.mutate).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledWith("/");
+    expect(await screen.findByText("문제 만들기를 취소했어요")).toBeInTheDocument();
+  });
+
+  it("생성 작업이 없는 준비 화면에는 [취소]가 없다", () => {
     detail = { ...preparing, generationJobId: undefined };
     cancel = { ...idle, error: null, mutate: vi.fn() };
     render(<CheckView checkId="s1" />, { wrapper });

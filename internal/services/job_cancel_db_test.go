@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/forgen-team/punisher/internal/check"
 	"github.com/forgen-team/punisher/internal/claudecli"
 	"github.com/forgen-team/punisher/internal/store"
 )
@@ -68,6 +69,12 @@ func (f *cancelFixture) start(t *testing.T) (InstantResponse, []int) {
 	if resp.Status != InstantStarted {
 		t.Fatalf("status %q, want started", resp.Status)
 	}
+	return resp, f.waitPIDs(t)
+}
+
+// waitPIDs waits until the fake CLI has started its child and returns both pids.
+func (f *cancelFixture) waitPIDs(t *testing.T) []int {
+	t.Helper()
 	var pids []int
 	waitFor(t, "the fake CLI to start its child", func() bool {
 		raw, err := os.ReadFile(f.pids)
@@ -84,7 +91,7 @@ func (f *cancelFixture) start(t *testing.T) (InstantResponse, []int) {
 		}
 		return len(pids) == 2
 	})
-	return resp, pids
+	return pids
 }
 
 func waitFor(t *testing.T, what string, ok func() bool) {
@@ -275,19 +282,7 @@ func TestCancelCheckPreparingKillsCLI(t *testing.T) {
 	if d.Session.Status != "preparing" || d.GenerationJobID == "" {
 		t.Fatalf("preparing detail: status %q job %q", d.Session.Status, d.GenerationJobID)
 	}
-	var pids []int
-	waitFor(t, "the fake CLI to start its child", func() bool {
-		raw, err := os.ReadFile(f.pids)
-		if err != nil {
-			return false
-		}
-		pids = nil
-		for _, field := range strings.Fields(string(raw)) {
-			pid, _ := strconv.Atoi(field)
-			pids = append(pids, pid)
-		}
-		return len(pids) == 2
-	})
+	pids := f.waitPIDs(t)
 
 	got, err := f.s.CancelCheck(ctx, f.user, d.Session.ID)
 	if err != nil {
@@ -318,5 +313,69 @@ func TestCancelCheckPreparingKillsCLI(t *testing.T) {
 	}
 	if _, err := f.s.CancelCheck(ctx, f.user, d.Session.ID); !errors.Is(err, ErrCheckState) {
 		t.Fatalf("second cancel: %v, want ErrCheckState", err)
+	}
+}
+
+// [취소] while a diagnostic (pretest) or synthesis session's items are made:
+// the session's own generation is a cancellable job like the others.
+func TestCancelDiagnosticAndSynthesisPreparing(t *testing.T) {
+	cases := []struct {
+		name    string
+		purpose string
+		start   func(t *testing.T, f *cancelFixture) DiagnosticRequest
+	}{
+		{"pretest", check.PurposePretest, func(t *testing.T, f *cancelFixture) DiagnosticRequest {
+			return DiagnosticRequest{Kind: check.PurposePretest, LectureID: newCheckFixture(t, f.s, f.user).lectureID}
+		}},
+		{"synthesis", check.PurposeSynthesis, func(t *testing.T, f *cancelFixture) DiagnosticRequest {
+			synthFixture(t, f.s, f.user)
+			return DiagnosticRequest{Kind: check.PurposeSynthesis}
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newCancelFixture(t)
+			ctx := context.Background()
+			d, _, err := f.s.StartDiagnostic(ctx, f.user, tc.start(t, f))
+			if err != nil || d == nil {
+				t.Fatalf("start: %v %v", d, err)
+			}
+			if d.Session.Status != "preparing" || d.GenerationJobID == "" {
+				t.Fatalf("preparing detail: status %q job %q", d.Session.Status, d.GenerationJobID)
+			}
+			pids := f.waitPIDs(t)
+
+			got, err := f.s.CancelCheck(ctx, f.user, d.Session.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Session.Status != "abandoned" || got.GenerationJobID != "" || len(got.Items) != 0 {
+				t.Fatalf("cancelled: status %q job %q items %d", got.Session.Status, got.GenerationJobID, len(got.Items))
+			}
+			waitFor(t, "the CLI process group to die", func() bool { return !alive(pids[0]) && !alive(pids[1]) })
+			waitFor(t, "the runner to finish", func() bool { return !f.s.runs.cancelled(d.GenerationJobID) })
+			job, err := f.s.Store.GetJob(ctx, f.user, d.GenerationJobID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if job.Kind != "check_items" || job.Status != "failed" || job.Reason != store.JobReasonCancelled {
+				t.Fatalf("items job: %+v", job)
+			}
+			var items int
+			if err := testDB(f.s).QueryRowContext(ctx, `SELECT COUNT(*) FROM check_items WHERE created_for = ? AND purpose = ?`,
+				f.user, tc.purpose).Scan(&items); err != nil {
+				t.Fatal(err)
+			}
+			if items != 0 {
+				t.Fatalf("a cancelled generation saved %d items", items)
+			}
+			after, err := f.s.GetCheck(ctx, f.user, d.Session.ID)
+			if err != nil || after.Session.Status != "abandoned" {
+				t.Fatalf("session after the runner ended: %v %+v", err, after.Session)
+			}
+			if _, err := f.s.CancelCheck(ctx, f.user, d.Session.ID); !errors.Is(err, ErrCheckState) {
+				t.Fatalf("second cancel: %v, want ErrCheckState", err)
+			}
+		})
 	}
 }
