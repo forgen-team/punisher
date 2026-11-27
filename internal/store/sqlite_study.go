@@ -340,8 +340,8 @@ func (s *SQLiteStore) Activity(ctx context.Context, userID string, now time.Time
 		func(a *ActivityDay, n int) { a.Lectures = n }); err != nil {
 		return nil, fmt.Errorf("activity lectures: %w", err)
 	}
-	if err := count(`SELECT `+strings.Replace(day, "%s", "l.reviewed_at", 1)+` AS d, COUNT(*) FROM review_card_log l
-		WHERE l.user_id = $1 AND l.reviewed_at >= $2 AND EXISTS (SELECT 1 FROM review_cards c WHERE c.id = l.card_id AND c.deleted_at IS NULL) GROUP BY d`,
+	if err := count(`SELECT `+strings.Replace(day, "%s", "reviewed_at", 1)+` AS d, COUNT(*) FROM review_card_log
+		WHERE user_id = $1 AND reviewed_at >= $2 GROUP BY d`,
 		func(a *ActivityDay, n int) { a.Cards = n }); err != nil {
 		return nil, fmt.Errorf("activity cards: %w", err)
 	}
