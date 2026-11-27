@@ -1,6 +1,7 @@
 import { Sheet } from "@forgen-team/ui";
 import { MAP_STATE_STYLES, MapStateIcon } from "@/src/entities/punisher";
 import { useT } from "@/src/shared/i18n";
+import { cn } from "@/src/shared/lib/cn";
 import { messages } from "../i18n";
 import { stateLabel, type MapDisplayState } from "../lib/displayState";
 
@@ -12,6 +13,7 @@ const BASE_STATE: Record<MapDisplayState, Parameters<typeof MapStateIcon>[0]["st
   not_started: "not_started",
   locked: "locked",
   requested: "not_started",
+  dismissed: "not_started",
 };
 
 /** 상태 견본(노드와 같은 색·테두리 모양·아이콘) — 범례와 지도 목록 보기의 행 앞에 쓴다. 요청됨은 점선 테두리. */
@@ -22,15 +24,20 @@ export function MapStateSwatch({ state }: { state: MapDisplayState }) {
     <span
       aria-hidden="true"
       // ListRow 의 leading 은 아이콘을 20px 로 키운다 — 견본 안 아이콘은 노드와 같은 14px 로 고정.
-      className="inline-flex size-6 shrink-0 items-center justify-center border-2 text-fg [&_svg]:!size-3.5"
-      style={{ borderColor: style.border, background: style.background, borderStyle: state === "requested" ? "dashed" : style.borderStyle }}
+      className={cn("inline-flex size-6 shrink-0 items-center justify-center border-2 text-fg [&_svg]:!size-3.5", state === "dismissed" && "opacity-60")}
+      // 필요 없음은 노드처럼 잠김 바탕에 흐리게.
+      style={{
+        borderColor: style.border,
+        background: state === "dismissed" ? MAP_STATE_STYLES.locked.background : style.background,
+        borderStyle: state === "requested" ? "dashed" : style.borderStyle,
+      }}
     >
       <MapStateIcon state={base} />
     </span>
   );
 }
 
-const LEGEND_ORDER: MapDisplayState[] = ["completed", "in_progress", "recommended", "known", "requested", "locked", "not_started"];
+const LEGEND_ORDER: MapDisplayState[] = ["completed", "in_progress", "recommended", "known", "requested", "dismissed", "locked", "not_started"];
 
 /** 범례 대화상자 — 색 + 테두리 모양 + 아이콘 + 텍스트(색만으로 구분하지 않음). */
 export function MapLegendSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -41,6 +48,7 @@ export function MapLegendSheet({ open, onClose }: { open: boolean; onClose: () =
     recommended: t.legendRecommended,
     known: t.legendKnown,
     requested: t.legendRequested,
+    dismissed: t.legendDismissed,
     locked: t.legendLocked,
     not_started: t.legendNotStarted,
   };
