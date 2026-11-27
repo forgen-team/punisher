@@ -15,7 +15,7 @@ export interface WitemsRuntime {
   setActions?: (actions: ShellAction[] | null) => void;
   /** shell ⌘K commands (ctx.setCommands) — undefined when the shell predates it */
   setCommands?: (commands: ShellCommand[] | null) => void;
-  /** shell sidebar sub-menu numbers (ctx.setBadges, keys = manifest nav.items href) — undefined when the shell predates it */
+  /** shell section-menu numbers (ctx.setBadges, keys = manifest nav.items href paths, "/") — undefined when the shell predates it */
   setBadges?: (badges: Record<string, number>) => void;
 }
 
@@ -58,14 +58,6 @@ export function witemsRuntime(): WitemsRuntime | null {
 /** Does the shell draw page actions (ctx.setActions)? Standalone and older shells: false. */
 export function shellHasActions(): boolean {
   return typeof runtime?.setActions === "function";
-}
-
-/**
- * Does the shell draw the app's sub-menu (manifest nav.items) in its sidebar? Shells that do also take
- * ctx.setBadges, so that is the sign. Then the app's own tabs (LearnNav) would repeat it. Standalone: false.
- */
-export function shellHasSubNav(): boolean {
-  return typeof runtime?.setBadges === "function";
 }
 
 /** Does the shell take ⌘K commands (ctx.setCommands)? Then the shell owns ⌘K and the app must not bind it. */

@@ -25,16 +25,17 @@ var Manifest = map[string]any{
 	"contract": 1,
 	"name":     "punisher",
 	"title":    "학습",
-	// nav.items: 셸 사이드바의 하위 메뉴(contract §2). 앱은 셸 주소를 "경로#섹션"(/apps/punisher/map#/map)으로
-	// 두고, 셸이 해시만 바꾸면 hashchange 로 그 탭으로 간다(web/src/witems/sections.ts·RouteSync.tsx).
+	// nav.items: 셸이 그리는 섹션 메뉴(contract §2, D8). href·match 는 basePath 기준 경로 — 앱 라우트와 같다
+	// (web/src/app/App.tsx, 단독판 탭 web/src/widgets/punisher/nav/lib/tabMemory.ts). 누르면 셸이 경로를 옮기고
+	// onRouteChange 로 알린다(web/src/witems/RouteSync.tsx). "/" 는 앱 첫 화면일 때만, 강의(/lectures/…)도 강의 섹션.
 	"nav": map[string]any{
 		"label": "학습",
 		"icon":  "graduation-cap",
 		"order": 10,
 		"items": []map[string]any{
-			{"label": "강의", "href": "#/", "match": []string{"#/", "#/lectures"}},
-			{"label": "지도", "href": "#/map", "match": []string{"#/map", "#/goals"}},
-			{"label": "기록", "href": "#/history"},
+			{"label": "강의", "href": "/", "match": []string{"/lectures"}},
+			{"label": "지도", "href": "/map", "match": []string{"/goals"}},
+			{"label": "기록", "href": "/history"},
 		},
 	},
 	"remoteEntry": "/apps-static/punisher/remoteEntry.js",
