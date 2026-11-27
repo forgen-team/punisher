@@ -76,7 +76,7 @@ func (s *SQLiteStore) SaveExternalCard(ctx context.Context, userID string, in Ex
 		INSERT INTO review_cards (id, user_id, source_kind, source_id, external_id, source_url, stale, question, answer, next_review_at, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $4, NULLIF($5, ''), $6, $7, $8, $9, $10, $10)
 		ON CONFLICT (user_id, source_kind, source_id) DO UPDATE SET question = excluded.question, answer = excluded.answer,
-			source_url = excluded.source_url, stale = excluded.stale, suspended_at = NULL, deleted_at = NULL, updated_at = excluded.updated_at
+			source_url = excluded.source_url, stale = excluded.stale, suspended_at = NULL, updated_at = excluded.updated_at, `+reviveFresh+`
 		RETURNING `+cardColumns,
 		NewID(), userID, CardSourceExternal, in.ExternalID, in.SourceURL, in.Stale,
 		strings.TrimSpace(in.Question), strings.TrimSpace(in.Answer), due, now))

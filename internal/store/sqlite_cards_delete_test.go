@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"testing/fstest"
@@ -166,9 +167,9 @@ func TestCardSoftDeleteResave(t *testing.T) {
 	}
 }
 
-// TestPurgeDeletedCards: 30일이 지난 삭제 카드는 행만 지우고 복습 기록은 남긴다. 29일은 그대로,
-// 되돌린 카드·남의 카드·지우지 않은 카드는 건드리지 않는다. 기록이 가리키는 카드가 없어도 통계·개수 쿼리는
-// 행을 잃지 않고, 같은 출처를 다시 카드로 만들 수 있으며, 외래 키 검사는 다시 켜져 있다.
+// TestPurgeDeletedCards: 30일이 지난 삭제 카드는 행은 두고 개인 내용만 비운다. 29일은 그대로,
+// 되돌린 카드·남의 카드·지우지 않은 카드는 건드리지 않는다. 비운 카드는 목록·복습 대상·개수에 나오지 않고,
+// 복습 기록·활동 통계는 그대로이며, 외래 키는 한 번도 끄지 않는다. 같은 출처를 다시 보내면 새 카드로 시작한다.
 func TestPurgeDeletedCards(t *testing.T) {
 	s, _ := newTestStore(t)
 	ctx := context.Background()
@@ -176,12 +177,7 @@ func TestPurgeDeletedCards(t *testing.T) {
 	day := 24 * time.Hour
 	mk := func(user, id string) ReviewCard {
 		t.Helper()
-		if user != testUser {
-			if _, err := s.c().exec(ctx, `INSERT OR IGNORE INTO users (id) VALUES ($1)`, user); err != nil {
-				t.Logf("users row: %v", err) // 사용자 표가 없으면 외래 키가 없다는 뜻 — 계속
-			}
-		}
-		c, err := s.SaveExternalCard(ctx, user, ExternalCard{ExternalID: "atlas:" + id, Question: "q " + id, Answer: "a"}, now.Add(-90*day))
+		c, err := s.SaveExternalCard(ctx, user, ExternalCard{ExternalID: "atlas:" + id, SourceURL: "https://example.com/" + id, Question: "q " + id, Answer: "a " + id}, now.Add(-90*day))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -191,9 +187,8 @@ func TestPurgeDeletedCards(t *testing.T) {
 		return c
 	}
 	d29, d30, d31, restored, live, other := mk(testUser, "d29"), mk(testUser, "d30"), mk(testUser, "d31"), mk(testUser, "rest"), mk(testUser, "live"), mk("other", "o31")
-	for c, ago := range map[string]time.Duration{d29.ID: 29, d30.ID: 30, d31.ID: 31, restored.ID: 40} {
-		user := testUser
-		if err := s.DeleteCard(ctx, user, c, now.Add(-ago*day)); err != nil {
+	for id, ago := range map[string]time.Duration{d29.ID: 29, d30.ID: 30, d31.ID: 31, restored.ID: 40} {
+		if err := s.DeleteCard(ctx, testUser, id, now.Add(-ago*day)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -203,54 +198,65 @@ func TestPurgeDeletedCards(t *testing.T) {
 	if _, err := s.RestoreCard(ctx, testUser, restored.ID); err != nil { // 40일 전에 지웠지만 정리 전에 되돌림
 		t.Fatal(err)
 	}
-	rowsOf := func() map[string]bool {
+	type raw struct {
+		question, answer, sourceURL string
+		purged                      bool
+	}
+	rawOf := func(id string) (raw, bool) {
 		t.Helper()
-		ids, err := collect(s.c().query(ctx, `SELECT id FROM review_cards`), func(r rowScanner) (string, error) {
-			var id string
-			return id, r.Scan(&id)
-		})
+		var r raw
+		var url sql.NullString
+		var purged sql.NullString
+		err := s.c().row(ctx, `SELECT question, answer, source_url, purged_at FROM review_cards WHERE id = $1`, id).Scan(&r.question, &r.answer, &url, &purged)
+		if errors.Is(err, sql.ErrNoRows) {
+			return r, false
+		}
 		if err != nil {
 			t.Fatal(err)
 		}
-		out := map[string]bool{}
-		for _, id := range ids {
-			out[id] = true
-		}
-		return out
+		r.sourceURL, r.purged = url.String, purged.Valid
+		return r, true
 	}
-	logsBefore := 0
+	var cardsBefore, logsBefore int
+	_ = s.c().row(ctx, `SELECT COUNT(*) FROM review_cards`).Scan(&cardsBefore)
 	_ = s.c().row(ctx, `SELECT COUNT(*) FROM review_card_log`).Scan(&logsBefore)
 	statsBefore, _ := s.Activity(ctx, testUser, now, 120)
 	_, doneBefore, _ := s.CardCounts(ctx, testUser, now.Add(-60*day))
 
-	// 정리 전에 d29 가 30일째가 되는 날은 아직 아니다: now 에서는 d30·d31(과 남의 o31)만 지워진다.
 	n, err := s.PurgeDeletedCards(ctx, now)
 	if err != nil || n != 3 {
-		t.Fatalf("purged %d (%v), want d30 d31 o31", n, err)
+		t.Fatalf("emptied %d (%v), want d30 d31 o31", n, err)
 	}
-	rows := rowsOf()
 	for name, c := range map[string]ReviewCard{"29일": d29, "되돌린 카드": restored, "지우지 않은 카드": live} {
-		if !rows[c.ID] {
-			t.Errorf("%s was removed", name)
+		if r, ok := rawOf(c.ID); !ok || r.purged || r.question == "" || r.answer == "" || r.sourceURL == "" {
+			t.Errorf("%s was touched: %+v", name, r)
 		}
 	}
 	for name, c := range map[string]ReviewCard{"30일": d30, "31일": d31, "남의 31일": other} {
-		if rows[c.ID] {
-			t.Errorf("%s card still there", name)
+		if r, ok := rawOf(c.ID); !ok || !r.purged || r.question != "" || r.answer != "" || r.sourceURL != "" {
+			t.Errorf("%s card not emptied (row kept): %+v ok=%v", name, r, ok)
 		}
 	}
 	if n, err := s.PurgeDeletedCards(ctx, now); err != nil || n != 0 {
-		t.Fatalf("second purge removed %d (%v)", n, err)
+		t.Fatalf("second purge emptied %d (%v)", n, err)
+	}
+	// 지운 지 30일이 안 된 카드(d29)는 되살려도 일정이 이어진다 — 비운 카드와 다르다.
+	if back, err := s.SaveExternalCard(ctx, testUser, ExternalCard{ExternalID: "atlas:d29", Question: "q d29", Answer: "a d29"}, now); err != nil || back.ID != d29.ID || back.Reps != 1 {
+		t.Fatalf("a deleted-only card keeps its schedule: %+v (%v)", back, err)
+	}
+	if err := s.DeleteCard(ctx, testUser, d29.ID, now.Add(-29*day)); err != nil {
+		t.Fatal(err)
 	}
 	// 하루 뒤 29일 카드가 30일을 채운다.
-	if n, err := s.PurgeDeletedCards(ctx, now.Add(day)); err != nil || n != 1 || rowsOf()[d29.ID] {
-		t.Fatalf("d29 after one more day: removed %d (%v)", n, err)
+	if n, err := s.PurgeDeletedCards(ctx, now.Add(day)); err != nil || n != 1 {
+		t.Fatalf("d29 after one more day: emptied %d (%v)", n, err)
 	}
 
-	// 기록은 하나도 줄지 않았다 — 통계·개수는 그대로고, 고아 기록이 쿼리를 깨지 않는다.
-	var logsAfter int
-	if err := s.c().row(ctx, `SELECT COUNT(*) FROM review_card_log`).Scan(&logsAfter); err != nil || logsAfter != logsBefore {
-		t.Fatalf("review log: %d -> %d (%v)", logsBefore, logsAfter, err)
+	// 행·기록은 하나도 줄지 않았고, 통계·개수·목록은 그대로다.
+	var cardsAfter, logsAfter int
+	_ = s.c().row(ctx, `SELECT COUNT(*) FROM review_cards`).Scan(&cardsAfter)
+	if err := s.c().row(ctx, `SELECT COUNT(*) FROM review_card_log`).Scan(&logsAfter); err != nil || cardsAfter != cardsBefore || logsAfter != logsBefore {
+		t.Fatalf("rows: cards %d -> %d, log %d -> %d (%v)", cardsBefore, cardsAfter, logsBefore, logsAfter, err)
 	}
 	statsAfter, err := s.Activity(ctx, testUser, now, 120)
 	if err != nil || activityCards(statsAfter) != activityCards(statsBefore) || activityCards(statsAfter) != 5 {
@@ -262,21 +268,82 @@ func TestPurgeDeletedCards(t *testing.T) {
 	if list, err := s.ListCards(ctx, testUser); err != nil || len(list) != 2 {
 		t.Fatalf("list after purge: %+v (%v)", list, err)
 	}
+	far := now.Add(400 * day)
+	if due, err := s.DueCards(ctx, testUser, far, 50); err != nil || len(due) != 2 {
+		t.Fatalf("due after purge: %+v (%v)", due, err)
+	}
+	if due, _, err := s.CardCounts(ctx, testUser, far); err != nil || due != 2 {
+		t.Fatalf("due count after purge: %d (%v)", due, err)
+	}
+	// 비운 카드는 되돌릴 수 없다(내용이 없다).
+	if _, err := s.RestoreCard(ctx, testUser, d31.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("restoring an emptied card: %v", err)
+	}
+	// 외래 키는 그대로 켜져 있고 위반이 없다.
+	if _, err := s.c().exec(ctx, `INSERT INTO review_card_log (card_id, user_id, rating) VALUES ('nope', $1, 3)`, testUser); err == nil {
+		t.Fatal("foreign keys are off")
+	}
+	rows, err := s.db.QueryContext(ctx, `PRAGMA foreign_key_check`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rows.Next() {
+		t.Error("foreign_key_check reports a violation after the purge")
+	}
+	_ = rows.Close()
 
-	// 지운 뒤 같은 외부 id 로 다시 보내면 새 카드(새 id)로 만들어지고 고아 기록과 부딪히지 않는다.
-	again, err := s.SaveExternalCard(ctx, testUser, ExternalCard{ExternalID: "atlas:d31", Question: "다시", Answer: "a"}, now)
-	if err != nil || again.ID == d31.ID {
+	// 같은 외부 id 를 다시 보내면 비운 행이 새 카드로 되살아난다: 같은 id·새 글·일정 처음부터·내일 첫 복습.
+	again, err := s.SaveExternalCard(ctx, testUser, ExternalCard{ExternalID: "atlas:d31", SourceURL: "https://example.com/new", Question: "다시", Answer: "새 답"}, now)
+	if err != nil || again.ID != d31.ID || again.Question != "다시" || again.Reps != 0 || again.Lapses != 0 ||
+		again.NextReviewAt == nil || !again.NextReviewAt.After(now) || again.SourceURL != "https://example.com/new" {
 		t.Fatalf("re-send after purge = %+v (%v)", again, err)
 	}
-	// 정리가 끝나면 외래 키 검사는 다시 켜져 있다(없는 카드에 기록을 달 수 없다).
-	if _, err := s.c().exec(ctx, `INSERT INTO review_card_log (card_id, user_id, rating) VALUES ('nope', $1, 3)`, testUser); err == nil {
-		t.Fatal("foreign keys are off after the purge")
+	if r, _ := rawOf(d31.ID); r.purged {
+		t.Fatal("purged_at stays after the card came back")
+	}
+	if list, _ := s.ListCards(ctx, testUser); len(list) != 3 || list[0].ID != d31.ID {
+		t.Fatalf("the new card is listed first: %+v", list)
+	}
+	var logs int
+	if err := s.c().row(ctx, `SELECT COUNT(*) FROM review_card_log WHERE card_id = $1`, d31.ID).Scan(&logs); err != nil || logs != 1 {
+		t.Fatalf("old reviews stay in the history: %d %v", logs, err)
 	}
 }
 
-// TestMigrateToleratesPurgedCardLog: 정리로 생긴 고아 복습 기록이 있어도, 외래 키를 끄고 표를 다시 만드는
-// 이후 마이그레이션(-- punisher:foreign_keys=off)이 외래 키 검사에서 실패하지 않는다. 다른 표의 위반은 여전히 실패.
-func TestMigrateToleratesPurgedCardLog(t *testing.T) {
+// TestPurgeThenSaveNoteCard: 노트에서 만든 카드도 비운 뒤 같은 노트로 다시 만들면 같은 행이 새 카드로 시작한다.
+func TestPurgeThenSaveNoteCard(t *testing.T) {
+	s, _ := newTestStore(t)
+	ctx := context.Background()
+	now := time.Date(2026, 12, 31, 3, 0, 0, 0, time.UTC)
+	note := NewID()
+	if _, err := s.c().exec(ctx, `INSERT INTO notes (id, user_id, anchor, quote, body) VALUES ($1, $2, 'a', '인용', '본문')`, note, testUser); err != nil {
+		t.Fatal(err)
+	}
+	c, err := s.SaveCard(ctx, testUser, "note", note, "옛 질문", "옛 답", now.Add(-90*24*time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.GradeCard(ctx, testUser, c.ID, learning.RatingGood, now.Add(-60*24*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DeleteCard(ctx, testUser, c.ID, now.Add(-31*24*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := s.PurgeDeletedCards(ctx, now); err != nil || n != 1 {
+		t.Fatalf("purge = %d (%v)", n, err)
+	}
+	if d, _ := s.CardDraftFor(ctx, testUser, "note", note); d.CardID != "" || d.Question != "인용" {
+		t.Fatalf("an emptied card is not 'already made': %+v", d)
+	}
+	again, err := s.SaveCard(ctx, testUser, "note", note, "새 질문", "새 답", now)
+	if err != nil || again.ID != c.ID || again.Question != "새 질문" || again.Anchor != "a" || again.Reps != 0 || !again.NextReviewAt.After(now) {
+		t.Fatalf("re-save after purge = %+v (%v)", again, err)
+	}
+}
+
+// TestMigrateAfterPurge: 정리 뒤에도 복습 기록이 가리키는 카드 행이 있어, 외래 키를 끄고 표를 다시 만드는
+// 이후 마이그레이션(-- punisher:foreign_keys=off)이 외래 키 검사를 예외 없이 통과한다.
+func TestMigrateAfterPurge(t *testing.T) {
 	s, _ := newTestStore(t)
 	ctx := context.Background()
 	now := time.Date(2026, 12, 31, 3, 0, 0, 0, time.UTC)
