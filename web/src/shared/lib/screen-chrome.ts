@@ -4,7 +4,7 @@ import type { ShellAction } from "@/src/shared/config/runtime";
 /**
  * 화면이 셸에 넘기는 머리 정보 — 구체적인 제목(강의 제목 등)·부제(오늘 날짜 등)·페이지 동작(이동·설정). 셸(WitemsShell·AppShell)이
  * 읽어 Witems 는 ctx.setTitle·ctx.setActions 로, 단독판은 document.title 로 보낸다.
- * 부제는 단독판 Page subtitle 로만 그린다(셸에 부제를 넘기는 계약이 아직 없어 셸 안에서는 보이지 않는다).
+ * 부제는 단독판은 Page subtitle, 셸 안은 ctx.setSubtitle(없는 셸은 건너뜀)로 보낸다.
  * 자식 화면의 effect 가 부모 셸보다 먼저 돌아 셸이 덮어쓰지 않게 값을 여기 모은다.
  */
 export interface PageAction extends Omit<ShellAction, "kind"> {

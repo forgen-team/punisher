@@ -46,6 +46,8 @@ export interface AppContext {
   readonly theme: AppTheme;
   onThemeChange(callback: (theme: AppTheme) => void): () => void;
   setTitle(title: string | null): void;
+  /** Optional: one line under the title (date, state) — null clears. Older shells lack it (witems#54). */
+  setSubtitle?(subtitle: string | null): void;
   /**
    * Optional: numbers on the section menu (manifest nav.items) — keys are section paths { "/": n }, unknown
    * items and n ≤ 0 are ignored.

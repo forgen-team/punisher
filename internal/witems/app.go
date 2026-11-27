@@ -41,7 +41,9 @@ var Manifest = map[string]any{
 	},
 	// today: Witems '오늘' 홈의 요약 카드(셸 계약 rss.md §8-3). 셸이 endpoint 를 불러 TodayCard[] 를 그린다
 	// (internal/http/handlers/today_cards.go). 카드는 maxCards 장 이하.
-	"today":       map[string]any{"endpoint": "/v1/today-cards", "maxCards": 2},
+	// kinds (witems#49): 이 앱이 내는 카드 종류 — 셸이 불러오는 중·실패 자리를 그 종류 상자에만 그린다
+	// (복습 = todo, 오늘 공부 = study, internal/http/handlers/today_cards.go).
+	"today":       map[string]any{"endpoint": "/v1/today-cards", "maxCards": 2, "kinds": []string{"todo", "study"}},
 	"remoteEntry": "/apps-static/punisher/remoteEntry.js",
 	"api":         "/apps-api/punisher/",
 	"health":      "/healthz",
