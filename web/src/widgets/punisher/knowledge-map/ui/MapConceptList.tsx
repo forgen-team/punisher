@@ -46,10 +46,7 @@ export function MapConceptList({ nodes, coverage = [], selectedId, onSelect }: M
             <List>
               {group.nodes.map((node) => {
                 const state = mapDisplayState(node);
-                const meta = [
-                  node.dismissed ? t.dismissedBadge : "",
-                  node.status === "proposed" ? t.proposed : stateLabel(t, state),
-                ].filter(Boolean).join(" · ");
+                const meta = node.status === "proposed" && state !== "dismissed" ? t.proposed : stateLabel(t, state);
                 return (
                   <ListRow
                     key={node.id}

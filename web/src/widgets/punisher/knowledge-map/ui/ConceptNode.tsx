@@ -52,7 +52,7 @@ function ConceptNodeImpl({ id, data }: NodeProps<ConceptFlowNode>) {
         type="button"
         onClick={() => data.onSelect(id)}
         aria-pressed={data.selected}
-        aria-label={`${data.name}, ${data.stateLabel}${recommended ? t.nodeUnlocks(data.unlocks) : ""}${data.proposed ? t.nodeProposed : ""}${data.inquiries > 0 ? t.nodeInquiries(data.inquiries) : ""}${data.mastered ? t.nodeMastered : ""}${data.dismissed ? t.nodeDismissed : ""}`}
+        aria-label={`${data.name}, ${data.stateLabel}${recommended ? t.nodeUnlocks(data.unlocks) : ""}${data.proposed ? t.nodeProposed : ""}${data.inquiries > 0 ? t.nodeInquiries(data.inquiries) : ""}${data.mastered ? t.nodeMastered : ""}`}
         style={{
           width: nodeWidth(data.depth),
           height: NODE_HEIGHT,
@@ -74,11 +74,8 @@ function ConceptNodeImpl({ id, data }: NodeProps<ConceptFlowNode>) {
           <span className="truncate">{data.name}</span>
         </span>
         <span className="flex w-full items-center gap-1 text-xs text-fg-secondary">
-          {data.dismissed && (
-            <span className="shrink-0 rounded-sm border border-line px-1 font-medium text-fg-muted">{t.dismissedBadge}</span>
-          )}
           <span className="min-w-0 truncate">
-            {data.proposed ? t.proposed : data.stateLabel}
+            {data.proposed && !data.dismissed ? t.proposed : data.stateLabel}
             {recommended && data.unlocks > 0 && t.nodeUnlocksShort(data.unlocks)}
           </span>
           {data.inquiries > 0 && (
