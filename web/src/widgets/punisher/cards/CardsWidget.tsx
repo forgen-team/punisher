@@ -1,8 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { Link, useRouter, useSearchParams } from "@/src/shared/lib/router";
 import { Badge, Button, EmptyState, ErrorState, LinkTabs, List, ListRow, ListSkeleton, Menu, useConfirm, type MenuItemDef } from "@forgen-team/ui";
-import { cn } from "@/src/shared/lib/cn";
-import { standaloneColumnClass } from "@/src/shared/config/runtime";
 import { lectureAnchorHref, useCards, useDeleteCard, useGradeCard } from "@/src/entities/punisher";
 import { describePunisherError, type CardRating, type ReviewCard } from "@/src/shared/api/punisher";
 import { useStudyShortcuts } from "@/src/shared/lib/shortcuts";
@@ -14,24 +12,45 @@ import { messages } from "./i18n";
 
 type CardsTab = "review" | "all";
 
+const FOOTER_CLASS =
+  "sticky bottom-[var(--app-bottom-offset)] z-nav -mx-4 mt-6 flex items-center gap-2 border-t border-line bg-canvas px-4 py-3 fold:-mx-6 fold:px-6 lg:mx-0 lg:px-0";
+
+/** 고정 Footer — 하단 탭 위(--app-bottom-offset). 안은 한 줄(오른쪽에 주 동작). */
+function Footer({ children }: { children: ReactNode }) {
+  return <div className={FOOTER_CLASS}>{children}</div>;
+}
+
 /**
- * 복습 카드(W5a) — ?tab=review(오늘 카드, 기본) · ?tab=all(모든 카드). 탭은 링크(화면=주소).
- * 오늘 카드: 질문 → (Space/Enter) 답 보기 → 1 다시 · 2 어려움 · 3 알맞음. 단축키는 설정에서 끌 수 있다.
+ * 카드 복습 — 탭 [복습 n | 모든 카드](?tab=all). 탭 전환은 기록을 쌓지 않는다(replace).
+ * 복습: 앞면 → Footer [답 보기] → [다시][알았음]. 단축키(Space/Enter 답 보기 · 1 다시 · 3 알았음)는 설정에서 끌 수 있다.
+ * 제목·←·설정은 틀이 그린다.
  */
 export function CardsWidget() {
   const t = useT(messages);
+  const router = useRouter();
   const params = useSearchParams();
   const tab: CardsTab = params.get("tab") === "all" ? "all" : "review";
+  const due = useCards(true);
+  // 탭 링크는 진짜 링크(새 탭 가능)로 두고, 보통 클릭만 replace 로 바꾼다.
+  function replaceTab(event: MouseEvent<HTMLElement>) {
+    const link = (event.target as HTMLElement).closest("a");
+    const href = link?.getAttribute("href");
+    if (!href || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) { return; }
+    event.preventDefault();
+    router.replace(href);
+  }
   return (
-    <div className={cn("flex w-full flex-col gap-4", standaloneColumnClass())}>
-      <LinkTabs
-        label={t.tabsLabel}
-        value={tab}
-        items={[
-          { value: "review", label: t.tabReview, href: "/cards" },
-          { value: "all", label: t.tabAll, href: "/cards?tab=all" },
-        ]}
-      />
+    <div className="flex w-full flex-col gap-4">
+      <div onClickCapture={replaceTab}>
+        <LinkTabs
+          label={t.tabsLabel}
+          value={tab}
+          items={[
+            { value: "review", label: t.tabReview, href: "/cards", count: due.data?.length },
+            { value: "all", label: t.tabAll, href: "/cards?tab=all" },
+          ]}
+        />
+      </div>
       {tab === "review" ? <CardReview /> : <CardList />}
     </div>
   );
@@ -56,13 +75,12 @@ function CardReview() {
   function rate(rating: CardRating) {
     if (!card || !s.revealed || grade.isPending || !online) { return; }
     if (!deck && cards.data) { setDeck(cards.data); }
-    grade.mutate({ id: card.id, rating }, { onSuccess: () => setS(graded) });
+    grade.mutate({ id: card.id, rating }, { onSuccess: () => setS((prev) => graded(prev, rating)) });
   }
   const keys = useStudyShortcuts({
     " ": card ? show : undefined,
     Enter: card ? (s.revealed ? undefined : show) : () => router.push("/"),
     "1": () => rate(1),
-    "2": () => rate(2),
     "3": () => rate(3),
   }, Boolean(list));
 
@@ -81,25 +99,24 @@ function CardReview() {
   }
   if (!card) {
     return (
-      <EmptyState
-        title={t.doneTitle}
-        description={t.doneBody(s.graded)}
-        action={<Button asChild variant="secondary" size="sm"><Link href="/">{t.toToday}</Link></Button>}
-      />
+      <div className="flex flex-col items-start gap-2 pt-4">
+        <p className="text-xl font-semibold text-fg">{t.doneTitle}</p>
+        <p className="text-sm text-fg-secondary">{t.doneBody(s.graded - s.again, s.again)}</p>
+        <Button asChild variant="primary" className="mt-3"><Link href="/">{t.toToday}</Link></Button>
+      </div>
     );
   }
 
-  const ratings: Array<[CardRating, string]> = [[1, t.again], [2, t.hard], [3, t.good]];
   return (
     <section aria-label={t.title} className="flex flex-col gap-4">
       <div className="flex items-center justify-between text-sm text-fg-secondary">
         <span className="tabular-nums">{t.progress(s.index + 1, list.length)}</span>
         {keys && <span className="hidden text-xs text-fg-muted md:inline">{t.shortcutsHint}</span>}
       </div>
-      {!online && <p role="status" className="rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">{t.offline}</p>}
-      <article className="flex min-h-48 flex-col gap-4 rounded-xl border border-line bg-canvas-elevated p-5 shadow-xs">
+      {!online && <p role="status" className="bg-warning-subtle px-3 py-2 text-sm text-warning">{t.offline}</p>}
+      <article className="flex min-h-48 flex-col gap-4 border border-line bg-canvas-elevated p-4">
         {card.stale && <Badge variant="weak" tone="warning" className="self-start" title={t.staleHint}>{t.stale}</Badge>}
-        <p className="whitespace-pre-wrap break-keep text-lg font-medium text-fg">{card.question}</p>
+        <p className="whitespace-pre-wrap break-keep text-xl font-medium text-fg">{card.question}</p>
         {s.revealed ? (
           <div className="border-t border-line pt-4">
             <p className="whitespace-pre-wrap break-keep text-base text-fg-secondary">{card.answer}</p>
@@ -113,24 +130,28 @@ function CardReview() {
         ) : null}
       </article>
       <InlineError error={grade.error} />
-      {s.revealed ? (
-        <div role="group" aria-label={t.title} className="grid grid-cols-3 gap-2">
-          {ratings.map(([rating, label]) => (
-            <Button key={rating} variant={rating === 3 ? "primary" : "secondary"} disabled={!online || grade.isPending}
-              loading={grade.isPending && grade.variables?.rating === rating} onClick={() => rate(rating)}
-              aria-keyshortcuts={keys ? String(rating) : undefined}>
-              {keys && <kbd className="hidden rounded-sm border border-line px-1 text-xs text-fg-muted md:inline">{rating}</kbd>}
-              {label}
+      <Footer>
+        <span className="flex-1" />
+        {s.revealed ? (
+          <>
+            <Button variant="secondary" disabled={!online || grade.isPending} loading={grade.isPending && grade.variables?.rating === 1}
+              onClick={() => rate(1)} aria-keyshortcuts={keys ? "1" : undefined}>
+              {t.again}
             </Button>
-          ))}
-        </div>
-      ) : (
-        <Button variant="primary" onClick={show} aria-keyshortcuts={keys ? "Space Enter" : undefined}>{t.reveal}</Button>
-      )}
+            <Button variant="primary" disabled={!online || grade.isPending} loading={grade.isPending && grade.variables?.rating === 3}
+              onClick={() => rate(3)} aria-keyshortcuts={keys ? "3" : undefined}>
+              {t.good}
+            </Button>
+          </>
+        ) : (
+          <Button variant="primary" onClick={show} aria-keyshortcuts={keys ? "Space Enter" : undefined}>{t.reveal}</Button>
+        )}
+      </Footer>
     </section>
   );
 }
 
+/** 모든 카드 — 목록. 행 ⋯ "카드 삭제"는 확인 창을 거친다(삭제하면 복습 기록도 지워져 되돌리기 API 가 없다). */
 function CardList() {
   const t = useT(messages);
   const locale = useLocale();
@@ -144,7 +165,7 @@ function CardList() {
   }
   if (items.length === 0) { return <EmptyState title={t.allEmpty} />; }
   async function del(card: ReviewCard) {
-    const ok = await confirm({ title: t.deleteTitle, description: t.deleteBody, confirmLabel: t.delete, tone: "danger" });
+    const ok = await confirm({ title: t.deleteTitle, description: t.deleteBody, confirmLabel: t.deleteConfirm, tone: "danger" });
     if (ok) { remove.mutate(card.id); }
   }
   return (
