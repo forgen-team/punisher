@@ -1,6 +1,6 @@
 {
-  "name": "Punisher",
-  "short_name": "Punisher",
+  "name": "punisher",
+  "short_name": "punisher",
   "description": "Claude Code로 만드는 나만의 CS 기반 지식 강의",
   "lang": "ko",
   "start_url": "/",

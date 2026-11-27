@@ -44,9 +44,9 @@ func ShouldRemind(p store.StudyPrefs, now time.Time, due int) bool {
 // Message is the notification text (Korean or English by locale).
 func Message(locale string, objectives, cards int) (string, string) {
 	if locale == learning.LocaleEN {
-		return "Punisher", fmt.Sprintf("%d reviews are waiting (about %d min).", objectives+cards, max(1, (objectives*2+cards+1)/2))
+		return "punisher", fmt.Sprintf("%d reviews are waiting (about %d min).", objectives+cards, max(1, (objectives*2+cards+1)/2))
 	}
-	return "Punisher", fmt.Sprintf("복습 %d개가 기다려요(약 %d분).", objectives+cards, max(1, (objectives*2+cards+1)/2))
+	return "punisher", fmt.Sprintf("복습 %d개가 기다려요(약 %d분).", objectives+cards, max(1, (objectives*2+cards+1)/2))
 }
 
 // Run checks every Interval until ctx ends.
