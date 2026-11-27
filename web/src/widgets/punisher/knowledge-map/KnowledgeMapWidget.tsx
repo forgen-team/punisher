@@ -5,7 +5,7 @@ import { EmptyState, ErrorState, ListSkeleton, Sheet, Skeleton } from "@forgen-t
 import { useIsSplitLayout } from "@/src/shared/lib/useIsSplitLayout";
 import { useFrontier, useGoalPath, useGoals, useGraph, useMasteryBatch, useToday } from "@/src/entities/punisher";
 import { GoalsManager } from "@/src/features/punisher/goal-manage";
-import { KnownAreasSheet, KnownOnboardingPrompt, useKnownOnboardingPrompt } from "@/src/features/punisher/known-onboarding";
+import { KnownAreasSheet } from "@/src/features/punisher/known-onboarding";
 import { FOUNDATIONS_AREA, describePunisherError } from "@/src/shared/api/punisher";
 import { useWideLayout } from "@/src/shared/lib/useWideLayout";
 import { ConceptDetailSheet } from "./ui/ConceptDetailSheet";
@@ -76,7 +76,6 @@ export function KnowledgeMapWidget() {
   );
   const goals = useGoals();
   const goalPath = useGoalPath(goalId || undefined);
-  const onboarding = useKnownOnboardingPrompt();
   const [legendOpen, setLegendOpen] = useState(false);
   const [knownOpen, setKnownOpen] = useState(false);
 
@@ -187,7 +186,6 @@ export function KnowledgeMapWidget() {
         onOpenGoals={() => setParams({ panel: "goals" })}
         onOpenKnown={() => setKnownOpen(true)}
       />
-      {onboarding.show && <KnownOnboardingPrompt onStart={() => setKnownOpen(true)} onDismiss={onboarding.dismiss} />}
       {goalId && <p className="text-xs text-fg-muted">{t.goalPathHint}</p>}
       {showFoundationsToggle && (
         <FoundationsToggle
@@ -231,7 +229,7 @@ export function KnowledgeMapWidget() {
       <Sheet open={goalsOpen} onOpenChange={(o) => { if (!o) { setParams({ panel: null }, true); } }} title={t.manageGoals} desktop="side">
         <GoalsManager onShowPath={showGoalPath} />
       </Sheet>
-      <KnownAreasSheet open={knownOpen} onClose={() => setKnownOpen(false)} onSaved={onboarding.dismiss} />
+      <KnownAreasSheet open={knownOpen} onClose={() => setKnownOpen(false)} />
     </div>
   );
 }
