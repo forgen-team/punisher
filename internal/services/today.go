@@ -60,25 +60,34 @@ func (s *Service) recommendedLectureMinutes(ctx context.Context, userID string, 
 		if item.Kind == learning.RecResume {
 			continue
 		}
-		_, plan, err := s.planLecture(ctx, userID, item.ConceptID, 0)
-		if err != nil {
-			if !errors.Is(err, learning.ErrNothingToLearn) && !errors.Is(err, store.ErrNotFound) {
-				logf("today minutes plan %s: %v", item.ConceptID, err)
+		if lec, ok := s.NextLecture(ctx, userID, item.ConceptID); ok {
+			if m := lectureMinutes(lec); m > 0 {
+				out[item.ConceptID] = m
 			}
-			continue
-		}
-		lec, err := s.Store.PublishedLectureCovering(ctx, userID, item.ConceptID, plan.Depth, plan.ObjectiveIDs, plan.Language, plan.ReaderLevel, store.LangPrefer)
-		if err != nil {
-			if !errors.Is(err, store.ErrNotFound) {
-				logf("today minutes lecture %s: %v", item.ConceptID, err)
-			}
-			continue
-		}
-		if m := lectureMinutes(lec); m > 0 {
-			out[item.ConceptID] = m
 		}
 	}
 	return out
+}
+
+// NextLecture is the already-published lecture '강의 시작' would open for the concept
+// (false = none yet: the lecture is made when the user starts it). Lookup failures are
+// logged and read as "none" — the today screens must still load.
+func (s *Service) NextLecture(ctx context.Context, userID, conceptID string) (models.Lecture, bool) {
+	_, plan, err := s.planLecture(ctx, userID, conceptID, 0)
+	if err != nil {
+		if !errors.Is(err, learning.ErrNothingToLearn) && !errors.Is(err, store.ErrNotFound) {
+			logf("today minutes plan %s: %v", conceptID, err)
+		}
+		return models.Lecture{}, false
+	}
+	lec, err := s.Store.PublishedLectureCovering(ctx, userID, conceptID, plan.Depth, plan.ObjectiveIDs, plan.Language, plan.ReaderLevel, store.LangPrefer)
+	if err != nil {
+		if !errors.Is(err, store.ErrNotFound) {
+			logf("today minutes lecture %s: %v", conceptID, err)
+		}
+		return models.Lecture{}, false
+	}
+	return lec, true
 }
 
 // lectureMinutes is the time the lecture page shows (learning.EstimateMinutes of
