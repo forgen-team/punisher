@@ -121,17 +121,17 @@ var installSteps = map[string][]string{
 	llm.ProviderClaude: {
 		"Claude Code를 설치합니다: 터미널에서 curl -fsSL https://claude.ai/install.sh | bash",
 		"터미널에서 claude 를 실행하고 안내에 따라 로그인합니다.",
-		"이 화면을 새로고침합니다(Punisher를 다시 켤 필요는 없습니다).",
+		"이 화면을 새로고침합니다(punisher를 다시 켤 필요는 없습니다).",
 	},
 	llm.ProviderCodex: {
 		"Codex CLI를 설치합니다: 터미널에서 npm install -g @openai/codex (또는 brew install codex)",
 		"터미널에서 codex login 을 실행해 로그인합니다.",
-		"이 화면을 새로고침합니다(Punisher를 다시 켤 필요는 없습니다).",
+		"이 화면을 새로고침합니다(punisher를 다시 켤 필요는 없습니다).",
 	},
 	llm.ProviderAgy: {
 		"Antigravity CLI(agy)를 설치합니다: antigravity.google 의 안내를 따릅니다.",
 		"터미널에서 agy 를 한 번 실행해 로그인합니다.",
-		"이 화면을 새로고침합니다(Punisher를 다시 켤 필요는 없습니다).",
+		"이 화면을 새로고침합니다(punisher를 다시 켤 필요는 없습니다).",
 	},
 }
 
