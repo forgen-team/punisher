@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { translate } from "@/src/shared/i18n";
-import { layoutActions, withAppSettings } from "../actionLayout";
+import { placePageActions } from "@forgen-team/ui";
+import { withAppSettings } from "../actionLayout";
+import { toAppActions } from "../PageActions";
 import { backFallbackFor, pageWidthFor, usesGeneration } from "../frame";
 import { messages } from "../i18n";
 import { titleKeyFor } from "../titles";
@@ -69,22 +71,25 @@ describe("page actions", () => {
     { id: "x", label: "X", danger: true },
   ], "/map", t.appSettings);
 
-  it("desktop: first two defaults as text buttons, then 설정, rest in ⋯ (danger stays inside — Menu puts it last)", () => {
-    const { buttons, settings, menu } = layoutActions(actions, true);
-    expect(buttons.map((a) => a.id)).toEqual(["a", "b"]);
+  it("maps the shell action shape to ui AppAction: no kind = ⋯ (more), icon name → picture, unknown name → none", () => {
+    const mapped = toAppActions([...actions, { id: "u", label: "U", icon: "no-such-icon" }]);
+    expect(mapped.find((a) => a.id === "m")?.kind).toBe("more");
+    expect(mapped.find((a) => a.id === "a")?.kind).toBe("default");
+    expect(mapped.find((a) => a.id === "b")?.icon).toBeTruthy();
+    expect(mapped.find((a) => a.id === "u")?.icon).toBeUndefined();
+  });
+
+  it("desktop (ui placePageActions): first two defaults as text buttons, then 설정, rest in ⋯ with danger last", () => {
+    const { visible, settings, overflow } = placePageActions(toAppActions(actions), "desktop");
+    expect(visible.map((a) => a.id)).toEqual(["a", "b"]);
     expect(settings?.id).toBe("settings");
-    expect(menu.map((a) => a.id)).toEqual(["c", "m", "x"]);
+    expect(overflow.map((a) => a.id)).toEqual(["c", "m", "x"]);
   });
 
-  it("phone: the first default with an icon, then ⋯ = rest → settings (Menu moves danger to the bottom)", () => {
-    const { buttons, settings, menu } = layoutActions(actions, false);
-    expect(buttons.map((a) => a.id)).toEqual(["b"]);
+  it("phone (ui placePageActions): the first default with an icon, then ⋯ = rest → settings → danger", () => {
+    const { visible, settings, overflow } = placePageActions(toAppActions(actions), "phone");
+    expect(visible.map((a) => a.id)).toEqual(["b"]);
     expect(settings).toBeNull();
-    expect(menu.map((a) => a.id)).toEqual(["a", "c", "m", "x", "settings"]);
-  });
-
-  it("never takes a danger action out of ⋯, even a default one", () => {
-    const { buttons } = layoutActions([{ id: "d", label: "D", kind: "default", icon: "plus", danger: true }], false);
-    expect(buttons).toEqual([]);
+    expect(overflow.map((a) => a.id)).toEqual(["a", "c", "m", "settings", "x"]);
   });
 });

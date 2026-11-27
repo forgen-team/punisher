@@ -174,7 +174,7 @@ describe("AppShell (standalone frame)", () => {
     setDesktop(true);
     renderAt("/map");
     expect(screen.getByRole("link", { name: "새 챕터" })).toHaveAttribute("href", "/chapters/new");
-    expect(screen.getByRole("link", { name: "설정" })).toHaveAttribute("href", "/settings");
+    expect(screen.getByRole("link", { name: "punisher 설정" })).toHaveAttribute("href", "/settings");
     expect(screen.getByRole("button", { name: "동작 더 보기" })).toBeInTheDocument();
   });
 

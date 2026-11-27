@@ -2,7 +2,7 @@ import { useId } from "react";
 import { cn } from "@/src/shared/lib/cn";
 
 /** 브랜드 한 줄 — 설정 > 정보에만 둔다. */
-export const BRAND_LINE = "Punisher · part of the forgen family · © 2026 jang-ujin";
+export const BRAND_LINE = "punisher · part of the forgen family · © 2026 jang-ujin";
 
 /**
  * Punisher 로고(assets/logo.svg 와 같은 기하): 반쪽 시계(하루 30분) 아래 펼친 책에서 forgen 불꽃이 피어오른다.
