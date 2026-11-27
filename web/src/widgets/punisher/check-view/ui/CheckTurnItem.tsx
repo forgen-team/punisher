@@ -26,6 +26,9 @@ function learnerActionText(turn: CheckTurn, locale: Locale): string {
 export function CheckTurnItem({ turn, onRetry, retrying }: CheckTurnItemProps) {
   const locale = useLocale();
   const t = useT(messages);
+  if (turn.role === "learner" && turn.move === "skip") {
+    return <li className="text-xs text-fg-muted">{t.skippedNotice}</li>;
+  }
   if (turn.role === "learner") {
     const text = turn.text || learnerActionText(turn, locale);
     return (

@@ -130,6 +130,21 @@ func (h *LearnHandler) RevealCheck(w http.ResponseWriter, r *http.Request) {
 	h.checkAction(w, r, "reveal check", h.Svc.RevealCheck)
 }
 
+// SkipCheckItem handles POST /v1/checks/{id}/items/{itemId}/skip — '건너뛰기' on the
+// current item before its first answer (409 when itemId is not the current item).
+func (h *LearnHandler) SkipCheckItem(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUser(w, r)
+	if !ok {
+		return
+	}
+	d, err := h.Svc.SkipCheck(r.Context(), userID, chi.URLParam(r, "id"), chi.URLParam(r, "itemId"))
+	if err != nil {
+		writeCheckError(w, r, "skip check item", err)
+		return
+	}
+	writeCheck(w, d)
+}
+
 // RetryCheck handles POST /v1/checks/{id}/retry — rerun the failed generation or turn.
 func (h *LearnHandler) RetryCheck(w http.ResponseWriter, r *http.Request) {
 	h.checkAction(w, r, "retry check", h.Svc.RetryCheck)

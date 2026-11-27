@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.png" alt="Punisher" width="100%"/>
+  <img src="assets/banner.png" alt="punisher" width="100%"/>
 </p>
 
 <p align="center">

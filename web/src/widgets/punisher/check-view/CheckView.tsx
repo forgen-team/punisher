@@ -22,12 +22,14 @@ import {
   isRecorded,
   isReview,
   isShownItem,
+  isSkipped,
   itemTurns,
   judgedTurn,
   orderedItems,
   progressAt,
   progressRatio,
   resultRows,
+  resultTally,
   retryableTurnId,
   selfGradeStep,
   sessionLectureSummary,
@@ -132,7 +134,8 @@ export function CheckView({ checkId }: { checkId: string }) {
   const [lastCurrent, setLastCurrent] = useState<string | null>(null);
   if (d && currentId !== lastCurrent) {
     setLastCurrent(currentId);
-    if (lastCurrent && !isRecorded(d) && d.items.some((item) => item.id === lastCurrent && item.done)) { setHeldId(lastCurrent); }
+    // 건너뛴 문항은 판정·모범답이 없어 붙잡지 않는다 — 누르면 바로 다음 문항.
+    if (lastCurrent && !isRecorded(d) && d.items.some((item) => item.id === lastCurrent && item.done && !isSkipped(item))) { setHeldId(lastCurrent); }
   }
   const held = d && heldId ? d.items.find((item) => item.id === heldId) ?? null : null;
 
@@ -345,6 +348,7 @@ export function CheckView({ checkId }: { checkId: string }) {
             checkId={checkId}
             headline={review ? t.finishedReview(count) : t.finishedItems(count)}
             nextReviewAt={earliestNextReview(detail.session.result?.items)}
+            tally={resultTally(detail.session.result?.items)}
             rows={rows}
             acknowledgedTurnIds={acknowledged}
             anchorLink={anchorLink}

@@ -206,6 +206,7 @@ func (s *Service) finishItem(ctx context.Context, userID string, st checkState, 
 		Record: check.Recorded(st.sess.Kind), KnownVerify: st.sess.Kind == check.PurposeKnownVerify}
 	f.Intervals, f.Adaptive = s.reviewSchedule(ctx, userID)
 	f.Synthesis = st.sess.Kind == check.PurposeSynthesis
+	f.Skip = turn.Move == check.MoveSkip
 	newInflow := st.sess.Kind == check.PurposeCheck || st.itemKind(item) == check.PurposeKnownVerify
 	if newInflow && item.ObjectiveID != "" && !f.Record {
 		f.Hold = s.reviewHold(ctx, userID) // 신규 유입 조절(§2.6): 확인·'이미 앎' 확인에서 처음 복습에 들어오는 목표만

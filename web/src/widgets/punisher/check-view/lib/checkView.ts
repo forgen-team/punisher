@@ -161,6 +161,35 @@ export function showReveal(detail: CheckDetail): boolean {
   return !detail.pending && Boolean(detail.current?.canReveal);
 }
 
+/** '건너뛰기' — 서버가 허용(current.canSkip: 첫 답 전)하고 실행 중이 아닐 때만. */
+export function showSkip(detail: CheckDetail): boolean {
+  return !detail.pending && Boolean(detail.current?.canSkip);
+}
+
+/** 건너뛴 문항인가 — 판정·모범답이 없어 붙잡아 보이지 않고 바로 다음 문항으로 간다. */
+export function isSkipped(item: CheckItem): boolean {
+  return item.outcome === "skipped";
+}
+
+export interface ResultTally {
+  correct: number;
+  again: number;
+  skipped: number;
+}
+
+const AGAIN_OUTCOMES: ReadonlySet<CheckOutcome> = new Set<CheckOutcome>(["unaided_partial", "aided", "failed"]);
+
+/** 끝 화면 집계 — 맞힘(혼자 맞힘) · 다시 볼 것(부분·도움·실패) · 건너뜀. 보류·기록은 세지 않는다. */
+export function resultTally(items: readonly CheckResultItem[] | undefined): ResultTally {
+  const out: ResultTally = { correct: 0, again: 0, skipped: 0 };
+  for (const r of items ?? []) {
+    if (r.outcome === "unaided_correct") { out.correct++; }
+    else if (r.outcome === "skipped") { out.skipped++; }
+    else if (AGAIN_OUTCOMES.has(r.outcome)) { out.again++; }
+  }
+  return out;
+}
+
 /** 확신도를 묻는지 — 확인·복습 문항의 첫 답 전에만(v3 §3). */
 export function asksConfidence(detail: CheckDetail): boolean {
   const kind = detail.session.kind;

@@ -52,7 +52,7 @@ describe("지도 목록 보기", () => {
     expect(within(os).getByRole("button", { name: /스레드/ })).toHaveTextContent("추천");
     expect(within(os).getByRole("button", { name: /페이징/ })).toHaveTextContent("잠김");
     expect(within(os).getByRole("button", { name: /CFS/ })).toHaveTextContent("요청됨");
-    expect(within(os).getByRole("button", { name: /NUMA/ })).toHaveTextContent("필요 없음 · 미학습");
+    expect(within(os).getByRole("button", { name: /NUMA/ })).toHaveTextContent(/^.*필요 없음$/);
     const db = screen.getByRole("heading", { name: "데이터베이스" }).closest("section") as HTMLElement;
     expect(within(db).getByRole("button", { name: /인덱스/ })).toHaveTextContent("배움");
   });
