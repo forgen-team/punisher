@@ -18,29 +18,26 @@ export interface ActionLayout {
   buttons: PageAction[];
   /** 데스크톱의 설정 글자 버튼("설정") */
   settings: PageAction | null;
-  /** ⋯ 안 — 순서대로, 위험 동작은 맨 뒤 */
+  /** ⋯ 안 — 위험 동작은 어디 있든 ui Menu 가 맨 아래 구분선 뒤에 둔다 */
   menu: PageAction[];
 }
 
 /**
- * 셸 계약 §3·policy/20 §6 배치 규칙(witems 셸과 같다) — 단독판도 이대로 그린다.
- * 데스크톱: 앞의 default 2개 글자 버튼 + "설정" + ⋯(나머지, 위험은 맨 아래).
- * 폰: 아이콘 있는 첫 default 하나 + ⋯(나머지 → 앱 설정 → 위험).
+ * 셸 계약 §3·policy/20 §6 배치 규칙(witems 셸과 같다) — 단독판도 이대로 그린다. 위험 동작은 밖에 꺼내지 않는다.
+ * 데스크톱: 앞의 default 2개 글자 버튼 + "설정" + ⋯(나머지).
+ * 폰: 아이콘 있는 첫 default 하나 + ⋯(나머지 → 앱 설정).
  */
 export function layoutActions(actions: PageAction[], desktop: boolean): ActionLayout {
-  const danger = actions.filter((a) => a.danger);
-  const safe = actions.filter((a) => !a.danger);
-  const settings = safe.find((a) => a.kind === "settings") ?? null;
-  const defaults = safe.filter((a) => a.kind === "default");
-  const rest = safe.filter((a) => a.kind !== "default" && a.kind !== "settings");
+  const settings = actions.find((a) => a.kind === "settings" && !a.danger) ?? null;
+  const defaults = actions.filter((a) => a.kind === "default" && !a.danger);
+  const rest = actions.filter((a) => a !== settings && !defaults.includes(a));
   if (desktop) {
-    const buttons = defaults.slice(0, 2);
-    return { buttons, settings, menu: [...defaults.slice(2), ...rest, ...danger] };
+    return { buttons: defaults.slice(0, 2), settings, menu: [...defaults.slice(2), ...rest] };
   }
   const first = defaults.find((a) => a.icon);
   return {
     buttons: first ? [first] : [],
     settings: null,
-    menu: [...defaults.filter((a) => a !== first), ...rest, ...(settings ? [settings] : []), ...danger],
+    menu: [...defaults.filter((a) => a !== first), ...rest, ...(settings ? [settings] : [])],
   };
 }

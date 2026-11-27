@@ -37,13 +37,3 @@ export function PunisherLogo({ size = 24, className }: { size?: number; classNam
     </svg>
   );
 }
-
-/** 로고 + PUNISHER 워드마크 (Handoff 의 HANDOFF 워드마크와 같은 모노·자간). */
-export function BrandMark({ size = 24 }: { size?: number }) {
-  return (
-    <span className="inline-flex items-center gap-2 text-fg">
-      <PunisherLogo size={size} />
-      <span className="font-mono text-xs font-bold tracking-[0.22em]">PUNISHER</span>
-    </span>
-  );
-}

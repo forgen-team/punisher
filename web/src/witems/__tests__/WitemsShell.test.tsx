@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { UIProvider } from "@forgen-team/ui";
@@ -62,6 +62,17 @@ describe("WitemsShell (inside the shell)", () => {
     expect(screen.getByText("claude-banner")).toBeInTheDocument();
     const commands = runtime.setCommands.mock.lastCall?.[0] as Array<{ id: string; href?: string }>;
     expect(commands.find((c) => c.id === "next-lecture")?.href).toBe("/start?concept=c1");
+  });
+
+  it("draws no app frame and no palette — ⌘K belongs to the shell, which gets the same command list", () => {
+    const runtime = mountAt("/map");
+    expect(screen.queryByRole("navigation", { name: "punisher 섹션" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^명령/ })).toBeNull();
+    fireEvent.keyDown(window, { key: "k", code: "KeyK", metaKey: true });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const commands = runtime.setCommands.mock.lastCall?.[0] as Array<{ id: string; onSelect?: () => void }>;
+    expect(commands.map((c) => c.id)).toContain("history");
+    expect(typeof commands.find((c) => c.id === "review")?.onSelect).toBe("function");
   });
 
   it("leaves the settings action out on the settings screen", () => {

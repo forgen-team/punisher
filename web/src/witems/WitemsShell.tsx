@@ -1,18 +1,13 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Outlet } from "react-router-dom";
-import { LocaleSync, useStartReview, useToday } from "@/src/entities/punisher";
+import { LocaleSync } from "@/src/entities/punisher";
 import { shellHasActions, shellHasCommands, witemsRuntime } from "@/src/shared/config/runtime";
-import { checkHref } from "@/src/features/punisher/check-start";
-import { describePunisherError } from "@/src/shared/api/punisher";
-import { useT } from "@/src/shared/i18n";
 import { useTrackInAppNavigation } from "@/src/shared/lib/in-app-history";
 import { actionsSignature } from "@/src/shared/lib/screen-chrome";
 import { useSearchShortcut } from "@/src/shared/lib/shortcuts";
 import { useRouter } from "@/src/shared/lib/router";
-import { useToast } from "@forgen-team/ui";
-import { messages } from "@/src/app/i18n";
 import { AppPage, useFrameActions, useFrameTitle } from "@/src/app/AppPage";
-import { buildCommands, nextLecture } from "./commands";
+import { useAppCommands } from "@/src/app/commands";
 import { useSectionBadges } from "./sectionBadges";
 
 /**
@@ -20,12 +15,11 @@ import { useSectionBadges } from "./sectionBadges";
  * 섹션 [오늘·지도·기록]은 셸 섹션 메뉴(manifest nav.items)가 그리고, '오늘' 숫자는 useSectionBadges 가 보낸다.
  * 제목: 화면이 정한 구체적인 제목(useScreenTitle) → 없으면 경로별 제목(오늘도 "오늘", D11 ①) → ctx.setTitle.
  * 페이지 동작: 화면의 동작 + 끝에 "punisher 설정"(/settings 에서는 뺌)을 ctx.setActions 로. 구버전 셸이면 넘기지 않는다.
- * ⌘K: 새 셸은 명령(setCommands)을 받고 키는 셸이 쥔다. 구버전 셸이면 앱이 키를 걸어 기록(찾기)으로 보낸다.
+ * ⌘K: 새 셸은 명령(setCommands — 단독판 팔레트와 같은 목록)을 받고 키는 셸이 쥔다. 앱은 팔레트를 띄우지 않는다.
+ * 구버전 셸(setCommands 없음)이면 앱이 키를 걸어 기록(찾기)으로 보낸다.
  */
 export function WitemsShell() {
-  const t = useT(messages);
   const router = useRouter();
-  const toast = useToast();
   useTrackInAppNavigation();
   useSectionBadges();
   useSearchShortcut(() => router.push("/history"), !shellHasCommands());
@@ -46,23 +40,7 @@ export function WitemsShell() {
   }, [actions]);
 
   // ⌘K 명령(APP-CONTRACT §3 "명령"): 셸이 setCommands 를 가지면 넣는다. 구버전 셸이면 아무것도 하지 않는다.
-  const today = useToday();
-  const review = useStartReview();
-  const reviewRef = useRef(review);
-  reviewRef.current = review;
-  const next = nextLecture(today.data?.items);
-  const nextTitle = next?.title ?? "";
-  const nextHref = next?.href ?? "";
-  const commands = useMemo(
-    () => buildCommands(t, {
-      next: nextHref ? { title: nextTitle, href: nextHref } : undefined,
-      startReview: () => reviewRef.current.mutate(undefined, {
-        onSuccess: (detail) => router.push(checkHref(detail.session.id)),
-        onError: (err) => toast.show(describePunisherError(err) || t.noReviews, { tone: "danger" }),
-      }),
-    }),
-    [t, nextTitle, nextHref, router, toast],
-  );
+  const commands = useAppCommands();
   const sentCommands = useRef("");
   useEffect(() => {
     if (!shellHasCommands()) { return; }

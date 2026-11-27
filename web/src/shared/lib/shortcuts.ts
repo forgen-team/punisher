@@ -37,8 +37,8 @@ export function useStudyShortcuts(map: Record<string, (() => void) | undefined>,
 }
 
 /**
- * ⌘K / Ctrl+K → open(셸이 기록 화면으로 보낸다 — 명령 팔레트 부품이 아직 없다). 단독판, 그리고 setCommands 가 없는
- * 구버전 Witems 셸에서만(새 셸은 ⌘K 를 캡처해 통합 검색을 연다 — enabled=false). 단축키 설정과 무관(조합키라 입력과 겹치지 않는다).
+ * ⌘K / Ctrl+K → open(기록 화면으로 보낸다). setCommands 가 없는 구버전 Witems 셸에서만 — 새 셸은 ⌘K 를 캡처해 통합 검색을
+ * 열고(enabled=false), 단독판은 AppFrame 명령 팔레트가 쥔다. 단축키 설정과 무관(조합키라 입력과 겹치지 않는다).
  */
 export function useSearchShortcut(open: () => void, enabled = true) {
   const latest = useRef(open);

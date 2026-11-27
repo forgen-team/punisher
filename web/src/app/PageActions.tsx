@@ -64,7 +64,7 @@ function menuItem(action: PageAction): MenuItemDef {
 
 /**
  * 단독판 페이지 동작(Page actions 자리) — 화면이 usePageActions 로 준 목록을 셸과 같은 규칙(app/actionLayout)으로 그린다.
- * 데스크톱(≥1024): 글자 버튼 ≤2 + "설정" + ⋯ / 폰: 아이콘 하나 + ⋯. 위험 동작은 ⋯ 맨 아래 구분선 뒤 빨간 글자(Menu).
+ * 데스크톱(≥1024): 글자 버튼 ≤2 + "설정" + ⋯ / 폰: 아이콘 하나 + ⋯. 위험 동작의 자리(맨 아래·구분선 뒤·빨간 글자)는 ui Menu 가 정한다.
  */
 export function PageActions({ actions }: { actions: PageAction[] }) {
   const t = useT(messages);

@@ -69,17 +69,22 @@ describe("page actions", () => {
     { id: "x", label: "X", danger: true },
   ], "/map", t.appSettings);
 
-  it("desktop: first two defaults as text buttons, then 설정, rest in ⋯ with danger last", () => {
+  it("desktop: first two defaults as text buttons, then 설정, rest in ⋯ (danger stays inside — Menu puts it last)", () => {
     const { buttons, settings, menu } = layoutActions(actions, true);
     expect(buttons.map((a) => a.id)).toEqual(["a", "b"]);
     expect(settings?.id).toBe("settings");
     expect(menu.map((a) => a.id)).toEqual(["c", "m", "x"]);
   });
 
-  it("phone: the first default with an icon, then ⋯ = rest → settings → danger", () => {
+  it("phone: the first default with an icon, then ⋯ = rest → settings (Menu moves danger to the bottom)", () => {
     const { buttons, settings, menu } = layoutActions(actions, false);
     expect(buttons.map((a) => a.id)).toEqual(["b"]);
     expect(settings).toBeNull();
-    expect(menu.map((a) => a.id)).toEqual(["a", "c", "m", "settings", "x"]);
+    expect(menu.map((a) => a.id)).toEqual(["a", "c", "m", "x", "settings"]);
+  });
+
+  it("never takes a danger action out of ⋯, even a default one", () => {
+    const { buttons } = layoutActions([{ id: "d", label: "D", kind: "default", icon: "plus", danger: true }], false);
+    expect(buttons).toEqual([]);
   });
 });

@@ -33,6 +33,7 @@ const ALLOWED = new Set([
   "features/punisher/lecture-exercise/lib/lab.ts", // 실습 표지 보는 곳:/예상:
   "features/punisher/lecture-exercise/lib/recall.ts", // 회상 표지 떠올릴 것: (서버 lecture.RecallParts)
   "features/punisher/prompt-edit/lib/lineDiff.ts", // 서버로 보내는 프롬프트 머리글
+  "app/commands.ts", // ⌘K 검색 키워드 — 화면 언어와 상관없이 한·영 둘 다로 찾게 한다(보이는 이름은 i18n)
 ]);
 const HANGUL = /[가-힣]/;
 const COMMENT = /^\s*(\/\/|\*|\/\*|\{\/\*)/;
