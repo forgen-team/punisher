@@ -3,12 +3,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "@/src/shared/lib/router";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
-import { Button, ProgressCircle } from "@forgen-team/ui";
+import { Button } from "@forgen-team/ui";
+import { useScreenTitle } from "@/src/shared/lib/screen-chrome";
 import { invalidateLearningState } from "@/src/entities/punisher";
 import { punisherApi } from "@/src/shared/api/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import { PretestPanel, usePretest } from "@/src/features/punisher/pretest";
-import { LectureLayout, LectureTopBar } from "../lecture-viewer";
 import { failureLines, stageLabel, type StageState } from "./lib/stageState";
 import { StageSteps } from "./ui/StageSteps";
 import { useInstantStream } from "./useInstantStream";
@@ -71,10 +71,12 @@ function FailurePanel({ state, jobId }: { state: StageState; jobId: string }) {
 export function InstantStreamView({ jobId }: { jobId: string }) {
   const router = useRouter();
   const locale = useLocale();
+  const t = translate(messages, locale);
   const queryClient = useQueryClient();
   const state = useInstantStream(jobId);
   const pretest = usePretest({ jobId });
   const { stage, lectureId } = state;
+  useScreenTitle(t.title);
 
   useEffect(() => {
     if (stage !== "published" || !lectureId) { return; }
@@ -86,26 +88,21 @@ export function InstantStreamView({ jobId }: { jobId: string }) {
   const elapsed = useElapsedLabel(jobId, busy);
 
   return (
-    <div className="flex w-full flex-col">
-      <LectureTopBar title={translate(messages, locale).title} />
-      <LectureLayout sections={[]} totalMinutes={0} activeAnchor="">
-        <div aria-busy={busy} className="flex flex-col gap-4 pt-4">
-          {stage === "failed" ? (
-            <FailurePanel state={state} jobId={jobId} />
-          ) : (
-            <div className="flex min-h-touch flex-wrap items-center gap-3 border-y border-line py-2">
-              {/* 단계가 바뀔 때만 읽히도록, 매초 바뀌는 경과 시간은 알림 영역 밖에 둔다. */}
-              <div role="status" aria-live="polite" className="flex flex-wrap items-center gap-3">
-                {busy && <ProgressCircle size="24" tone="inherit" aria-hidden />}
-                <StageSteps state={state} />
-                {stage === "published" && <span className="text-sm font-medium text-success">{stageLabel(state, locale)}</span>}
-              </div>
-              {elapsed && <span className="ml-auto text-xs text-fg-muted tabular-nums">{elapsed}</span>}
-            </div>
-          )}
-          <PretestPanel detail={pretest.data} />
+    <div aria-busy={busy} className="flex w-full flex-col gap-4 pt-4">
+      {stage === "failed" ? (
+        <FailurePanel state={state} jobId={jobId} />
+      ) : (
+        <div className="flex flex-col gap-3">
+          <p className="text-xl font-semibold text-fg">{t.headline}</p>
+          {/* 단계가 바뀔 때만 읽히도록, 매초 바뀌는 경과 시간은 알림 영역 밖에 둔다. */}
+          <div role="status" aria-live="polite">
+            <StageSteps state={state} />
+            {stage === "published" && <span className="sr-only">{stageLabel(state, locale)}</span>}
+          </div>
+          {elapsed && <span className="text-xs text-fg-muted tabular-nums">{elapsed}</span>}
         </div>
-      </LectureLayout>
+      )}
+      <PretestPanel detail={pretest.data} />
     </div>
   );
 }
