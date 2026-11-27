@@ -6,7 +6,6 @@ import { useDraftState } from "@/src/shared/lib/drafts";
 import { useLeaveGuard } from "@/src/shared/lib/leave-guard";
 import { useChangePrompt } from "@/src/entities/punisher";
 import { describePunisherError, type PromptBlock, type PromptHistoryEntry } from "@/src/shared/api/punisher";
-import { useWideLayout } from "@/src/shared/lib/useWideLayout";
 import { ReadingOverlay, toOverlayAnchor, type OverlayAnchor } from "@/src/shared/ui/punisher";
 import { findUnknownVariables, withSuggestion } from "../lib/lineDiff";
 import { useT } from "@/src/shared/i18n";
@@ -20,13 +19,15 @@ interface PromptBlockEditorProps {
   block: PromptBlock;
   /** 강의 피드백에서 온 제안 문구 — 초안에만 붙이고 저장은 사용자가 한다 */
   suggestion?: string;
+  /** 화면 제목이 이미 블록 이름이면(폰 전체 화면) 머리의 제목 글자는 스크린리더용으로만 둔다 */
+  titleInFrame?: boolean;
 }
 
 /**
  * 블록 상세: 하는 일·경고 → 편집 / 기본값과 비교 / 미리보기 → 저장·되돌리기·이전 버전.
  * 적용 범위는 제목 옆 정보 버튼의 팝오버(모바일은 시트)에 둔다(헤더는 제목만). 모바일 뒤로가기는 셸 상단 바가 맡는다.
  */
-export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps) {
+export function PromptBlockEditor({ block, suggestion, titleInFrame = false }: PromptBlockEditorProps) {
   const change = useChangePrompt();
   const confirm = useConfirm();
   const t = useT(messages);
@@ -36,11 +37,9 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
   const draftState = useDraftState(`prompt:${block.id}`, startText, block.body, (value) => value.trimEnd() === block.body.trimEnd());
   const draft = draftState.value;
   const setDraft = draftState.setValue;
-  const [tabChoice, setTab] = useState<EditorTab>("edit");
-  // 넓은 화면(xl)은 편집 옆에 '기본값과 비교'를 늘 펼쳐 두므로 비교 탭을 따로 두지 않는다.
-  const wide = useWideLayout() === true;
-  const tab: EditorTab = wide && tabChoice === "diff" ? "edit" : tabChoice;
-  const tabs = (wide ? EDITOR_TABS.filter((value) => value !== "diff") : EDITOR_TABS).map((value) => ({ value, label: tabLabels[value] }));
+  // 목록 옆 편집 칸은 폭이 좁아 '기본값과 비교'는 늘 탭으로 둔다(옆에 펼치지 않는다).
+  const [tab, setTab] = useState<EditorTab>("edit");
+  const tabs = EDITOR_TABS.map((value) => ({ value, label: tabLabels[value] }));
   const [historyOpen, setHistoryOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [scopeAnchor, setScopeAnchor] = useState<OverlayAnchor | null>(null);
@@ -66,7 +65,7 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
     );
   }
   async function reset() {
-    const ok = await confirm({ title: t.resetConfirmTitle, description: t.resetConfirmBody, confirmLabel: t.reset, cancelLabel: t.cancel, tone: "neutral" });
+    const ok = await confirm({ title: t.resetConfirmTitle(block.title), description: t.resetConfirmBody, confirmLabel: t.reset, cancelLabel: t.cancel, tone: "neutral" });
     if (!ok) { return; }
     change.mutate({ kind: "reset", id: block.id }, { onSuccess: () => { draftState.clear(); setNotice(t.resetNotice); } });
   }
@@ -83,8 +82,8 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
     <div className="flex min-w-0 flex-col gap-4">
       <header className="flex flex-col gap-1">
         <p className="text-xs font-semibold text-accent-text">{block.stageTitle}</p>
-        <h2 className="flex items-center gap-2 text-lg font-semibold text-fg">
-          {block.title}
+        <h2 className="flex items-center gap-2 text-xl font-semibold text-fg">
+          <span className={titleInFrame ? "sr-only" : undefined}>{block.title}</span>
           {block.overridden && <Badge tone="brand" variant="weak">{t.modified}</Badge>}
           <IconButton
             size="sm"
@@ -116,10 +115,8 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
       </SegmentedControl>
 
       {tab === "edit" && (
-        <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
+        <div className="flex flex-col gap-4">
           <div className="flex min-w-0 flex-col gap-2">
-            {/* 옆 '기본값과 비교'의 안내 줄과 높이를 맞춘다(라벨만) */}
-            {wide && <p className="text-xs text-fg-muted">{t.body}</p>}
             <TextField
               multiline
               value={draft}
@@ -128,7 +125,7 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
                 "aria-label": t.bodyLabel(block.title),
                 rows: 18,
                 spellCheck: false,
-                className: "font-mono text-xs leading-5 xl:h-[60vh]",
+                className: "font-mono text-xs leading-5",
               }}
             />
             {draftState.restored && dirty && (
@@ -154,7 +151,6 @@ export function PromptBlockEditor({ block, suggestion }: PromptBlockEditorProps)
               </p>
             )}
           </div>
-          {wide && <DiffView before={block.default} after={draft} />}
         </div>
       )}
       {tab === "diff" && <DiffView before={block.default} after={draft} />}
