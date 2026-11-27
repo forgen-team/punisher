@@ -43,17 +43,11 @@ describe("셸 상단 바 숨김(스크롤 방향)", () => {
 });
 
 describe("셸 상단 바 숨김 표시(<html> 속성)", () => {
-  it("marks <html> with data-app-header-state so [data-app-header] matches only the shell bar", () => {
-    const header = document.createElement("header");
-    header.setAttribute("data-app-header", "");
-    document.body.append(header);
+  it("marks <html> with data-app-header-state and leaves the AppFrame bar to the CSS", () => {
     setAppHeaderHidden(true);
     expect(APP_HEADER_STATE_ATTR).toBe("data-app-header-state");
     expect(document.documentElement.getAttribute("data-app-header-state")).toBe("hidden");
-    expect(document.documentElement.hasAttribute("data-app-header")).toBe(false);
-    expect([...document.querySelectorAll("[data-app-header]")]).toEqual([header]);
     setAppHeaderHidden(false);
     expect(document.documentElement.hasAttribute("data-app-header-state")).toBe(false);
-    header.remove();
   });
 });

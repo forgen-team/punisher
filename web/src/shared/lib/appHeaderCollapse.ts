@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { isWitems } from "@/src/shared/config/runtime";
 
-// 휴대폰 강의 화면의 고정 바를 하나로(⑤ 모바일): 아래로 읽어 내려가면 셸 상단 바([data-app-header])를 위로 숨기고,
-// 위로 되돌아가면 다시 보인다. 강의 바([data-lecture-topbar])는 늘 보이고 --app-header-offset 을 따라 맨 위로 붙는다.
-// 숨김 표시는 <html data-app-header-state="hidden"> — 셸 바의 [data-app-header] 와 이름을 나눠 그 선택자가 바에만 걸리게 한다.
+// 휴대폰 강의 화면의 고정 바를 하나로(⑤ 모바일): 아래로 읽어 내려가면 단독판 상단 바(ui AppFrame .fg-frame__bar)를 위로 숨기고,
+// 위로 되돌아가면 다시 보인다. 강의 읽기 바([data-lecture-readbar], 1024 미만)는 늘 보이고 --app-header-offset 을 따라 맨 위로 붙는다.
+// 숨김 표시는 <html data-app-header-state="hidden"> — 바 선택자(.fg-frame__bar)와 따로 두어 그 선택자가 바에만 걸리게 한다.
 // 실제 이동·offset 변경은 globals.css 가 휴대폰 폭에서만 하고, 바 안에 포커스가 있으면 숨기지 않는다.
 
 /** 휴대폰 폭(Tailwind fold 600px 미만 — useIsSplitLayout 과 같은 경계). */

@@ -17,6 +17,8 @@ const (
 	ReasonLeak            = "leak"
 	ReasonReview          = "review"
 	ReasonUnreviewable    = "unreviewable"
+	// ReasonCancelled: the learner cancelled the generation ([취소]).
+	ReasonCancelled = "cancelled"
 	// Local Claude Code CLI failures (standalone, services.DescribeLLMError).
 	ReasonClaudeMissing     = "claude.missing"
 	ReasonClaudeLoggedOut   = "claude.logged_out"
@@ -56,6 +58,7 @@ var reasonKo = map[string]string{
 	ReasonLeak:                         "생성 과정의 문구나 잘못된 링크가 남아 있었어요",
 	ReasonReview:                       "검수 기준을 통과하지 못했어요",
 	ReasonUnreviewable:                 "강의의 개념을 찾을 수 없어 검수하지 못했어요",
+	ReasonCancelled:                    "강의 만들기를 취소했어요",
 	ReasonClaudeMissing:                "Claude Code(claude 명령)를 찾을 수 없습니다. Claude Code를 설치한 뒤 터미널에서 `claude`를 한 번 실행해 로그인하고 다시 시도해 주세요.",
 	ReasonClaudeLoggedOut:              "Claude Code에 로그인되어 있지 않습니다. 터미널에서 `claude`를 실행해 로그인(/login)한 뒤 다시 시도해 주세요.",
 	ReasonClaudeRateLimited:            "Claude 사용 한도에 도달했습니다. 한도가 풀린 뒤(보통 몇 시간 이내) 다시 시도해 주세요.",

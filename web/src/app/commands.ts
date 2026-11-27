@@ -1,7 +1,12 @@
+import { useMemo, useRef } from "react";
+import { useToast } from "@forgen-team/ui";
 import type { ShellCommand } from "@/src/shared/config/runtime";
-import { lectureHref, startLectureHref } from "@/src/entities/punisher";
-import type { Recommendation } from "@/src/shared/api/punisher";
-import type { messages } from "@/src/app/i18n";
+import { lectureHref, startLectureHref, useStartReview, useToday } from "@/src/entities/punisher";
+import { checkHref } from "@/src/features/punisher/check-start";
+import { describePunisherError, type Recommendation } from "@/src/shared/api/punisher";
+import { useT } from "@/src/shared/i18n";
+import { useRouter } from "@/src/shared/lib/router";
+import { messages } from "./i18n";
 
 type T = (typeof messages)["ko"];
 
@@ -20,8 +25,9 @@ export function nextLecture(items: Recommendation[] | undefined): CommandInput["
 }
 
 /**
- * 셸 ⌘K 검색에 넣는 명령(APP-CONTRACT §3 "명령", 재설계 §3 목록). 화면 이동은 href(진짜 링크), 복습 시작은 onSelect.
- * 최대 50개 — 지금은 11개.
+ * ⌘K 명령(셸·단독판 같은 목록 — 재설계 §3). 셸 안은 셸 통합 검색에(ctx.setCommands), 단독판은 AppFrame 명령 팔레트에 넣는다.
+ * 화면 이동(APP-CONTRACT §3 "명령", 재설계 §3 목록). 화면 이동은 href(진짜 링크), 복습 시작은 onSelect.
+ * 최대 50개 — 지금은 11개. 모양은 ui CommandItem 과 같다(셸 계약 AppCommand ⊂ CommandItem).
  */
 export function buildCommands(t: T, input: CommandInput): ShellCommand[] {
   const list: ShellCommand[] = [
@@ -40,4 +46,28 @@ export function buildCommands(t: T, input: CommandInput): ShellCommand[] {
     list.splice(1, 0, { id: "next-lecture", label: t.cmdNextLecture(input.next.title).slice(0, 60), keywords: ["next", "다음"], href: input.next.href });
   }
   return list;
+}
+
+/** 지금 명령 목록 — 다음 강의는 오늘 추천에서, 복습 시작은 세션을 만들어 복습 화면으로(실패하면 토스트). */
+export function useAppCommands(): ShellCommand[] {
+  const t = useT(messages);
+  const router = useRouter();
+  const toast = useToast();
+  const today = useToday();
+  const review = useStartReview();
+  const reviewRef = useRef(review);
+  reviewRef.current = review;
+  const next = nextLecture(today.data?.items);
+  const nextTitle = next?.title ?? "";
+  const nextHref = next?.href ?? "";
+  return useMemo(
+    () => buildCommands(t, {
+      next: nextHref ? { title: nextTitle, href: nextHref } : undefined,
+      startReview: () => reviewRef.current.mutate(undefined, {
+        onSuccess: (detail) => router.push(checkHref(detail.session.id)),
+        onError: (err) => toast.show(describePunisherError(err) || t.noReviews, { tone: "danger" }),
+      }),
+    }),
+    [t, nextTitle, nextHref, router, toast],
+  );
 }

@@ -37,13 +37,3 @@ export function PunisherLogo({ size = 24, className }: { size?: number; classNam
     </svg>
   );
 }
-
-/** 로고 + punisher 워드마크 — 제품 이름 표기 그대로 소문자(대문자 변환 없음), 모노·굵게. */
-export function BrandMark({ size = 24 }: { size?: number }) {
-  return (
-    <span className="inline-flex items-center gap-2 text-fg">
-      <PunisherLogo size={size} />
-      <span className="font-mono text-sm font-bold tracking-wide">punisher</span>
-    </span>
-  );
-}

@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -16,21 +15,21 @@ import (
 
 // runDiagnosticDetached writes the plan's items in the background.
 func (s *Service) runDiagnosticDetached(apiKey, userID, sessionID string, plan diagnosticPlan) {
+	jobID := s.startSessionJob(userID, plan.concept(), sessionID)
 	runDetached("diagnostic items", sessionID, diagnosticTimeout, func(bg context.Context) error {
-		return s.runDiagnosticItems(bg, apiKey, userID, sessionID, plan)
-	}, s.failPreparing(userID, sessionID, ""))
+		return s.runDiagnosticItems(bg, apiKey, userID, sessionID, jobID, plan)
+	}, s.failPreparing(userID, sessionID, jobID))
 }
 
 // runDiagnosticItems writes the plan's items with the check.pretest block
 // (diagnosticModel), records the tokens (kind check_items), stores the items and
 // asks the first one. Failure fails the session, never stores items.
-func (s *Service) runDiagnosticItems(ctx context.Context, apiKey, userID, sessionID string, plan diagnosticPlan) error {
+func (s *Service) runDiagnosticItems(ctx context.Context, apiKey, userID, sessionID, jobID string, plan diagnosticPlan) error {
+	ctx, end := s.sessionItemsRun(ctx, jobID)
+	defer end()
 	done := context.WithoutCancel(ctx)
 	set := s.UserPrompts(ctx, userID)
-	conceptID := plan.conceptID
-	if conceptID == "" && len(plan.objectives) > 0 {
-		conceptID = conceptOf(plan.objectives[0].ID)
-	}
+	conceptID := plan.concept()
 	dc := prompts.DiagnosticContext{Purpose: plan.kind, Objectives: plan.objectives, Count: check.PretestCount(len(plan.objectives))}
 	vc := check.DiagnosticContext{Purpose: plan.kind, ObjectiveIDs: plan.objectiveIDs()}
 	priority := llm.PriorityInteractive
@@ -40,11 +39,11 @@ func (s *Service) runDiagnosticItems(ctx context.Context, apiKey, userID, sessio
 	lang := s.Store.LocaleFor(ctx, userID) // 강의에 묶이지 않은 문항은 만든 사용자의 언어(i18n §1.2).
 	dc.Reader = s.readerFor(ctx, userID, lang)
 	anchors := s.pretestLecture(ctx, userID, plan, &dc)
-	items, u, _, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.diagnosticModel(plan.kind), attempts: plan.attempts,
+	items, u, tries, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.diagnosticModel(plan.kind), attempts: plan.attempts,
 		priority: priority, system: set.Text(prompts.BlockCheckPretest, s.interactionVars(ctx, userID, conceptID, lang)), language: lang},
 		func(revisions []string) string { dc.Revisions = revisions; return prompts.Diagnostic(dc) },
 		func(set check.ItemSet) []string { return check.ValidateDiagnostic(set, vc) })
-	s.recordUsage(done, userID, "check_items", conceptID, u, err)
+	err = s.itemsCancelled(ctx, jobID, err) // [취소]: no item is saved
 	var saved []store.CheckItem
 	if err == nil {
 		normalized := check.NormalizeDiagnostic(items)
@@ -64,12 +63,16 @@ func (s *Service) runDiagnosticItems(ctx context.Context, apiKey, userID, sessio
 		ask := store.TurnWrite{ItemID: saved[0].ID, Role: "tutor", Move: check.MoveAsk, Text: saved[0].Prompt}
 		_, err = s.Store.ActivateCheckSession(done, userID, sessionID, ids, ask)
 	}
-	if err != nil {
-		if serr := s.Store.SetCheckSessionStatus(done, userID, sessionID, []string{"preparing"}, "failed", checkErrorText(err)); serr != nil && !errors.Is(serr, store.ErrCheckClosed) {
-			logf("diagnostic %s: fail session: %v", sessionID, serr)
-		}
-	}
+	s.endSessionItems(done, "diagnostic", userID, conceptID, sessionID, jobID, u, tries, err, checkErrorText(err))
 	return err
+}
+
+// concept is the plan's concept: its own, else the first objective's.
+func (p diagnosticPlan) concept() string {
+	if p.conceptID == "" && len(p.objectives) > 0 {
+		return conceptOf(p.objectives[0].ID)
+	}
+	return p.conceptID
 }
 
 // conceptOf is the concept of an objective id (objective ids are "<concept>#<n>").

@@ -105,7 +105,7 @@ function LectureReading({ lecture, content, getAnchor, saveNow }: LectureReading
   const ui = useUiPrefs();
   const readingStyle = { ...READING_VARS[ui.fontSize], ...READING_VARS[ui.lineWidth] } as CSSProperties;
 
-  // 보조 열은 ReadingLayout 이 두 열이 되는 폭(1280)부터 — 스레드도 이 폭부터 패널에서 펼친다.
+  // 보조 열은 ReadingLayout 이 두 열이 되는 폭(1024)부터 — 본문 위 고정 바(ReadingBar)는 그 아래 폭만, 스레드도 이 폭부터 패널에서 펼친다.
   const desktop = useMediaQuery(THREAD_PANEL_QUERY);
   const { panel, open: openPanel, close: closePanel } = useLecturePanel();
   const [asideTab, setAsideTab] = useState<LecturePanel>(panel ?? "toc");

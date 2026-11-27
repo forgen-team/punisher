@@ -140,7 +140,7 @@ export function paintHighlight(name: string, ranges: Range[]): void {
  * 이 스크롤 동안은 셸 바를 지금 상태로 둔다(지금 보이는 강의 바 아래에 그대로 놓인다).
  */
 export function scrollRangeBelowTopBar(range: Range): void {
-  const bar = queryApp("[data-lecture-topbar]", range.startContainer)?.getBoundingClientRect().bottom ?? 0;
+  const bar = queryApp("[data-lecture-readbar]", range.startContainer)?.getBoundingClientRect().bottom ?? 0;
   const delta = range.getBoundingClientRect().top - bar - 12;
   if (Math.abs(delta) > 4) {
     freezeAppHeader();

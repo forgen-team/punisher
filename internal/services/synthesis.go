@@ -142,14 +142,17 @@ func (s *Service) retrySynthesis(ctx context.Context, userID string, sess models
 }
 
 func (s *Service) runSynthesisDetached(apiKey, userID, sessionID string, plan synthesisPlan) {
+	jobID := s.startSessionJob(userID, plan.conceptID, sessionID)
 	runDetached("synthesis items", sessionID, diagnosticTimeout, func(bg context.Context) error {
-		return s.runSynthesisItems(bg, apiKey, userID, sessionID, plan)
-	}, s.failPreparing(userID, sessionID, ""))
+		return s.runSynthesisItems(bg, apiKey, userID, sessionID, jobID, plan)
+	}, s.failPreparing(userID, sessionID, jobID))
 }
 
 // runSynthesisItems writes the two synthesis items (check.synthesis block,
 // check model), stores them and asks the first. Failure fails the session.
-func (s *Service) runSynthesisItems(ctx context.Context, apiKey, userID, sessionID string, plan synthesisPlan) error {
+func (s *Service) runSynthesisItems(ctx context.Context, apiKey, userID, sessionID, jobID string, plan synthesisPlan) error {
+	ctx, end := s.sessionItemsRun(ctx, jobID)
+	defer end()
 	done := context.WithoutCancel(ctx)
 	set := s.UserPrompts(ctx, userID)
 	sc := check.SynthesisContext{ObjectiveIDs: plan.objectiveIDs(), ConceptOf: map[string]string{}}
@@ -160,11 +163,11 @@ func (s *Service) runSynthesisItems(ctx context.Context, apiKey, userID, session
 	}
 	lang := s.Store.LocaleFor(ctx, userID)
 	pc.Reader = s.readerFor(ctx, userID, lang)
-	items, u, _, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.checkModel(), attempts: synthesisAttempts,
+	items, u, tries, err := s.writeItemSet(ctx, apiKey, itemSetCall{model: s.checkModel(), attempts: synthesisAttempts,
 		priority: llm.PriorityInteractive, system: set.Text(prompts.BlockCheckSynthesis, nil), language: lang},
 		func(revisions []string) string { pc.Revisions = revisions; return prompts.Synthesis(pc) },
 		func(set check.ItemSet) []string { return check.ValidateSynthesis(set, sc) })
-	s.recordUsage(done, userID, "check_items", plan.conceptID, u, err)
+	err = s.itemsCancelled(ctx, jobID, err) // [취소]: no item is saved
 	var saved []store.CheckItem
 	if err == nil {
 		hash := "synthesis"
@@ -182,10 +185,10 @@ func (s *Service) runSynthesisItems(ctx context.Context, apiKey, userID, session
 		ask := store.TurnWrite{ItemID: saved[0].ID, Role: "tutor", Move: check.MoveAsk, Text: saved[0].Prompt}
 		_, err = s.Store.ActivateCheckSession(done, userID, sessionID, ids, ask)
 	}
+	text := ""
 	if err != nil {
-		if serr := s.Store.SetCheckSessionStatus(done, userID, sessionID, []string{"preparing"}, "failed", err.Error()); serr != nil && !errors.Is(serr, store.ErrCheckClosed) {
-			logf("synthesis %s: fail session: %v", sessionID, serr)
-		}
+		text = err.Error()
 	}
+	s.endSessionItems(done, "synthesis", userID, plan.conceptID, sessionID, jobID, u, tries, err, text)
 	return err
 }

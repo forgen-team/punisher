@@ -13,10 +13,10 @@ import { countPassageThreads, findThread, isLiveThread, type PassageThreads, typ
 import { messages } from "./i18n";
 
 const THREAD_HIGHLIGHT = "punisher-thread";
-/** 오른쪽 보조 열이 보이는 폭(LectureLayout xl) — 이 폭부터 스레드는 패널 '질문' 탭에서 펼친다. */
-export const THREAD_PANEL_QUERY = "(min-width: 1280px)";
+/** 오른쪽 보조 열이 보이는 폭(ui ReadingLayout aside·LectureLayout lg, 1024) — 이 폭부터 스레드는 패널 '질문' 탭에서 펼친다. */
+export const THREAD_PANEL_QUERY = "(min-width: 1024px)";
 
-/** 패널이 없는 폭: 모바일은 절반 높이 시트, 데스크톱(md~xl)은 구절 옆 팝오버. */
+/** 패널이 없는 폭: 모바일은 절반 높이 시트, 태블릿(md~lg)은 구절 옆 팝오버. */
 function ThreadOverlay() {
   const t = useT(messages);
   const ctx = useReadingThreads();
@@ -150,7 +150,7 @@ function threadPreview(thread: ReadingThread, t: typeof messages.ko): string {
   return last.question || thread.root.question;
 }
 
-/** 패널(≥1280px)에서 열린 스레드를 닫는 X — 본문으로 돌아가며 칠해 둔 구절을 지운다. */
+/** 패널(≥1024px)에서 열린 스레드를 닫는 X — 본문으로 돌아가며 칠해 둔 구절을 지운다. */
 function CloseFocus({ onClose }: { onClose: () => void }) {
   const t = useT(messages);
   return (

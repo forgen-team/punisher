@@ -5,6 +5,7 @@ import { AskBox, ResolutionChoices, useLaunchInstant } from "@/src/features/puni
 import { FirstSetup } from "@/src/features/punisher/first-setup";
 import { describePunisherError, type InstantResponse, type Recommendation, type TodayResponse } from "@/src/shared/api/punisher";
 import { formatDate, useLocale, useT } from "@/src/shared/i18n";
+import { useScreenSubtitle } from "@/src/shared/lib/screen-chrome";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { messages } from "./i18n";
 import { recheckWithoutLecture, reviewBundleState, reviewTotal } from "./lib/reviewBundle";
@@ -41,6 +42,8 @@ function BoxError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
 export function TodayWidget() {
   const locale = useLocale();
   const t = useT(messages);
+  // 오늘 날짜는 화면 머리(Page subtitle — 제목 "오늘" 아래)에. 본문 첫 줄에는 두지 않는다.
+  useScreenSubtitle(formatDate(new Date(), locale, DATE));
   const today = useToday();
   const summary = useReviewSummary();
   const activity = useActivity();
@@ -122,7 +125,6 @@ export function TodayWidget() {
 
   return (
     <div className="flex w-full flex-col gap-3">
-      <p className="text-xs text-fg-muted">{formatDate(new Date(), locale, DATE)}</p>
       <TodayColumns
         todo={
           <>

@@ -43,6 +43,8 @@ func disputeTexts(lang string) (rejected, accepted, conflict string) {
 // records the tokens on the set's job (kind check_items) and activates the
 // session. Failure is recorded as failed, never as items.
 func (s *Service) runCheckItems(ctx context.Context, apiKey, userID, sessionID string, cl checkLecture, key store.CheckItemKey, jobID string) error {
+	ctx, end := s.runs.begin(ctx, jobID)
+	defer end()
 	done := context.WithoutCancel(ctx)
 	set := s.UserPrompts(ctx, userID)
 	ic, sc := checkItemsContext(cl)
@@ -51,6 +53,9 @@ func (s *Service) runCheckItems(ctx context.Context, apiKey, userID, sessionID s
 		priority: llm.PriorityInteractive, system: system, language: key.Language},
 		func(revisions []string) string { ic.Revisions = revisions; return prompts.CheckItems(ic) },
 		func(set check.ItemSet) []string { return check.ValidateItems(set, sc) })
+	if s.jobCancelled(ctx, jobID) || (err == nil && !s.runs.commit(jobID)) { // [취소]: no item is saved
+		err = errors.Join(ErrJobCancelled, err)
+	}
 	return s.saveCheckItems(done, userID, sessionID, cl, key, jobID, set, items, u, tries, err)
 }
 
@@ -63,7 +68,11 @@ func (s *Service) saveCheckItems(ctx context.Context, userID, sessionID string, 
 	}
 	s.finishItemsJob(ctx, "check "+sessionID, jobID, u, tries, err)
 	if err != nil {
-		if serr := s.Store.SetCheckSessionStatus(ctx, userID, sessionID, []string{"preparing"}, "failed", checkErrorText(err)); serr != nil && !errors.Is(serr, store.ErrCheckClosed) {
+		status, text := "failed", checkErrorText(err)
+		if errors.Is(err, ErrJobCancelled) { // 취소한 문항 만들기는 실패가 아니라 그만둔 것
+			status, text = "abandoned", ""
+		}
+		if serr := s.Store.SetCheckSessionStatus(ctx, userID, sessionID, []string{"preparing"}, status, text); serr != nil && !errors.Is(serr, store.ErrCheckClosed) {
 			logf("check %s: fail session: %v", sessionID, serr)
 		}
 		return err

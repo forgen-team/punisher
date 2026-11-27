@@ -101,10 +101,10 @@
   }
 }
 
-/* 단독판 앱 틀: 고정 머리 = 앱 이름 줄 48 + 섹션 탭 줄 44(app/AppShell). 그 아래 고정 요소(강의 바·옆 목차)는
- * --app-header-offset 을 쓴다. 하단 탭 바는 없다. */
+/* 단독판 앱 틀(ui AppFrame — app/AppShell): 고정 머리 = 상단 바 .fg-frame__bar(48 + 아래 선 1). 섹션 탭 줄은 같이 스크롤된다.
+ * 그 아래 고정 요소(강의 바·옆 목차)는 --app-header-offset 을 쓴다. 하단 탭 바는 없다. */
 :root {
-  --app-topbar-h: 92px;
+  --app-topbar-h: 49px;
   --app-header-offset: calc(var(--app-topbar-h) + var(--safe-top));
   --app-bottom-offset: var(--safe-bottom);
 }
@@ -117,16 +117,16 @@
     flex-basis: auto;
   }
 
-  [data-app-header] {
+  .fg-frame__bar {
     transition: transform var(--duration-base) var(--ease-standard);
   }
 
   /* 바 안에 포커스가 있으면(키보드로 메뉴·검색 등) 숨기지 않는다 — offset 도 그대로 둔다. */
-  :root[data-app-header-state="hidden"]:not(:has([data-app-header]:focus-within)) {
+  :root[data-app-header-state="hidden"]:not(:has(.fg-frame__bar:focus-within)) {
     --app-header-offset: var(--safe-top);
   }
 
-  :root[data-app-header-state="hidden"] [data-app-header]:not(:focus-within) {
+  :root[data-app-header-state="hidden"] .fg-frame__bar:not(:focus-within) {
     transform: translateY(calc(-100% + var(--safe-top)));
   }
 }
