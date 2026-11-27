@@ -36,7 +36,7 @@ nginx(Witems)가 `/apps-static/punisher/X` → `/static/X`, `/apps-api/punisher/
 | `CLAUDE_GATEWAY_URL`, `WITEMS_INTERNAL_TOKEN` | 예 | claude-gateway |
 | `WITEMS_APP_NAME` | 아니오 | gateway 에 보내는 `X-Witems-App`(Witems compose 는 `punisher`). gateway 가 이 이름으로 앱별 Claude 계정 프로필을 고른다. 비면 머리글 없이 보내 기본 프로필 |
 
-manifest 는 `today { endpoint: "/v1/today-cards", maxCards: 2 }` 로 Witems '오늘' 홈의 요약 카드를 선언한다(셸 계약 `rss.md` §8-3). `GET /v1/today-cards` 는 `TodayCard[]`(복습 `todo` 1행, 이어보기 `study` 최대 2행: 읽던 강의·다음 강의)를 돌려주고, 행 href 는 `/apps/punisher` 로 시작하는 전체 경로이며 할 것이 없으면 `[]` 이다(`internal/http/handlers/today_cards.go`).
+manifest 는 `today { endpoint: "/v1/today-cards", maxCards: 2, kinds: ["todo", "study"] }` 로 Witems '오늘' 홈의 요약 카드를 선언한다(셸 계약 `rss.md` §8-3). `GET /v1/today-cards` 는 `TodayCard[]`(복습 `todo` 1행, 이어보기 `study` 최대 2행: 읽던 강의·다음 강의)를 돌려주고, 행 href 는 `/apps/punisher` 로 시작하는 전체 경로이며 할 것이 없으면 `[]` 이다(`internal/http/handlers/today_cards.go`). `kinds` 는 셸이 불러오는 중·실패 자리를 그릴 종류 상자다(witems#49). 오늘 화면의 날짜 같은 부제는 `ctx.setSubtitle`(witems#54, 없는 셸은 건너뜀)로 넘긴다.
 
 manifest 는 `ai.claude.purpose`("강의·문제 생성과 다음 챕터 제안")를 선언한다(Witems 앱 계약 §2 선택 필드). Witems 설정 › AI·키 "Claude 계정"이 이걸 보고 학습 앱을 앱별 계정 목록에 넣는다. 요청하는 도구 묶음(toolsets)은 없다.
 | `PUNISHER_RSS_SERVER_URL` | 아니오 | 챕터 제안의 RSS 신호(비우면 끔) |
