@@ -39,10 +39,23 @@ func cardByID(cards []TodayCard, id string) *TodayCard {
 	return nil
 }
 
+// 묶음 머리(카드 제목)·행 제목·meta 에 같은 말이 겹치지 않는다(셸 검수: "복습 1" → "복습" → "복습 1 · 약 2분").
+func TestTodayCardsNoRepeatedWords(t *testing.T) {
+	in := todayCardsInput{Locale: "ko", Now: cardsNow, Review: learning.ReviewToday{Due: 1, EstimatedMinutes: 2}, Cards: 1,
+		Resume: &learning.Recommendation{Kind: learning.RecResume, ConceptName: "HTTP 캐시", Title: "HTTP 캐시", LectureID: "12", Percent: 40}}
+	for _, c := range buildTodayCards(in) {
+		for _, row := range c.Rows {
+			if row.Title == c.Title || strings.Contains(row.Meta, c.Title) || (row.Meta != "" && strings.Contains(row.Meta, row.Title)) {
+				t.Fatalf("card %q repeats words: %+v", c.Title, row)
+			}
+		}
+	}
+}
+
 func TestTodayCardsReview(t *testing.T) {
 	base := todayCardsInput{Locale: "ko", Now: cardsNow, Review: learning.ReviewToday{Due: 12, EstimatedMinutes: 12}, Unchecked: 3, Cards: 8}
 
-	t.Run("복습·확인 대기·카드 합이 count, meta 는 0 인 항목 빼고", func(t *testing.T) {
+	t.Run("행 제목은 할 일, meta 는 시간만 — 머리의 '복습'을 되풀이하지 않는다", func(t *testing.T) {
 		c := cardByID(buildTodayCards(base), "review")
 		if c == nil {
 			t.Fatal("no review card")
@@ -51,7 +64,7 @@ func TestTodayCardsReview(t *testing.T) {
 			t.Fatalf("card %+v", c)
 		}
 		row := c.Rows[0]
-		if row.Title != "복습" || row.Meta != "복습 12 · 확인 대기 3 · 카드 8 · 약 16분" || row.Href != "/apps/punisher/" {
+		if row.Title != "문항 12개 · 카드 8장 복습 · 강의 3개 확인" || row.Meta != "약 16분" || row.Href != "/apps/punisher/" {
 			t.Fatalf("row %+v", row)
 		}
 		if c.More == nil || c.More.Label != "모두 보기" || c.More.Href != "/apps/punisher/" || c.AsOf != "2026-11-27T07:10:00+09:00" {
@@ -63,7 +76,7 @@ func TestTodayCardsReview(t *testing.T) {
 		in := base
 		in.Review, in.Unchecked, in.Cards, in.Synthesis = learning.ReviewToday{Due: 4}, 0, 0, true
 		c := cardByID(buildTodayCards(in), "review")
-		if c == nil || c.Rows[0].Meta != "복습 4 · 종합 1" || c.Count != 4 {
+		if c == nil || c.Rows[0].Title != "문항 4개 복습 · 종합 문제 풀기" || c.Rows[0].Meta != "" || c.Count != 4 {
 			t.Fatalf("card %+v", c)
 		}
 	})
@@ -80,11 +93,11 @@ func TestTodayCardsReview(t *testing.T) {
 		in := base
 		in.RestDay = true
 		c := cardByID(buildTodayCards(in), "review")
-		if c == nil || c.Rows[0].Meta != "오늘은 쉬는 날이에요" || c.Count != 0 {
+		if c == nil || c.Rows[0].Title != "오늘은 쉬는 날이에요" || c.Rows[0].Meta != "" || c.Count != 0 {
 			t.Fatalf("card %+v", c)
 		}
 		raw, _ := json.Marshal(c)
-		if strings.Contains(string(raw), `"count"`) || strings.ContainsAny(c.Rows[0].Meta, "0123456789") {
+		if strings.Contains(string(raw), `"count"`) || strings.ContainsAny(c.Rows[0].Title, "0123456789") {
 			t.Fatalf("rest day must not carry numbers: %s", raw)
 		}
 	})
@@ -93,7 +106,7 @@ func TestTodayCardsReview(t *testing.T) {
 		in := base
 		in.Locale = "en"
 		c := cardByID(buildTodayCards(in), "review")
-		if c == nil || c.Title != "Review" || c.Rows[0].Meta != "Review 12 · To check 3 · Cards 8 · about 16 min" {
+		if c == nil || c.Title != "Review" || c.Rows[0].Title != "Review 12 questions · 8 cards · Check 3 lectures" || c.Rows[0].Meta != "about 16 min" {
 			t.Fatalf("card %+v", c)
 		}
 	})
@@ -258,7 +271,7 @@ func TestTodayCardsHandlerCardsAndRestDay(t *testing.T) {
 	}
 	_, cards := getTodayCards(t, h)
 	c := cardByID(cards, "review")
-	if len(cards) != 1 || c == nil || c.Count != 1 || c.Rows[0].Meta != "카드 1 · 약 1분" || c.Rows[0].Href != "/apps/punisher/" {
+	if len(cards) != 1 || c == nil || c.Count != 1 || c.Rows[0].Title != "카드 1장 복습" || c.Rows[0].Meta != "약 1분" || c.Rows[0].Href != "/apps/punisher/" {
 		t.Fatalf("cards %+v", cards)
 	}
 
@@ -267,7 +280,7 @@ func TestTodayCardsHandlerCardsAndRestDay(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, cards = getTodayCards(t, h)
-	if c = cardByID(cards, "review"); len(cards) != 1 || c == nil || c.Rows[0].Meta != "오늘은 쉬는 날이에요" || c.Count != 0 {
+	if c = cardByID(cards, "review"); len(cards) != 1 || c == nil || c.Rows[0].Title != "오늘은 쉬는 날이에요" || c.Count != 0 {
 		t.Fatalf("rest day cards %+v", cards)
 	}
 }

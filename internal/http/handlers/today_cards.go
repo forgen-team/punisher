@@ -74,37 +74,49 @@ func buildTodayCards(in todayCardsInput) []TodayCard {
 	return cards
 }
 
-// reviewCard: 복습 + 확인 대기 + 카드 한 줄. 합이 0 이면 카드를 뺀다. 쉬는 날은 숫자 없이 알린다.
+// reviewCard: 복습 + 확인 대기 + 카드를 행 하나로. 합이 0 이면 카드를 뺀다.
+// 묶음 머리가 이미 "복습 n" 이므로 행 제목은 할 일("문항 12개 · 카드 8장 복습 · 강의 3개 확인"),
+// meta 는 걸리는 시간만 둔다(같은 말을 머리·제목·meta 에 되풀이하지 않는다). 쉬는 날은 숫자 없이 알린다.
 func reviewCard(in todayCardsInput) (TodayCard, bool) {
 	total := in.Review.Due + in.Unchecked + in.Cards
 	if total <= 0 {
 		return TodayCard{}, false
 	}
-	title := inLocale(in.Locale, "복습", "Review")
-	card := TodayCard{ID: "review", Kind: "todo", Title: title, Rows: []TodayRow{{Title: title, Href: appBasePath + "/"}}}
+	card := TodayCard{ID: "review", Kind: "todo", Title: inLocale(in.Locale, "복습", "Review"), Rows: []TodayRow{{Href: appBasePath + "/"}}}
 	if in.RestDay {
-		card.Rows[0].Meta = inLocale(in.Locale, "오늘은 쉬는 날이에요", "Today is a rest day")
+		card.Rows[0].Title = inLocale(in.Locale, "오늘은 쉬는 날이에요", "Today is a rest day")
 		return card, true
 	}
 	card.Count = total
-	var parts []string
-	add := func(n int, ko, en string) {
-		if n > 0 {
-			parts = append(parts, fmt.Sprintf(inLocale(in.Locale, ko, en), n))
-		}
-	}
-	add(in.Review.Due, "복습 %d", "Review %d")
-	add(in.Unchecked, "확인 대기 %d", "To check %d")
-	add(in.Cards, "카드 %d", "Cards %d")
-	if in.Synthesis {
-		parts = append(parts, inLocale(in.Locale, "종합 1", "Synthesis 1"))
-	}
+	card.Rows[0].Title = reviewTodo(in)
 	// 카드는 한 장에 30초쯤(reminder 와 같은 기준). 확인 대기는 문항 수가 확인마다 달라 시간에 넣지 않는다.
 	if minutes := in.Review.EstimatedMinutes + (in.Cards+1)/2; minutes > 0 {
-		parts = append(parts, fmt.Sprintf(inLocale(in.Locale, "약 %d분", "about %d min"), minutes))
+		card.Rows[0].Meta = fmt.Sprintf(inLocale(in.Locale, "약 %d분", "about %d min"), minutes)
 	}
-	card.Rows[0].Meta = strings.Join(parts, " · ")
 	return card, true
+}
+
+// reviewTodo is the review row title as things to do, grouped by verb:
+// "문항 12개 · 카드 8장 복습 · 강의 3개 확인 · 종합 문제 풀기" (0 인 것은 뺀다).
+func reviewTodo(in todayCardsInput) string {
+	var review []string
+	if in.Review.Due > 0 {
+		review = append(review, fmt.Sprintf(inLocale(in.Locale, "문항 %d개", "%d questions"), in.Review.Due))
+	}
+	if in.Cards > 0 {
+		review = append(review, fmt.Sprintf(inLocale(in.Locale, "카드 %d장", "%d cards"), in.Cards))
+	}
+	var todo []string
+	if len(review) > 0 {
+		todo = append(todo, fmt.Sprintf(inLocale(in.Locale, "%s 복습", "Review %s"), strings.Join(review, " · ")))
+	}
+	if in.Unchecked > 0 {
+		todo = append(todo, fmt.Sprintf(inLocale(in.Locale, "강의 %d개 확인", "Check %d lectures"), in.Unchecked))
+	}
+	if in.Synthesis {
+		todo = append(todo, inLocale(in.Locale, "종합 문제 풀기", "Take the synthesis quiz"))
+	}
+	return strings.Join(todo, " · ")
 }
 
 // studyCard: 읽던 강의 이어보기 + 다음 강의. 둘 다 없으면 카드를 뺀다.
@@ -125,7 +137,7 @@ func resumeRow(locale string, r learning.Recommendation) TodayRow {
 	var meta []string
 	if row.Title == "" {
 		row.Title = r.Title // 개념 이름이 비면 강의 제목을 제목으로 쓰고 meta 에는 겹쳐 넣지 않는다
-	} else if r.Title != "" {
+	} else if r.Title != "" && r.Title != r.ConceptName {
 		meta = append(meta, r.Title)
 	}
 	if r.Percent > 0 {
