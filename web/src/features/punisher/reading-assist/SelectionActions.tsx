@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { HelpCircle, Layers, Sparkles, StickyNote, X } from "lucide-react";
-import { cn, focusRing, useMediaQuery } from "@/src/shared/ui/kit";
+import { useMediaQuery } from "@forgen-team/ui";
+import { cn, focusRing } from "@/src/shared/lib/cn";
 import { SELECTION_MAX_CHARS, SELECTION_MIN_CHARS, type ThreadMode } from "@/src/shared/api/punisher";
 import { toOverlayAnchor } from "@/src/shared/ui/punisher";
 import { portalRoot } from "@/src/shared/config/runtime";

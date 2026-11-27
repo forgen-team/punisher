@@ -1,6 +1,6 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { cn } from "@/src/shared/ui/kit";
+import { cn } from "@/src/shared/lib/cn";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 

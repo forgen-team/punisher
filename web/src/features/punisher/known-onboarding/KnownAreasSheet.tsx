@@ -1,6 +1,6 @@
 
 import { useEffect, useMemo, useState } from "react";
-import { BottomSheet, Button, ErrorState, ListSkeleton, Section } from "@/src/shared/ui/kit";
+import { Button, ErrorState, ListSkeleton, Section, Sheet } from "@forgen-team/ui";
 import { areaLabel, useBatchMarkKnown, useConcepts } from "@/src/entities/punisher";
 import { PUNISHER_AREAS, describePunisherError, type Concept } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
@@ -87,17 +87,16 @@ export function KnownAreasSheet({ open, onClose, onSaved }: KnownAreasSheetProps
       <Button variant="ghost" onClick={onClose} disabled={running}>
         {t.later}
       </Button>
-      <Button onClick={save} loading={running} disabled={selected.size === 0}>
+      <Button variant="primary" onClick={save} loading={running} disabled={selected.size === 0}>
         {running && progress ? t.saving(progress.done, progress.total) : t.saveCount(selected.size)}
       </Button>
     </>
   );
 
   return (
-    <BottomSheet
+    <Sheet
       open={open}
-      onClose={running ? () => undefined : onClose}
-      dismissible={!running}
+      onOpenChange={(o) => { if (!o && !running) { onClose(); } }}
       title={t.sheetTitle}
       description={t.sheetDescription}
       footer={footer}
@@ -115,7 +114,7 @@ export function KnownAreasSheet({ open, onClose, onSaved }: KnownAreasSheetProps
           <ListSkeleton rows={6} />
         </div>
       ) : concepts.error ? (
-        <ErrorState compact message={describePunisherError(concepts.error)} onRetry={() => concepts.refetch()} />
+        <ErrorState title={describePunisherError(concepts.error)} onRetry={() => { void concepts.refetch(); }} />
       ) : (
         <div className="flex flex-col gap-4">
           {groups.map((group) => {
@@ -167,6 +166,6 @@ export function KnownAreasSheet({ open, onClose, onSaved }: KnownAreasSheetProps
           })}
         </div>
       )}
-    </BottomSheet>
+    </Sheet>
   );
 }

@@ -1,6 +1,5 @@
 
-import { Link } from "@/src/shared/lib/router";
-import { EmptyState, ErrorState, List, ListRow, ListSkeleton } from "@/src/shared/ui/kit";
+import { EmptyState, ErrorState, List, ListRow, ListSkeleton } from "@forgen-team/ui";
 import { describeCheckError, useCheckHistory } from "@/src/entities/punisher";
 import { checkHref } from "@/src/features/punisher/check-start";
 import { historyMeta, historyTitle } from "../lib/checkHistory";
@@ -27,7 +26,7 @@ export function CheckHistoryList() {
   function renderSessions() {
     if (history.isLoading) { return <ListSkeleton rows={5} />; }
     if (history.error) {
-      return <ErrorState message={describeCheckError(history.error)} onRetry={() => history.refetch()} retrying={history.isRefetching} />;
+      return <ErrorState title={describeCheckError(history.error)} onRetry={() => history.refetch()} />;
     }
     if (sessions.length === 0) {
       return <EmptyState title={t.noChecks} />;
@@ -36,7 +35,7 @@ export function CheckHistoryList() {
       <div className="flex flex-col gap-2">
         <List>
           {sessions.map((s) => (
-            <ListRow key={s.id} href={checkHref(s.id)} linkAs={Link} title={historyTitle(s, locale)} meta={historyMeta(s, locale)} />
+            <ListRow key={s.id} href={checkHref(s.id)} title={historyTitle(s, locale)} meta={historyMeta(s, locale)} />
           ))}
         </List>
         <LoadMore hasNextPage={Boolean(history.hasNextPage)} isFetching={history.isFetchingNextPage} onLoad={() => void history.fetchNextPage()} />

@@ -2,7 +2,7 @@
 import { Link } from "@/src/shared/lib/router";
 import { useEffect } from "react";
 import { BookOpen, PlayCircle } from "lucide-react";
-import { BottomSheet, Button, ListRow, buttonVariants, notifyUndo } from "@/src/shared/ui/kit";
+import { Button, ListRow, Sheet, useToast } from "@forgen-team/ui";
 import { RECOMMENDATION_KIND_LABELS_BY_LOCALE, areaLabel, recommendationReason, useConceptDismiss } from "@/src/entities/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
@@ -36,7 +36,6 @@ export function RecommendationRow({ item }: RecommendationRowProps) {
   return (
     <ListRow
       href={recommendationHref(item.conceptId)}
-      linkAs={Link}
       leading={<BookOpen aria-hidden />}
       title={item.conceptName || item.title}
       meta={
@@ -62,6 +61,7 @@ export function RecommendationSheet({ item, starting, onClose, onStart }: Recomm
   const locale = useLocale();
   const t = useT(messages);
   const dismiss = useConceptDismiss();
+  const toast = useToast();
   const conceptId = item?.conceptId;
   const { reset } = dismiss;
   // 다른 추천을 열면 앞 추천의 '필요 없음' 오류·진행 표시를 지운다.
@@ -74,14 +74,16 @@ export function RecommendationSheet({ item, starting, onClose, onStart }: Recomm
       onSuccess: () => {
         dismiss.reset();
         onClose();
-        notifyUndo(t.dismissedToast, () => dismiss.mutateAsync({ conceptId, dismissed: false }));
+        toast.undo(t.dismissedToast, () => {
+          dismiss.mutateAsync({ conceptId, dismissed: false }).catch(() => toast.show(t.undoFailed, { tone: "danger" }));
+        });
       },
     });
   const title = item ? item.conceptName || item.title : "";
   return (
-    <BottomSheet
+    <Sheet
       open={Boolean(item)}
-      onClose={onClose}
+      onOpenChange={(o) => { if (!o) { onClose(); } }}
       title={title}
       description={
         item
@@ -95,16 +97,18 @@ export function RecommendationSheet({ item, starting, onClose, onStart }: Recomm
             <Button variant="ghost" loading={dismiss.isPending} onClick={() => dismissItem(item.conceptId)}>
               {t.dismiss}
             </Button>
-            <Link href={mapHref(item.conceptId)} className={buttonVariants({ variant: "ghost" })}>
-              {t.viewOnMap}
-            </Link>
+            <Button asChild variant="ghost">
+              <Link href={mapHref(item.conceptId)}>{t.viewOnMap}</Link>
+            </Button>
             {item.lectureId ? (
-              <Link href={lectureHref(item.lectureId)} className={buttonVariants({ variant: "primary" })}>
-                <PlayCircle className="size-4" aria-hidden="true" />
-                {t.openLecture}
-              </Link>
+              <Button asChild variant="primary">
+                <Link href={lectureHref(item.lectureId)}>
+                  <PlayCircle className="size-4" aria-hidden="true" />
+                  {t.openLecture}
+                </Link>
+              </Button>
             ) : (
-              <Button loading={starting} onClick={() => onStart(item.conceptId)}>
+              <Button variant="primary" loading={starting} onClick={() => onStart(item.conceptId)}>
                 {t.startLecture}
               </Button>
             )}
@@ -136,6 +140,6 @@ export function RecommendationSheet({ item, starting, onClose, onStart }: Recomm
           <InlineError error={dismiss.error} />
         </div>
       )}
-    </BottomSheet>
+    </Sheet>
   );
 }

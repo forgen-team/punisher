@@ -1,5 +1,5 @@
 
-import { Section } from "@/src/shared/ui/kit";
+import { Section } from "@forgen-team/ui";
 import type { CheckDetail } from "@/src/shared/api/punisher";
 import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 import { currentDiagnosticItem, diagnosticProgress, promptMarkdown } from "../lib/diagnostic";

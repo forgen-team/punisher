@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, type ReactNode } from "react";
-import { EmptyState, ErrorState, Skeleton, Spinner, confirmAction, notifyUndo, type MenuItem } from "@/src/shared/ui/kit";
+import { EmptyState, ErrorState, ProgressCircle, Skeleton, useConfirm, useToast, type MenuItemDef } from "@forgen-team/ui";
 import { useScreenTitle } from "@/src/shared/lib/screen-chrome";
 import { isWitems } from "@/src/shared/config/runtime";
 import {
@@ -67,8 +67,10 @@ export function CheckView({ checkId }: { checkId: string }) {
   const abandon = useCheckAbandon(checkId);
   const resume = useCheckResume(checkId);
   const dispute = useCheckDispute(checkId);
+  const confirm = useConfirm();
+  const toast = useToast();
   const endRef = useRef<HTMLDivElement>(null);
-  const resultRef = useRef<HTMLElement>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
   const sections = lecture.data?.content?.sections ?? NO_SECTIONS;
   const status = d?.session.status;
   const turnCount = d?.turns.length ?? 0;
@@ -107,17 +109,19 @@ export function CheckView({ checkId }: { checkId: string }) {
   async function stop() {
     const label = kind === "placement" ? t.skip : t.abandon;
     if (answeredCurrent) {
-      const ok = await confirmAction({ title: t.abandonConfirmTitle, description: t.abandonConfirmBody, confirmLabel: label, danger: kind !== "placement" });
+      const ok = await confirm({ title: t.abandonConfirmTitle, description: t.abandonConfirmBody, confirmLabel: label, tone: kind !== "placement" ? "danger" : "neutral" });
       if (!ok) { return; }
     }
     abandon.mutate(undefined, {
       onSuccess: () => {
         if (answeredCurrent) { return; }
-        notifyUndo(kind === "placement" ? t.skippedToast : t.abandonedToast, () => resume.mutateAsync());
+        toast.undo(kind === "placement" ? t.skippedToast : t.abandonedToast, () => {
+          resume.mutateAsync().catch(() => toast.show(t.undoFailed, { tone: "danger" }));
+        });
       },
     });
   }
-  const menuItems: MenuItem[] = [
+  const menuItems: MenuItemDef[] = [
     {
       key: "abandon",
       label: kind === "placement" ? t.skip : t.abandon,
@@ -146,14 +150,14 @@ export function CheckView({ checkId }: { checkId: string }) {
 
   function renderBody(): ReactNode {
     if (!d && check.error) {
-      return <ErrorState message={describeCheckError(check.error)} onRetry={() => check.refetch()} retrying={check.isRefetching} />;
+      return <ErrorState title={describeCheckError(check.error)} onRetry={() => check.refetch()} />;
     }
     if (!d) {
       return (
         <div aria-busy="true" className="flex flex-col gap-4 pt-4">
           <Skeleton className="w-24" />
           <Skeleton lines={3} />
-          <Skeleton variant="block" className="h-24" />
+          <Skeleton lines={3} className="h-24" />
         </div>
       );
     }
@@ -161,12 +165,12 @@ export function CheckView({ checkId }: { checkId: string }) {
       return (
         <div aria-busy="true">
           <StatusLine>
-            <Spinner size="sm" label={null} />
+            <ProgressCircle size="24" tone="inherit" aria-hidden />
             {statusLabels.preparing}
           </StatusLine>
           <div className="mt-6 flex flex-col gap-4" aria-hidden="true">
             <Skeleton lines={3} />
-            <Skeleton variant="block" className="h-24" />
+            <Skeleton lines={3} className="h-24" />
           </div>
         </div>
       );
@@ -175,9 +179,8 @@ export function CheckView({ checkId }: { checkId: string }) {
       return (
         <div className="pt-4">
           <ErrorState
-            message={statusLabels.failed}
+            title={statusLabels.failed}
             onRetry={() => retry.mutate()}
-            retrying={retry.isPending}
           />
           {retry.error && <p role="alert" className="mt-2 text-sm text-danger">{describeCheckError(retry.error)}</p>}
         </div>

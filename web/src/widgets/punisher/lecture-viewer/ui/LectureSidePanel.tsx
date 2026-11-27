@@ -1,8 +1,7 @@
 
-import { Link } from "@/src/shared/lib/router";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Layers } from "lucide-react";
-import { BottomSheet, List, ListRow, SegmentedTabs, Section } from "@/src/shared/ui/kit";
+import { List, ListRow, SegmentedControl, SegmentedControlItem, Section, Sheet } from "@forgen-team/ui";
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import { useReadingThreads } from "@/src/features/punisher/reading-assist";
 import type { DeeperOrigin } from "@/src/features/punisher/term-popover";
@@ -40,26 +39,24 @@ interface LectureAssistSheetProps {
 export function LectureAssistSheet({ open, onClose, lectureId, conceptId, getAnchor }: LectureAssistSheetProps) {
   const t = useT(messages);
   const [tab, setTab] = useState<AssistTab>("questions");
-  const panelId = useId();
 
   return (
-    <BottomSheet open={open} onClose={onClose} title={t.questionsAndNotes} desktop="side">
-      <SegmentedTabs
-        aria-label={t.assistTabs}
-        items={assistTabs(t).map((item) => ({ ...item, panelId }))}
-        value={tab}
-        onChange={setTab}
-        fill
-        className="mb-3"
-      />
-      <div role="tabpanel" id={panelId}>
+    <Sheet open={open} onOpenChange={(o) => { if (!o) { onClose(); } }} title={t.questionsAndNotes} desktop="side">
+      <div className="mb-3">
+        <SegmentedControl aria-label={t.assistTabs} value={tab} onValueChange={(v) => setTab(v as AssistTab)}>
+          {assistTabs(t).map((item) => (
+            <SegmentedControlItem key={item.value} value={item.value}>{item.label}</SegmentedControlItem>
+          ))}
+        </SegmentedControl>
+      </div>
+      <div>
         {tab === "questions" ? (
           <QuestionsPanel lectureId={lectureId} getAnchor={getAnchor} onJump={onClose} />
         ) : (
           <NotesPanel lectureId={lectureId} conceptId={conceptId} getAnchor={getAnchor} onJump={onClose} />
         )}
       </div>
-    </BottomSheet>
+    </Sheet>
   );
 }
 
@@ -82,7 +79,6 @@ interface LectureAssistPanelProps extends Omit<LectureAssistSheetProps, "open" |
 export function LectureAssistPanel({ lectureId, conceptId, getAnchor, terms, onBeforeDeeper, deeper }: LectureAssistPanelProps) {
   const t = useT(messages);
   const [tab, setTab] = useState<PanelTab>("questions");
-  const panelId = useId();
   // 본문에서 새 스레드를 열 때만(쉽게·깊게·질문·대화 n) '질문' 탭으로 돌아가 그 스레드를 펼친다 —
   // 답이 오거나 닫는 등 focus 가 바뀔 때마다 탭을 빼앗지 않는다.
   const openSeq = useReadingThreads()?.openSeq ?? 0;
@@ -92,8 +88,12 @@ export function LectureAssistPanel({ lectureId, conceptId, getAnchor, terms, onB
   return (
     <div className="flex flex-col gap-6">
       <section aria-label={t.panelSection} className="flex flex-col gap-3">
-        <SegmentedTabs aria-label={t.panelTabs} items={panelTabs(t).map((item) => ({ ...item, panelId }))} value={tab} onChange={setTab} fill />
-        <div role="tabpanel" id={panelId}>
+        <SegmentedControl aria-label={t.panelTabs} value={tab} onValueChange={(v) => setTab(v as PanelTab)}>
+          {panelTabs(t).map((item) => (
+            <SegmentedControlItem key={item.value} value={item.value}>{item.label}</SegmentedControlItem>
+          ))}
+        </SegmentedControl>
+        <div>
           {tab === "questions" && <QuestionsPanel lectureId={lectureId} getAnchor={getAnchor} />}
           {tab === "notes" && <NotesPanel lectureId={lectureId} conceptId={conceptId} getAnchor={getAnchor} />}
           {tab === "terms" && <TermList terms={terms} onBeforeDeeper={onBeforeDeeper} />}
@@ -103,7 +103,7 @@ export function LectureAssistPanel({ lectureId, conceptId, getAnchor, terms, onB
         <Section title={t.deeperShort} headingLevel={3}>
           <List>
             {deeper.map((l) => (
-              <ListRow key={l.id} href={lectureHref(l.id)} linkAs={Link} leading={<Layers aria-hidden="true" />} title={l.conceptName || l.title} titleLines={1} />
+              <ListRow key={l.id} href={lectureHref(l.id)} leading={<Layers aria-hidden="true" />} title={l.conceptName || l.title} />
             ))}
           </List>
         </Section>

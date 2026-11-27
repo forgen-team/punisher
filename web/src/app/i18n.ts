@@ -65,3 +65,41 @@ export const messages = defineMessages({
     offline: "You're offline. Lectures you've opened and today's cards stay readable; grading and saving wait for the connection.",
   },
 });
+
+/** @forgen-team/ui 부품 안 문구(defaultMessages 와 같은 키) — 화면 언어를 따른다. */
+export const uiMessages = defineMessages({
+  ko: {
+    close: "닫기",
+    cancel: "취소",
+    back: "뒤로",
+    more: "더 보기",
+    retry: "다시 시도",
+    loading: "불러오는 중",
+    loadFailed: "불러오지 못했어요.",
+    loadFailedHint: "잠시 뒤 다시 시도해 주세요.",
+    forbidden: "볼 수 없는 화면이에요.",
+    notFound: "찾을 수 없는 화면이에요.",
+    undo: "되돌리기",
+    pickDate: "날짜 고르기",
+    previous: "이전",
+    next: "다음",
+    noSelection: "선택한 항목이 없어요.",
+  },
+  en: {
+    close: "Close",
+    cancel: "Cancel",
+    back: "Back",
+    more: "More",
+    retry: "Try again",
+    loading: "Loading",
+    loadFailed: "Couldn't load this.",
+    loadFailedHint: "Please try again in a moment.",
+    forbidden: "You can't view this page.",
+    notFound: "This page doesn't exist.",
+    undo: "Undo",
+    pickDate: "Pick a date",
+    previous: "Previous",
+    next: "Next",
+    noSelection: "Nothing selected.",
+  },
+});

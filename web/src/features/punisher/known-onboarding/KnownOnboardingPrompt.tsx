@@ -1,6 +1,6 @@
 
 import { X } from "lucide-react";
-import { Button, IconButton } from "@/src/shared/ui/kit";
+import { Button, IconButton } from "@forgen-team/ui";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 
@@ -18,9 +18,7 @@ export function KnownOnboardingPrompt({ onStart, onDismiss }: KnownOnboardingPro
       <Button size="sm" variant="secondary" onClick={onStart}>
         {t.promptStart}
       </Button>
-      <IconButton aria-label={t.promptClose} size="sm" onClick={onDismiss}>
-        <X aria-hidden="true" />
-      </IconButton>
+      <IconButton aria-label={t.promptClose} size="sm" onClick={onDismiss} icon={<X aria-hidden="true" />} />
     </div>
   );
 }

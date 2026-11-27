@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Field, Input } from "@/src/shared/ui/kit";
+import { Button, TextField } from "@forgen-team/ui";
 import { useGoalDeadlines, useGoalPlan, useSetGoalDeadline } from "@/src/entities/punisher";
 import type { DeadlinePlan } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
@@ -47,10 +47,18 @@ export function GoalDeadline({ goalId }: { goalId: string }) {
   return (
     <div className="flex flex-col gap-2 py-2">
       <div className="flex flex-wrap items-end gap-2">
-        <Field label={t.deadline}>
-          <Input type="date" value={value} min={todayKst()} onChange={(e) => setValue(e.target.value)}
-            onBlur={() => { if (value !== saved) { set.mutate({ goalId, dueOn: value }); } }} className="w-44" />
-        </Field>
+        <div className="w-44">
+          <TextField
+            label={t.deadline}
+            value={value}
+            onValueChange={({ value: next }) => setValue(next)}
+            inputProps={{
+              type: "date",
+              min: todayKst(),
+              onBlur: () => { if (value !== saved) { set.mutate({ goalId, dueOn: value }); } },
+            }}
+          />
+        </div>
         {saved && (
           <Button variant="ghost" size="sm" loading={set.isPending && set.variables?.dueOn === ""} onClick={() => set.mutate({ goalId, dueOn: "" })}>
             {t.clearDeadline}

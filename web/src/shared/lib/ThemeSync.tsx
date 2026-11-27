@@ -6,6 +6,8 @@ function applyTheme(preference: ThemePreference): void {
   const dark =
     preference === "dark" || (preference === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
   document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  // SEED 부품의 연결하지 않은 값(비활성 색 등)도 같은 모드로(@forgen-team/ui README)
+  document.documentElement.setAttribute("data-seed-color-mode", dark ? "dark-only" : "light-only");
 }
 
 /**

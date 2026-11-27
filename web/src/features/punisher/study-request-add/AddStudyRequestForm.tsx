@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Plus } from "lucide-react";
-import { Button, Input } from "@/src/shared/ui/kit";
+import { Button, TextField } from "@forgen-team/ui";
 import { useCreateStudyRequest } from "@/src/entities/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { useT } from "@/src/shared/i18n";
@@ -27,13 +27,12 @@ export function AddStudyRequestForm() {
   return (
     <form onSubmit={submit} className="flex flex-col gap-1 pb-1 pt-4">
       <div className="flex items-center gap-2">
-        <Input
-          aria-label={t.topicLabel}
-          className="min-w-0"
+        <TextField
           placeholder={t.placeholder}
           value={query}
-          maxLength={MAX_QUERY}
-          onChange={(event) => setQuery(event.target.value)}
+          onValueChange={({ value }) => setQuery(value)}
+          inputProps={{ "aria-label": t.topicLabel, maxLength: MAX_QUERY }}
+          className="min-w-0 flex-1"
         />
         <Button type="submit" size="md" variant="secondary" className="shrink-0" loading={create.isPending} disabled={!trimmed}>
           <Plus className="h-4 w-4" aria-hidden="true" />

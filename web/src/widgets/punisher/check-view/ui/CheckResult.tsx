@@ -1,7 +1,7 @@
 
 import { Link } from "@/src/shared/lib/router";
 import { forwardRef, useState, type ReactNode } from "react";
-import { Button, Section, buttonVariants } from "@/src/shared/ui/kit";
+import { Button, Section } from "@forgen-team/ui";
 import { MasteryDots, describeCheckError, masteryLabel, useCompleteLecture, useRelearn } from "@/src/entities/punisher";
 import { useLaunchReview } from "@/src/features/punisher/check-start";
 import { InlineError } from "@/src/shared/ui/punisher";
@@ -68,9 +68,9 @@ function ConfidentErrors({ rows }: { rows: ResultRow[] }) {
 export function SynthesisDoneAction() {
   const t = useT(messages);
   return (
-    <Link href={TODAY_HREF} className={buttonVariants({ variant: "primary" })}>
-      {t.today}
-    </Link>
+    <Button asChild variant="primary">
+      <Link href={TODAY_HREF}>{t.today}</Link>
+    </Button>
   );
 }
 
@@ -85,13 +85,13 @@ export function LectureCompleteAction({ lectureId, lectureCompleted }: { lecture
   return (
     <>
       {!completed && (
-        <Button onClick={() => complete.mutate()} loading={complete.isPending}>
+        <Button variant="primary" onClick={() => complete.mutate()} loading={complete.isPending}>
           {t.markComplete}
         </Button>
       )}
-      <Link href={TODAY_HREF} className={buttonVariants({ variant: completed ? "primary" : "secondary" })}>
-        {t.today}
-      </Link>
+      <Button asChild variant={completed ? "primary" : "secondary"}>
+        <Link href={TODAY_HREF}>{t.today}</Link>
+      </Button>
       <div aria-live="polite" className="w-full empty:hidden">
         <InlineError error={complete.error} />
       </div>
@@ -106,13 +106,13 @@ export function ReviewMoreAction({ remaining }: { remaining: number }) {
   return (
     <>
       {remaining > 0 && (
-        <Button onClick={review.launch} loading={review.isPending}>
+        <Button variant="primary" onClick={review.launch} loading={review.isPending}>
           {t.doMore}
         </Button>
       )}
-      <Link href={TODAY_HREF} className={buttonVariants({ variant: remaining > 0 ? "secondary" : "primary" })}>
-        {t.today}
-      </Link>
+      <Button asChild variant={remaining > 0 ? "secondary" : "primary"}>
+        <Link href={TODAY_HREF}>{t.today}</Link>
+      </Button>
       <div aria-live="polite" className="w-full empty:hidden">
         {review.error && (
           <p role="alert" className="text-sm text-danger">
@@ -133,7 +133,7 @@ function NextReview({ row }: { row: ResultRow }) {
 }
 
 /** 결과 요약(design §4.4, 끝난 세션의 맨 위): 목표별 레벨 변화 · 놓친 기준 한 줄 · 다시 볼 곳 · 드러난 오개념 · 다음 복습일 · 다시 배우기 + 아래 동작. */
-export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function CheckResult(
+export const CheckResult = forwardRef<HTMLDivElement, CheckResultProps>(function CheckResult(
   { checkId, rows, acknowledgedTurnIds, anchorLink, lectureSummary, synthesis, children },
   ref,
 ) {
@@ -144,7 +144,8 @@ export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function Ch
   const runRelearn = (objectiveId: string) =>
     relearn.mutate(objectiveId, { onSuccess: () => setRelearnedIds((prev) => new Set(prev).add(objectiveId)) });
   return (
-    <Section ref={ref} tabIndex={-1} title={t.result} className="mt-4 scroll-mt-28 border-b border-line pb-4 outline-none">
+    <div ref={ref} tabIndex={-1} className="mt-4 scroll-mt-28 outline-none">
+    <Section title={t.result} className="border-b border-line pb-4">
       {synthesis && synthesis.length > 0 && <SynthesisList rows={synthesis} />}
       <ConfidentErrors rows={rows} />
       <ul className="flex flex-col divide-y divide-line empty:hidden">
@@ -214,5 +215,6 @@ export const CheckResult = forwardRef<HTMLElement, CheckResultProps>(function Ch
         )}
       </div>
     </Section>
+    </div>
   );
 });

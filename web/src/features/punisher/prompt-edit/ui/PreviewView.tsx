@@ -1,6 +1,6 @@
 
 import { useEffect } from "react";
-import { Button, ErrorState, Skeleton } from "@/src/shared/ui/kit";
+import { Button, ErrorState, Skeleton } from "@forgen-team/ui";
 import { usePromptPreview } from "@/src/entities/punisher";
 import { describePunisherError } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
@@ -29,7 +29,7 @@ export function PreviewView({ blockId, draft }: { blockId: string; draft: string
 
   if (preview.isPending || (!preview.data && !preview.error)) { return <Skeleton lines={8} />; }
   if (preview.error || !preview.data) {
-    return <ErrorState compact message={describePunisherError(preview.error)} onRetry={() => mutate({ id: blockId, body: draft })} />;
+    return <ErrorState title={describePunisherError(preview.error)} onRetry={() => mutate({ id: blockId, body: draft })} />;
   }
   const p = preview.data;
   return (

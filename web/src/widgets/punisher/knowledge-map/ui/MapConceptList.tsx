@@ -1,4 +1,4 @@
-import { List, ListRow, Section } from "@/src/shared/ui/kit";
+import { List, ListRow, Section } from "@forgen-team/ui";
 import { MAP_STATE_LABELS, areaLabel, mapNodeState } from "@/src/entities/punisher";
 import type { GraphNode } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
@@ -45,10 +45,8 @@ export function MapConceptList({ nodes, selectedId, showArea, onSelect }: MapCon
                   onClick={() => onSelect(node.id)}
                   selected={node.id === selectedId}
                   leading={<MapStateSwatch state={state} />}
-                  titleLines={1}
                   title={node.name}
                   meta={meta}
-                  className={node.dismissed ? "opacity-60" : undefined}
                 />
               );
             })}

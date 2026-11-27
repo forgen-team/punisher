@@ -16,8 +16,9 @@ Ported from
   apps/claude-gateway (gateway)   → internal/claudecli (runner, stream parser, two-lane limiter)
   packages/go-shared/llm, llmjson → internal/llm, internal/llmjson (subset)
   apps/web (Punisher screens)     → web/src/{widgets,features,entities,shared}/punisher
-  packages/ui                     → web/src/shared/ui/kit
-  packages/config (tokens, preset, theme, eslint) → web/src/styles, web/tailwind.preset.js,
+  packages/ui                     → web/src/shared/ui/kit (since replaced by @forgen-team/ui)
+  packages/config (tokens, preset, theme, eslint) → web/src/styles, web/tailwind.preset.js
+                                    (since replaced by @forgen-team/tokens, @forgen-team/tailwind-preset),
                                     web/src/shared/lib/theme.ts, web/eslint.config.js
 
 Later syncs (see docs/SYNC.md)

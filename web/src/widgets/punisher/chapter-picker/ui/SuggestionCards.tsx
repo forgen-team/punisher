@@ -1,6 +1,7 @@
 
 import { Check } from "lucide-react";
-import { EmptyState, Skeleton, cn, focusRing } from "@/src/shared/ui/kit";
+import { EmptyState, Skeleton } from "@forgen-team/ui";
+import { cn, focusRing } from "@/src/shared/lib/cn";
 import type { ChapterSuggestion } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
 import { MAX_PICKS } from "./constants";
@@ -18,7 +19,7 @@ export function SuggestionCards({ suggestions, selected, onToggle }: SuggestionC
   const kindLabels = useT(SUGGESTION_KIND_LABELS);
   const full = selected.size >= MAX_PICKS;
   if (suggestions.length === 0) {
-    return <EmptyState compact title={t.suggestionsEmptyTitle} description={t.suggestionsEmptyDescription} />;
+    return <EmptyState title={t.suggestionsEmptyTitle} description={t.suggestionsEmptyDescription} />;
   }
   return (
     <ul role="list" className="grid gap-2 fold:grid-cols-2">
@@ -67,7 +68,7 @@ export function SuggestionCardsSkeleton() {
     <ul role="list" aria-hidden="true" className="grid gap-2 fold:grid-cols-2">
       {Array.from({ length: 4 }, (_, index) => (
         <li key={index} className="flex items-start gap-3 rounded-lg border border-line bg-canvas-elevated p-3">
-          <Skeleton variant="block" className="mt-0.5 size-5 shrink-0 rounded-sm" />
+          <Skeleton lines={3} className="mt-0.5 size-5 shrink-0 rounded-sm" />
           <Skeleton lines={3} className="flex-1" />
         </li>
       ))}

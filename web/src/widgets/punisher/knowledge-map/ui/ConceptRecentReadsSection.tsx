@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Newspaper } from "lucide-react";
-import { List, ListRow, Section } from "@/src/shared/ui/kit";
+import { List, ListRow, Section } from "@forgen-team/ui";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
 

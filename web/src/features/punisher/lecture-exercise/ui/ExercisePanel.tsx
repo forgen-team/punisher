@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Button, Textarea } from "@/src/shared/ui/kit";
+import { Button, TextField } from "@forgen-team/ui";
 import { describePunisherError, EXERCISE_MAX_ANSWER_CHARS } from "@/src/shared/api/punisher";
 import { blockContentHash } from "../lib/contentHash";
 import { findAttempt, useExerciseContext } from "../model/ExerciseContext";
@@ -47,17 +47,15 @@ export function ExercisePanel({ anchor, problem, solution, solutionView, fallbac
   };
   return (
     <div className="mt-2 flex flex-col gap-2">
-      <Textarea
-        aria-label={t.answerPlaceholder}
+      <TextField
+        multiline
         placeholder={t.answerPlaceholder}
-        rows={2}
-        maxLength={EXERCISE_MAX_ANSWER_CHARS}
         value={text}
-        onChange={(event) => setText(event.target.value)}
-        className="resize-y"
+        onValueChange={({ value }) => setText(value)}
+        textareaProps={{ "aria-label": t.answerPlaceholder, rows: 2, maxLength: EXERCISE_MAX_ANSWER_CHARS, className: "resize-y" }}
       />
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" loading={busy} disabled={!text.trim() || busy} onClick={() => send(false)}>
+        <Button variant="primary" size="sm" loading={busy} disabled={!text.trim() || busy} onClick={() => send(false)}>
           {t.submit}
         </Button>
         <Button size="sm" variant="ghost" disabled={busy} onClick={() => send(true)}>

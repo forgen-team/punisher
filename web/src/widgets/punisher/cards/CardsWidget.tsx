@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useRouter, useSearchParams } from "@/src/shared/lib/router";
-import { Badge, Button, ChipLink, EmptyState, ErrorState, List, ListRow, ListSkeleton, Menu, buttonVariants, cn, confirmAction, type MenuItem } from "@/src/shared/ui/kit";
+import { Badge, Button, EmptyState, ErrorState, LinkTabs, List, ListRow, ListSkeleton, Menu, useConfirm, type MenuItemDef } from "@forgen-team/ui";
+import { cn } from "@/src/shared/lib/cn";
 import { standaloneColumnClass } from "@/src/shared/config/runtime";
 import { lectureAnchorHref, useCards, useDeleteCard, useGradeCard } from "@/src/entities/punisher";
 import { describePunisherError, type CardRating, type ReviewCard } from "@/src/shared/api/punisher";
@@ -23,10 +24,14 @@ export function CardsWidget() {
   const tab: CardsTab = params.get("tab") === "all" ? "all" : "review";
   return (
     <div className={cn("flex w-full flex-col gap-4", standaloneColumnClass())}>
-      <nav aria-label={t.tabsLabel} className="flex gap-2">
-        <ChipLink href="/cards" linkAs={Link} selected={tab === "review"}>{t.tabReview}</ChipLink>
-        <ChipLink href="/cards?tab=all" linkAs={Link} selected={tab === "all"}>{t.tabAll}</ChipLink>
-      </nav>
+      <LinkTabs
+        label={t.tabsLabel}
+        value={tab}
+        items={[
+          { value: "review", label: t.tabReview, href: "/cards" },
+          { value: "all", label: t.tabAll, href: "/cards?tab=all" },
+        ]}
+      />
       {tab === "review" ? <CardReview /> : <CardList />}
     </div>
   );
@@ -63,14 +68,14 @@ function CardReview() {
 
   if (cards.isLoading) { return <ListSkeleton rows={3} />; }
   if (cards.error && !list) {
-    return <ErrorState message={describePunisherError(cards.error)} onRetry={() => cards.refetch()} retrying={cards.isRefetching} />;
+    return <ErrorState title={describePunisherError(cards.error)} onRetry={() => cards.refetch()} />;
   }
   if (!list || list.length === 0) {
     return (
       <EmptyState
         title={t.emptyTitle}
         description={t.emptyBody}
-        action={<Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>{t.toToday}</Link>}
+        action={<Button asChild variant="secondary" size="sm"><Link href="/">{t.toToday}</Link></Button>}
       />
     );
   }
@@ -79,7 +84,7 @@ function CardReview() {
       <EmptyState
         title={t.doneTitle}
         description={t.doneBody(s.graded)}
-        action={<Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>{t.toToday}</Link>}
+        action={<Button asChild variant="secondary" size="sm"><Link href="/">{t.toToday}</Link></Button>}
       />
     );
   }
@@ -93,7 +98,7 @@ function CardReview() {
       </div>
       {!online && <p role="status" className="rounded-md bg-warning-subtle px-3 py-2 text-sm text-warning">{t.offline}</p>}
       <article className="flex min-h-48 flex-col gap-4 rounded-xl border border-line bg-canvas-elevated p-5 shadow-xs">
-        {card.stale && <Badge tone="warning" className="self-start" title={t.staleHint}>{t.stale}</Badge>}
+        {card.stale && <Badge variant="weak" tone="warning" className="self-start" title={t.staleHint}>{t.stale}</Badge>}
         <p className="whitespace-pre-wrap break-keep text-lg font-medium text-fg">{card.question}</p>
         {s.revealed ? (
           <div className="border-t border-line pt-4">
@@ -120,7 +125,7 @@ function CardReview() {
           ))}
         </div>
       ) : (
-        <Button onClick={show} aria-keyshortcuts={keys ? "Space Enter" : undefined}>{t.reveal}</Button>
+        <Button variant="primary" onClick={show} aria-keyshortcuts={keys ? "Space Enter" : undefined}>{t.reveal}</Button>
       )}
     </section>
   );
@@ -131,14 +136,15 @@ function CardList() {
   const locale = useLocale();
   const cards = useCards(false);
   const remove = useDeleteCard();
+  const confirm = useConfirm();
   const items = useMemo(() => cards.data ?? [], [cards.data]);
   if (cards.isLoading) { return <ListSkeleton rows={5} />; }
   if (cards.error) {
-    return <ErrorState message={describePunisherError(cards.error)} onRetry={() => cards.refetch()} retrying={cards.isRefetching} />;
+    return <ErrorState title={describePunisherError(cards.error)} onRetry={() => cards.refetch()} />;
   }
-  if (items.length === 0) { return <EmptyState compact title={t.allEmpty} />; }
+  if (items.length === 0) { return <EmptyState title={t.allEmpty} />; }
   async function del(card: ReviewCard) {
-    const ok = await confirmAction({ title: t.deleteTitle, description: t.deleteBody, confirmLabel: t.delete, danger: true });
+    const ok = await confirm({ title: t.deleteTitle, description: t.deleteBody, confirmLabel: t.delete, tone: "danger" });
     if (ok) { remove.mutate(card.id); }
   }
   return (
@@ -146,12 +152,11 @@ function CardList() {
       <InlineError error={remove.error} />
       <List>
         {items.map((card) => {
-          const menu: MenuItem[] = [{ key: "delete", label: t.delete, danger: true, onSelect: () => void del(card) }];
+          const menu: MenuItemDef[] = [{ key: "delete", label: t.delete, danger: true, onSelect: () => void del(card) }];
           return (
             <ListRow
               key={card.id}
               title={card.question}
-              titleLines={2}
               meta={cardMeta(card, t, locale)}
               trailing={<Menu items={menu} label={t.cardMenu(card.question.slice(0, 30))} />}
             />

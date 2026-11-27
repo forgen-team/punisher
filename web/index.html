@@ -18,6 +18,7 @@
           p = p ? JSON.parse(p) : "system";
           var d = p === "dark" || (p !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
           document.documentElement.setAttribute("data-theme", d ? "dark" : "light");
+          document.documentElement.setAttribute("data-seed-color-mode", d ? "dark-only" : "light-only");
         } catch (e) {}
       })();
     </script>

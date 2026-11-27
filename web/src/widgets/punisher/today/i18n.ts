@@ -54,6 +54,7 @@ export const messages = defineMessages({
     // 필요 없음(learner-level ③): 추천에서 바로 뺀다. 지도에서 되돌릴 수 있다.
     dismiss: "필요 없음",
     dismissedToast: "추천에서 뺐어요",
+    undoFailed: "되돌리지 못했어요",
     goalTitle: "오늘",
     colProgress: "오늘 진행",
     colHeatmap: "지난 12주",
@@ -157,6 +158,7 @@ export const messages = defineMessages({
     viewOnMap: "View on map",
     dismiss: "Not needed",
     dismissedToast: "Removed from recommendations",
+    undoFailed: "Couldn't undo",
     goalTitle: "Today",
     colProgress: "Today's progress",
     colHeatmap: "Last 12 weeks",

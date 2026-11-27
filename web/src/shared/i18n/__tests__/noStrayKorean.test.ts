@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
  * Punisher 화면 문구는 모듈별 i18n 카탈로그에만 둔다(설계 i18n §4). 카탈로그 밖에 한국어 리터럴이나
  * "ko-KR" 고정 로캘이 새로 생기면 실패한다. 주석·테스트와 아래 허용 파일(강의 본문 해석 표지, 서버로 보내는 프롬프트 글)은 제외.
  * 단독판: @types/node 없이 Vite 의 import.meta.glob(?raw)으로 읽고, 단독판 셸·화면(app·pages·shared/ui·
- * widgets/claude-status 등)까지 본다. UI kit(shared/ui/kit)도 본다(기본 문구는 kit/lib/messages.ts).
+ * widgets/claude-status 등)까지 본다. 부품(@forgen-team/ui) 안 문구는 app/i18n.ts uiMessages 로 넘긴다.
  */
 const SOURCES = import.meta.glob(
   [
@@ -17,7 +17,6 @@ const SOURCES = import.meta.glob(
     "../../../app/**/*.{ts,tsx}",
     "../../../pages/**/*.{ts,tsx}",
     "../../../main.tsx",
-    "!../../../shared/ui/kit/lib/messages.ts",
     "!../../../**/__tests__/**",
     "!../../../**/*.test.{ts,tsx}",
     "!../../../**/i18n.ts",

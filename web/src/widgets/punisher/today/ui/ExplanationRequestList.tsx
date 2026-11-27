@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { BookOpenText } from "lucide-react";
-import { EmptyState, ErrorState, List, ListRow, ListSkeleton } from "@/src/shared/ui/kit";
+import { EmptyState, ErrorState, List, ListRow, ListSkeleton } from "@forgen-team/ui";
 import { translate, useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
 
@@ -41,10 +41,10 @@ export function ExplanationRequestList() {
     return <ListSkeleton rows={2} />;
   }
   if (error) {
-    return <ErrorState compact message={t.explanationsLoadFailed} onRetry={() => refetch()} retrying={isRefetching} />;
+    return <ErrorState title={t.explanationsLoadFailed} onRetry={() => refetch()} />;
   }
   if (!data || data.length === 0) {
-    return <EmptyState compact title={t.noExplanations} description={t.noExplanationsDescription} />;
+    return <EmptyState title={t.noExplanations} description={t.noExplanationsDescription} />;
   }
   return (
     <List>
@@ -53,7 +53,6 @@ export function ExplanationRequestList() {
             key={explanation.id}
             href={`/workspace/rss/explain/${encodeURIComponent(explanation.itemId)}`}
             leading={<BookOpenText className="h-4 w-4 text-fg-muted" aria-hidden />}
-            titleLines={1}
             title={explanation.title}
             meta={[explanation.status === "pending" ? t.generating : explanation.content?.summary ?? "", explanation.feedTitle].filter(Boolean).join(" · ")}
           />

@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  packages: read # @forgen-team/* from GitHub Packages (web/.npmrc)
 
 jobs:
   test:
@@ -28,6 +29,8 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - name: Install web dependencies
         run: cd web && npm ci --no-audit --no-fund
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # go vet · go test · typecheck · lint · vitest. The web build is not needed:
       # internal/webui embeds dist/ with a .gitkeep, so Go compiles without it.
       - name: Test

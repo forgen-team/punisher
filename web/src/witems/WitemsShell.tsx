@@ -12,7 +12,7 @@ import { useTrackInAppNavigation } from "@/src/shared/lib/in-app-history";
 import { actionsSignature, useScreenChrome } from "@/src/shared/lib/screen-chrome";
 import { useSearchShortcut } from "@/src/shared/lib/shortcuts";
 import { useRouter } from "@/src/shared/lib/router";
-import { FeedbackHost, ListSkeleton, notify } from "@/src/shared/ui/kit";
+import { ListSkeleton, useToast } from "@forgen-team/ui";
 import { ClaudeStatusBanner } from "@/src/widgets/claude-status";
 import { messages } from "@/src/app/i18n";
 import { titleKeyFor } from "@/src/app/titles";
@@ -31,6 +31,7 @@ export function WitemsShell() {
   const t = useT(messages);
   const chrome = useScreenChrome();
   const router = useRouter();
+  const toast = useToast();
   useTrackInAppNavigation();
   useSectionBadges();
   // ⌘K: 새 셸은 캡처 단계에서 통합 검색을 연다(명령은 setCommands 로 넣는다) — 그때는 앱이 키를 걸지 않는다.
@@ -74,10 +75,10 @@ export function WitemsShell() {
       next: next ? { title: nextTitle, href: nextHref } : undefined,
       startReview: () => reviewRef.current.mutate(undefined, {
         onSuccess: (detail) => router.push(checkHref(detail.session.id)),
-        onError: (err) => notify(describePunisherError(err) || t.noReviews, { variant: "error" }),
+        onError: (err) => toast.show(describePunisherError(err) || t.noReviews, { tone: "danger" }),
       }),
     }),
-    [t, next, nextTitle, nextHref, router],
+    [t, next, nextTitle, nextHref, router, toast],
   );
   const sentCommands = useRef("");
   useEffect(() => {
@@ -97,7 +98,6 @@ export function WitemsShell() {
           <Outlet />
         </Suspense>
       </div>
-      <FeedbackHost />
     </div>
   );
 }

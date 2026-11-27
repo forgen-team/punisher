@@ -1,7 +1,7 @@
 
 import { Link } from "@/src/shared/lib/router";
 import { CheckCircle2 } from "lucide-react";
-import { Badge, Button, List, ListRow } from "@/src/shared/ui/kit";
+import { Badge, Button, List, ListRow } from "@forgen-team/ui";
 import {
   RESOLUTION_METHOD_LABELS,
   USER_STATE_LABELS,
@@ -67,7 +67,7 @@ export function ResolutionChoices({ response, disabled, onPick }: ResolutionChoi
           )}
         </p>
         {start && (
-          <Button size="sm" disabled={disabled} onClick={() => onPick(start)}>
+          <Button variant="primary" size="sm" disabled={disabled} onClick={() => onPick(start)}>
             {t.startFromStart}
           </Button>
         )}
@@ -88,12 +88,10 @@ export function ResolutionChoices({ response, disabled, onPick }: ResolutionChoi
               <ListRow
                 key={step.conceptId}
                 href={mapHref(step.conceptId)}
-                linkAs={Link}
                 selected={step.isNext}
-                titleLines={1}
                 title={`${index + 1}. ${step.name}`}
                 meta={`${areaLabel(step.area)} · ${USER_STATE_LABELS[step.state] ?? step.state}`}
-                trailing={step.isNext ? <Badge tone="accent">{t.next}</Badge> : undefined}
+                trailing={step.isNext ? <Badge tone="brand" variant="weak">{t.next}</Badge> : undefined}
               />
             ))}
           </List>

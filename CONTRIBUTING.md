@@ -12,7 +12,7 @@ in either language.
   needed to generate lectures, not to run the tests
 
 ```sh
-cd web && npm ci && cd ..
+cd web && NODE_AUTH_TOKEN=$(gh auth token) npm ci && cd ..   # @forgen-team/* (GitHub Packages, web/.npmrc)
 make test        # go vet · go test · typecheck · lint · vitest
 make build       # dist/punisher (macOS universal)
 make linux       # dist/punisher-linux-{amd64,arm64}

@@ -1,6 +1,6 @@
 
 import { useState, type ReactNode } from "react";
-import { Badge, Button, EmptyState, ErrorState, List, ListRow, ListSkeleton, Menu, Spinner } from "@/src/shared/ui/kit";
+import { Badge, Button, EmptyState, ErrorState, List, ListRow, ListSkeleton, Menu, ProgressCircle } from "@forgen-team/ui";
 import {
   STUDY_REQUEST_SOURCE_LABELS,
   STUDY_REQUEST_STATUS_LABELS,
@@ -88,7 +88,7 @@ export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
     );
   }
   if (error) {
-    return <ErrorState compact message={describePunisherError(error)} onRetry={() => refetch()} retrying={isRefetching} />;
+    return <ErrorState title={describePunisherError(error)} onRetry={() => refetch()} />;
   }
   const { active, done } = splitStudyRequests(data ?? []);
 
@@ -106,7 +106,7 @@ export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
     const phase = phaseOf(req);
     let action: ReactNode = null;
     if (phase === "searching" || phase === "queued") {
-      action = <Spinner size="sm" label={t.requestFinding} />;
+      action = <ProgressCircle size="24" tone="inherit" aria-label={t.requestFinding} />;
     } else if (phase === "failed") {
       action = (
         <Button size="sm" variant="secondary" loading={retry.isPending && retry.variables === req.id} onClick={() => retry.mutate(req.id)}>
@@ -130,7 +130,6 @@ export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
     return (
       <ListRow
         key={req.id}
-        titleLines={1}
         title={req.query}
         meta={metaOf(req, phase, names)}
         trailing={
@@ -146,7 +145,7 @@ export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
   return (
     <div className="space-y-2">
       {active.length === 0 ? (
-        <EmptyState compact title={t.requestEmptyTitle} description={t.requestEmptyDescription} />
+        <EmptyState title={t.requestEmptyTitle} description={t.requestEmptyDescription} />
       ) : (
         <List>{active.map((req) => renderActive(req))}</List>
       )}
@@ -175,12 +174,11 @@ export function StudyRequestList({ starting, onStart }: StudyRequestListProps) {
             {done.map((req) => (
               <ListRow
                 key={req.id}
-                titleLines={1}
                 title={req.query}
                 meta={metaOf(req, "ready", names)}
                 trailing={
                   <span className="flex items-center gap-1">
-                    <Badge tone="success">{t.requestLearned}</Badge>
+                    <Badge variant="weak" tone="positive">{t.requestLearned}</Badge>
                     {menu(req)}
                   </span>
                 }

@@ -1,5 +1,5 @@
 import { AlertTriangle, RefreshCw } from "lucide-react";
-import { Button } from "@/src/shared/ui/kit";
+import { Button } from "@forgen-team/ui";
 import { selectedProviderStatus, useAppStatus } from "@/src/shared/api/status";
 import { isWitems } from "@/src/shared/config/runtime";
 import { useT } from "@/src/shared/i18n";

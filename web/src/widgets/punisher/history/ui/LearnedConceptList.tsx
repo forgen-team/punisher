@@ -1,7 +1,6 @@
 
-import { Link } from "@/src/shared/lib/router";
 import { useMemo } from "react";
-import { EmptyState, ErrorState, List, ListRow, ListSkeleton } from "@/src/shared/ui/kit";
+import { EmptyState, ErrorState, List, ListRow, ListSkeleton } from "@forgen-team/ui";
 import { ConceptStateBadge, areaLabel, useConcepts } from "@/src/entities/punisher";
 import { describePunisherError } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
@@ -20,7 +19,7 @@ export function LearnedConceptList() {
   );
   if (concepts.isLoading) { return <ListSkeleton rows={5} />; }
   if (concepts.error) {
-    return <ErrorState message={describePunisherError(concepts.error)} onRetry={() => concepts.refetch()} />;
+    return <ErrorState title={describePunisherError(concepts.error)} onRetry={() => concepts.refetch()} />;
   }
   if (learned.length === 0) {
     return <EmptyState title={t.noLearned} description={t.noLearnedDescription} />;
@@ -32,8 +31,6 @@ export function LearnedConceptList() {
         <ListRow
           key={c.id}
           href={`/map?concept=${encodeURIComponent(c.id)}`}
-          linkAs={Link}
-          titleLines={1}
           title={c.name}
           meta={t.areaDepth(areaLabel(c.area), c.depth)}
           trailing={<ConceptStateBadge state={c.userState} />}

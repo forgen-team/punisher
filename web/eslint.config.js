@@ -3,6 +3,7 @@ import tseslint from "typescript-eslint";
 import reactPlugin from "eslint-plugin-react";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 import unicornPlugin from "eslint-plugin-unicorn";
+import forgen from "@forgen-team/eslint-plugin";
 
 // Ported from @witems/config/eslint/flat.js (same rules, browser-only app).
 export default [
@@ -37,5 +38,11 @@ export default [
       "react/function-component-definition": ["error", { namedComponents: "function-declaration" }],
       "unicorn/text-encoding-identifier-case": "error",
     },
+  },
+  // forgen 디자인 규칙(@forgen-team/eslint-plugin) — 이관 중이라 지금은 warn(기존 위반으로 CI 를 막지 않는다). 다 고치면 error 로.
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    plugins: { "@forgen-team": forgen },
+    rules: Object.fromEntries(Object.keys(forgen.rules).map((id) => [`@forgen-team/${id}`, "warn"])),
   },
 ];

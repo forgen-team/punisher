@@ -1,5 +1,5 @@
 
-import { Badge, ErrorState, List, ListRow, ListSkeleton } from "@/src/shared/ui/kit";
+import { Badge, ErrorState, List, ListRow, ListSkeleton } from "@forgen-team/ui";
 import { USER_STATE_LABELS, areaLabel, useGoalPath } from "@/src/entities/punisher";
 import { describePunisherError } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
@@ -13,11 +13,11 @@ interface GoalPathViewProps {
 
 /** 목표별 선행 사슬. 다음 학습 단계는 선택 막대 + 배지 1개, 잠김은 meta 텍스트로. */
 export function GoalPathView({ goalId, onSelectStep }: GoalPathViewProps) {
-  const { data, isLoading, error, refetch, isRefetching } = useGoalPath(goalId);
+  const { data, isLoading, error, refetch } = useGoalPath(goalId);
   const t = useT(messages);
   if (isLoading) { return <ListSkeleton rows={3} />; }
   if (error) {
-    return <ErrorState compact message={describePunisherError(error)} onRetry={() => refetch()} retrying={isRefetching} />;
+    return <ErrorState title={describePunisherError(error)} onRetry={() => { void refetch(); }} />;
   }
   if (!data) { return null; }
 
@@ -38,12 +38,11 @@ export function GoalPathView({ goalId, onSelectStep }: GoalPathViewProps) {
                   key={s.conceptId}
                   onClick={() => onSelectStep(s.conceptId)}
                   selected={s.isNext}
-                  titleLines={1}
                   title={`${index + 1}. ${s.name}`}
                   meta={[areaLabel(s.area), USER_STATE_LABELS[s.state] ?? s.state, s.locked ? t.locked : "", s.dismissed ? t.dismissed : ""]
                     .filter(Boolean)
                     .join(" · ")}
-                  trailing={s.isNext ? <Badge tone="accent">{t.nextUp}</Badge> : undefined}
+                  trailing={s.isNext ? <Badge tone="brand" variant="weak">{t.nextUp}</Badge> : undefined}
                 />
               ))}
             </List>

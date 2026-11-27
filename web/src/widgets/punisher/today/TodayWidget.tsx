@@ -2,8 +2,9 @@
 import { Link, useRouter, useSearchParams } from "@/src/shared/lib/router";
 import { canGoBack } from "@/src/shared/lib/in-app-history";
 import { useState } from "react";
-import { Target } from "lucide-react";
-import { EmptyState, ErrorState, HeightReserve, List, ListSkeleton, Section, buttonVariants, cn } from "@/src/shared/ui/kit";
+import { Button, EmptyState, ErrorState, List, ListSkeleton, Section } from "@forgen-team/ui";
+import { cn } from "@/src/shared/lib/cn";
+import { HeightReserve } from "@/src/shared/lib/HeightReserve";
 import { useInquiries, useLearningSettings, useReviewSummary, useToday } from "@/src/entities/punisher";
 import { InstantQueryBox, ResolutionChoices, useLaunchInstant } from "@/src/features/punisher/instant-start";
 import { DismissedNotice, ResumeList, useResumeDismiss } from "@/src/features/punisher/resume-dismiss";
@@ -100,11 +101,13 @@ export function TodayWidget() {
 
   const recommendSection = today.isLoading ? (
     // 실제 화면(섹션 제목 + 카드 안 추천 5줄)과 같은 높이로 자리를 잡아 아래 '학습 요청'이 밀리지 않게 한다.
-    <Section variant="card" title={t.recommendations} aria-busy="true">
-      <ListSkeleton rows={5} />
-    </Section>
+    <div aria-busy="true">
+      <Section variant="card" title={t.recommendations}>
+        <ListSkeleton rows={5} />
+      </Section>
+    </div>
   ) : today.error ? (
-    <ErrorState message={describePunisherError(today.error)} onRetry={() => today.refetch()} retrying={today.isRefetching} />
+    <ErrorState title={describePunisherError(today.error)} onRetry={() => today.refetch()} />
   ) : (
     <Section variant="card" title={t.recommendations}>
       {rows.length > 0 ? (
@@ -113,18 +116,16 @@ export function TodayWidget() {
         </List>
       ) : today.data?.exhausted ? (
         <EmptyState
-          compact
-          icon={<Target />}
           title={t.exhaustedTitle}
           description={t.exhaustedDescription}
           action={
-            <Link href={NEW_CHAPTER_PATH} className={buttonVariants({ variant: "secondary", size: "sm" })}>
-              {t.pickNextChapter}
-            </Link>
+            <Button asChild variant="secondary" size="sm">
+              <Link href={NEW_CHAPTER_PATH}>{t.pickNextChapter}</Link>
+            </Button>
           }
         />
       ) : (
-        <EmptyState compact title={t.noRecommendations} />
+        <EmptyState title={t.noRecommendations} />
       )}
     </Section>
   );

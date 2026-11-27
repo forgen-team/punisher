@@ -1,7 +1,7 @@
 
 import { Link } from "@/src/shared/lib/router";
 import { Compass } from "lucide-react";
-import { Section, buttonVariants } from "@/src/shared/ui/kit";
+import { Button, Section } from "@forgen-team/ui";
 import type { NextChapterPrompt } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
@@ -27,9 +27,9 @@ export function NextChapterCard({ prompt }: { prompt: NextChapterPrompt }) {
               : t.chapterAlmostDone}{" "}
             {t.chapterInvite}
           </p>
-          <Link href={NEW_CHAPTER_PATH} className={`${buttonVariants({ variant: "primary", size: "sm" })} mt-3`}>
-            {t.pickNextChapter}
-          </Link>
+          <Button asChild variant="primary" size="sm" className="mt-3">
+            <Link href={NEW_CHAPTER_PATH}>{t.pickNextChapter}</Link>
+          </Button>
         </div>
       </div>
     </Section>

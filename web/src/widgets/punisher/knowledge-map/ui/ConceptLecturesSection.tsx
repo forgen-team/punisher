@@ -1,6 +1,5 @@
 
-import { Link } from "@/src/shared/lib/router";
-import { ErrorState, List, ListRow, ListSkeleton, Section } from "@/src/shared/ui/kit";
+import { ErrorState, List, ListRow, ListSkeleton, Section } from "@forgen-team/ui";
 import { USER_STATE_LABELS, readThroughLabel, isReadThrough, useConceptLectures } from "@/src/entities/punisher";
 import { lectureHref } from "@/src/features/punisher/instant-start";
 import { describePunisherError, type ConceptLecture } from "@/src/shared/api/punisher";
@@ -33,7 +32,7 @@ function LectureRows({ conceptId }: { conceptId: string }) {
   const t = translate(messages, locale);
   if (lectures.isLoading) { return <ListSkeleton rows={1} />; }
   if (lectures.error) {
-    return <ErrorState compact message={describePunisherError(lectures.error)} onRetry={() => lectures.refetch()} />;
+    return <ErrorState title={describePunisherError(lectures.error)} onRetry={() => void lectures.refetch()} />;
   }
   const items = lectures.data ?? [];
   if (items.length === 0) {
@@ -42,7 +41,7 @@ function LectureRows({ conceptId }: { conceptId: string }) {
   return (
     <List>
       {items.map((l) => (
-        <ListRow key={l.id} href={lectureHref(l.id)} linkAs={Link} titleLines={1} title={l.title} meta={metaOf(l, locale)} />
+        <ListRow key={l.id} href={lectureHref(l.id)} title={l.title} meta={metaOf(l, locale)} />
       ))}
     </List>
   );

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
-import { Link, useRouter, useSearchParams } from "@/src/shared/lib/router";
-import { EmptyState, ErrorState, Input, List, ListRow, ListSkeleton, cn } from "@/src/shared/ui/kit";
+import { useRouter, useSearchParams } from "@/src/shared/lib/router";
+import { EmptyState, ErrorState, List, ListRow, ListSkeleton, TextField } from "@forgen-team/ui";
+import { cn } from "@/src/shared/lib/cn";
 import { standaloneColumnClass } from "@/src/shared/config/runtime";
 import { useSearch } from "@/src/entities/punisher";
 import { describePunisherError } from "@/src/shared/api/punisher";
@@ -23,7 +24,8 @@ export function SearchWidget() {
   const [text, setText] = useState(q);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const result = useSearch(q);
-  const inputRef = useRef<HTMLInputElement>(null);
+  // ui TextField 의 inputRef 는 input·textarea 겸용 타입이다.
+  const inputRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
   useEffect(() => {
@@ -44,9 +46,9 @@ export function SearchWidget() {
   if (q && result.isLoading) {
     body = <ListSkeleton rows={4} />;
   } else if (q && result.error) {
-    body = <ErrorState message={describePunisherError(result.error)} onRetry={() => result.refetch()} retrying={result.isRefetching} />;
+    body = <ErrorState title={describePunisherError(result.error)} onRetry={() => void result.refetch()} />;
   } else if (q && result.data && result.data.length === 0) {
-    body = <EmptyState compact title={t.empty(q)} />;
+    body = <EmptyState title={t.empty(q)} />;
   } else if (q && result.data) {
     const groups = groupHits(result.data);
     const counts = hitCounts(groups);
@@ -70,10 +72,8 @@ export function SearchWidget() {
                     <ListRow
                       key={`${hit.refId}:${hit.anchor}`}
                       href={hitHref(hit)}
-                      linkAs={Link}
                       title={hit.sectionTitle || t.untitledSection}
-                      titleLines={1}
-                      metaLines="all"
+                      metaLines={2}
                       meta={snippet(hit.snippet)}
                     />
                   ))}
@@ -83,10 +83,8 @@ export function SearchWidget() {
               <List key={`${g.hit.kind}:${g.hit.refId}`}>
                 <ListRow
                   href={hitHref(g.hit)}
-                  linkAs={Link}
                   title={g.hit.title || t.kind(g.hit.kind)}
-                  titleLines={1}
-                  metaLines="all"
+                  metaLines={2}
                   meta={
                     <>
                       <span className="mr-1 font-medium text-fg-secondary">{t.kind(g.hit.kind)}</span>
@@ -104,10 +102,16 @@ export function SearchWidget() {
 
   return (
     <div className={cn("flex w-full flex-col gap-3", standaloneColumnClass())}>
-      <div role="search" className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden="true" />
-        <Input ref={inputRef} type="search" aria-label={t.label} placeholder={t.placeholder} value={text} maxLength={100}
-          onChange={(e) => change(e.target.value)} className="pl-9" />
+      <div role="search">
+        <TextField
+          inputRef={inputRef}
+          prefixIcon={<Search aria-hidden="true" />}
+          placeholder={t.placeholder}
+          value={text}
+          onValueChange={({ value }) => change(value)}
+          hideCharacterCount
+          inputProps={{ type: "search", "aria-label": t.label, maxLength: 100 }}
+        />
       </div>
       {!q && <p className="text-xs text-fg-muted">{t.hint}</p>}
       {body}

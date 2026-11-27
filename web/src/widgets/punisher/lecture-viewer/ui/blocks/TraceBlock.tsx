@@ -1,6 +1,7 @@
 
 import { useId, useMemo, useState } from "react";
-import { Button, cn } from "@/src/shared/ui/kit";
+import { Button } from "@forgen-team/ui";
+import { cn } from "@/src/shared/lib/cn";
 import { traceProseColumns, type TraceData } from "../../lib/blockData";
 import { initialReveal, revealNext } from "../../lib/blockGroups";
 import { useT } from "@/src/shared/i18n";

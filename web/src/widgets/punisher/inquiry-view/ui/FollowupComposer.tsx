@@ -1,6 +1,6 @@
 import { forwardRef, useImperativeHandle, useRef, useState, type KeyboardEvent } from "react";
 import { X } from "lucide-react";
-import { Button, IconButton, Section, Textarea } from "@/src/shared/ui/kit";
+import { Button, IconButton, Section, TextField } from "@forgen-team/ui";
 import { useCreateFollowup } from "@/src/entities/punisher";
 import { INQUIRY_MAX_FOLLOWUPS, INQUIRY_MAX_FOLLOWUP_CHARS } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
@@ -23,7 +23,8 @@ export const FollowupComposer = forwardRef<HTMLTextAreaElement, FollowupComposer
 ) {
   const t = useT(messages);
   const [text, setText] = useState("");
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  // ui TextField 의 inputRef 는 input·textarea 겸용 타입이다.
+  const inputRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
   useImperativeHandle(ref, () => inputRef.current as HTMLTextAreaElement);
   const create = useCreateFollowup(inquiryId);
   const left = INQUIRY_MAX_FOLLOWUPS - used;
@@ -65,27 +66,24 @@ export const FollowupComposer = forwardRef<HTMLTextAreaElement, FollowupComposer
         {quote && (
           <div className="flex items-start gap-2 rounded-md bg-canvas-subtle py-1 pl-3 pr-1">
             <blockquote className="line-clamp-3 min-w-0 flex-1 break-keep py-1 text-sm text-fg-secondary">{quote}</blockquote>
-            <IconButton size="sm" aria-label={t.removeQuote} onClick={onClearQuote}>
-              <X aria-hidden="true" />
-            </IconButton>
+            <IconButton size="sm" aria-label={t.removeQuote} onClick={onClearQuote} icon={<X aria-hidden="true" />} />
           </div>
         )}
-        <Textarea
-          ref={inputRef}
-          aria-label={t.composerLabel}
+        <TextField
+          multiline
+          inputRef={inputRef}
           value={text}
-          maxLength={INQUIRY_MAX_FOLLOWUP_CHARS}
-          rows={3}
+          onValueChange={({ value }) => setText(value)}
           placeholder={quote ? t.quotePlaceholder : t.placeholder}
-          onChange={(event) => setText(event.target.value)}
-          onKeyDown={handleKeyDown}
+          hideCharacterCount
+          textareaProps={{ "aria-label": t.composerLabel, maxLength: INQUIRY_MAX_FOLLOWUP_CHARS, rows: 3, onKeyDown: handleKeyDown }}
         />
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs tabular-nums text-fg-muted">
             {text.length}/{INQUIRY_MAX_FOLLOWUP_CHARS}
             <span className="[@media(pointer:coarse)]:hidden">{t.sendHint}</span>
           </span>
-          <Button onClick={send} disabled={disabled} loading={create.isPending}>
+          <Button variant="primary" onClick={send} disabled={disabled} loading={create.isPending}>
             {t.ask}
           </Button>
         </div>

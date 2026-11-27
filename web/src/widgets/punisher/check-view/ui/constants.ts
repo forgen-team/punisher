@@ -1,4 +1,7 @@
-import type { BadgeTone } from "@/src/shared/ui/kit";
+/** 앱 배지 색 이름 — ui Badge tone 으로는 BADGE_TONE 으로 바꿔 넘긴다. */
+export type BadgeTone = "neutral" | "accent" | "success" | "warning" | "danger";
+
+export const BADGE_TONE = { neutral: "neutral", accent: "brand", success: "positive", warning: "warning", danger: "critical" } as const;
 import type { CheckOutcome, CheckVerdict } from "@/src/shared/api/punisher";
 
 export const VERDICT_TONE: Record<CheckVerdict, BadgeTone> = {

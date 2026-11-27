@@ -4,9 +4,9 @@
 import { forwardRef, useCallback, useEffect, useMemo, useRef, type AnchorHTMLAttributes, type MouseEvent } from "react";
 import { Link as RouterLink, useLocation, useNavigate, useNavigationType } from "react-router-dom";
 import { isWitems } from "@/src/shared/config/runtime";
+import { useConfirm } from "@forgen-team/ui";
 import { useT } from "@/src/shared/i18n";
-import { confirmAction } from "@/src/shared/ui/kit";
-import { kitMessages } from "@/src/shared/ui/kit/lib/messages";
+import { leaveMessages } from "./i18n";
 import { isShellNavigation } from "./in-app-history";
 import { hasUnsavedEdits } from "./leave-guard";
 
@@ -19,13 +19,14 @@ export interface LinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>,
   scroll?: boolean;
 }
 
-/** 저장하지 않은 편집이 있으면 앱 안 확인 창으로 묻는다(shared/lib/leave-guard). 떠나도 되면 true. */
+/** 저장하지 않은 편집이 있으면 앱 안 확인 창(@forgen-team/ui useConfirm)으로 묻는다(shared/lib/leave-guard). 떠나도 되면 true. */
 export function useConfirmLeave(): () => Promise<boolean> {
-  const t = useT(kitMessages);
+  const t = useT(leaveMessages);
+  const confirm = useConfirm();
   return useCallback(async () => {
     if (!hasUnsavedEdits()) { return true; }
-    return confirmAction({ title: t.unsavedTitle, description: t.unsavedBody, confirmLabel: t.unsavedLeave });
-  }, [t]);
+    return confirm({ title: t.unsavedTitle, description: t.unsavedBody, confirmLabel: t.unsavedLeave });
+  }, [t, confirm]);
 }
 
 function isPlainClick(event: MouseEvent<HTMLAnchorElement>): boolean {

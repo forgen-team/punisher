@@ -1,6 +1,6 @@
 
 import { CheckCircle2 } from "lucide-react";
-import { Button, Section } from "@/src/shared/ui/kit";
+import { Button, Section } from "@forgen-team/ui";
 import { describeCheckError } from "@/src/entities/punisher";
 import { useLaunchReview } from "@/src/features/punisher/check-start";
 import { useT } from "@/src/shared/i18n";
@@ -37,7 +37,7 @@ export function ReviewCard({ state, showTotal = true }: { state: VisibleState; s
           )}
           {state.backlog !== null && <p className="text-xs text-warning">{t.backlog(state.backlog)}</p>}
         </div>
-        <Button size="sm" onClick={review.launch} loading={review.isPending}>
+        <Button variant="primary" size="sm" onClick={review.launch} loading={review.isPending}>
           {state.action === "more" ? t.doMore : t.startReview}
         </Button>
       </div>

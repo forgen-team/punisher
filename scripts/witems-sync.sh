@@ -9,9 +9,9 @@
 #   server.patch     apps/punisher-server (store·migrations 제외) → internal/, cmd/ 등
 #   store.diff       apps/punisher-server/internal/store, migrations — PostgreSQL 이라 손으로 SQLite 포팅
 #   web.patch        apps/web/src/**/punisher/** → web/src/**
-#   kit.patch        packages/ui/src, packages/config(styles·tailwind) → web/src/shared/ui/kit, web/src/styles, web/tailwind.preset.js
 #   web-other.txt    punisher 밖 apps/web 변경 중 학습 관련(app/ 라우트 등) — 단독판 pages/ 에 손으로 반영
 # 적용: git apply --recount --reject <patch> (web.patch 는 --directory=web) 후 *.rej 를 손으로 정리.
+# UI kit·토큰(packages/ui, packages/config)은 옮기지 않는다 — 단독판은 @forgen-team/* 패키지를 쓴다.
 set -eu
 
 if [ $# -lt 3 ]; then
@@ -30,8 +30,8 @@ go_rewrite() {
       -e 's#\*store\.PostgresStore#store.Store#g'
 }
 web_rewrite() {
-  sed -e 's#from "@witems/ui"#from "@/src/shared/ui/kit"#g' \
-      -e "s#from '@witems/config/theme'#from '@/src/shared/lib/theme'#g" \
+  # @witems/ui 는 바꾸지 않는다(단독판은 @forgen-team/ui — API 가 달라 손으로 옮긴다).
+  sed -e "s#from '@witems/config/theme'#from '@/src/shared/lib/theme'#g" \
       -e 's#import Link from "next/link";#import { Link } from "@/src/shared/lib/router";#g' \
       -e 's#from "next/navigation"#from "@/src/shared/lib/router"#g' \
       -e 's#/workspace/punisher/#/#g' -e 's#"/workspace/punisher"#"/"#g' \
@@ -55,11 +55,6 @@ g diff "$from" "$to" --relative=apps/punisher-server -- apps/punisher-server \
   | go_rewrite > "$out/server.patch"
 g diff "$from" "$to" -- apps/punisher-server/internal/store apps/punisher-server/migrations > "$out/store.diff"
 g diff "$from" "$to" --relative=apps/web -- 'apps/web/src/**/punisher/**' | web_rewrite > "$out/web.patch"
-g diff "$from" "$to" -- packages/ui/src packages/config/styles/design-tokens.css packages/config/styles/animations.css packages/config/tailwind/preset.js \
-  | sed -e 's#\([ab]\)/packages/ui/src/#\1/web/src/shared/ui/kit/#g' \
-        -e 's#\([ab]\)/packages/config/styles/#\1/web/src/styles/#g' \
-        -e 's#\([ab]\)/packages/config/tailwind/preset.js#\1/web/tailwind.preset.js#g' \
-  | web_rewrite > "$out/kit.patch"
 # web.patch 밖의 학습 관련 변경: Next 라우트(app/**, workspace/punisher/** 포함)와 공용 코드.
 g diff --name-status "$from" "$to" -- apps/web | grep -iE 'learn|punisher|prompt|chapter' | grep -vE 'apps/web/src/(.*/)?punisher/' > "$out/web-other.txt" || true
 

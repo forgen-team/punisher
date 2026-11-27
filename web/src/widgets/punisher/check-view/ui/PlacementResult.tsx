@@ -1,7 +1,7 @@
 
 import { Link } from "@/src/shared/lib/router";
 import { forwardRef, useState } from "react";
-import { Button, Section, buttonVariants } from "@/src/shared/ui/kit";
+import { Button, Section } from "@forgen-team/ui";
 import { useBatchMarkKnown } from "@/src/entities/punisher";
 import type { PlacementResult as Placement } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";
@@ -12,7 +12,7 @@ export function chapterMapHref(chapterId: string): string {
 }
 
 /** 배치 진단 결과 — 맞힌 개념을 이미 앎 후보로 보이고, 고른 것만 확정하면 '이미 앎'으로 표시한다. */
-export const PlacementResult = forwardRef<HTMLElement, { placement: Placement }>(function PlacementResult({ placement }, ref) {
+export const PlacementResult = forwardRef<HTMLDivElement, { placement: Placement }>(function PlacementResult({ placement }, ref) {
   const t = useT(messages);
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(placement.candidates.map((c) => c.conceptId)));
   const { run, running, progress } = useBatchMarkKnown({ queueVerify: false });
@@ -33,7 +33,8 @@ export const PlacementResult = forwardRef<HTMLElement, { placement: Placement }>
   }
 
   return (
-    <Section ref={ref} tabIndex={-1} title={t.placementCandidates} className="mt-4 scroll-mt-28 border-b border-line pb-4 outline-none">
+    <div ref={ref} tabIndex={-1} className="mt-4 scroll-mt-28 outline-none">
+    <Section title={t.placementCandidates} className="border-b border-line pb-4">
       {placement.candidates.length === 0 ? (
         <p className="py-3 text-sm text-fg-secondary">{t.placementNone}</p>
       ) : (
@@ -56,14 +57,14 @@ export const PlacementResult = forwardRef<HTMLElement, { placement: Placement }>
       )}
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {placement.candidates.length > 0 && (
-          <Button onClick={confirm} loading={running} disabled={done || picked.size === 0}>
+          <Button variant="primary" onClick={confirm} loading={running} disabled={done || picked.size === 0}>
             {done ? t.placementConfirmed : t.placementConfirm}
           </Button>
         )}
         {placement.chapterId && (
-          <Link href={chapterMapHref(placement.chapterId)} className={buttonVariants({ variant: "secondary" })}>
-            {t.placementMap}
-          </Link>
+          <Button asChild variant="secondary">
+            <Link href={chapterMapHref(placement.chapterId)}>{t.placementMap}</Link>
+          </Button>
         )}
       </div>
       {failed > 0 && (
@@ -72,5 +73,6 @@ export const PlacementResult = forwardRef<HTMLElement, { placement: Placement }>
         </p>
       )}
     </Section>
+    </div>
   );
 });

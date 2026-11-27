@@ -2,7 +2,7 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type * as React from "react";
 
-/** Merge class names with Tailwind-aware deduplication. */
+/** Merge class names with Tailwind-aware deduplication (앱 화면 클래스용 — @forgen-team/ui 의 cn 은 clsx 만). */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

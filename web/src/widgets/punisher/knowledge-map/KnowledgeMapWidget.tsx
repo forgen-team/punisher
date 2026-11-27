@@ -1,7 +1,8 @@
 
 import { usePathname, useRouter, useSearchParams } from "@/src/shared/lib/router";
 import { Suspense, lazy, useCallback, useMemo, useState } from "react";
-import { BottomSheet, EmptyState, ErrorState, ListSkeleton, Skeleton, useIsSplitLayout } from "@/src/shared/ui/kit";
+import { EmptyState, ErrorState, ListSkeleton, Sheet, Skeleton } from "@forgen-team/ui";
+import { useIsSplitLayout } from "@/src/shared/lib/useIsSplitLayout";
 import { useFrontier, useGoalPath, useGoals, useGraph, useMasteryBatch, useToday } from "@/src/entities/punisher";
 import { GoalsManager } from "@/src/features/punisher/goal-manage";
 import { KnownAreasSheet, KnownOnboardingPrompt, useKnownOnboardingPrompt } from "@/src/features/punisher/known-onboarding";
@@ -23,7 +24,7 @@ const LazyMapCanvas = lazy(() => import("./ui/MapCanvas"));
 
 function MapCanvas(props: React.ComponentProps<typeof LazyMapCanvas>) {
   return (
-    <Suspense fallback={<Skeleton variant="block" className="h-full rounded-none" />}>
+    <Suspense fallback={<Skeleton lines={3} className="h-full rounded-none" />}>
       <LazyMapCanvas {...props} />
     </Suspense>
   );
@@ -132,13 +133,12 @@ export function KnowledgeMapWidget() {
 
   function renderCanvas() {
     if (graph.isLoading || (goalId && goalPath.isLoading)) {
-      return view === "list" ? <ListSkeleton rows={6} /> : <Skeleton variant="block" className="h-full rounded-none" />;
+      return view === "list" ? <ListSkeleton rows={6} /> : <Skeleton lines={3} className="h-full rounded-none" />;
     }
     if (graph.error || goalPath.error) {
       return (
         <ErrorState
-          compact
-          message={describePunisherError(graph.error ?? goalPath.error)}
+          title={describePunisherError(graph.error ?? goalPath.error)}
           onRetry={() => {
             void graph.refetch();
             if (goalId) { void goalPath.refetch(); }
@@ -147,7 +147,7 @@ export function KnowledgeMapWidget() {
       );
     }
     if (nodes.length === 0) {
-      return <EmptyState compact title={t.emptyTitle} description={t.emptyDescription} />;
+      return <EmptyState title={t.emptyTitle} description={t.emptyDescription} />;
     }
     if (view === "list") {
       return <MapConceptList nodes={nodes} selectedId={selectedId} showArea={!areaFilter && !chapterParam} onSelect={onSelect} />;
@@ -228,9 +228,9 @@ export function KnowledgeMapWidget() {
         onSelect={onSelect}
       />
       <MapLegendSheet open={legendOpen} onClose={() => setLegendOpen(false)} />
-      <BottomSheet open={goalsOpen} onClose={() => setParams({ panel: null }, true)} title={t.manageGoals} desktop="side">
+      <Sheet open={goalsOpen} onOpenChange={(o) => { if (!o) { setParams({ panel: null }, true); } }} title={t.manageGoals} desktop="side">
         <GoalsManager onShowPath={showGoalPath} />
-      </BottomSheet>
+      </Sheet>
       <KnownAreasSheet open={knownOpen} onClose={() => setKnownOpen(false)} onSaved={onboarding.dismiss} />
     </div>
   );

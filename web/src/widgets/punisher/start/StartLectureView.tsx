@@ -1,6 +1,6 @@
 import { Link } from "@/src/shared/lib/router";
 import { useEffect, useRef, useState } from "react";
-import { EmptyState, Skeleton, buttonVariants } from "@/src/shared/ui/kit";
+import { Button, EmptyState, Skeleton } from "@forgen-team/ui";
 import { ResolutionChoices, useLaunchInstant } from "@/src/features/punisher/instant-start";
 import type { InstantResponse } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
@@ -24,7 +24,7 @@ export function StartLectureView({ conceptId, query }: { conceptId: string; quer
   }, [conceptId, launch, query]);
 
   if (!conceptId) {
-    return <EmptyState compact title={t.emptyTitle} action={<Link href="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>{t.backToLearn}</Link>} />;
+    return <EmptyState title={t.emptyTitle} action={<Button asChild variant="secondary" size="sm"><Link href="/">{t.backToLearn}</Link></Button>} />;
   }
   return (
     <div className="flex flex-col gap-4 pt-4" aria-live="polite">

@@ -1,7 +1,7 @@
 
-import { forwardRef, useEffect, useRef, type ReactNode } from "react";
+import { forwardRef, useEffect, useRef, type ReactNode, type Ref } from "react";
 import { ArrowRight } from "lucide-react";
-import { Button, Section, buttonVariants, notifyUndo } from "@/src/shared/ui/kit";
+import { Button, Section, useToast } from "@forgen-team/ui";
 import { USER_STATE_LABELS, useCompleteLecture, useMarkKnown, useUncompleteLecture, useUndoKnown } from "@/src/entities/punisher";
 import type { UserConceptState } from "@/src/shared/api/punisher";
 import { Link } from "@/src/shared/lib/router";
@@ -36,6 +36,7 @@ export function useLectureActions(
   conceptState: UserConceptState = "not_started",
 ) {
   const t = useT(messages);
+  const toast = useToast();
   const complete = useCompleteLecture(lectureId);
   const uncomplete = useUncompleteLecture(lectureId);
   const ownKnown = useMarkKnown();
@@ -45,18 +46,20 @@ export function useLectureActions(
   if (!known.isPending && !known.isSuccess) { previous.current = conceptState; }
 
   useOnSuccess(complete.isSuccess, () => {
-    notifyUndo(t.completedToast, async () => {
-      await uncomplete.mutateAsync();
-      complete.reset();
+    toast.undo(t.completedToast, () => {
+      uncomplete.mutateAsync()
+        .then(() => complete.reset())
+        .catch(() => toast.show(t.undoFailed, { tone: "danger" }));
     });
   });
   // 묻는 흐름(knownFlow)은 그쪽(useKnownChoice)이 되돌리기 알림을 띄운다.
   useOnSuccess(!knownFlow && known.isSuccess, () => {
     const id = conceptId;
     const before = previous.current === "known" ? "not_started" : previous.current;
-    notifyUndo(t.knownToast, async () => {
-      await undoKnown.mutateAsync({ conceptId: id, previous: before });
-      known.reset();
+    toast.undo(t.knownToast, () => {
+      undoKnown.mutateAsync({ conceptId: id, previous: before })
+        .then(() => known.reset())
+        .catch(() => toast.show(t.undoFailed, { tone: "danger" }));
     });
   });
 
@@ -114,27 +117,31 @@ export const LectureWrapup = forwardRef<HTMLElement, LectureWrapupProps>(functio
   const t = useT(messages);
   const { complete, known, done, knownDone } = actions;
   return (
-    <Section ref={ref} id="lecture-wrapup" tabIndex={-1} title={t.wrapup} className="border-t border-line pt-4 outline-none">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant={done ? "secondary" : "primary"} onClick={actions.markComplete} disabled={done} loading={complete.isPending}>
-            {done ? t.completed : t.complete}
-          </Button>
-          {checkAction}
-          <Button variant="secondary" onClick={actions.markKnown} disabled={knownDone} loading={known.isPending}>
-            {knownDone ? t.knownDone : t.known}
-          </Button>
+    <div ref={ref as Ref<HTMLDivElement>} id="lecture-wrapup" tabIndex={-1} className="outline-none">
+      <Section title={t.wrapup} className="border-t border-line pt-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant={done ? "secondary" : "primary"} onClick={actions.markComplete} disabled={done} loading={complete.isPending}>
+              {done ? t.completed : t.complete}
+            </Button>
+            {checkAction}
+            <Button variant="secondary" onClick={actions.markKnown} disabled={knownDone} loading={known.isPending}>
+              {knownDone ? t.knownDone : t.known}
+            </Button>
+          </div>
+          <LectureActionStatus actions={actions} live={false} />
+          {done && (
+            <Button asChild variant="ghost" size="sm" className="w-fit -ml-2">
+              <Link href="/">
+                {t.nextLecture}
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            </Button>
+          )}
+          {checkStatus}
+          <FeedbackBar lectureId={lectureId} getAnchor={getAnchor} />
         </div>
-        <LectureActionStatus actions={actions} live={false} />
-        {done && (
-          <Link href="/" className={buttonVariants({ variant: "ghost", size: "sm", className: "w-fit -ml-2" })}>
-            {t.nextLecture}
-            <ArrowRight className="size-4" aria-hidden="true" />
-          </Link>
-        )}
-        {checkStatus}
-        <FeedbackBar lectureId={lectureId} getAnchor={getAnchor} />
-      </div>
-    </Section>
+      </Section>
+    </div>
   );
 });

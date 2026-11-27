@@ -1,5 +1,5 @@
 
-import { BottomSheet, Button } from "@/src/shared/ui/kit";
+import { Button, Sheet } from "@forgen-team/ui";
 import { describeCheckError } from "@/src/entities/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { useT } from "@/src/shared/i18n";
@@ -13,7 +13,7 @@ function ChoiceButtons({ choice }: { choice: KnownChoice }) {
       <Button variant="ghost" onClick={choice.skip} disabled={choice.verifying}>
         {t.skip}
       </Button>
-      <Button onClick={choice.verify} loading={choice.verifying}>
+      <Button variant="primary" onClick={choice.verify} loading={choice.verifying}>
         {t.check}
       </Button>
     </div>
@@ -44,8 +44,8 @@ export function KnownVerifyChoice({ choice, variant = "dialog" }: { choice: Know
     );
   }
   return (
-    <BottomSheet open={choice.asking} onClose={choice.close} title={t.verifyTitle} footer={<ChoiceButtons choice={choice} />}>
+    <Sheet open={choice.asking} onOpenChange={(o) => { if (!o) { choice.close(); } }} title={t.verifyTitle} footer={<ChoiceButtons choice={choice} />}>
       <ChoiceError choice={choice} />
-    </BottomSheet>
+    </Sheet>
   );
 }

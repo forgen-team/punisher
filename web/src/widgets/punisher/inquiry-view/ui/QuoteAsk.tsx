@@ -1,7 +1,8 @@
 import type { RefObject } from "react";
 import { createPortal } from "react-dom";
 import { MessageCirclePlus } from "lucide-react";
-import { cn, focusRing, useMediaQuery } from "@/src/shared/ui/kit";
+import { useMediaQuery } from "@forgen-team/ui";
+import { cn, focusRing } from "@/src/shared/lib/cn";
 import { useTextSelection } from "@/src/features/punisher/reading-assist";
 import { INQUIRY_MAX_QUOTE_CHARS } from "@/src/shared/api/punisher";
 import { useT } from "@/src/shared/i18n";

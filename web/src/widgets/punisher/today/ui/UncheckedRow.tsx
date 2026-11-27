@@ -1,5 +1,5 @@
 import { ListChecks } from "lucide-react";
-import { ListRow } from "@/src/shared/ui/kit";
+import { ListRow } from "@forgen-team/ui";
 import { areaLabel, describeCheckError } from "@/src/entities/punisher";
 import { isLectureNotReviewed, useLaunchCheck } from "@/src/features/punisher/check-start";
 import type { UncheckedCard } from "@/src/shared/api/punisher";
@@ -18,5 +18,5 @@ export function UncheckedRow({ card }: { card: UncheckedCard }) {
       {error && !isLectureNotReviewed(error) && <span role="alert" className="block truncate text-danger">{describeCheckError(error)}</span>}
     </>
   );
-  return <ListRow leading={<ListChecks aria-hidden />} title={t.checkConcept(card.conceptName)} meta={meta} disabled={check.isPending} onClick={check.launch} />;
+  return <ListRow leading={<ListChecks aria-hidden />} title={t.checkConcept(card.conceptName)} meta={meta} onClick={() => { if (!check.isPending) { check.launch(); } }} />;
 }

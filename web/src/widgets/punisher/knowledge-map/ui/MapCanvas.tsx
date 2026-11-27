@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Background, Controls, MiniMap, Panel, ReactFlow, type Edge, type ReactFlowInstance } from "@xyflow/react";
 import { Maximize2, Minimize2 } from "lucide-react";
-import { Button } from "@/src/shared/ui/kit";
+import { Button } from "@forgen-team/ui";
 import { MAP_STATE_STYLES, mapNodeState, useResolvedTheme } from "@/src/entities/punisher";
 import type { GraphEdge, GraphNode } from "@/src/shared/api/punisher";
 import { NODE_HEIGHT, layoutGraph, nodeWidth, type LaidOutNode } from "../lib/elkLayout";

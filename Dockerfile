@@ -1,12 +1,15 @@
+# syntax=docker/dockerfile:1
 # Punisher as a Witems app (PUNISHER_MODE=witems; docs/WITEMS-APP.md).
 # The standalone app is a single binary (make build) and does not use this image.
-#   docker build -t punisher:dev --build-arg VERSION=$(git describe --tags --always) .
+#   NODE_AUTH_TOKEN=$(gh auth token) docker build --secret id=npm_token,env=NODE_AUTH_TOKEN \
+#     -t punisher:dev --build-arg VERSION=$(git describe --tags --always) .
+# @forgen-team/* packages come from GitHub Packages (web/.npmrc): the token is a BuildKit secret, never a layer.
 
 # 1) Module Federation remote → internal/witems/dist
 FROM node:22-alpine AS web
 WORKDIR /src/web
-COPY web/package.json web/package-lock.json ./
-RUN npm ci --no-audit --no-fund
+COPY web/package.json web/package-lock.json web/.npmrc ./
+RUN --mount=type=secret,id=npm_token NODE_AUTH_TOKEN=$(cat /run/secrets/npm_token) npm ci --no-audit --no-fund
 COPY web/ ./
 RUN mkdir -p ../internal/witems/dist && npm run build:witems \
  && if ls ../internal/witems/dist/assets/*.css >/dev/null 2>&1; then echo "stray CSS chunks (see Makefile witems-web)"; exit 1; fi

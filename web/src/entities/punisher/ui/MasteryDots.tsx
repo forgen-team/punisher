@@ -1,4 +1,4 @@
-import { cn } from "@/src/shared/ui/kit";
+import { cn } from "@/src/shared/lib/cn";
 import type { CheckGrader } from "@/src/shared/api/punisher";
 import { useLocale, useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";

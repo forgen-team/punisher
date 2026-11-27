@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { AlertTriangle, BookMarked, Brain, ListChecks, NotebookPen, ScrollText, Sparkles, Terminal, type LucideIcon } from "lucide-react";
-import { cn } from "@/src/shared/ui/kit";
+import { cn } from "@/src/shared/lib/cn";
 import { Markdown, type RenderTerm } from "@/src/shared/ui/punisher/Markdown";
 import { ExercisePanel, LabResultPanel, parseLab, PausePanel, RecallPanel, SummaryRecall } from "@/src/features/punisher/lecture-exercise";
 import { CodeBlock } from "./CodeBlock";

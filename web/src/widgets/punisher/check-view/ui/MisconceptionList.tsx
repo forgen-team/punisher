@@ -1,6 +1,6 @@
 
 import { Check } from "lucide-react";
-import { Button } from "@/src/shared/ui/kit";
+import { Button } from "@forgen-team/ui";
 import { describeCheckError, useAcknowledgeMisconception } from "@/src/entities/punisher";
 import { misconceptionButtonState, type RevealedMisconception } from "../lib/checkView";
 import { useT } from "@/src/shared/i18n";

@@ -1,7 +1,7 @@
 
 import { useId, useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
-import { cn, focusRing } from "@/src/shared/ui/kit";
+import { cn, focusRing } from "@/src/shared/lib/cn";
 import { useT } from "@/src/shared/i18n";
 import { blockMessages } from "../../i18n";
 

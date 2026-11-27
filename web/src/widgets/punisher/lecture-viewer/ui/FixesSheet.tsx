@@ -1,4 +1,4 @@
-import { BottomSheet, Button } from "@/src/shared/ui/kit";
+import { Button, Sheet } from "@forgen-team/ui";
 import { describePunisherError, type LectureSection, type SectionFix } from "@/src/shared/api/punisher";
 import { useStartRegenerate } from "./RegenerateSheet";
 import { useT } from "@/src/shared/i18n";
@@ -18,16 +18,16 @@ export function FixesSheet({ lectureId, fixes, sections, open, onClose }: FixesS
   const regenerate = useStartRegenerate(lectureId);
   const title = (kind: string) => sections.find((s) => s.kind === kind)?.title ?? kind;
   return (
-    <BottomSheet
+    <Sheet
       open={open}
-      onClose={onClose}
+      onOpenChange={(o) => { if (!o) { onClose(); } }}
       title={t.fixesTitle}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
             {t.close}
           </Button>
-          <Button loading={regenerate.isPending} onClick={regenerate.start}>
+          <Button variant="primary" loading={regenerate.isPending} onClick={regenerate.start}>
             {t.regenerateWithFixes}
           </Button>
         </>
@@ -50,6 +50,6 @@ export function FixesSheet({ lectureId, fixes, sections, open, onClose }: FixesS
           {describePunisherError(regenerate.error)}
         </p>
       )}
-    </BottomSheet>
+    </Sheet>
   );
 }

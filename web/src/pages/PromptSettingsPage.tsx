@@ -1,7 +1,7 @@
-import { PageHeader, useIsSplitLayout } from "@/src/shared/ui/kit";
+import { Page } from "@forgen-team/ui";
+import { useIsSplitLayout } from "@/src/shared/lib/useIsSplitLayout";
 import { BackLink } from "@/src/shared/ui/BackLink";
 import { useSearchParams } from "@/src/shared/lib/router";
-import { isWitems } from "@/src/shared/config/runtime";
 import { PromptSettingsWidget } from "@/src/widgets/punisher/prompt-settings";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
@@ -15,9 +15,10 @@ export function PromptSettingsPage() {
   return (
     <div className="flex w-full flex-col">
       {inDetail ? <BackLink href="/settings/prompts" label={t.prompts} replace /> : <BackLink href="/settings" label={t.settings} />}
-      {/* Witems 는 셸이 화면 제목을 그린다(같은 제목을 두 번 그리지 않는다). */}
-      {isWitems() ? null : <PageHeader title={t.prompts} className="pt-1" />}
-      <PromptSettingsWidget />
+      {/* Witems 는 셸이 화면 제목을 그린다 — Page 는 셸 안에서 h1 을 그리지 않는다(같은 제목을 두 번 그리지 않는다). */}
+      <Page title={t.prompts} width="full">
+        <PromptSettingsWidget />
+      </Page>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 
 import { useRouter } from "@/src/shared/lib/router";
-import { BottomSheet, Button } from "@/src/shared/ui/kit";
+import { Button, Sheet } from "@forgen-team/ui";
 import { useRegenerateLecture } from "@/src/entities/punisher";
 import { instantHref, lectureHref } from "@/src/features/punisher/instant-start";
 import { describePunisherError } from "@/src/shared/api/punisher";
@@ -35,9 +35,9 @@ export function RegenerateSheet({ lectureId, open, onClose }: RegenerateSheetPro
   const start = regenerate.start;
 
   return (
-    <BottomSheet
+    <Sheet
       open={open}
-      onClose={onClose}
+      onOpenChange={(o) => { if (!o) { onClose(); } }}
       title={t.regenTitle}
       description={t.regenDescription}
       footer={
@@ -45,7 +45,7 @@ export function RegenerateSheet({ lectureId, open, onClose }: RegenerateSheetPro
           <Button variant="ghost" onClick={onClose}>
             {t.cancel}
           </Button>
-          <Button loading={regenerate.isPending} onClick={start}>
+          <Button variant="primary" loading={regenerate.isPending} onClick={start}>
             {t.regenerate}
           </Button>
         </>
@@ -61,6 +61,6 @@ export function RegenerateSheet({ lectureId, open, onClose }: RegenerateSheetPro
           {describePunisherError(regenerate.error)}
         </p>
       )}
-    </BottomSheet>
+    </Sheet>
   );
 }

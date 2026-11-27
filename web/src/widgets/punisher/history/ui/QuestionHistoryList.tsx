@@ -1,7 +1,7 @@
 
 import { Link } from "@/src/shared/lib/router";
 import { useState } from "react";
-import { BottomSheet, EmptyState, ErrorState, List, ListRow, ListSkeleton, buttonVariants } from "@/src/shared/ui/kit";
+import { Button, EmptyState, ErrorState, List, ListRow, ListSkeleton, Sheet } from "@forgen-team/ui";
 import { QUESTION_STATUS_LABELS_BY_LOCALE, useMyQuestions } from "@/src/entities/punisher";
 import { lectureAnchorHref } from "@/src/entities/punisher";
 import { describePunisherError, type MyQuestion } from "@/src/shared/api/punisher";
@@ -32,28 +32,27 @@ function LectureLink({ question }: { question: MyQuestion }) {
   const t = useT(messages);
   if (!question.lectureId) { return null; }
   return (
-    <Link
-      href={lectureAnchorHref(question.lectureId, question.anchor)}
-      className={buttonVariants({ variant: "secondary" })}
-    >
-      {question.conceptName ? t.viewInLectureNamed(question.conceptName) : t.viewInLecture}
-    </Link>
+    <Button asChild variant="secondary">
+      <Link href={lectureAnchorHref(question.lectureId, question.anchor)}>
+        {question.conceptName ? t.viewInLectureNamed(question.conceptName) : t.viewInLecture}
+      </Link>
+    </Button>
   );
 }
 
 function QuestionSheet({ question, onClose }: { question: MyQuestion | null; onClose: () => void }) {
   const locale = useLocale();
   return (
-    <BottomSheet
+    <Sheet
       open={Boolean(question)}
-      onClose={onClose}
+      onOpenChange={(o) => { if (!o) { onClose(); } }}
       title={question?.question ?? ""}
       description={question ? metaOf(question, locale) : undefined}
       desktop="side"
       footer={question ? <LectureLink question={question} /> : null}
     >
       {question && <QuestionAnswer question={question} />}
-    </BottomSheet>
+    </Sheet>
   );
 }
 
@@ -90,7 +89,7 @@ export function QuestionHistoryList() {
   const items = questions.data?.pages.flatMap((p) => p.items) ?? [];
   if (questions.isLoading) { return <ListSkeleton rows={5} />; }
   if (questions.error) {
-    return <ErrorState message={describePunisherError(questions.error)} onRetry={() => questions.refetch()} />;
+    return <ErrorState title={describePunisherError(questions.error)} onRetry={() => questions.refetch()} />;
   }
   if (items.length === 0) {
     return <EmptyState title={t.noQuestions} description={t.noQuestionsDescription} />;

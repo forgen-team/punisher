@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Chip, ErrorState, Field, ListSkeleton, Select, Switch } from "@/src/shared/ui/kit";
+import { Chip, ErrorState, ListSkeleton, Select, Switch } from "@forgen-team/ui";
 import { useSaveStudyPrefs, useStudyPrefs } from "@/src/entities/punisher";
 import { describePunisherError, type MemoryModel, type StudyPrefsPatch } from "@/src/shared/api/punisher";
 import { isWitems } from "@/src/shared/config/runtime";
@@ -23,7 +23,7 @@ export function StudySettingsFields() {
   const [unsaved, setUnsaved] = useState<StudyPrefsPatch>({});
   if (prefs.isLoading) { return <ListSkeleton rows={3} />; }
   if (prefs.error || !prefs.data) {
-    return <ErrorState compact message={describePunisherError(prefs.error)} onRetry={() => prefs.refetch()} retrying={prefs.isRefetching} />;
+    return <ErrorState title={describePunisherError(prefs.error)} onRetry={() => { void prefs.refetch(); }} />;
   }
   const shown = { ...prefs.data, ...unsaved };
   const saveField = (patch: StudyPrefsPatch) => {
@@ -45,24 +45,30 @@ export function StudySettingsFields() {
   return (
     <div className="flex flex-col gap-4">
       <InlineError error={save.error} />
-      <Field label={t.memoryModel} hint={t.memoryModelHint}>
-        <Select value={shown.memoryModel} onChange={(e) => saveField({ memoryModel: e.target.value as MemoryModel })}>
-          <option value="fsrs">{t.modelFsrs}</option>
-          <option value="ladder">{t.modelLadder}</option>
-        </Select>
-      </Field>
+      <Select
+        label={t.memoryModel}
+        description={t.memoryModelHint}
+        value={shown.memoryModel}
+        onValueChange={(v) => saveField({ memoryModel: v as MemoryModel })}
+        options={[
+          { value: "fsrs", label: t.modelFsrs },
+          { value: "ladder", label: t.modelLadder },
+        ]}
+      />
       {shown.memoryModel === "fsrs" && (
-        <Field label={t.retention} hint={t.retentionHint}>
-          <Select value={String(Math.round(shown.targetRetention * 100))} onChange={(e) => saveField({ targetRetention: Number(e.target.value) / 100 })}>
-            {RETENTIONS.map((p) => <option key={p} value={p}>{t.retentionOption(p)}</option>)}
-          </Select>
-        </Field>
+        <Select
+          label={t.retention}
+          description={t.retentionHint}
+          value={String(Math.round(shown.targetRetention * 100))}
+          onValueChange={(v) => saveField({ targetRetention: Number(v) / 100 })}
+          options={RETENTIONS.map((p) => ({ value: String(p), label: t.retentionOption(p) }))}
+        />
       )}
       <fieldset className="flex flex-col gap-1.5">
         <legend className="text-sm font-medium text-fg">{t.restDays}</legend>
         <div className="flex flex-wrap gap-1.5">
           {WEEKDAYS.map((day) => (
-            <Chip key={day} selected={shown.restDays.includes(day)} onClick={() => toggleRest(day)}>{t.weekday(day)}</Chip>
+            <Chip key={day} selected={shown.restDays.includes(day)} onSelectedChange={() => toggleRest(day)}>{t.weekday(day)}</Chip>
           ))}
         </div>
         <p className="text-xs text-fg-muted">{t.restDaysHint}</p>
@@ -70,12 +76,16 @@ export function StudySettingsFields() {
       {isWitems() ? (
         <p className="text-xs text-fg-muted">{t.reminderWitems}</p>
       ) : (
-        <Field label={t.reminder} hint={t.reminderHint}>
-          <Select value={String(shown.reminderHour)} onChange={(e) => saveField({ reminderHour: Number(e.target.value) })}>
-            <option value="-1">{t.reminderOff}</option>
-            {HOURS.map((h) => <option key={h} value={h}>{t.reminderAt(h)}</option>)}
-          </Select>
-        </Field>
+        <Select
+          label={t.reminder}
+          description={t.reminderHint}
+          value={String(shown.reminderHour)}
+          onValueChange={(v) => saveField({ reminderHour: Number(v) })}
+          options={[
+            { value: "-1", label: t.reminderOff },
+            ...HOURS.map((h) => ({ value: String(h), label: t.reminderAt(h) })),
+          ]}
+        />
       )}
     </div>
   );
@@ -87,23 +97,30 @@ export function ReadingSettingsFields() {
   const ui = useUiPrefs();
   return (
     <div className="flex flex-col gap-4">
-      <Field label={t.fontSize}>
-        <Select value={ui.fontSize} onChange={(e) => setUiPrefs({ fontSize: e.target.value as FontSize })}>
-          <option value="sm">{t.fontSm}</option>
-          <option value="md">{t.fontMd}</option>
-          <option value="lg">{t.fontLg}</option>
-        </Select>
-      </Field>
-      <Field label={t.lineWidth}>
-        <Select value={ui.lineWidth} onChange={(e) => setUiPrefs({ lineWidth: e.target.value as LineWidth })}>
-          <option value="narrow">{t.widthNarrow}</option>
-          <option value="normal">{t.widthNormal}</option>
-          <option value="wide">{t.widthWide}</option>
-        </Select>
-      </Field>
-      <Field label={t.shortcuts} hint={t.shortcutsHint}>
-        <Switch checked={ui.shortcuts} onCheckedChange={(checked) => setUiPrefs({ shortcuts: checked })} />
-      </Field>
+      <Select
+        label={t.fontSize}
+        value={ui.fontSize}
+        onValueChange={(v) => setUiPrefs({ fontSize: v as FontSize })}
+        options={[
+          { value: "sm", label: t.fontSm },
+          { value: "md", label: t.fontMd },
+          { value: "lg", label: t.fontLg },
+        ]}
+      />
+      <Select
+        label={t.lineWidth}
+        value={ui.lineWidth}
+        onValueChange={(v) => setUiPrefs({ lineWidth: v as LineWidth })}
+        options={[
+          { value: "narrow", label: t.widthNarrow },
+          { value: "normal", label: t.widthNormal },
+          { value: "wide", label: t.widthWide },
+        ]}
+      />
+      <div>
+        <Switch label={t.shortcuts} checked={ui.shortcuts} onCheckedChange={(checked) => setUiPrefs({ shortcuts: checked })} />
+        <p className="text-xs text-fg-muted">{t.shortcutsHint}</p>
+      </div>
       <p className="text-xs text-fg-muted">{t.deviceHint}</p>
     </div>
   );
