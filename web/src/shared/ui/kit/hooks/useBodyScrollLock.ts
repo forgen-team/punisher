@@ -5,9 +5,19 @@ import { useEffect } from "react";
  * 모달/오버레이가 열릴 때 body 스크롤을 잠그는 훅.
  * iOS Safari의 bounce scroll 문제까지 처리.
  */
+// 겹쳐 열린 오버레이(시트 위 확인 창 등) — 처음 잠근 쪽만 body 를 고정하고 마지막에 풀리는 쪽만 되돌린다.
+// 두 번째 잠금이 이미 고정된 body 에서 scrollY(0)를 읽어 top 을 덮어쓰면 배경이 맨 위로 튄다.
+let lockCount = 0;
+
 export function useBodyScrollLock(isLocked: boolean) {
   useEffect(() => {
     if (!isLocked) return;
+    lockCount += 1;
+    if (lockCount > 1) {
+      return () => {
+        lockCount -= 1;
+      };
+    }
 
     const scrollY = window.scrollY;
     const originalStyle = {
@@ -28,6 +38,7 @@ export function useBodyScrollLock(isLocked: boolean) {
     document.body.style.width = "100%";
 
     return () => {
+      lockCount -= 1;
       document.body.style.overflow = originalStyle.overflow;
       document.body.style.position = originalStyle.position;
       document.body.style.top = originalStyle.top;

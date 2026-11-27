@@ -23,6 +23,10 @@ witems-web:
 	cd web && npm run build:witems
 	@# CSS imported from components would be injected into the shell's <head>, outside the Shadow DOM.
 	@if ls $(WITEMS_DIST)/assets/*.css >/dev/null 2>&1; then echo "witems-web: stray CSS files (import CSS in styles/globals.css instead):"; ls $(WITEMS_DIST)/assets/*.css; exit 1; fi
+	@# The shell owns the design tokens and the accent (Witems indigo): the inline sheet must not redeclare them (web/src/witems/cssScope.ts).
+	@if grep -lE -e '--color-(bg|accent|text|border|focus|on)[a-z-]*:' -e '--(radius|shadow|font)-[a-z-]+:' -e '--brand-orange:' $(WITEMS_DIST)/assets/*.js; then echo "witems-web: design-token declarations in the Witems build (the shell provides them)"; exit 1; fi
+	@# CSS values only (prop:#hex, Tailwind's rgb(r g b …)) — the product logo SVG (stopColor:"#f97316") and mermaid's palette ("#FB923C") are not the accent.
+	@if grep -liE -e ':[[:space:]]*#(f97316|ea580c|c2410c|fb923c|fff1e6|2a1708)([^0-9a-f]|$$)' -e 'rgb\((249 115 22|234 88 12|194 65 12|251 146 60|255 241 230|42 23 8)[ /)]' $(WITEMS_DIST)/assets/*.js; then echo "witems-web: standalone orange accent in the Witems build"; exit 1; fi
 
 # Pure Go (modernc SQLite, no CGO) so both architectures cross-compile anywhere.
 go-darwin:

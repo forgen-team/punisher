@@ -8,8 +8,8 @@ import {
   cycleThemeAtom,
   type ThemePreference
 } from "@/src/shared/lib/theme";
-import { cn } from "../lib/utils";
 import { useT } from "@/src/shared/i18n";
+import { cn } from "../lib/utils";
 import { kitMessages } from "../lib/messages";
 
 // Icons for theme states
@@ -17,6 +17,7 @@ function SunIcon({ className }: { className?: string }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -42,6 +43,7 @@ function MoonIcon({ className }: { className?: string }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -59,6 +61,7 @@ function MonitorIcon({ className }: { className?: string }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -91,6 +94,7 @@ export function ThemeToggle({
   className,
   mode = "toggle"
 }: ThemeToggleProps) {
+  const t = useT(kitMessages);
   const preference = useAtomValue(themePreferenceAtom);
   const resolvedTheme = useAtomValue(resolvedThemeAtom);
   const toggle = useSetAtom(toggleThemeAtom);
@@ -138,14 +142,14 @@ export function ThemeToggle({
     if (mode === "cycle") {
       switch (preference) {
         case "light":
-          return "Light mode";
+          return t.themeCycleLight;
         case "dark":
-          return "Dark mode";
+          return t.themeCycleDark;
         case "system":
-          return "System theme";
+          return t.themeCycleSystem;
       }
     }
-    return resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+    return resolvedTheme === "dark" ? t.themeToLight : t.themeToDark;
   };
 
   return (
@@ -164,7 +168,6 @@ export function ThemeToggle({
       title={showTooltip ? getLabel() : undefined}
       aria-label={getLabel()}
     >
-      <span className="sr-only">{getLabel()}</span>
       {getIcon()}
     </button>
   );
@@ -175,8 +178,8 @@ interface ThemeSelectProps {
 }
 
 export function ThemeSelect({ className }: ThemeSelectProps) {
-  const [preference, setPreference] = useAtom(themePreferenceAtom);
   const t = useT(kitMessages);
+  const [preference, setPreference] = useAtom(themePreferenceAtom);
 
   const options: { value: ThemePreference; label: string; icon: React.ReactNode }[] = [
     { value: "light", label: t.themeLight, icon: <SunIcon className="h-4 w-4" /> },
@@ -185,14 +188,16 @@ export function ThemeSelect({ className }: ThemeSelectProps) {
   ];
 
   return (
-    <div className={cn("flex items-center gap-1 p-1 rounded-lg bg-canvas-subtle", className)}>
+    <div role="group" aria-label={t.theme} className={cn("flex items-center gap-1 p-1 rounded-lg bg-canvas-subtle", className)}>
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
+          aria-pressed={preference === option.value}
           onClick={() => setPreference(option.value)}
           className={cn(
             "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
             preference === option.value
               ? "bg-canvas-elevated text-fg shadow-sm"
               : "text-fg-muted hover:text-fg"

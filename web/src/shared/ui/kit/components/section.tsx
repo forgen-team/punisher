@@ -38,7 +38,7 @@ export const Section = React.forwardRef<HTMLElement, SectionProps>(function Sect
             <Heading id={headingId} className="truncate text-sm font-semibold tracking-tight text-fg">
               {title}
             </Heading>
-            {description ? <p className="mt-0.5 text-xs text-fg-muted">{description}</p> : null}
+            {description ? <p className="mt-0.5 break-keep text-xs text-fg-muted">{description}</p> : null}
           </div>
           {action ? <div className="flex shrink-0 items-center">{action}</div> : null}
         </div>
@@ -59,15 +59,18 @@ export interface PageHeaderProps extends Omit<React.HTMLAttributes<HTMLElement>,
   actions?: React.ReactNode;
   /** 왼쪽 뒤로가기 등 */
   leading?: React.ReactNode;
+  /** 제목 수준(기본 h1). 셸이 화면 h1 을 그리는 곳에 놓인 하위 제목(주제 이름 등)은 2 */
+  headingLevel?: 1 | 2;
 }
 
 /** PageHeader — 화면 제목(h1) + 부제 + 동작. 배경·그림자 없음. */
-export function PageHeader({ title, subtitle, actions, leading, className, ...props }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, actions, leading, headingLevel = 1, className, ...props }: PageHeaderProps) {
+  const Heading = headingLevel === 2 ? "h2" : "h1";
   return (
     <header className={cn("flex items-start gap-3 py-4", className)} {...props}>
       {leading ? <div className="-ml-2 flex shrink-0 items-center">{leading}</div> : null}
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-xl font-semibold tracking-tight text-fg md:text-2xl">{title}</h1>
+        <Heading className="truncate text-xl font-semibold tracking-tight text-fg md:text-2xl">{title}</Heading>
         {subtitle ? <p className="mt-1 text-sm text-fg-secondary">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-1">{actions}</div> : null}

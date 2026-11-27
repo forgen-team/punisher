@@ -7,6 +7,7 @@ interface FieldContextValue {
   id: string;
   describedBy?: string;
   invalid: boolean;
+  required: boolean;
 }
 
 const FieldContext = React.createContext<FieldContextValue | null>(null);
@@ -38,8 +39,8 @@ export function Field({ label, hint, error, required, id, className, children }:
   const errorId = error ? `${controlId}-error` : undefined;
   const describedBy = [errorId, hintId].filter(Boolean).join(" ") || undefined;
   const value = React.useMemo(
-    () => ({ id: controlId, describedBy, invalid: Boolean(error) }),
-    [controlId, describedBy, error]
+    () => ({ id: controlId, describedBy, invalid: Boolean(error), required: Boolean(required) }),
+    [controlId, describedBy, error, required]
   );
 
   return (
@@ -63,7 +64,14 @@ export function Field({ label, hint, error, required, id, className, children }:
 }
 
 /** Field 컨텍스트 → 컨트롤 접근성 속성 (명시 props가 우선) */
-function fieldProps<P extends { id?: string; "aria-describedby"?: string; "aria-invalid"?: React.AriaAttributes["aria-invalid"] }>(
+function fieldProps<
+  P extends {
+    id?: string;
+    "aria-describedby"?: string;
+    "aria-invalid"?: React.AriaAttributes["aria-invalid"];
+    "aria-required"?: React.AriaAttributes["aria-required"];
+  },
+>(
   field: FieldContextValue | null,
   props: P
 ) {
@@ -73,6 +81,8 @@ function fieldProps<P extends { id?: string; "aria-describedby"?: string; "aria-
     id: props.id ?? field.id,
     "aria-describedby": props["aria-describedby"] ?? field.describedBy,
     "aria-invalid": props["aria-invalid"] ?? (field.invalid || undefined),
+    // 필수 표시(*)는 aria-hidden 이므로 스크린 리더에는 aria-required 로 알린다(브라우저 기본 검증 말풍선은 띄우지 않음).
+    "aria-required": props["aria-required"] ?? (field.required || undefined),
   };
 }
 

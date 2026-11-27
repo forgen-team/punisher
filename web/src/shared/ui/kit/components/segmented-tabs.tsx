@@ -108,7 +108,7 @@ export function SegmentedTabs<V extends string>({
               // 시각 36px + 트랙 여백 = 터치 40px 이상, 위아래 확장으로 44px
               "relative inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-md px-3 text-sm tracking-ui",
               "before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']",
-              "transition-[color,background-color,box-shadow] duration-fast disabled:opacity-50",
+              "transition-[color,background-color,box-shadow] duration-fast disabled:opacity-50 aria-disabled:opacity-50",
               fill && "flex-1",
               selected
                 ? "bg-canvas-selected font-medium text-fg shadow-sm"
