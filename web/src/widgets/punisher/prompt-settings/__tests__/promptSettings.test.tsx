@@ -11,7 +11,7 @@ const change = { mutate: vi.fn(), isPending: false, error: null, variables: unde
 let split = false;
 let titleSet: string | null | undefined;
 
-vi.mock("@/src/shared/lib/useIsSplitLayout", () => ({ useIsSplitLayout: () => split }));
+vi.mock("@forgen-team/ui", async (importOriginal) => ({ ...(await importOriginal<typeof import("@forgen-team/ui")>()), useIsSplit: () => split }));
 vi.mock("@/src/shared/lib/screen-chrome", () => ({
   usePageActions: vi.fn(),
   useScreenTitle: (title: string | null | undefined) => { titleSet = title; },

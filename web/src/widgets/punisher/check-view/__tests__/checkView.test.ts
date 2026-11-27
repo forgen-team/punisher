@@ -1,3 +1,4 @@
+import { objectParticle } from "../i18n";
 import { describe, expect, it } from "vitest";
 import type { CheckDetail, CheckItem, CheckResultItem, CheckSession, CheckTurn } from "@/src/shared/api/punisher";
 import {
@@ -8,7 +9,6 @@ import {
   itemTurns,
   judgedTurn,
   earliestNextReview,
-  objectParticle,
   orderedItems,
   progressAt,
   progressOf,

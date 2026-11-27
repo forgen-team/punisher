@@ -58,12 +58,6 @@ export function stepMeta(progress: { index: number; total: number }, title: stri
   return progress.total === 0 ? title : `${progress.index}/${progress.total} · ${title}`;
 }
 
-/** 목적격 조사(을/를) — 마지막 글자 받침으로 가른다. 한글이 아니면 '를'. */
-export function objectParticle(word: string): string {
-  const last = word.trim().slice(-1).charCodeAt(0);
-  const isHangul = last >= 0xac00 && last <= 0xd7a3;
-  return isHangul && (last - 0xac00) % 28 !== 0 ? "을" : "를";
-}
 
 /** 결과 목표 줄 중 가장 이른 다음 복습일(밀려 대기인 것·날짜 없는 것 제외). 없으면 null. */
 export function earliestNextReview(items: readonly CheckResultItem[] | undefined): string | null {

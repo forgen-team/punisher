@@ -24,7 +24,6 @@ import {
   isShownItem,
   itemTurns,
   judgedTurn,
-  objectParticle,
   orderedItems,
   progressAt,
   progressRatio,
@@ -160,7 +159,7 @@ export function CheckView({ checkId }: { checkId: string }) {
     if (!d) { return; }
     const { answered, remaining } = stopCounts(d, answeredCurrent);
     const ok = await confirm({
-      title: t.stopConfirmTitle(title, objectParticle(title)),
+      title: t.stopConfirmTitle(title),
       description: review ? t.stopConfirmReview(answered, remaining) : t.stopConfirmOther(answered, remaining),
       confirmLabel: t.menuStop,
       tone: "danger",

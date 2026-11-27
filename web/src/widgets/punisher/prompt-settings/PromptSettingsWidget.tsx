@@ -1,9 +1,8 @@
 
 import { usePathname, useRouter, useSearchParams } from "@/src/shared/lib/router";
 import { useCallback, useRef } from "react";
-import { ErrorState, ListSkeleton } from "@forgen-team/ui";
+import { ErrorState, ListSkeleton, useIsSplit } from "@forgen-team/ui";
 import { useScreenTitle } from "@/src/shared/lib/screen-chrome";
-import { useIsSplitLayout } from "@/src/shared/lib/useIsSplitLayout";
 import { usePrompts } from "@/src/entities/punisher";
 import { PromptBlockEditor, PromptBlockList } from "@/src/features/punisher/prompt-edit";
 import { describePunisherError, type FeedbackHints } from "@/src/shared/api/punisher";
@@ -22,7 +21,7 @@ export function PromptSettingsWidget() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const split = useIsSplitLayout();
+  const split = useIsSplit();
   const prompts = usePrompts();
   const editorRef = useRef<HTMLDivElement>(null);
   const blockParam = params.get("block");

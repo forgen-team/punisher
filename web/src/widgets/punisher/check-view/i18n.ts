@@ -1,6 +1,13 @@
 import type { CheckSessionStatus, Confidence } from "@/src/shared/api/punisher";
 import { defineMessages, type Locale } from "@/src/shared/i18n";
 
+/** 목적격 조사(을/를) — 마지막 글자 받침으로 가른다. 한글이 아니면 '를'. */
+export function objectParticle(word: string): string {
+  const last = word.trim().slice(-1).charCodeAt(0);
+  const isHangul = last >= 0xac00 && last <= 0xd7a3;
+  return isHangul && (last - 0xac00) % 28 !== 0 ? "을" : "를";
+}
+
 export const messages = defineMessages({
   ko: {
     viewInLecture: "강의에서 보기",
@@ -9,7 +16,7 @@ export const messages = defineMessages({
     checkOf: (lecture: string) => `확인하기 · ${lecture}`,
     skip: "건너뛰기",
     menuStop: "그만두기",
-    stopConfirmTitle: (name: string, particle: string) => `'${name}'${particle} 여기서 그만둘까요?`,
+    stopConfirmTitle: (name: string) => `'${name}'${objectParticle(name)} 여기서 그만둘까요?`,
     stopConfirmReview: (answered: number, remaining: number) => `답한 ${answered}개는 저장하고, 남은 ${remaining}개는 내일 복습으로 넘겨요.`,
     stopConfirmOther: (answered: number, remaining: number) => `답한 ${answered}개는 저장하고, 남은 ${remaining}개는 하지 않고 끝내요.`,
     skippedToast: "건너뛰었어요",
