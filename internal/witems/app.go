@@ -24,20 +24,24 @@ var dist embed.FS
 var Manifest = map[string]any{
 	"contract": 1,
 	"name":     "punisher",
-	"title":    "학습",
-	// nav.items: 셸이 그리는 섹션 메뉴(contract §2, D8). href·match 는 basePath 기준 경로 — 앱 라우트와 같다
+	"title":    "punisher",
+	// nav.items: 셸이 그리는 섹션 메뉴(contract §2, D8; 재설계 안 B, punisher.md §1-1). href·match 는 basePath 기준 경로 — 앱 라우트와 같다
 	// (web/src/app/App.tsx, 단독판 탭 web/src/widgets/punisher/nav/lib/tabMemory.ts). 누르면 셸이 경로를 옮기고
-	// onRouteChange 로 알린다(web/src/witems/RouteSync.tsx). "/" 는 앱 첫 화면일 때만, 강의(/lectures/…)도 강의 섹션.
+	// onRouteChange 로 알린다(web/src/witems/RouteSync.tsx). "/" 는 앱 첫 화면일 때만. 강의·복습 세션·카드·질문 해설은
+	// 오늘에서 시작하니 오늘 섹션에, 새 챕터는 지도의 페이지 동작에서 시작하니 지도 섹션에 묶는다.
 	"nav": map[string]any{
-		"label": "학습",
+		"label": "punisher",
 		"icon":  "graduation-cap",
 		"order": 10,
 		"items": []map[string]any{
-			{"label": "강의", "href": "/", "match": []string{"/lectures"}},
-			{"label": "지도", "href": "/map", "match": []string{"/goals"}},
+			{"label": "오늘", "href": "/", "match": []string{"/lectures", "/check", "/cards", "/inquiries", "/instant", "/start"}},
+			{"label": "지도", "href": "/map", "match": []string{"/chapters"}},
 			{"label": "기록", "href": "/history"},
 		},
 	},
+	// today: Witems '오늘' 홈의 요약 카드(셸 계약 rss.md §8-3). 셸이 endpoint 를 불러 TodayCard[] 를 그린다
+	// (internal/http/handlers/today_cards.go). 카드는 maxCards 장 이하.
+	"today":       map[string]any{"endpoint": "/v1/today-cards", "maxCards": 2},
 	"remoteEntry": "/apps-static/punisher/remoteEntry.js",
 	"api":         "/apps-api/punisher/",
 	"health":      "/healthz",
