@@ -38,7 +38,7 @@
   <path transform="translate(1.6 4.25) scale(0.95)" d="M32 15 C37 22 42 27 41 35 C40.3 41 36.5 45 32 45 C27 45 23 41 23.5 35.5 C24 31 27 28.5 27.5 23.5 C30 25.5 30.8 28 30.8 30.5 C33 27 33.5 21 32 15 Z" fill="url(#flame)"/>
   </g>
 
-  <text x="200" y="95" font-family="'SF Mono', 'Fira Code', 'JetBrains Mono', Menlo, monospace" font-size="52" font-weight="700" fill="#ffffff" letter-spacing="8">PUNISHER</text>
+  <text x="200" y="95" font-family="'SF Mono', 'Fira Code', 'JetBrains Mono', Menlo, monospace" font-size="56" font-weight="700" fill="#ffffff" letter-spacing="3">punisher</text>
   <text x="200" y="125" font-family="'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" fill="#f59e0b" letter-spacing="3" opacity="0.9">30 MINUTES OF CS, EVERY DAY</text>
 
   <rect x="200" y="138" width="120" height="22" rx="4" fill="#f97316" opacity="0.15"/>
