@@ -4,7 +4,7 @@ import { defineMessages } from "@/src/shared/i18n";
 export const messages = defineMessages({
   ko: {
     notFoundTitle: "페이지를 찾을 수 없어요",
-    backToToday: "오늘의 강의로 돌아가기",
+    backToToday: "오늘로",
     prompts: "강의 프롬프트",
     settings: "설정",
     sectionLearning: "학습",
@@ -26,7 +26,7 @@ export const messages = defineMessages({
   },
   en: {
     notFoundTitle: "Page not found",
-    backToToday: "Back to today's lectures",
+    backToToday: "Go to Today",
     prompts: "Lecture prompts",
     settings: "Settings",
     sectionLearning: "Learning",

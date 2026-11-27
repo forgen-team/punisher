@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { useParams } from "react-router-dom";
 import { EmptyState, ListSkeleton, Skeleton } from "@forgen-team/ui";
-import { Link } from "@/src/shared/lib/router";
+import { Link, useSearchParams } from "@/src/shared/lib/router";
 import { TodayWidget } from "@/src/widgets/punisher/today";
 import { KnowledgeMapWidget } from "@/src/widgets/punisher/knowledge-map";
 import { HistoryWidget } from "@/src/widgets/punisher/history";
@@ -10,7 +10,7 @@ import { InstantStreamView } from "@/src/widgets/punisher/instant-stream";
 import { InquiryView } from "@/src/widgets/punisher/inquiry-view";
 import { CheckView } from "@/src/widgets/punisher/check-view";
 import { CardsWidget } from "@/src/widgets/punisher/cards";
-import { SearchWidget } from "@/src/widgets/punisher/search";
+import { StartLectureView } from "@/src/widgets/punisher/start";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 
@@ -19,9 +19,10 @@ export function CardsPage() {
   return <CardsWidget />;
 }
 
-/** /search?q= — 학습 자료 검색(W5a). */
-export function SearchPage() {
-  return <SearchWidget />;
+/** /start?concept=&q= — 개념으로 강의 열기(오늘의 추천·강의 끝 [다음 강의]·RSS 글 해설이 startLectureHref 로 들어온다). */
+export function StartPage() {
+  const params = useSearchParams();
+  return <StartLectureView conceptId={params.get("concept") ?? ""} query={params.get("q") ?? ""} />;
 }
 
 export function TodayPage() {
