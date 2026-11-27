@@ -7,10 +7,11 @@ describe("card session", () => {
     const shown = reveal(START);
     expect(shown.revealed).toBe(true);
     expect(reveal(shown)).toBe(shown);
-    expect(graded(shown, 3)).toEqual({ index: 1, revealed: false, graded: 1, again: 0 });
+    expect(graded(shown, 3)).toEqual({ index: 1, revealed: false, graded: 1, again: 0, hard: 0 });
   });
 
-  it("counts 'again' separately", () => {
-    expect(graded(reveal(START), 1)).toEqual({ index: 1, revealed: false, graded: 1, again: 1 });
+  it("counts 'again' and 'hard' separately", () => {
+    expect(graded(reveal(START), 1)).toEqual({ index: 1, revealed: false, graded: 1, again: 1, hard: 0 });
+    expect(graded(reveal(START), 2)).toEqual({ index: 1, revealed: false, graded: 1, again: 0, hard: 1 });
   });
 });

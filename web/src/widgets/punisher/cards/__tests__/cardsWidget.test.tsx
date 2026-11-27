@@ -33,7 +33,7 @@ function renderAt(url: string) {
 }
 
 describe("카드 복습", () => {
-  it("복습 탭은 앞면 → [답 보기] → [다시][알았음] → 끝에 [오늘로]", () => {
+  it("복습 탭은 앞면 → [답 보기] → [다시][어려움][알았음] → 끝에 [오늘로]", () => {
     renderAt("/cards");
     expect(screen.getByRole("link", { name: /복습/ })).toHaveAttribute("aria-current", "page");
     expect(screen.getByText("1/2")).toBeInTheDocument();
@@ -43,15 +43,42 @@ describe("카드 복습", () => {
     fireEvent.click(screen.getByRole("button", { name: "답 보기" }));
     expect(screen.getByText("첫 카드 답")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "답 보기" })).toBeNull();
-    expect(screen.getByRole("button", { name: "다시" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button").filter((b) => ["다시", "어려움", "알았음"].includes(b.textContent ?? "")).map((b) => b.textContent))
+      .toEqual(["다시", "어려움", "알았음"]);
     fireEvent.click(screen.getByRole("button", { name: "알았음" }));
     expect(grade.mutate).toHaveBeenCalledWith({ id: "c1", rating: 3 }, expect.anything());
     expect(screen.getByText("2/2")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "답 보기" }));
-    fireEvent.click(screen.getByRole("button", { name: "다시" }));
+    fireEvent.click(screen.getByRole("button", { name: "어려움" }));
+    expect(grade.mutate).toHaveBeenLastCalledWith({ id: "c2", rating: 2 }, expect.anything());
     expect(screen.getByText("카드 복습을 마쳤어요")).toBeInTheDocument();
-    expect(screen.getByText("알았음 1 · 다시 1")).toBeInTheDocument();
+    expect(screen.getByText("알았음 1 · 어려움 1 · 다시 0")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "오늘로" })).toHaveAttribute("href", "/");
+  });
+
+  it("등급 값은 다시 1 · 어려움 2 · 알았음 3 — 버튼도 단축키 1·2·3 도 같고, 주 버튼은 [알았음] 하나", () => {
+    renderAt("/cards");
+    fireEvent.click(screen.getByRole("button", { name: "답 보기" }));
+    const btn = (name: string) => screen.getByRole("button", { name });
+    expect(btn("다시")).toHaveAttribute("aria-keyshortcuts", "1");
+    expect(btn("어려움")).toHaveAttribute("aria-keyshortcuts", "2");
+    expect(btn("알았음")).toHaveAttribute("aria-keyshortcuts", "3");
+    expect(btn("알았음").className).not.toBe(btn("어려움").className);
+    expect(btn("어려움").className).toBe(btn("다시").className);
+    fireEvent.click(btn("다시"));
+    expect(grade.mutate).toHaveBeenLastCalledWith({ id: "c1", rating: 1 }, expect.anything());
+    fireEvent.keyDown(window, { key: " " });
+    fireEvent.keyDown(window, { key: "2" });
+    expect(grade.mutate).toHaveBeenLastCalledWith({ id: "c2", rating: 2 }, expect.anything());
+    expect(screen.getByText("알았음 0 · 어려움 1 · 다시 1")).toBeInTheDocument();
+  });
+
+  it("답을 보기 전에는 1·2·3 이 채점하지 않는다", () => {
+    renderAt("/cards");
+    grade.mutate.mockClear();
+    for (const key of ["1", "2", "3"]) { fireEvent.keyDown(window, { key }); }
+    expect(grade.mutate).not.toHaveBeenCalled();
+    expect(screen.getByText("1/2")).toBeInTheDocument();
   });
 
   it("탭을 누르면 ?tab=all 로 replace 하고 모든 카드 목록을 보인다", async () => {
