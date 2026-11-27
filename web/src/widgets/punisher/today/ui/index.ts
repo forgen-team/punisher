@@ -1,4 +1,4 @@
-export { TodayBox, BoxSkeleton, Bundle, BundleHead, BundleList, BoxPad, MoreToggle } from "./TodayBox";
+export { BoxSkeleton, BundleList, BoxPad, MoreToggle } from "./TodayBox";
 export { ReviewBundle, CARDS_PATH } from "./ReviewBundle";
 export { ResumeBundle, RecommendationBundle } from "./StudyBox";
 export { StudyTopicsBundle } from "./StudyRequestList";

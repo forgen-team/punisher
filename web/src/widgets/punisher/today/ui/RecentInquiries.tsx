@@ -1,10 +1,9 @@
-import { ListRow } from "@forgen-team/ui";
-import { Link } from "@/src/shared/lib/router";
+import { ListRow, TodayBundle } from "@forgen-team/ui";
 import { InquiryStatusIcon, inquiryRowTitle, useInquiries } from "@/src/entities/punisher";
 import { inquiryHref } from "@/src/features/punisher/instant-start";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
-import { BundleHead, BundleList } from "./TodayBox";
+import { BundleList } from "./TodayBox";
 
 export const INQUIRY_HISTORY_PATH = "/history?tab=notes&kind=inquiry";
 
@@ -20,21 +19,12 @@ export function RecentInquiries() {
   if (list.length === 0 && !inquiries.error) { return null; }
   const pending = list.find((q) => q.status === "pending");
   return (
-    <div role="group" aria-label={t.recentInquiries}>
-      <BundleHead
-        name={t.recentInquiries}
-        info={list.length > 0 ? String(list.length) : undefined}
-        more={
-          <Link href={INQUIRY_HISTORY_PATH} aria-label={t.allInquiries} className="text-accent-text underline-offset-2 hover:underline">
-            {t.viewAll}
-          </Link>
-        }
-      />
+    <TodayBundle source={t.recentInquiries} label="" count={list.length} more={{ label: t.viewAll, href: INQUIRY_HISTORY_PATH }}>
       {pending && (
         <BundleList>
           <ListRow href={inquiryHref(pending.id)} leading={<InquiryStatusIcon status={pending.status} />} title={inquiryRowTitle(pending)} meta={t.inquiryWriting} />
         </BundleList>
       )}
-    </div>
+    </TodayBundle>
   );
 }

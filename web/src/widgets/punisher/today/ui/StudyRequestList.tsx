@@ -1,11 +1,11 @@
 import { useState, type ReactNode } from "react";
-import { Button, ErrorState, ListRow, ListSkeleton, Menu, ProgressCircle, useToast, type MenuItemDef } from "@forgen-team/ui";
+import { Button, ErrorState, ListRow, ListSkeleton, Menu, ProgressCircle, useToast, type MenuItemDef, TodayBundle } from "@forgen-team/ui";
 import { useConcepts, useDismissStudyRequest, useRetryStudyRequest, useStudyRequests } from "@/src/entities/punisher";
 import { describePunisherError, type StudyRequest } from "@/src/shared/api/punisher";
 import { translate, useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
 import { BUNDLE_LIMIT } from "../lib/recommendations";
-import { BoxPad, Bundle, BundleList, MoreToggle } from "./TodayBox";
+import { BoxPad, BundleList, MoreToggle } from "./TodayBox";
 
 /** 요청한 주제 자체(첫 해석 개념) — [강의 시작]은 여기로 간다. */
 function topicConcept(req: StudyRequest): string {
@@ -77,20 +77,20 @@ export function StudyTopicsBundle({ starting, onStart }: StudyTopicsBundleProps)
   const names = new Map((concepts ?? []).map((c) => [c.id, c.name] as const));
   if (isLoading) {
     return (
-      <Bundle name={t.studyTopics}>
+      <TodayBundle source={t.studyTopics} label="">
         <div aria-busy="true" className="px-4">
           <ListSkeleton rows={2} />
         </div>
-      </Bundle>
+      </TodayBundle>
     );
   }
   if (error) {
     return (
-      <Bundle name={t.studyTopics}>
+      <TodayBundle source={t.studyTopics} label="">
         <BoxPad>
           <ErrorState title={describePunisherError(error)} onRetry={() => refetch()} />
         </BoxPad>
-      </Bundle>
+      </TodayBundle>
     );
   }
   const { active } = splitStudyRequests(data ?? []);
@@ -145,9 +145,9 @@ export function StudyTopicsBundle({ starting, onStart }: StudyTopicsBundleProps)
   const visible = expanded ? active : active.slice(0, BUNDLE_LIMIT);
   const hidden = active.length - BUNDLE_LIMIT;
   return (
-    <Bundle name={t.studyTopics} info={String(active.length)}>
+    <TodayBundle source={t.studyTopics} label="" count={active.length}>
       <BundleList>{visible.map((req) => renderRow(req))}</BundleList>
       <MoreToggle hidden={hidden} expanded={expanded} onToggle={() => setExpanded((v) => !v)} />
-    </Bundle>
+    </TodayBundle>
   );
 }

@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { Link } from "@/src/shared/lib/router";
-import { Button } from "@forgen-team/ui";
+import { Button, TodayBundle } from "@forgen-team/ui";
 import { describeCheckError } from "@/src/entities/punisher";
 import { useLaunchCheck, useLaunchReview, useLaunchSynthesis } from "@/src/features/punisher/check-start";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
 import type { ReviewBundleState, ReviewCounts, ReviewTarget } from "../lib/reviewBundle";
-import { BoxPad, Bundle } from "./TodayBox";
+import { BoxPad } from "./TodayBox";
 
 export const CARDS_PATH = "/cards";
 
@@ -118,7 +118,7 @@ export function ReviewBundle({ state }: { state: ReviewBundleState }) {
   }
 
   return (
-    <Bundle name={t.review}>
+    <TodayBundle source={t.review} label="">
       <BoxPad>
         {body}
         {start.error ? (
@@ -127,7 +127,7 @@ export function ReviewBundle({ state }: { state: ReviewBundleState }) {
           </p>
         ) : null}
       </BoxPad>
-    </Bundle>
+    </TodayBundle>
   );
 }
 

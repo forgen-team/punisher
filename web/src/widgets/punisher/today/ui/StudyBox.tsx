@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BookOpen } from "lucide-react";
 import { Link } from "@/src/shared/lib/router";
-import { Button, EmptyState, ListRow, Menu, useToast } from "@forgen-team/ui";
+import { Button, EmptyState, ListRow, Menu, useToast, TodayBundle } from "@forgen-team/ui";
 import { groupByParent, recommendationReason, useConceptDismiss } from "@/src/entities/punisher";
 import { ResumeRow, resumeKey, useResumeDismiss } from "@/src/features/punisher/resume-dismiss";
 import { describePunisherError, type NextChapterPrompt, type Recommendation } from "@/src/shared/api/punisher";
@@ -9,7 +9,7 @@ import { DeeperGroup } from "@/src/shared/ui/punisher";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
 import { BUNDLE_LIMIT, NEW_CHAPTER_PATH, chapterDaysLeft, mapNodeHref, recommendationHref } from "../lib/recommendations";
-import { BoxPad, Bundle, BundleList, MoreToggle } from "./TodayBox";
+import { BoxPad, BundleList, MoreToggle } from "./TodayBox";
 
 /** 공부할 것 › 이어보기 — 읽던 강의가 있을 때만. "더 깊게" 본 강의는 원 강의 아래로 묶는다. 3묶음 넘으면 "n개 더". */
 export function ResumeBundle({ items }: { items: Recommendation[] }) {
@@ -22,14 +22,14 @@ export function ResumeBundle({ items }: { items: Recommendation[] }) {
   const hidden = groups.slice(BUNDLE_LIMIT).reduce((sum, group) => sum + 1 + group.children.length, 0);
   const row = (item: Recommendation) => <ResumeRow key={resumeKey(item)} item={item} dismissing={resume.pending} onDismiss={resume.dismiss} />;
   return (
-    <Bundle name={t.resume} info={String(items.length)}>
+    <TodayBundle source={t.resume} label="" count={items.length}>
       <BundleList>
         {visible.map(({ item, children }) => (
           <DeeperGroup key={resumeKey(item)} parent={row(item)}>{children.map((child) => row(child))}</DeeperGroup>
         ))}
       </BundleList>
       <MoreToggle hidden={hidden} expanded={expanded} onToggle={() => setExpanded((v) => !v)} />
-    </Bundle>
+    </TodayBundle>
   );
 }
 
@@ -103,7 +103,7 @@ export function RecommendationBundle({ items, exhausted, nextChapter, lectureMin
   const days = nextChapter ? chapterDaysLeft(nextChapter) : 0;
 
   return (
-    <Bundle name={t.recommendations} info={info}>
+    <TodayBundle source={t.recommendations} label={info}>
       {items.length > 0 ? (
         <>
           <BundleList>
@@ -131,6 +131,6 @@ export function RecommendationBundle({ items, exhausted, nextChapter, lectureMin
           />
         </BoxPad>
       )}
-    </Bundle>
+    </TodayBundle>
   );
 }

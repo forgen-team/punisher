@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { ErrorState } from "@forgen-team/ui";
+import { ErrorState, TodayColumns, TodaySection } from "@forgen-team/ui";
 import { useActivity, useLearningSettings, useReviewSummary, useToday } from "@/src/entities/punisher";
 import { AskBox, ResolutionChoices, useLaunchInstant } from "@/src/features/punisher/instant-start";
 import { FirstSetup } from "@/src/features/punisher/first-setup";
@@ -9,7 +9,7 @@ import { InlineError } from "@/src/shared/ui/punisher";
 import { messages } from "./i18n";
 import { recheckWithoutLecture, reviewBundleState, reviewTotal } from "./lib/reviewBundle";
 import { lectureMinutes } from "./lib/recommendations";
-import { BoxPad, BoxSkeleton, RecentInquiries, RecommendationBundle, ResumeBundle, ReviewBundle, StudyTopicsBundle, TodayBox } from "./ui";
+import { BoxPad, BoxSkeleton, RecentInquiries, RecommendationBundle, ResumeBundle, ReviewBundle, StudyTopicsBundle } from "./ui";
 
 const DATE: Intl.DateTimeFormatOptions = { month: "long", day: "numeric", weekday: "long" };
 
@@ -105,7 +105,8 @@ export function TodayWidget() {
   }
 
   const askBox = (
-    <TodayBox title={t.ask}>
+    <TodaySection title={t.ask}>
+      <div className="divide-y divide-line-subtle">
       <BoxPad className="pt-3">
         <AskBox />
         <div aria-live="polite" className="mt-2 flex flex-col gap-2 empty:hidden">
@@ -115,19 +116,22 @@ export function TodayWidget() {
       </BoxPad>
       <StudyTopicsBundle starting={isPending} onStart={(id, query, requestId) => void start(id, query, requestId)} />
       <RecentInquiries />
-    </TodayBox>
+      </div>
+    </TodaySection>
   );
 
   return (
-    <div className="flex w-full flex-col gap-3 [container-type:inline-size]">
+    <div className="flex w-full flex-col gap-3">
       <p className="text-xs text-fg-muted">{formatDate(new Date(), locale, DATE)}</p>
-      <div className="grid grid-cols-1 items-start gap-6 [@container(min-width:1024px)]:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div className="flex min-w-0 flex-col gap-6">
-          <TodayBox title={t.process} count={reviewCount}>{reviewContent}</TodayBox>
-          <TodayBox title={t.study} count={studyCount}>{studyContent}</TodayBox>
-        </div>
-        <div className="flex min-w-0 flex-col gap-6">{askBox}</div>
-      </div>
+      <TodayColumns
+        todo={
+          <>
+            <TodaySection title={t.process} count={reviewCount}><div className="divide-y divide-line-subtle">{reviewContent}</div></TodaySection>
+            <TodaySection title={t.study} count={studyCount}><div className="divide-y divide-line-subtle">{studyContent}</div></TodaySection>
+          </>
+        }
+        study={askBox}
+      />
       <FirstSetup />
     </div>
   );

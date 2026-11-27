@@ -51,7 +51,7 @@ function renderToday() {
 }
 
 const box = (name: string) => screen.findByRole("region", { name });
-const group = (name: string) => screen.findByRole("group", { name });
+const group = (name: string) => screen.findByRole("group", { name: new RegExp(`^${name}`) });
 
 async function openMenu(label: string) {
   const trigger = await screen.findByRole("button", { name: label });
@@ -86,7 +86,7 @@ describe("오늘 — 상자·묶음", () => {
     renderToday();
     const process = await box("처리할 것");
     await waitFor(() => expect(within(process).getByText("복습 12")).toBeInTheDocument());
-    expect(within(process).getByRole("heading", { name: "처리할 것" }).parentElement).toHaveTextContent("처리할 것21");
+    expect(within(process).getByRole("heading", { name: /^처리할 것/ })).toHaveTextContent("처리할 것21");
     expect(within(process).getByText(/확인 대기 1/)).toBeInTheDocument();
     expect(within(process).getByText(/카드 8/)).toBeInTheDocument();
     expect(within(process).getByText(/종합 1/)).toBeInTheDocument();
@@ -126,7 +126,7 @@ describe("오늘 — 상자·묶음", () => {
     today = { ...today, items: today.items.filter((item) => item.kind !== "resume") };
     renderToday();
     await group("오늘의 추천");
-    expect(screen.queryByRole("group", { name: "이어보기" })).toBeNull();
+    expect(screen.queryByRole("group", { name: /^이어보기/ })).toBeNull();
   });
 
   it("묻기·새 주제: 전환 2 + 보내기, 공부할 주제(RSS 글에서 · 준비됨 [강의 시작])", async () => {
@@ -138,7 +138,7 @@ describe("오늘 — 상자·묶음", () => {
     expect(within(ask).getByRole("radio", { name: "질문하기" })).toBeInTheDocument();
     expect(within(ask).getByRole("radio", { name: "주제 공부하기" })).toBeInTheDocument();
     expect(within(ask).getByRole("button", { name: "보내기" })).toBeDisabled();
-    const topics = await within(ask).findByRole("group", { name: "공부할 주제" });
+    const topics = await within(ask).findByRole("group", { name: /^공부할 주제/ });
     expect(topics).toHaveTextContent("RSS 글에서");
     expect(within(topics).getByRole("button", { name: "강의 시작" })).toBeInTheDocument();
   });
