@@ -1,16 +1,19 @@
 import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
-import { Button, ErrorState, ProgressCircle, Skeleton, useConfirm } from "@forgen-team/ui";
+import { Button, ErrorState, ProgressCircle, Skeleton, useConfirm, useMediaQuery } from "@forgen-team/ui";
 import { usePageActions, useScreenTitle, type PageAction } from "@/src/shared/lib/screen-chrome";
 import { useInquiry, useRegenerateInquiry, useRetryFollowup, useSetInquiryRead } from "@/src/entities/punisher";
 import { INQUIRY_MAX_FOLLOWUPS, describePunisherError, type Inquiry, type InquiryFollowup, type LectureSection } from "@/src/shared/api/punisher";
 import { formatDate, useLocale, useT } from "@/src/shared/i18n";
 import { InlineError } from "@/src/shared/ui/punisher";
+import { THREAD_PANEL_QUERY } from "@/src/features/punisher/reading-assist";
 import { FOLLOWUP_ANNOUNCEMENTS, messages } from "./i18n";
 import { LectureAssistPlaceholder, LectureBody, LectureLayout, useActiveSection } from "../lecture-viewer";
+import { useLecturePanel } from "../lecture-viewer/lib/useLecturePanel";
 import { InquiryConcepts, mapHref } from "./ui/InquiryConcepts";
 import { FollowupComposer } from "./ui/FollowupComposer";
 import { InquiryHeader } from "./ui/InquiryHeader";
+import { InquiryTocBar, InquiryTocSheet } from "./ui/InquiryToc";
 import { QuoteAsk } from "./ui/QuoteAsk";
 import { FollowupQuestion, inquirySectionNote } from "./ui/sectionNote";
 
@@ -54,6 +57,7 @@ function StatusRow({ inquiry, hasContent, unstable, minutes }: { inquiry: Inquir
 /**
  * '이 질문에 답하기' 해설 화면(T-reading) — 제목·←·페이지 동작(다시 만들기·지도에서 보기)은 틀이 그린다.
  * 접은/펼친 목차 · 가독 폭 본문 · xl 보조 열, 끝 마무리 줄 [읽음으로 표시][이어서 묻기].
+ * 보조 열이 없는 폭(강의 화면과 같은 1280 미만)에서는 본문 위 고정 바 [목차] → 시트(주소 ?panel=toc, 뒤로 = 닫기).
  * 보조 열에는 해설에 나온 개념(지도에 있던 것 · 새로 제안한 것). 쓰는 중이면 3초마다 다시 확인하고,
  * 끝난 해설은 저장된 그대로 보인다('다시 만들기'에서만 새로 쓴다). 불러오는 중에도 같은 뼈대를 그려 밀림이 없다.
  */
@@ -93,6 +97,8 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
   const anchorKey = useMemo(() => sections.map((s) => s.anchor).filter(Boolean).join("|"), [sections]);
   const activeAnchor = useActiveSection(anchorKey);
   useScreenTitle(q?.content?.title || q?.question);
+  const wide = useMediaQuery(THREAD_PANEL_QUERY);
+  const { panel, open: openPanel, close: closePanel } = useLecturePanel();
 
   const hasContent = baseSections.length > 0;
   const generating = q?.status === "pending";
@@ -144,6 +150,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
 
   return (
     <div className="flex w-full flex-col">
+      {!wide && <InquiryTocBar disabled={sections.length === 0} onOpen={() => openPanel("toc")} />}
       <LectureLayout sections={sections} totalMinutes={totalMinutes} activeAnchor={activeAnchor} assist={assist}>
         <StatusRow inquiry={q} hasContent={hasContent} unstable={Boolean(q && inquiry.error)} minutes={totalMinutes} />
         {/* 후속 답의 진행은 늘 있는 라이브 영역으로 읽어 준다(내용만 바뀜). */}
@@ -253,6 +260,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
           <InlineError error={regenerate.error ?? setRead.error ?? retryFollowup.error ?? (q ? inquiry.error : null)} />
         </div>
       </LectureLayout>
+      <InquiryTocSheet open={!wide && panel === "toc"} onClose={closePanel} sections={sections} totalMinutes={totalMinutes} />
     </div>
   );
 }
