@@ -1,12 +1,19 @@
 import { useState, type MouseEvent, type ReactNode } from "react";
 import { useAtom } from "jotai";
 import { Download, ScrollText } from "lucide-react";
-import { List, ListRow, Page, Section, SegmentedControl, SegmentedControlItem, useToast } from "@forgen-team/ui";
-import { isWitems, standaloneColumnClass } from "@/src/shared/config/runtime";
+import { List, ListRow, Section, SegmentedControl, SegmentedControlItem, useToast } from "@forgen-team/ui";
+import { isWitems } from "@/src/shared/config/runtime";
 import { themePreferenceAtom, type ThemePreference } from "@/src/shared/lib/theme";
-import { LearningSettingsForm, ReadingSettingsFields, StudySettingsFields } from "@/src/features/punisher/learning-settings";
+import {
+  AboutRows,
+  LearningSettingsForm,
+  ReadingSettingsFields,
+  ReviewSettingsFields,
+  SettingRow,
+  learningSettingsMessages,
+  useSavedFlash,
+} from "@/src/features/punisher/learning-settings";
 import { punisherApiBase } from "@/src/shared/api/punisher";
-import { BRAND_LINE, PunisherLogo } from "@/src/shared/ui/brand";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 import { AiConnectionPanel } from "@/src/widgets/claude-status";
@@ -63,38 +70,49 @@ function ExportRows({ children }: { children: ReactNode }) {
 
 const THEMES: ThemePreference[] = ["light", "dark", "system"];
 
-/** 화면 테마(라이트·다크·시스템) — 하나만 고르므로 SegmentedControl. */
+/** 화면 테마(라이트·다크·시스템) — 하나만 고르므로 SegmentedControl. 고르면 바로 저장(기기에). */
 function ThemeChoice() {
   const t = useT(messages);
   const [preference, setPreference] = useAtom(themePreferenceAtom);
+  const { savedKey, flash } = useSavedFlash();
   const label = { light: t.themeLight, dark: t.themeDark, system: t.themeSystem } as const;
   return (
-    <SegmentedControl aria-label={t.theme} value={preference} onValueChange={(value) => setPreference(value as ThemePreference)}>
-      {THEMES.map((value) => (
-        <SegmentedControlItem key={value} value={value}>{label[value]}</SegmentedControlItem>
-      ))}
-    </SegmentedControl>
+    <SettingRow label={t.theme} saved={savedKey === "theme"}>
+      <SegmentedControl
+        aria-label={t.theme}
+        value={preference}
+        onValueChange={(value) => { setPreference(value as ThemePreference); flash("theme"); }}
+      >
+        {THEMES.map((value) => (
+          <SegmentedControlItem key={value} value={value}>{label[value]}</SegmentedControlItem>
+        ))}
+      </SegmentedControl>
+    </SettingRow>
   );
 }
 
 /**
- * 설정: 언어 · 예시 코드 언어 · 화면 테마 · AI 연결(제공자 선택·상태) · 데이터 위치.
- * Witems: 제목은 셸이 그리고(데스크톱 h1·폰 상단 바 — Page 가 셸 안에서는 h1 을 그리지 않는다), 테마는 셸 것을 따르므로 화면 구역을 두지 않는다.
+ * 설정(`/settings`, T-settings 단일): 학습 · 복습 · 읽기 · AI 연결 · 고급 · 화면(단독판만) · 정보 — 셸 안 6구역, 단독판 7구역.
+ * 제목("punisher 설정")·←·폭(narrow)은 틀이 공통 Page 로 그리므로 이 화면은 h1·←·폭을 두지 않는다.
+ * 저장은 한 구역 안에서 한 가지 방식만 쓴다 — 고르기·스위치·칩은 바로 저장(그 자리에 "저장했어요"), 숫자 칸은 칸을 떠날 때 저장.
+ * 테마는 단독판에서만 고른다(Witems 는 셸 테마를 따른다).
  */
 export function SettingsPage() {
   const t = useT(messages);
-  const inWitems = isWitems();
+  const tl = useT(learningSettingsMessages);
   return (
-    <Page title={t.settings} width="full" className={standaloneColumnClass()}>
-    <div className="flex w-full flex-col gap-6">
+    <div className="flex w-full flex-col gap-8">
       <Section title={t.sectionLearning}>
         <LearningSettingsForm />
       </Section>
-      <Section title={t.sectionReview}>
-        <StudySettingsFields />
+      <Section title={tl.sectionReview}>
+        <ReviewSettingsFields />
       </Section>
-      <Section title={t.sectionReading}>
+      <Section title={t.sectionReading} description={tl.deviceHint}>
         <ReadingSettingsFields />
+      </Section>
+      <Section title={t.sectionAi}>
+        <AiConnectionPanel />
       </Section>
       <Section title={t.sectionAdvanced}>
         <ExportRows>
@@ -106,27 +124,14 @@ export function SettingsPage() {
           />
         </ExportRows>
       </Section>
-      {inWitems ? null : (
+      {isWitems() ? null : (
         <Section title={t.sectionScreen}>
           <ThemeChoice />
         </Section>
       )}
-      <Section title={t.sectionAi}>
-        <AiConnectionPanel />
-      </Section>
       <Section title={t.sectionAbout}>
-        <p className="flex items-center gap-2 text-sm text-fg-secondary">
-          <PunisherLogo size={20} />
-          <span>
-            {BRAND_LINE.split("forgen")[0]}
-            <a href="https://github.com/forgen-team/forgen" target="_blank" rel="noreferrer" className="text-accent-text underline-offset-2 hover:underline">
-              forgen
-            </a>
-            {BRAND_LINE.split("forgen")[1]}
-          </span>
-        </p>
+        <AboutRows />
       </Section>
     </div>
-    </Page>
   );
 }

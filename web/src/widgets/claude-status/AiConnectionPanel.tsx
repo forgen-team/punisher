@@ -14,13 +14,16 @@ import {
 import { Button, Skeleton } from "@forgen-team/ui";
 import { cn } from "@/src/shared/lib/cn";
 import { isWitems } from "@/src/shared/config/runtime";
+import { SettingRow } from "@/src/features/punisher/learning-settings";
 import { useT } from "@/src/shared/i18n";
 import { messages, panelMessages, statusText, witemsStatusText } from "./i18n";
 
 /**
  * 설정 › AI 연결: 고른 AI 하나가 강의 생성·검수·질문 답·채점을 모두 맡는다.
  * 설치됐고 로그인 안 됨이 확실하지 않은 제공자만 고를 수 있다(agy 는 로그인을 미리 알 수 없어 고를 수 있다).
- * 바꾸면 PUT /me/settings { aiProvider } 후 상태를 다시 받는다(서버는 다음 호출부터 바로 쓴다).
+ * 바꾸면 PUT /me/settings { aiProvider } 후 상태를 다시 받는다(서버는 다음 호출부터 바로 쓴다) — 고르는 즉시 저장이라 저장 버튼이 없다.
+ * 셸 안: 연결 상태 · 진행 중 작업 수 / 단독판: 제공자 고르기 · 다시 확인 · 작업 수.
+ * (CLI 계정 연결이라 API 키 칸은 없다. 버전·데이터 위치는 설정 › 정보 구역.)
  */
 export function AiConnectionPanel() {
   const t = useT(panelMessages);
@@ -38,7 +41,7 @@ export function AiConnectionPanel() {
   const current = providers.find((p) => p.id === serverSelected);
   const { message } = statusText(ts, current?.code, data.message);
   const ok = current !== undefined && !current.code;
-  const { claude, dataDir, appVersion } = data;
+  const { claude } = data;
   if (isWitems()) {
     // Witems: AI 는 셸의 연결 하나 — 제공자 고르기·로컬 CLI·데이터 위치는 의미가 없다.
     return (
@@ -47,12 +50,7 @@ export function AiConnectionPanel() {
           {ok ? <CheckCircle2 className="h-4 w-4 shrink-0 text-success" aria-hidden="true" /> : <AlertTriangle className="h-4 w-4 shrink-0 text-warning" aria-hidden="true" />}
           <span className="font-medium text-fg">{ok ? t.witemsConnected : witemsStatusText(ts, current?.code ?? "claude_unavailable").message}</span>
         </p>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-fg-secondary">
-          <dt>{t.activeJobs}</dt>
-          <dd className="text-fg">{t.activeCount(claude.active, claude.queued)}</dd>
-          <dt>{t.version}</dt>
-          <dd className="text-fg">{appVersion}</dd>
-        </dl>
+        <ActiveJobsRow label={t.activeJobs} value={t.activeCount(claude.active, claude.queued)} />
       </div>
     );
   }
@@ -105,15 +103,17 @@ export function AiConnectionPanel() {
           {ts.recheck}
         </Button>
       </div>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-fg-secondary">
-        <dt>{t.activeJobs}</dt>
-        <dd className="text-fg">{t.activeCount(claude.active, claude.queued)}</dd>
-        <dt>{t.dataDir}</dt>
-        <dd className="break-all font-mono text-xs text-fg">{dataDir}</dd>
-        <dt>{t.version}</dt>
-        <dd className="text-fg">{appVersion}</dd>
-      </dl>
+      <ActiveJobsRow label={t.activeJobs} value={t.activeCount(claude.active, claude.queued)} />
     </div>
+  );
+}
+
+/** 진행 중인 생성 수 한 행(설정 행 모양). 버전·데이터 위치는 설정 › 정보 구역이 보여 준다. */
+function ActiveJobsRow({ label, value }: { label: string; value: string }) {
+  return (
+    <SettingRow label={label}>
+      <span className="text-sm text-fg-secondary">{value}</span>
+    </SettingRow>
   );
 }
 
@@ -147,7 +147,7 @@ function ProviderOption({
   return (
     <label
       className={cn(
-        "flex min-h-11 items-center gap-3 rounded-lg border px-3 py-2",
+        "flex min-h-11 items-center gap-3 border px-3 py-2",
         checked ? "border-accent bg-accent-subtle" : "border-line",
         disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
       )}
