@@ -172,6 +172,39 @@ func (s *SQLiteStore) RestoreCard(ctx context.Context, userID, cardID string) (R
 	return c, err
 }
 
+// CardTrashDays: a deleted card can be restored for this long; after that the
+// scheduler removes the card row for good (PurgeDeletedCards).
+const CardTrashDays = 30
+
+// PurgeDeletedCards removes the card rows deleted CardTrashDays or more before
+// now and keeps their review log: the activity heat map, the day counts and the
+// like are history of what the user did and must not shrink. A card restored in
+// time has no deleted_at and is never touched. Returns the cards removed.
+//
+// review_card_log.card_id is ON DELETE CASCADE (the schema is not changed), so
+// the delete runs on one pinned connection with foreign keys off — otherwise the
+// log would go with the card. The log rows then point at a card that no longer
+// exists; every query on the log reads it alone (no JOIN with review_cards), and
+// the migration runner ignores exactly this orphan kind in its foreign key check.
+func (s *SQLiteStore) PurgeDeletedCards(ctx context.Context, now time.Time) (int64, error) {
+	conn, err := s.db.Conn(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("purge deleted cards: %w", err)
+	}
+	defer conn.Close()
+	// PRAGMA foreign_keys is per connection and a no-op inside a transaction.
+	if _, err := conn.ExecContext(ctx, `PRAGMA foreign_keys = OFF`); err != nil {
+		return 0, fmt.Errorf("purge deleted cards: foreign keys off: %w", err)
+	}
+	defer func() { _, _ = conn.ExecContext(context.Background(), `PRAGMA foreign_keys = ON`) }()
+	res, err := conn.ExecContext(ctx, `DELETE FROM review_cards WHERE deleted_at IS NOT NULL AND deleted_at <= ?`,
+		FormatTime(now.AddDate(0, 0, -CardTrashDays)))
+	if err != nil {
+		return 0, fmt.Errorf("purge deleted cards: %w", err)
+	}
+	return res.RowsAffected()
+}
+
 // DueCards returns the user's cards due by now (oldest due first, at most limit).
 func (s *SQLiteStore) DueCards(ctx context.Context, userID string, now time.Time, limit int) ([]ReviewCard, error) {
 	return collect(s.c().query(ctx, `SELECT `+cardColumns+` FROM review_cards
@@ -229,12 +262,12 @@ func (s *SQLiteStore) GradeCard(ctx context.Context, userID, cardID string, rati
 	return out, err
 }
 
-// CardCounts: cards due now and cards reviewed today (KST) — deleted cards count in neither.
+// CardCounts: cards due now (a deleted card is not due) and reviews done today (KST) — the review
+// log counts whatever became of the card afterwards.
 func (s *SQLiteStore) CardCounts(ctx context.Context, userID string, now time.Time) (due, doneToday int, err error) {
 	err = s.c().row(ctx, `SELECT
 			(SELECT COUNT(*) FROM review_cards WHERE user_id = $1 AND deleted_at IS NULL AND suspended_at IS NULL AND next_review_at <= $2),
-			(SELECT COUNT(*) FROM review_card_log l WHERE l.user_id = $1 AND l.reviewed_at >= $3
-				AND EXISTS (SELECT 1 FROM review_cards c WHERE c.id = l.card_id AND c.deleted_at IS NULL))`,
+			(SELECT COUNT(*) FROM review_card_log WHERE user_id = $1 AND reviewed_at >= $3)`,
 		userID, now, learning.KSTDayStart(now)).Scan(&due, &doneToday)
 	return due, doneToday, err
 }
