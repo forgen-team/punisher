@@ -21,6 +21,10 @@ export const messages = defineMessages({
     retry: "다시 만들기",
     title: "강의 만드는 중",
     headline: "강의를 만들고 있어요",
+    cancel: "취소",
+    cancelledToast: "강의 만들기를 취소했어요",
+    cancelFailed: "취소하지 못했어요. 다시 시도해 주세요",
+    cancelTooLate: "이미 끝난 작업이라 취소할 수 없어요",
   },
   en: {
     notSaved: "The lecture wasn't saved.",
@@ -42,5 +46,9 @@ export const messages = defineMessages({
     retry: "Try again",
     title: "Creating the lecture",
     headline: "Creating your lecture",
+    cancel: "Cancel",
+    cancelledToast: "Lecture creation cancelled",
+    cancelFailed: "Couldn't cancel. Try again",
+    cancelTooLate: "It already finished, so it can't be cancelled",
   },
 });

@@ -13,6 +13,7 @@ import { failureLines, stageLabel, type StageState } from "./lib/stageState";
 import { StageSteps } from "./ui/StageSteps";
 import { useInstantStream } from "./useInstantStream";
 import { useRetryInstant } from "./useRetryInstant";
+import { useCancelInstant } from "./useCancelInstant";
 import { useLocale, translate } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 
@@ -67,6 +68,19 @@ function FailurePanel({ state, jobId }: { state: StageState; jobId: string }) {
   );
 }
 
+function CancelButton({ jobId }: { jobId: string }) {
+  const t = translate(messages, useLocale());
+  const { cancel, isPending, error } = useCancelInstant(jobId);
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Button variant="secondary" size="sm" loading={isPending} onClick={cancel}>
+        {t.cancel}
+      </Button>
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+    </div>
+  );
+}
+
 /** 즉석 강의 생성 — 초안 본문 대신 단계(작성 → 검수 → 고침)만 보이고, 기다리는 동안 예측 질문을 둔다. 발행되면 강의로 이동. */
 export function InstantStreamView({ jobId }: { jobId: string }) {
   const router = useRouter();
@@ -100,6 +114,7 @@ export function InstantStreamView({ jobId }: { jobId: string }) {
             {stage === "published" && <span className="sr-only">{stageLabel(state, locale)}</span>}
           </div>
           {elapsed && <span className="text-xs text-fg-muted tabular-nums">{elapsed}</span>}
+          {busy && <CancelButton jobId={jobId} />}
         </div>
       )}
       <PretestPanel detail={pretest.data} />

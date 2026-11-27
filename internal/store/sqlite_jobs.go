@@ -176,16 +176,41 @@ func (s *SQLiteStore) FinishJob(ctx context.Context, jobID string, o JobOutcome)
 		}
 		attemptLog = string(raw)
 	}
+	// A cancelled job keeps its state (the runner finishing after [취소] only adds its tokens).
 	_, err := s.c().exec(ctx, `
-		UPDATE generation_jobs SET status = $2, reason = CASE WHEN $3 = '' THEN reason ELSE $3 END,
-			error = $4, lecture_id = $5, model = $6, input_tokens = input_tokens + $7,
-			output_tokens = output_tokens + $8, finished_at = NOW(), updated_at = NOW(),
+		UPDATE generation_jobs SET status = CASE WHEN `+cancelledRow+` THEN status ELSE $2 END,
+			reason = CASE WHEN `+cancelledRow+` OR $3 = '' THEN reason ELSE $3 END,
+			error = CASE WHEN `+cancelledRow+` THEN error ELSE $4 END,
+			lecture_id = CASE WHEN `+cancelledRow+` THEN NULL ELSE $5 END,
+			model = $6, input_tokens = input_tokens + $7,
+			output_tokens = output_tokens + $8,
+			finished_at = CASE WHEN `+cancelledRow+` THEN finished_at ELSE NOW() END, updated_at = NOW(),
 			attempt_log = COALESCE($9, attempt_log),
 			attempts = CASE WHEN $9 IS NULL THEN attempts ELSE json_array_length($9) END,
 			provider = CASE WHEN $10 = '' THEN provider ELSE $10 END
 		WHERE id = $1`, jobID, o.Status, o.Reason, truncateText(o.Error, 2000), lectureID, o.Model,
 		o.InputTokens, o.OutputTokens, attemptLog, o.Provider)
 	return err
+}
+
+// JobReasonCancelled is generation_jobs.reason of a job the learner cancelled
+// ([취소]); its status is failed (the status CHECK has no cancelled value).
+const JobReasonCancelled = "cancelled"
+
+// cancelledRow matches a cancelled job row (old values inside an UPDATE).
+const cancelledRow = `(status = 'failed' AND reason = '` + JobReasonCancelled + `')`
+
+// CancelJob marks userID's pending/running job failed/cancelled; ok=false when
+// the job is not active any more (finished meanwhile).
+func (s *SQLiteStore) CancelJob(ctx context.Context, userID, jobID string) (bool, error) {
+	res, err := s.c().exec(ctx, `
+		UPDATE generation_jobs SET status = 'failed', reason = $3, error = '',
+			finished_at = NOW(), updated_at = NOW()
+		WHERE id = $1 AND user_id = $2 AND status IN ('pending', 'running')`, jobID, userID, JobReasonCancelled)
+	if err != nil {
+		return false, err
+	}
+	return affected(res) > 0, nil
 }
 
 // RecordUsage stores a finished accounting-only job (question, gloss, resolve)

@@ -8,6 +8,7 @@ import type { PageAction } from "@/src/shared/lib/screen-chrome";
 const idle = { mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false, isSuccess: false, error: null, variables: undefined };
 const abandon = { ...idle, mutate: vi.fn() };
 const startCheck = { ...idle, mutate: vi.fn() };
+let cancel: Omit<typeof idle, "error"> & { error: unknown } = { ...idle, mutate: vi.fn() };
 let skip: { mutate: ReturnType<typeof vi.fn>; isPending: boolean; error: unknown } = { ...idle, mutate: vi.fn() };
 const replace = vi.fn();
 let pageActions: PageAction[] | null = null;
@@ -49,6 +50,7 @@ vi.mock("@/src/entities/punisher", async (importOriginal) => ({
   useLecture: () => ({ data: undefined }),
   useCheckRetry: () => idle,
   useCheckAbandon: () => abandon,
+  useCheckCancel: () => cancel,
   useCheckResume: () => idle,
   useCheckDispute: () => idle,
   useCheckAnswer: () => idle,
@@ -184,6 +186,64 @@ describe("복습 끝 화면의 다음 행동 1개", () => {
     fireEvent.click(screen.getByRole("button", { name: "확인 대기 2개 이어서" }));
     expect(startCheck.mutate).toHaveBeenCalledWith("l7", expect.anything());
     expect(replace).toHaveBeenCalledWith("/check/c9");
+  });
+});
+
+describe("문항 만드는 중 [취소]", () => {
+  const preparing: CheckDetail = {
+    ...review,
+    session: { ...review.session, kind: "check", lectureId: "L1", status: "preparing", cursor: 0, itemIds: [] },
+    items: [], current: null, pending: true, generationJobId: "job-1",
+  };
+
+  it("[취소]를 누르면 확인 창 없이 바로 취소하고 오늘로 replace + 토스트 '문제 만들기를 취소했어요'", async () => {
+    detail = preparing;
+    replace.mockClear();
+    cancel = { ...idle, error: null, mutate: vi.fn((_: unknown, opts?: { onSuccess?: () => void }) => opts?.onSuccess?.()) };
+    render(<CheckView checkId="s1" />, { wrapper });
+    expect(screen.getByText("문항을 만드는 중이에요")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "취소" }));
+    expect(cancel.mutate).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(replace).toHaveBeenCalledWith("/");
+    expect(await screen.findByText("문제 만들기를 취소했어요")).toBeInTheDocument();
+  });
+
+  it("취소가 실패하면 그 자리에 인라인 오류(409 는 '이미 끝난 작업'), 이동하지 않는다", async () => {
+    const { PunisherApiError } = await import("@/src/shared/api/punisher");
+    detail = preparing;
+    replace.mockClear();
+    cancel = { ...idle, mutate: vi.fn(), error: new Error("network") };
+    const { unmount } = render(<CheckView checkId="s1" />, { wrapper });
+    expect(screen.getByRole("alert")).toHaveTextContent("취소하지 못했어요. 다시 시도해 주세요");
+    unmount();
+    cancel = { ...idle, mutate: vi.fn(), error: new PunisherApiError(409, "CHECK_STATE", "지금은 할 수 없는 동작이에요") };
+    render(<CheckView checkId="s1" />, { wrapper });
+    expect(screen.getByRole("alert")).toHaveTextContent("이미 끝난 작업이라 취소할 수 없어요");
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["pretest", "문항을 만드는 중이에요"],
+    ["placement", "문항을 만드는 중이에요"],
+    ["synthesis", "문항을 만드는 중이에요"],
+  ] as const)("진단·종합(%s) 준비 화면에도 [취소] — 누르면 바로 취소하고 오늘로 replace + 토스트", async (kind, label) => {
+    detail = { ...preparing, session: { ...preparing.session, kind, lectureId: "" }, generationJobId: `job-${kind}` };
+    replace.mockClear();
+    cancel = { ...idle, error: null, mutate: vi.fn((_: unknown, opts?: { onSuccess?: () => void }) => opts?.onSuccess?.()) };
+    render(<CheckView checkId="s1" />, { wrapper });
+    expect(screen.getByText(label)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "취소" }));
+    expect(cancel.mutate).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledWith("/");
+    expect(await screen.findByText("문제 만들기를 취소했어요")).toBeInTheDocument();
+  });
+
+  it("생성 작업이 없는 준비 화면에는 [취소]가 없다", () => {
+    detail = { ...preparing, generationJobId: undefined };
+    cancel = { ...idle, error: null, mutate: vi.fn() };
+    render(<CheckView checkId="s1" />, { wrapper });
+    expect(screen.queryByRole("button", { name: "취소" })).toBeNull();
   });
 });
 

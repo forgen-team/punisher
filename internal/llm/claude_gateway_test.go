@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -237,5 +238,40 @@ func TestNewClaudeGatewayClientFromEnvReadsAppName(t *testing.T) {
 	c := NewClaudeGatewayClientFromEnv()
 	if c == nil || c.AppName != "punisher" || c.InternalToken != "tok" {
 		t.Fatalf("client %+v", c)
+	}
+}
+
+// TestGatewayCallEndsWhenContextCancelled: a cancelled generation ([취소]) aborts
+// the gateway request at once, and the gateway sees the client disconnect.
+func TestGatewayCallEndsWhenContextCancelled(t *testing.T) {
+	gone := make(chan struct{})
+	c := gatewayServer(t, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body) // the server watches the connection once the body is read
+		select {
+		case <-r.Context().Done():
+			close(gone)
+		case <-time.After(10 * time.Second):
+		}
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	errc := make(chan error, 1)
+	go func() {
+		_, err := c.Create(ctx, "", MessagesRequest{User: "x", Timeout: time.Minute})
+		errc <- err
+	}()
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+	select {
+	case err := <-errc:
+		if err == nil {
+			t.Fatal("a cancelled call must fail")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the gateway call did not end after the cancel")
+	}
+	select {
+	case <-gone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the gateway did not see the request end")
 	}
 }

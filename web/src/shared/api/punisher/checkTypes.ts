@@ -183,6 +183,8 @@ export interface CheckDetail {
   /** 세션이 active 가 아니면 null */
   current: CheckCurrent | null;
   pending: boolean;
+  /** 준비 중인 확인 세션의 문항 생성 작업 id([취소] 대상). 그 밖에는 없음 */
+  generationJobId?: string;
   mastery: ObjectiveMastery[] | null;
   /** 확인 세션: 같은 목표의 처음 예측(예측 질문 답) */
   predictions?: Prediction[];

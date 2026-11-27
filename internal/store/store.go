@@ -85,6 +85,7 @@ type Store interface {
 	GetJob(ctx context.Context, userID, jobID string) (models.GenerationJob, error)
 	StartJob(ctx context.Context, jobID string) error
 	FinishJob(ctx context.Context, jobID string, o JobOutcome) error
+	CancelJob(ctx context.Context, userID, jobID string) (bool, error)
 	RecordUsage(ctx context.Context, userID, kind, conceptID string, o JobOutcome) error
 	UsageSince(ctx context.Context, userID string, since time.Time) (lectures int, tokens int, err error)
 	UsageSinceChecks(ctx context.Context, userID string, since time.Time) (tokens int, err error)
@@ -177,6 +178,9 @@ type Store interface {
 	CheckItemsByID(ctx context.Context, userID string, ids []string) ([]CheckItem, error)
 	SaveCheckItems(ctx context.Context, key CheckItemKey, conceptID, jobID, model, promptVersion string, items []check.Item) ([]CheckItem, error)
 	StartCheckItemsJob(ctx context.Context, userID, conceptID string, key CheckItemKey, maxPending int) (models.GenerationJob, bool, error)
+	ActiveCheckItemsJob(ctx context.Context, userID string, key CheckItemKey) (models.GenerationJob, error)
+	StartSessionItemsJob(ctx context.Context, userID, conceptID, sessionID string) (models.GenerationJob, error)
+	ActiveSessionItemsJob(ctx context.Context, userID, sessionID string) (models.GenerationJob, error)
 	FinishCheckItem(ctx context.Context, f ItemFinish) (string, error)
 	ResolveDispute(ctx context.Context, d DisputeResolve) (bool, error)
 	ConceptMastery(ctx context.Context, userID, conceptID string) ([]models.ObjectiveMastery, error)

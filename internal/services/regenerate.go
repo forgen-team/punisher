@@ -81,6 +81,11 @@ func (s *Service) runRegenerate(apiKey, jobID string, t Target, emit func(Event)
 	lec, err := s.runLibraryJob(ctx, apiKey, jobID, t, func(stage string, attempt int) {
 		emit(stageEvent(stage, attempt, rewrites, "", nil))
 	})
+	if errors.Is(err, ErrJobCancelled) {
+		logf("regenerate job %s cancelled", jobID)
+		emitCancelled(emit, rewrites, rewrites)
+		return
+	}
 	if err != nil {
 		logf("regenerate job %s failed: %v", jobID, err)
 		emit(stageEvent(StageFailed, rewrites, rewrites, "", []string{ReasonGenerationError}))

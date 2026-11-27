@@ -11,6 +11,7 @@ import (
 	"github.com/forgen-team/punisher/internal/llmjson"
 	"github.com/forgen-team/punisher/internal/models"
 	"github.com/forgen-team/punisher/internal/prompts"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 const (
@@ -45,10 +46,20 @@ const (
 func (s *Service) runInstant(apiKey, userID, jobID string, t Target, emit func(Event)) {
 	ctx, cancel := context.WithTimeout(context.Background(), instantTimeout)
 	defer cancel()
+	ctx, end := s.runs.begin(ctx, jobID)
+	defer end()
 	attempt := 0
 	var u usage
 	var result LoopResult
 	fail := func(code string, err error, reasons []string) {
+		if s.jobCancelled(ctx, jobID) { // [취소]: the row is already cancelled; only the tokens are added.
+			logf("instant job %s cancelled", jobID)
+			if ferr := s.Store.FinishJob(context.WithoutCancel(ctx), jobID, u.outcome("failed", "", err, "")); ferr != nil {
+				logf("finish job %s: %v", jobID, ferr)
+			}
+			emitCancelled(emit, attempt, InstantRewrites)
+			return
+		}
 		logf("instant job %s failed (%s): %v", jobID, code, err)
 		o := u.outcome("failed", code, err, "")
 		// job.error 는 화면에 그대로 보이므로 요약만 남긴다(원문 오류는 로그와 attempt_log 에).
@@ -89,6 +100,9 @@ func (s *Service) runInstant(apiKey, userID, jobID string, t Target, emit func(E
 		return
 	case result.Status != "published":
 		fail(JobReasonReviewFailed, nil, userReasons(result.Attempts[len(result.Attempts)-1]))
+		return
+	case !s.runs.commit(jobID): // cancelled after the last call: nothing is saved
+		fail(JobReasonStoreError, ErrJobCancelled, nil)
 		return
 	}
 	saved, err := s.storeAttempts(ctx, t, jobID, result, u.model, u.provider)
@@ -157,6 +171,10 @@ func InstantFinalEvents(job models.GenerationJob) []Event {
 		return []Event{stageEvent(StagePublished, 0, InstantRewrites, job.LectureID, nil),
 			{Type: EventDone, Data: map[string]any{"lectureId": job.LectureID, "status": job.Reason}}}
 	case "failed", "skipped":
+		if job.Reason == store.JobReasonCancelled {
+			return []Event{stageEvent(StageFailed, 0, InstantRewrites, "", []string{ReasonCancelled}),
+				{Type: EventError, Data: map[string]string{"code": store.JobReasonCancelled, "message": ReasonCancelled}}}
+		}
 		reasons := []string{ReasonGenerationError}
 		if instantFailReasons[job.Reason] && strings.TrimSpace(job.Error) != "" {
 			reasons = strings.Split(job.Error, "\n")

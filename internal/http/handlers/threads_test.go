@@ -42,6 +42,7 @@ type threadsFixture struct {
 	st        *store.SQLiteStore
 	lectureID string
 	childID   string
+	svc       *services.Service
 }
 
 func newThreadsFixture(t *testing.T) threadsFixture {
@@ -91,7 +92,7 @@ func newThreadsFixture(t *testing.T) threadsFixture {
 	r.Post("/v1/lectures/{id}/threads", learn.CreateThread)
 	r.Post("/v1/questions/{id}/followups", learn.CreateQuestionFollowup)
 	r.Post("/v1/questions/{id}/deep-lecture", learn.DeepLecture)
-	return threadsFixture{h: r, st: st, lectureID: parent, childID: child}
+	return threadsFixture{h: r, st: st, lectureID: parent, childID: child, svc: svc}
 }
 
 func send(t *testing.T, h http.Handler, method, url, body string, wantCode int, out any) {
