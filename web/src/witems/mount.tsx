@@ -10,11 +10,10 @@ import { RouteSync } from "./RouteSync";
 import { ROOT_SELECTOR } from "./scope";
 import { WitemsShell } from "./WitemsShell";
 import { witemsRoutes } from "./routes";
-import { initialAppPath } from "./sections";
 
-/** MemoryRouter 첫 주소(basePath 뒤): 셸 하위 메뉴(#/map)로 들어오면 그 탭, 아니면 ctx.path. "/" 는 "" 로. */
+/** MemoryRouter 첫 주소(basePath 뒤) = ctx.path + ctx.search. "/" 는 "" 로. */
 function initialEntry(ctx: AppContext): string {
-  const path = initialAppPath(ctx.path, ctx.search, window.location.hash);
+  const path = `${ctx.path}${ctx.search}`;
   return path.startsWith("/?") || path === "/" ? path.slice(1) : path;
 }
 
@@ -30,10 +29,10 @@ export function mount(el: HTMLElement, ctx: AppContext): Unmount {
     apiBase: ctx.apiBase,
     portal: ctx.portal,
     setTitle: (title) => ctx.setTitle(title),
-    // 구버전 셸에는 setActions 가 없다 — 그때는 undefined 로 두어 앱이 탭 옆 설정 링크로 폴백한다.
+    // 구버전 셸에는 setActions 가 없다 — 그때는 undefined 로 둔다(셸이 페이지 동작을 그리지 않는다).
     setActions: typeof ctx.setActions === "function" ? (actions) => ctx.setActions?.(actions) : undefined,
     setCommands: typeof ctx.setCommands === "function" ? (commands) => ctx.setCommands?.(commands) : undefined,
-    // setBadges 가 있는 셸은 manifest nav.items 를 사이드바 하위 메뉴로 그린다 — 그때 앱 안 탭(LearnNav)을 감춘다.
+    // 섹션 메뉴(manifest nav.items) 숫자 — 키는 섹션 경로("/"). 셸 안에서는 섹션 메뉴를 셸이 그린다(LearnNav 없음).
     setBadges: typeof ctx.setBadges === "function" ? (badges) => ctx.setBadges?.(badges) : undefined,
   };
   setWitemsRuntime(runtime);

@@ -1,29 +1,26 @@
 import { act, render } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import type { AppContext } from "../contract";
 import { RouteSync } from "../RouteSync";
 
 const BASE = "/apps/punisher";
 
-/** 셸 흉내: navigate 는 주소(경로+해시)를 바꾸고 경로가 바뀌면 onRouteChange 를 알린다(AppHost 처럼). */
+/** 셸 흉내: navigate·섹션 메뉴(go)는 경로를 바꾸고, 바뀌면 onRouteChange 로 알린다(AppHost 처럼, 다시 mount 없음). */
 function fakeShell(start: string) {
   const listeners = new Set<(path: string, search: string) => void>();
   const split = (url: string) => {
     const parsed = new URL(url, "http://x");
-    const path = parsed.pathname.slice(BASE.length) || "/";
-    return { path, search: parsed.search, hash: parsed.hash };
+    return { path: parsed.pathname.slice(BASE.length) || "/", search: parsed.search };
   };
   let now = split(`${BASE}${start}`);
-  window.history.replaceState(null, "", `${BASE}${start}`);
   const go = (url: string) => {
     const next = split(url);
-    window.history.replaceState(null, "", url);
     const moved = next.path !== now.path || next.search !== now.search;
     now = next;
     if (moved) { listeners.forEach((cb) => cb(next.path, next.search)); }
   };
-  const navigate = vi.fn((to: string) => go(`${BASE}${to.startsWith("/#") || to.startsWith("/?") ? to.slice(1) : to === "/" ? "" : to}`));
+  const navigate = vi.fn((to: string) => go(`${BASE}${to === "/" ? "" : to}`));
   const ctx = {
     get path() { return now.path; },
     get search() { return now.search; },
@@ -37,8 +34,10 @@ function fakeShell(start: string) {
 }
 
 let seen = "";
+let appNavigate: ReturnType<typeof useNavigate> | null = null;
 function Where() {
   const { pathname, search } = useLocation();
+  appNavigate = useNavigate();
   seen = `${pathname}${search}`;
   return null;
 }
@@ -52,42 +51,30 @@ function mountAt(shell: ReturnType<typeof fakeShell>, initial: string) {
   );
 }
 
-describe("RouteSync — shell sidebar sub-menu", () => {
-  beforeEach(() => { seen = ""; });
-  afterEach(() => window.history.replaceState(null, "", "/"));
+describe("RouteSync — path sections (D8)", () => {
+  beforeEach(() => { seen = ""; appNavigate = null; });
 
-  it("adds the section hash to the shell URL on mount without a new entry", () => {
+  it("does not touch the shell URL on mount", () => {
     const shell = fakeShell("/map");
     mountAt(shell, "/map");
-    expect(shell.navigate).toHaveBeenCalledWith("/map#/map", { replace: true });
-    expect(window.location.pathname + window.location.hash).toBe(`${BASE}/map#/map`);
+    expect(shell.navigate).not.toHaveBeenCalled();
   });
 
-  it("opens the tab when the shell changes only the hash (same app screen)", () => {
-    const shell = fakeShell("/#/");
+  it("follows the shell section menu without a hash", () => {
+    const shell = fakeShell("/");
     mountAt(shell, "/");
-    act(() => {
-      window.location.hash = "#/history";
-      window.dispatchEvent(new HashChangeEvent("hashchange"));
-    });
-    expect(seen).toBe("/history");
-    expect(window.location.pathname + window.location.hash).toBe(`${BASE}/history#/history`);
+    act(() => shell.go(`${BASE}/history?area=net`));
+    expect(seen).toBe("/history?area=net");
+    act(() => shell.go(`${BASE}`));
+    expect(seen).toBe("/");
+    expect(shell.navigate).not.toHaveBeenCalled();
   });
 
-  it("opens the tab when the shell moves to base#hash from another sub-screen", () => {
-    const shell = fakeShell("/map#/map");
-    mountAt(shell, "/map");
-    act(() => shell.go(`${BASE}#/history`));
-    expect(seen).toBe("/history");
-    expect(window.location.pathname + window.location.hash).toBe(`${BASE}/history#/history`);
-  });
-
-  it("follows back/forward to a path whose hash agrees", () => {
-    const shell = fakeShell("/history#/history");
-    mountAt(shell, "/history");
-    act(() => shell.go(`${BASE}/lectures/l1#/lectures`));
-    expect(seen).toBe("/lectures/l1");
-    act(() => shell.go(`${BASE}/settings`));
-    expect(seen).toBe("/settings");
+  it("sends in-app moves to the shell as plain paths", () => {
+    const shell = fakeShell("/");
+    mountAt(shell, "/");
+    act(() => appNavigate?.("/lectures/l1?at=p3"));
+    expect(shell.navigate).toHaveBeenLastCalledWith("/lectures/l1?at=p3", { replace: false });
+    expect(seen).toBe("/lectures/l1?at=p3");
   });
 });
