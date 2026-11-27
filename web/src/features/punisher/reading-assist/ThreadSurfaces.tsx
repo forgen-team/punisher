@@ -117,7 +117,7 @@ export function PassageMarkers({ anchor }: { anchor: string }) {
           }}
           className={cn(
             // 시각 24px + 위아래 확장 = 44px 터치 영역
-            "relative inline-flex h-6 items-center gap-1 rounded-full border border-line bg-canvas-elevated px-2 text-xs text-accent-text",
+            "relative inline-flex h-6 items-center gap-1 border border-line bg-canvas-elevated px-2 text-xs text-accent-text",
             "before:absolute before:inset-x-0 before:-inset-y-2.5 before:content-[''] hover:bg-canvas-hover",
             focusRing,
           )}
@@ -136,7 +136,7 @@ export function ThreadCountBadge() {
   const count = ctx ? countPassageThreads(ctx.passages) : 0;
   if (count === 0) { return null; }
   return (
-    <span aria-hidden="true" className="pointer-events-none absolute right-1 top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-solid px-1 text-[10px] font-semibold leading-none text-accent-on">
+    <span aria-hidden="true" className="pointer-events-none absolute right-1 top-1 inline-flex h-4 min-w-4 items-center justify-center bg-accent-solid px-1 text-[10px] font-semibold leading-none text-accent-on">
       {count > 99 ? "99+" : count}
     </span>
   );

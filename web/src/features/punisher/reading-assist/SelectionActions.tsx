@@ -27,7 +27,7 @@ const ACTIONS: Array<{ key: PassageAction; icon: typeof Sparkles; label: "easier
 ];
 
 const actionButton = cn(
-  "inline-flex min-h-touch min-w-touch items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium text-fg",
+  "inline-flex min-h-touch min-w-touch items-center justify-center gap-1.5 px-3 text-sm font-medium text-fg",
   "hover:bg-canvas-hover disabled:opacity-60",
   focusRing,
 );
@@ -105,7 +105,7 @@ export function SelectionToolbar({ containerRef }: { containerRef: RefObject<HTM
 
   const tooLong = length > SELECTION_MAX_CHARS;
   if (!selection || !shown) {
-    return memo ? createPortal(<div className="fixed bottom-6 left-1/2 z-panel -translate-x-1/2 rounded-full border border-line bg-canvas-elevated px-3 py-2 shadow-overlay"><MemoStatus status={memo} /></div>, portalRoot()) : null;
+    return memo ? createPortal(<div className="fixed bottom-6 left-1/2 z-panel -translate-x-1/2 border border-line bg-canvas-elevated px-3 py-2 shadow-overlay"><MemoStatus status={memo} /></div>, portalRoot()) : null;
   }
 
   const passage: ThreadPassage = { anchor: selection.anchor, quote: selection.text, rect: selection.rect };
@@ -125,7 +125,7 @@ export function SelectionToolbar({ containerRef }: { containerRef: RefObject<HTM
       role="group"
       aria-label={t.actionsLabel}
       aria-keyshortcuts={TOOLBAR_SHORTCUT}
-      className="absolute z-panel flex items-center gap-0.5 rounded-full border border-line bg-canvas-elevated p-0.5 shadow-overlay"
+      className="absolute z-panel flex items-center gap-0.5 border border-line bg-canvas-elevated p-0.5 shadow-overlay"
       style={{
         top: selection.rect.top - BUTTON_GAP - 46 + window.scrollY,
         left: Math.max(8, Math.min(selection.rect.left, window.innerWidth - 360)) + window.scrollX,

@@ -19,7 +19,7 @@ export function ConfidencePicker({ value, onChange }: { value?: Confidence; onCh
             aria-checked={on}
             onClick={() => onChange(on ? undefined : c)}
             className={cn(
-              "min-h-9 rounded-full border px-3 text-sm transition-colors",
+              "min-h-9 border px-3 text-sm transition-colors",
               on ? "border-accent bg-accent-subtle font-semibold text-accent-text" : "border-line text-fg-secondary hover:bg-canvas-subtle",
               focusRing,
             )}

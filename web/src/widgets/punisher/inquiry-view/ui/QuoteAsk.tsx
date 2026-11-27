@@ -37,7 +37,7 @@ export function QuoteAsk({ containerRef, onQuote }: { containerRef: RefObject<HT
           clearAppSelection();
         }}
         className={cn(
-          "inline-flex h-10 items-center gap-1.5 rounded-full border border-line bg-canvas-elevated px-3.5 text-sm font-medium",
+          "inline-flex h-10 items-center gap-1.5 border border-line bg-canvas-elevated px-3.5 text-sm font-medium",
           "text-fg shadow-overlay hover:bg-canvas-hover",
           focusRing,
         )}

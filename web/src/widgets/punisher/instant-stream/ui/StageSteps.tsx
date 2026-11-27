@@ -22,7 +22,7 @@ export function StageSteps({ state }: { state: StageState }) {
           {index > 0 && <span aria-hidden="true" className="text-fg-muted">→</span>}
           <span
             className={cn(
-              "rounded-full px-2.5 py-1",
+              " px-2.5 py-1",
               s.key === now ? "bg-accent-subtle font-medium text-accent-text" : "text-fg-muted",
             )}
           >
