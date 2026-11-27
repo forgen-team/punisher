@@ -140,6 +140,12 @@ func (h *LearnHandler) AbandonCheck(w http.ResponseWriter, r *http.Request) {
 	h.checkAction(w, r, "abandon check", h.Svc.AbandonCheck)
 }
 
+// CancelCheck handles POST /v1/checks/{id}/cancel ([취소] while the items are
+// being made): the generation stops and the session is abandoned; 409 once it is not preparing.
+func (h *LearnHandler) CancelCheck(w http.ResponseWriter, r *http.Request) {
+	h.checkAction(w, r, "cancel check", h.Svc.CancelCheck)
+}
+
 func (h *LearnHandler) checkAction(w http.ResponseWriter, r *http.Request, op string,
 	run func(ctx context.Context, userID, id string) (models.CheckDetail, error)) {
 	userID, ok := requireUser(w, r)

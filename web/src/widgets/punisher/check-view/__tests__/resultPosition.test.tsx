@@ -36,6 +36,7 @@ vi.mock("@/src/entities/punisher", async (importOriginal) => ({
   useLecture: () => ({ data: undefined }),
   useCheckRetry: () => idle,
   useCheckAbandon: () => idle,
+  useCheckCancel: () => idle,
   useCheckResume: () => idle,
   useCheckDispute: () => idle,
   useToday: () => ({ data: { unchecked: [] } }),

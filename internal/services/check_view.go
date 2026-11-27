@@ -141,6 +141,9 @@ func (s *Service) checkDetail(ctx context.Context, userID string, st checkState)
 	if cur := st.current(); cur != nil {
 		d.Current = currentView(st, *cur, d.Pending)
 	}
+	if job, ok := s.preparingJob(ctx, userID, st.sess); ok {
+		d.GenerationJobID = job.ID
+	}
 	var err error
 	if d.Mastery, err = s.Store.ObjectivesMastery(ctx, userID, objectives); err != nil {
 		return d, err

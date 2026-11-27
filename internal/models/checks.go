@@ -140,6 +140,9 @@ type CheckDetail struct {
 	Current *CheckCurrent `json:"current"`
 	// Pending: a tutor turn or the item generation is running (poll while true).
 	Pending bool `json:"pending"`
+	// GenerationJobID: the running item-set generation of a preparing check
+	// session ([취소] → POST /v1/checks/{id}/cancel or /v1/jobs/{id}/cancel); omitted otherwise.
+	GenerationJobID string `json:"generationJobId,omitempty"`
 	// Mastery: the lecture objectives' current mastery.
 	Mastery []ObjectiveMastery `json:"mastery"`
 	// Predictions: the learner's pretest answers on these objectives ('처음 예측', check sessions only).

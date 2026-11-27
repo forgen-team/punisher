@@ -178,6 +178,18 @@ func insertCheckItem(ctx context.Context, c conn, key CheckItemKey, conceptID, j
 // retired items) with "#n" — subject to the user's pending limit
 // (ErrCheckBusy). witems serialises this under advisory locks on the key and
 // the user; here the transaction alone does, on the single connection.
+// ActiveCheckItemsJob is userID's pending/running item-set generation for key
+// (ErrNotFound when none runs).
+func (s *SQLiteStore) ActiveCheckItemsJob(ctx context.Context, userID string, key CheckItemKey) (models.GenerationJob, error) {
+	job, err := scanJob(s.c().row(ctx, `SELECT `+jobColumns+` FROM generation_jobs
+		WHERE kind = 'check_items' AND objective_key = $1 AND user_id = $2 AND status IN ('pending', 'running')
+		ORDER BY created_at DESC LIMIT 1`, key.JobKey(), userID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return models.GenerationJob{}, ErrNotFound
+	}
+	return job, err
+}
+
 func (s *SQLiteStore) StartCheckItemsJob(ctx context.Context, userID, conceptID string, key CheckItemKey, maxPending int) (models.GenerationJob, bool, error) {
 	var job models.GenerationJob
 	started := false

@@ -6,13 +6,15 @@ import {
   lectureAnchorHref,
   lectureHref,
   useCheckAbandon,
+  useCheckCancel,
   useCheckResume,
   useCheckDispute,
   useCheckRetry,
   useCheckSession,
   useLecture,
 } from "@/src/entities/punisher";
-import type { CheckDetail, CheckItem, LectureSection } from "@/src/shared/api/punisher";
+import { PunisherApiError, type CheckDetail, type CheckItem, type LectureSection } from "@/src/shared/api/punisher";
+import { useRouter } from "@/src/shared/lib/router";
 import { DiagnosticAnswer, currentDiagnosticItem } from "@/src/features/punisher/pretest";
 import {
   anchorTitle,
@@ -99,6 +101,8 @@ export function CheckView({ checkId }: { checkId: string }) {
   const lecture = useLecture(lectureId);
   const retry = useCheckRetry(checkId);
   const abandon = useCheckAbandon(checkId);
+  const cancel = useCheckCancel(checkId);
+  const router = useRouter();
   const resume = useCheckResume(checkId);
   const dispute = useCheckDispute(checkId);
   const confirm = useConfirm();
@@ -166,6 +170,19 @@ export function CheckView({ checkId }: { checkId: string }) {
     });
     if (ok) { abandon.mutate(); }
   }
+  // 문항 만드는 중 [취소]: 되돌릴 수 없지만 다시 시작할 수 있어 확인 창 없이 바로(정책 23 §3) → 오늘로 replace + 토스트.
+  function cancelPreparing() {
+    cancel.mutate(undefined, {
+      onSuccess: () => {
+        toast.show(t.cancelledToast);
+        router.replace("/");
+      },
+    });
+  }
+  const cancelError = cancel.error
+    ? (cancel.error instanceof PunisherApiError && cancel.error.status === 409 ? t.cancelTooLate : t.cancelFailed)
+    : "";
+
   // 배치 확인 건너뛰기: 기록만 하는 진단이라 확인 창 없이 닫고 되돌리기 알림을 둔다.
   function skipPlacement() {
     abandon.mutate(undefined, {
@@ -206,6 +223,14 @@ export function CheckView({ checkId }: { checkId: string }) {
             <ProgressCircle size="24" tone="inherit" aria-hidden />
             {statusLabels.preparing}
           </StatusLine>
+          {d.generationJobId && (
+            <div className="mt-4 flex flex-col items-start gap-1">
+              <Button variant="secondary" size="sm" loading={cancel.isPending} onClick={cancelPreparing}>
+                {t.cancel}
+              </Button>
+              {cancelError && <p role="alert" className="text-sm text-danger">{cancelError}</p>}
+            </div>
+          )}
           <div className="mt-6 flex flex-col gap-4" aria-hidden="true">
             <Skeleton lines={3} />
             <Skeleton lines={3} className="h-24" />

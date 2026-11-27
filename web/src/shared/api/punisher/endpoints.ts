@@ -249,6 +249,8 @@ export const punisherApi = {
     }),
   retryCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/retry`, { method: "POST" }),
   abandonCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/abandon`, { method: "POST" }),
+  /** 문항 만드는 중 [취소] — 생성을 멈추고 세션을 abandoned 로. 준비 중이 아니면 409. */
+  cancelCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/cancel`, { method: "POST" }),
   /** '그만하기' 되돌리기(10분 안, 반쯤 답한 문항을 닫지 않은 경우만 — 아니면 409). */
   resumeCheck: (id: string) => punisherFetch<CheckDetail>(`/checks/${enc(id)}/resume`, { method: "POST" }),
   /** 자기 채점 — 답을 보낸 뒤(current.canSelfGrade)에만. */

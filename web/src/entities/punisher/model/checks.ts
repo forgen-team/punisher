@@ -120,6 +120,11 @@ export function useCheckRetry(id: string) {
   return useCheckAction<void>(() => punisherApi.retryCheck(id));
 }
 
+/** 문항 만드는 중 [취소] — 생성을 멈추고 세션을 그만둔다(abandoned). */
+export function useCheckCancel(id: string) {
+  return useCheckAction<void>(() => punisherApi.cancelCheck(id));
+}
+
 /** 포기 — 이미 반영된 근거는 남는다. */
 export function useCheckAbandon(id: string) {
   return useCheckAction<void>(() => punisherApi.abandonCheck(id));

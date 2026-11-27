@@ -178,6 +178,7 @@ type Store interface {
 	CheckItemsByID(ctx context.Context, userID string, ids []string) ([]CheckItem, error)
 	SaveCheckItems(ctx context.Context, key CheckItemKey, conceptID, jobID, model, promptVersion string, items []check.Item) ([]CheckItem, error)
 	StartCheckItemsJob(ctx context.Context, userID, conceptID string, key CheckItemKey, maxPending int) (models.GenerationJob, bool, error)
+	ActiveCheckItemsJob(ctx context.Context, userID string, key CheckItemKey) (models.GenerationJob, error)
 	FinishCheckItem(ctx context.Context, f ItemFinish) (string, error)
 	ResolveDispute(ctx context.Context, d DisputeResolve) (bool, error)
 	ConceptMastery(ctx context.Context, userID, conceptID string) ([]models.ObjectiveMastery, error)

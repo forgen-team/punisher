@@ -260,3 +260,63 @@ func TestFinishJobKeepsCancelledState(t *testing.T) {
 		t.Fatalf("second cancel: %v %v", ok, err)
 	}
 }
+
+// [취소] while a check's items are made: the detail names the generation job,
+// the cancel kills the AI CLI process group, the session ends abandoned with
+// no items saved, and a second cancel is 409 (ErrCheckState).
+func TestCancelCheckPreparingKillsCLI(t *testing.T) {
+	f := newCancelFixture(t)
+	ctx := context.Background()
+	cf := newCheckFixture(t, f.s, f.user)
+	d, _, err := f.s.StartCheck(ctx, f.user, "check", cf.lectureID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.Session.Status != "preparing" || d.GenerationJobID == "" {
+		t.Fatalf("preparing detail: status %q job %q", d.Session.Status, d.GenerationJobID)
+	}
+	var pids []int
+	waitFor(t, "the fake CLI to start its child", func() bool {
+		raw, err := os.ReadFile(f.pids)
+		if err != nil {
+			return false
+		}
+		pids = nil
+		for _, field := range strings.Fields(string(raw)) {
+			pid, _ := strconv.Atoi(field)
+			pids = append(pids, pid)
+		}
+		return len(pids) == 2
+	})
+
+	got, err := f.s.CancelCheck(ctx, f.user, d.Session.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Session.Status != "abandoned" || got.GenerationJobID != "" || len(got.Items) != 0 {
+		t.Fatalf("cancelled check: status %q job %q items %d", got.Session.Status, got.GenerationJobID, len(got.Items))
+	}
+	waitFor(t, "the CLI process group to die", func() bool { return !alive(pids[0]) && !alive(pids[1]) })
+	job, err := f.s.Store.GetJob(ctx, f.user, d.GenerationJobID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if job.Status != "failed" || job.Reason != store.JobReasonCancelled {
+		t.Fatalf("items job: %+v", job)
+	}
+	waitFor(t, "the runner to finish", func() bool { return !f.s.runs.cancelled(d.GenerationJobID) })
+	var items int
+	if err := testDB(f.s).QueryRowContext(ctx, `SELECT COUNT(*) FROM check_items WHERE generation_job_id = ?`, d.GenerationJobID).Scan(&items); err != nil {
+		t.Fatal(err)
+	}
+	if items != 0 {
+		t.Fatalf("a cancelled generation saved %d items", items)
+	}
+	after, err := f.s.GetCheck(ctx, f.user, d.Session.ID)
+	if err != nil || after.Session.Status != "abandoned" {
+		t.Fatalf("session after the runner ended: %v %+v", err, after.Session)
+	}
+	if _, err := f.s.CancelCheck(ctx, f.user, d.Session.ID); !errors.Is(err, ErrCheckState) {
+		t.Fatalf("second cancel: %v, want ErrCheckState", err)
+	}
+}
