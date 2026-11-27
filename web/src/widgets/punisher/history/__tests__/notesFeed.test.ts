@@ -25,7 +25,7 @@ describe("notes feed", () => {
 
 describe("search hits on the notes tab", () => {
   it("maps hit kinds and leaves lecture-body hits to the learn tab", () => {
-    expect([hit("inquiry"), hit("question"), hit("note"), hit("lecture")].map(hitNoteKind)).toEqual(["inquiry", "lq", "memo", null]);
+    expect([hit("inquiry"), hit("question"), hit("note"), hit("lecture")].map((h) => hitNoteKind(h))).toEqual(["inquiry", "lq", "memo", null]);
     expect(noteHits([hit("lecture"), hit("note"), hit("question")]).map((h) => h.kind)).toEqual(["memo", "lq"]);
   });
 
@@ -41,7 +41,7 @@ describe("learned concepts", () => {
   const all = [
     concept("a", "HTTP 캐시", "completed", "network", "2026-11-01"),
     concept("b", "캐시 일관성", "known", "db", "2026-11-05"),
-    concept("c", "TCP", "unknown", "network", "2026-11-09"),
+    concept("c", "TCP", "not_started", "network", "2026-11-09"),
   ];
   it("keeps completed/known concepts that match the term and area, latest first", () => {
     expect(matchLearnedConcepts(all, "", "").map((c) => c.id)).toEqual(["b", "a"]);
