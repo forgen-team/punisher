@@ -2,12 +2,12 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { List, ListRow, Menu, TextField, useConfirm, type MenuItemDef } from "@forgen-team/ui";
-import { GOAL_STATUS_LABELS, useDeleteGoal, useUpdateGoal } from "@/src/entities/punisher";
+import { GOAL_STATUS_LABELS, useDeleteGoal, useGoalDeadlines, useUpdateGoal } from "@/src/entities/punisher";
 import type { Goal, GoalStatus } from "@/src/shared/api/punisher";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { GoalPathView } from "./GoalPathView";
 import { GoalDeadline } from "./GoalDeadline";
-import { useT } from "@/src/shared/i18n";
+import { formatDate, useLocale, useT } from "@/src/shared/i18n";
 import { messages } from "./i18n";
 
 const STATUSES: GoalStatus[] = ["active", "achieved", "archived"];
@@ -27,6 +27,9 @@ export function GoalItem({ goal, onShowPath }: GoalItemProps) {
   const remove = useDeleteGoal();
   const confirm = useConfirm();
   const t = useT(messages);
+  const locale = useLocale();
+  const dueOn = useGoalDeadlines().data?.[goal.id] ?? "";
+  const dueLabel = dueOn ? formatDate(new Date(`${dueOn}T00:00:00+09:00`), locale, { month: "long", day: "numeric" }) : "";
 
   function saveTitle() {
     const next = title.trim();
@@ -90,7 +93,7 @@ export function GoalItem({ goal, onShowPath }: GoalItemProps) {
             onClick={() => setOpen((v) => !v)}
             leading={open ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
             title={goal.title}
-            meta={t.goalMeta(GOAL_STATUS_LABELS[goal.status], goal.targetConceptIds.length)}
+            meta={t.goalMeta(GOAL_STATUS_LABELS[goal.status], dueLabel, goal.targetConceptIds.length)}
             trailing={<Menu items={menuItems} label={t.goalMenu(goal.title)} />}
           />
         </List>

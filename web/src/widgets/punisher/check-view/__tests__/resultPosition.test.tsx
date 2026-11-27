@@ -38,7 +38,8 @@ vi.mock("@/src/entities/punisher", async (importOriginal) => ({
   useCheckAbandon: () => idle,
   useCheckResume: () => idle,
   useCheckDispute: () => idle,
-  useReviewSummary: () => ({ data: { due: 0 } }),
+  useToday: () => ({ data: { unchecked: [] } }),
+  useStartCheck: () => idle,
   useRelearn: () => idle,
   useAcknowledgeMisconception: () => idle,
   useCompleteLecture: () => idle,
@@ -46,8 +47,6 @@ vi.mock("@/src/entities/punisher", async (importOriginal) => ({
 }));
 
 vi.mock("../../lecture-viewer", () => ({
-  LectureTopBar: ({ title }: { title: string }) => <div data-testid="top-bar">{title}</div>,
-  LectureLayout: ({ children }: { children: ReactNode }) => <main>{children}</main>,
   BlockRenderer: ({ block }: { block: { text: string } }) => <p>{block.text}</p>,
 }));
 
@@ -68,7 +67,7 @@ describe("끝난 복습 세션", () => {
     const item = screen.getByText("페이지 캐시는 어디에 있나요?");
     expect(result.compareDocumentPosition(item) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByRole("link", { name: "오늘로" }).getAttribute("href")).toBe("/");
-    expect(screen.getByTestId("top-bar").textContent).toBe("복습 · 문항 1/1");
+    expect(screen.getByText("복습 1개를 마쳤어요")).toBeInTheDocument();
   });
 
   it("인정한 오개념은 버튼 대신 '인정함' 글자, 지금 답이 없으면 처음 예측 줄을 뺀다", () => {

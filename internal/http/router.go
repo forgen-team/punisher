@@ -104,6 +104,7 @@ func NewRouter(deps RouterDependencies) http.Handler {
 		r.Get("/me/completed/areas", learn.CompletedAreas)
 
 		r.Get("/today", learn.Today)
+		r.Get("/today-cards", learn.TodayCards) // Witems '오늘' 홈 요약 카드(manifest today, 셸 계약 rss.md §8-3)
 		r.Post("/concepts/{id}/known", learn.MarkKnown)
 		r.Delete("/concepts/{id}/known", learn.UndoKnown)
 		r.Post("/concepts/{id}/dismiss", learn.DismissConcept)

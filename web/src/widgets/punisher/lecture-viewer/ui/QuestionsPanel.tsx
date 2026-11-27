@@ -11,12 +11,14 @@ import { Markdown } from "@/src/shared/ui/punisher/Markdown";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
 
-function jumpTo(anchor: string, onJump?: () => void) {
-  onJump?.();
-  requestAnimationFrame(() => scrollToAnchor(anchor));
+type JumpHandler = (scroll: () => void) => void;
+
+function jumpTo(anchor: string, onJump?: JumpHandler) {
+  const scroll = () => scrollToAnchor(anchor);
+  if (onJump) { onJump(scroll); } else { requestAnimationFrame(scroll); }
 }
 
-function QuestionItem({ q, onJump }: { q: Question; onJump?: () => void }) {
+function QuestionItem({ q, onJump }: { q: Question; onJump?: JumpHandler }) {
   const t = useT(messages);
   const linked = q.linkedConceptIds ?? [];
   const proposed = q.proposedConcepts ?? [];
@@ -46,7 +48,7 @@ function QuestionItem({ q, onJump }: { q: Question; onJump?: () => void }) {
           {linked.map((id, index) => (
             <span key={id}>
               {index > 0 && ", "}
-              <Link className="text-accent-text underline" href={`/map?concept=${encodeURIComponent(id)}`}>
+              <Link className="text-accent-text underline" href={`/map?node=${encodeURIComponent(id)}`}>
                 {id}
               </Link>
             </span>
@@ -73,8 +75,8 @@ function QuestionItem({ q, onJump }: { q: Question; onJump?: () => void }) {
 interface QuestionsPanelProps {
   lectureId: string;
   getAnchor: () => string;
-  /** "위치로 이동" 전에 시트 닫기 */
-  onJump?: () => void;
+  /** "위치로 이동" — 시트를 닫고 닫힌 뒤 scroll 을 부른다(없으면 바로 스크롤) */
+  onJump?: JumpHandler;
 }
 
 export function QuestionsPanel({ lectureId, getAnchor, onJump }: QuestionsPanelProps) {

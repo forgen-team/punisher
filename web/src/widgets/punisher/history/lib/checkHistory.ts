@@ -64,3 +64,9 @@ export function metricRows(buckets: RetentionBucket[]): MetricRow[] {
   }
   return [...byInterval.values()].sort((a, b) => a.intervalDays - b.intervalDays);
 }
+
+/** 검색어가 제목에 든 세션(불러온 것 중). 대소문자 무시. */
+export function matchSessions(items: CheckHistoryItem[], q: string, locale: Locale): CheckHistoryItem[] {
+  const needle = q.trim().toLowerCase();
+  return needle ? items.filter((item) => historyTitle(item, locale).toLowerCase().includes(needle)) : items;
+}

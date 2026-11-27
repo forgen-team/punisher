@@ -19,7 +19,8 @@ export const messages = defineMessages({
     elapsedMinutes: (m: number, s: number) => `${m}분 ${s}초`,
     failedTitle: "강의를 만들지 못했어요",
     retry: "다시 만들기",
-    title: "즉석 강의",
+    title: "강의 만드는 중",
+    headline: "강의를 만들고 있어요",
   },
   en: {
     notSaved: "The lecture wasn't saved.",
@@ -39,6 +40,7 @@ export const messages = defineMessages({
     elapsedMinutes: (m: number, s: number) => `${m}m ${s}s`,
     failedTitle: "Couldn't create the lecture",
     retry: "Try again",
-    title: "Instant lecture",
+    title: "Creating the lecture",
+    headline: "Creating your lecture",
   },
 });

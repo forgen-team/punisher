@@ -9,7 +9,6 @@ import type { AppContext, Unmount } from "./contract";
 import { RouteSync } from "./RouteSync";
 import { ROOT_SELECTOR } from "./scope";
 import { WitemsShell } from "./WitemsShell";
-import { witemsRoutes } from "./routes";
 import { legacyHashPath } from "./legacyHash";
 
 /**
@@ -38,7 +37,7 @@ export function mount(el: HTMLElement, ctx: AppContext): Unmount {
     // 구버전 셸에는 setActions 가 없다 — 그때는 undefined 로 둔다(셸이 페이지 동작을 그리지 않는다).
     setActions: typeof ctx.setActions === "function" ? (actions) => ctx.setActions?.(actions) : undefined,
     setCommands: typeof ctx.setCommands === "function" ? (commands) => ctx.setCommands?.(commands) : undefined,
-    // 섹션 메뉴(manifest nav.items) 숫자 — 키는 섹션 경로("/"). 셸 안에서는 섹션 메뉴를 셸이 그린다(LearnNav 없음).
+    // 섹션 메뉴(manifest nav.items) 숫자 — 키는 섹션 경로("/" = 오늘). 셸 안에서는 섹션 메뉴를 셸이 그린다(LearnNav 없음).
     setBadges: typeof ctx.setBadges === "function" ? (badges) => ctx.setBadges?.(badges) : undefined,
   };
   setWitemsRuntime(runtime);
@@ -71,7 +70,7 @@ export function mount(el: HTMLElement, ctx: AppContext): Unmount {
         <MemoryRouter basename={ctx.basePath} initialEntries={[`${ctx.basePath}${initialEntry(ctx)}`]}>
           <RouteSync ctx={ctx} />
           <ScrollToTopOnNavigate />
-          <AppRoutes shell={<WitemsShell />} extra={witemsRoutes()} />
+          <AppRoutes shell={<WitemsShell />} />
         </MemoryRouter>
       </AppProviders>
     </StrictMode>,

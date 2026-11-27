@@ -11,7 +11,7 @@ interface GoalsManagerProps {
   onShowPath: (goalId: string, conceptId?: string) => void;
 }
 
-/** 목표 관리(시트 본문): 내 목표 목록 + 새 목표. 지도 화면의 "목표 관리" 시트에서 쓴다. */
+/** 목표 관리(시트 본문): 내 목표 목록 + 목표 추가. 지도 화면의 `?panel=goals` 시트에서 쓴다. */
 export function GoalsManager({ onShowPath }: GoalsManagerProps) {
   const goals = useGoals();
   const t = useT(messages);
@@ -19,7 +19,7 @@ export function GoalsManager({ onShowPath }: GoalsManagerProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Section title={t.myGoals} description={t.myGoalsDescription}>
+      <Section title={t.myGoals}>
         {goals.isLoading ? (
           <div aria-busy="true">
             <ListSkeleton rows={3} />
@@ -27,7 +27,7 @@ export function GoalsManager({ onShowPath }: GoalsManagerProps) {
         ) : goals.error ? (
           <ErrorState title={describePunisherError(goals.error)} onRetry={() => { void goals.refetch(); }} />
         ) : list.length === 0 ? (
-          <EmptyState title={t.emptyTitle} description={t.emptyDescription} />
+          <EmptyState title={t.emptyTitle} />
         ) : (
           <ul role="list">
             {list.map((g) => (

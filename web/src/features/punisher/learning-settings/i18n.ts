@@ -13,8 +13,7 @@ export const messages = defineMessages({
     dailyOption: (m: number) => `하루 ${m}분`,
     labOs: "실습 환경",
     pretest: "강의 전 예측 질문",
-    saving: "저장 중…",
-    saved: "저장했어요.",
+    saved: "저장했어요",
     // 복습
     masteryTarget: "숙달 기준",
     masteryOption: (level: number, label: string) => `레벨 ${level} · ${label}`,
@@ -23,6 +22,11 @@ export const messages = defineMessages({
     minutes: (m: number) => `${m}분`,
     adaptiveIntervals: "복습 간격 자동 조절",
     reviewGrader: "복습 채점 방식",
+    // 구역 이름(복습은 학습 설정의 복습 항목과 복습·기억 항목을 한 구역으로 합친 이름)
+    sectionReview: "복습",
+    deviceHint: "이 기기에만 적용돼요.",
+    aboutVersion: "버전",
+    aboutDataDir: "데이터 위치",
     // 간격 검증
     intervalsCount: (max: number) => `간격은 1~${max}개로 적어 주세요.`,
     intervalsInteger: "간격은 1 이상의 정수(일)로 적어 주세요.",
@@ -39,8 +43,7 @@ export const messages = defineMessages({
     dailyOption: (m: number) => `${m} min a day`,
     labOs: "Lab environment",
     pretest: "Prediction questions before lectures",
-    saving: "Saving…",
-    saved: "Saved.",
+    saved: "Saved",
     masteryTarget: "Mastery target",
     masteryOption: (level: number, label: string) => `Level ${level} · ${label}`,
     reviewIntervals: "Review intervals (days)",
@@ -48,6 +51,10 @@ export const messages = defineMessages({
     minutes: (m: number) => `${m} min`,
     adaptiveIntervals: "Adjust review intervals automatically",
     reviewGrader: "Review grading",
+    sectionReview: "Review",
+    deviceHint: "Applies to this device only.",
+    aboutVersion: "Version",
+    aboutDataDir: "Data folder",
     intervalsCount: (max: number) => `Enter 1 to ${max} intervals.`,
     intervalsInteger: "Intervals must be whole numbers of days, 1 or more.",
     intervalsIncreasing: "Each interval must be longer than the last.",
@@ -65,7 +72,7 @@ export const LANGUAGE_LABEL = "언어 / Language";
 /** 언어 이름은 그 언어로(어느 화면 언어에서도 같다). */
 export const LOCALE_NAMES = { ko: "한국어", en: "English" } as const;
 
-/** 설정 > 학습 · 읽기의 W5a 칸(StudySettingsFields). */
+/** 설정 > 복습 · 읽기 구역의 W5a 칸(ReviewSettingsFields · ReadingSettingsFields). */
 export const studyMessages = defineMessages({
   ko: {
     memoryModel: "복습 간격 방식",
@@ -83,7 +90,6 @@ export const studyMessages = defineMessages({
     reminderOff: "끔",
     reminderAt: (h: number) => `${h}시`,
     reminderWitems: "Witems 에서는 알림 대신 '강의' 탭의 숫자로 알려요.",
-    reading: "읽기",
     fontSize: "강의 글자 크기",
     fontSm: "작게",
     fontMd: "보통",
@@ -92,10 +98,8 @@ export const studyMessages = defineMessages({
     widthNarrow: "좁게",
     widthNormal: "보통",
     widthWide: "넓게",
-    deviceHint: "이 기기에만 적용돼요.",
     shortcuts: "복습 단축키",
     shortcutsHint: "Space 답 보기 · 1·2·3 채점 · ⌘/Ctrl+K 검색",
-    saving: "저장 중",
   },
   en: {
     memoryModel: "Review intervals",
@@ -113,7 +117,6 @@ export const studyMessages = defineMessages({
     reminderOff: "Off",
     reminderAt: (h: number) => `${h}:00`,
     reminderWitems: "Inside Witems the count on the Lectures tab tells you instead.",
-    reading: "Reading",
     fontSize: "Lecture text size",
     fontSm: "Small",
     fontMd: "Normal",
@@ -122,9 +125,7 @@ export const studyMessages = defineMessages({
     widthNarrow: "Narrow",
     widthNormal: "Normal",
     widthWide: "Wide",
-    deviceHint: "Applies to this device only.",
     shortcuts: "Review shortcuts",
     shortcutsHint: "Space show · 1·2·3 grade · ⌘/Ctrl+K search",
-    saving: "Saving",
   },
 });

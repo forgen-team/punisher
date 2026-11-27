@@ -20,6 +20,8 @@ import (
 type LearnHandler struct {
 	Store store.Store
 	Svc   *services.Service
+	// Now is the clock of the today cards (tests); nil = time.Now.
+	Now func() time.Time
 }
 
 const (

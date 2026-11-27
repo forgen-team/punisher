@@ -14,8 +14,8 @@ interface NotesPanelProps {
   lectureId: string;
   conceptId: string;
   getAnchor: () => string;
-  /** "위치로 이동" 전에 시트 닫기 */
-  onJump?: () => void;
+  /** "위치로 이동" — 시트를 닫고 닫힌 뒤 scroll 을 부른다(없으면 바로 스크롤) */
+  onJump?: (scroll: () => void) => void;
 }
 
 /** 앵커 기준 메모 (design §3.3 메모·하이라이트). */
@@ -34,8 +34,8 @@ export function NotesPanel({ lectureId, conceptId, getAnchor, onJump }: NotesPan
   }
 
   function jumpTo(anchor: string) {
-    onJump?.();
-    requestAnimationFrame(() => scrollToAnchor(anchor));
+    const scroll = () => scrollToAnchor(anchor);
+    if (onJump) { onJump(scroll); } else { requestAnimationFrame(scroll); }
   }
 
   const items = notes.data ?? [];

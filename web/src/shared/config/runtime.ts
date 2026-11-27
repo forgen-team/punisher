@@ -65,14 +65,6 @@ export function shellHasCommands(): boolean {
   return typeof runtime?.setCommands === "function";
 }
 
-/**
- * 단독판 화면의 가운데 좁은 칸(mx-auto max-w-2xl). Witems 셸은 본문 자리 폭을 제한하지 않으므로
- * (witems AppHost APP_CONTAINER_CLASS — 오너 결정 2026-11-19) Witems 에서는 빈 문자열 = 왼쪽 정렬 전체 폭.
- * 읽기 글 폭(LectureLayout 의 --reading-measure)은 이것과 별개로 두 곳 모두 유지한다.
- */
-export function standaloneColumnClass(): string {
-  return runtime ? "" : "mx-auto max-w-2xl";
-}
 
 /** API base without a trailing slash: "/v1" standalone, "/apps-api/punisher/v1" in Witems. */
 export function apiBase(): string {

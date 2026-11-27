@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "@/src/shared/lib/router";
 import { Button, Sheet } from "@forgen-team/ui";
 import { describeSettingsError } from "@/src/entities/punisher";
 import type { ChosenReaderLevel, Familiarity, FamiliarityArea } from "@/src/shared/api/punisher";
@@ -12,14 +13,14 @@ type Step = 1 | 2 | 3;
 
 interface FirstSetupSheetProps {
   open: boolean;
-  /** X·배경·'닫기' — 저장하지 않고 닫는다 */
-  onClose: () => void;
-  /** 건너뛰기·시작하기 저장을 마쳤을 때 */
+  /** 건너뛰기·×·배경 — 기본 수준을 저장하고 닫는다(2주 뒤 다시) */
+  onSkip: () => void;
+  /** 시작하기 저장을 마쳤을 때 */
   onDone: () => void;
 }
 
 /** 처음 설정(3단계) — 개발 경험 → 영역별 아는 정도 → 요약. */
-export function FirstSetupSheet({ open, onClose, onDone }: FirstSetupSheetProps) {
+export function FirstSetupSheet({ open, onSkip, onDone }: FirstSetupSheetProps) {
   const t = useT(messages);
   const [step, setStep] = useState<Step>(1);
   const [level, setLevel] = useState<ChosenReaderLevel | null>(null);
@@ -43,13 +44,14 @@ export function FirstSetupSheet({ open, onClose, onDone }: FirstSetupSheetProps)
     setFamiliarity((prev) => (prev ? { ...prev, [area]: value } : prev));
   }
 
+  // 건너뛰기와 × 는 같다: 기본 수준을 저장하고 닫는다. 저장이 실패해도 닫는다(수준이 빈 채로 2주 뒤 다시 묻는다).
   async function handleSkip() {
     try {
       await skip();
-      onDone();
     } catch (err) {
       console.warn("punisher: first setup skip failed", err);
     }
+    onSkip();
   }
 
   async function handleStart() {
@@ -91,7 +93,7 @@ export function FirstSetupSheet({ open, onClose, onDone }: FirstSetupSheetProps)
       </>
     ) : failed ? (
       <>
-        <Button variant="ghost" onClick={onClose}>
+        <Button variant="ghost" onClick={onDone}>
           {t.close}
         </Button>
         <Button variant="primary" onClick={handleRetry}>{t.retry}</Button>
@@ -113,7 +115,11 @@ export function FirstSetupSheet({ open, onClose, onDone }: FirstSetupSheetProps)
   return (
     <Sheet
       open={open}
-      onOpenChange={(o) => { if (!o && !busy) { onClose(); } }}
+      onOpenChange={(o) => {
+        if (o || busy) { return; }
+        // 시작하기까지 저장했으면(이미 앎 실패 안내 중) 닫기만, 아니면 건너뛰기와 같다.
+        if (failed) { onDone(); } else { void handleSkip(); }
+      }}
       title={
         <>
           <span className="block text-xs font-normal text-fg-muted">{t.eyebrow(step, TOTAL_STEPS)}</span>
@@ -143,12 +149,32 @@ export function FirstSetupSheet({ open, onClose, onDone }: FirstSetupSheetProps)
   );
 }
 
+/** 시트를 연 주소 — 정책 20 §3(시트는 주소, push). 자동으로 열 때는 주소를 바꾸지 않는다. */
+export const FIRST_SETUP_PARAM = "first";
+
 /**
- * 강의 탭 위에 둔다 — 설명 수준을 아직 정하지 않은 사용자에게만 열린다.
+ * 오늘 화면에 둔다 — 설명 수준을 아직 정하지 않은 사용자(또는 2주 전에 건너뛴 사용자)에게 열리고, `?first=1` 로도 열린다.
  * 열릴 때만 시트를 그린다(개념 목록 조회·단계 상태는 열 때마다 새로).
  */
 export function FirstSetup() {
   const gate = useFirstSetupGate();
-  if (!gate.open) { return null; }
-  return <FirstSetupSheet open onClose={gate.closeForSession} onDone={gate.finish} />;
+  const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const fromAddress = params.get(FIRST_SETUP_PARAM) === "1";
+  if (!gate.open && !fromAddress) { return null; }
+  const leaveAddress = () => {
+    if (!fromAddress) { return; }
+    const next = new URLSearchParams(params);
+    next.delete(FIRST_SETUP_PARAM);
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  };
+  return (
+    <FirstSetupSheet
+      open
+      onSkip={() => { gate.skip(); leaveAddress(); }}
+      onDone={() => { gate.finish(); leaveAddress(); }}
+    />
+  );
 }

@@ -1,6 +1,13 @@
 import type { CheckSessionStatus, Confidence } from "@/src/shared/api/punisher";
 import { defineMessages, type Locale } from "@/src/shared/i18n";
 
+/** 목적격 조사(을/를) — 마지막 글자 받침으로 가른다. 한글이 아니면 '를'. */
+export function objectParticle(word: string): string {
+  const last = word.trim().slice(-1).charCodeAt(0);
+  const isHangul = last >= 0xac00 && last <= 0xd7a3;
+  return isHangul && (last - 0xac00) % 28 !== 0 ? "을" : "를";
+}
+
 export const messages = defineMessages({
   ko: {
     viewInLecture: "강의에서 보기",
@@ -8,14 +15,10 @@ export const messages = defineMessages({
     checkTitle: "확인하기",
     checkOf: (lecture: string) => `확인하기 · ${lecture}`,
     skip: "건너뛰기",
-    abandon: "포기",
     menuStop: "그만두기",
-    menuStopShort: "그만",
-    menuSkip: "건너뛰기",
-    menuSkipShort: "건너뛰기",
-    abandonConfirmTitle: "지금 문항을 여기까지로 닫을까요?",
-    abandonConfirmBody: "답한 내용으로 문항을 마치고 확인을 끝내요. 되돌릴 수 없어요.",
-    abandonedToast: "확인을 그만뒀어요",
+    stopConfirmTitle: (name: string) => `'${name}'${objectParticle(name)} 여기서 그만둘까요?`,
+    stopConfirmReview: (answered: number, remaining: number) => `답한 ${answered}개는 저장하고, 남은 ${remaining}개는 내일 복습으로 넘겨요.`,
+    stopConfirmOther: (answered: number, remaining: number) => `답한 ${answered}개는 저장하고, 남은 ${remaining}개는 하지 않고 끝내요.`,
     skippedToast: "건너뛰었어요",
     undoFailed: "되돌리지 못했어요",
     noItems: "확인할 문항이 없어요",
@@ -24,6 +27,12 @@ export const messages = defineMessages({
     answer: "답",
     reveal: "그냥 알려줘",
     send: "보내기",
+    nextItem: "다음 문항",
+    seeResult: "결과 보기",
+    progress: "진행",
+    finishedReview: (n: number) => `복습 ${n}개를 마쳤어요`,
+    finishedItems: (n: number) => `문항 ${n}개를 마쳤어요`,
+    continueUnchecked: (n: number) => `확인 대기 ${n}개 이어서`,
     confidence: "확신도",
     dispute: "내 답이 맞아요",
     myAnswer: "내 답: ",
@@ -38,7 +47,6 @@ export const messages = defineMessages({
     revisitLine: (label: string) => `다시 볼 곳: ${label}`,
     result: "결과",
     markComplete: "강의 완료로 표시",
-    doMore: "오늘 더 하기",
     today: "오늘로",
     queued: "복습이 밀려 대기",
     nextReview: (date: string) => `다음 복습 ${date}`,
@@ -65,14 +73,10 @@ export const messages = defineMessages({
     checkTitle: "Check",
     checkOf: (lecture: string) => `Check · ${lecture}`,
     skip: "Skip",
-    abandon: "Give up",
     menuStop: "Stop",
-    menuStopShort: "Stop",
-    menuSkip: "Skip",
-    menuSkipShort: "Skip",
-    abandonConfirmTitle: "Close this question here?",
-    abandonConfirmBody: "Your answer so far closes the question and ends the check. This can't be undone.",
-    abandonedToast: "Check stopped",
+    stopConfirmTitle: (name: string) => `Stop '${name}' here?`,
+    stopConfirmReview: (answered: number, remaining: number) => `Your ${answered} answers are saved, and the other ${remaining} move to tomorrow's review.`,
+    stopConfirmOther: (answered: number, remaining: number) => `Your ${answered} answers are saved, and the other ${remaining} are left undone.`,
     skippedToast: "Skipped",
     undoFailed: "Couldn't undo",
     noItems: "No questions to check",
@@ -81,6 +85,12 @@ export const messages = defineMessages({
     answer: "Answer",
     reveal: "Just tell me",
     send: "Send",
+    nextItem: "Next question",
+    seeResult: "See results",
+    progress: "Progress",
+    finishedReview: (n: number) => (n === 1 ? "Finished 1 review" : `Finished ${n} reviews`),
+    finishedItems: (n: number) => (n === 1 ? "Finished 1 question" : `Finished ${n} questions`),
+    continueUnchecked: (n: number) => `Continue with ${n} waiting to check`,
     confidence: "Confidence",
     dispute: "My answer is right",
     myAnswer: "My answer: ",
@@ -95,7 +105,6 @@ export const messages = defineMessages({
     revisitLine: (label: string) => `Revisit: ${label}`,
     result: "Result",
     markComplete: "Mark lecture complete",
-    doMore: "Do more today",
     today: "Back to today",
     queued: "Waiting — reviews are backed up",
     nextReview: (date: string) => `Next review ${date}`,
@@ -177,8 +186,8 @@ type DiagnosticKind = "pretest" | "known_verify" | "placement" | "synthesis";
 
 /** 상단 제목(확인·복습 외 진단 세션) */
 export const DIAGNOSTIC_TITLES: Record<Locale, Record<DiagnosticKind, string>> = {
-  ko: { pretest: "예측 질문", "known_verify": "이미 앎 확인", placement: "배치 진단", synthesis: "이번 주 종합 문제" },
-  en: { pretest: "Prediction questions", "known_verify": "Known check", placement: "Placement check", synthesis: "This week's synthesis" },
+  ko: { pretest: "예측 질문", "known_verify": "짧은 확인", placement: "배치 확인", synthesis: "종합 문제" },
+  en: { pretest: "Prediction questions", "known_verify": "Quick check", placement: "Placement check", synthesis: "Synthesis" },
 };
 
 /** 종합 문제 결과(v3 §5) — 상자는 움직이지 않는다. */

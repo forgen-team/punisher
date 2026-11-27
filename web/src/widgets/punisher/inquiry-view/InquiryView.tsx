@@ -1,30 +1,28 @@
-import { Link } from "@/src/shared/lib/router";
 import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import { Button, ErrorState, ProgressCircle, Skeleton, useConfirm, type MenuItemDef } from "@forgen-team/ui";
-import { useScreenTitle } from "@/src/shared/lib/screen-chrome";
+import { AlertTriangle } from "lucide-react";
+import { Button, ErrorState, ProgressCircle, Skeleton, useConfirm } from "@forgen-team/ui";
+import { usePageActions, useScreenTitle, type PageAction } from "@/src/shared/lib/screen-chrome";
 import { useInquiry, useRegenerateInquiry, useRetryFollowup, useSetInquiryRead } from "@/src/entities/punisher";
 import { INQUIRY_MAX_FOLLOWUPS, describePunisherError, type Inquiry, type InquiryFollowup, type LectureSection } from "@/src/shared/api/punisher";
 import { formatDate, useLocale, useT } from "@/src/shared/i18n";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { FOLLOWUP_ANNOUNCEMENTS, messages } from "./i18n";
-import { LectureAssistPlaceholder, LectureBody, LectureLayout, LectureTopBar, TocSheet, useActiveSection } from "../lecture-viewer";
-import { InquiryConcepts } from "./ui/InquiryConcepts";
+import { LectureAssistPlaceholder, LectureBody, LectureLayout, useActiveSection } from "../lecture-viewer";
+import { InquiryConcepts, mapHref } from "./ui/InquiryConcepts";
 import { FollowupComposer } from "./ui/FollowupComposer";
 import { InquiryHeader } from "./ui/InquiryHeader";
 import { QuoteAsk } from "./ui/QuoteAsk";
 import { FollowupQuestion, inquirySectionNote } from "./ui/sectionNote";
 
-const HOME = "/";
 const NO_SECTIONS: LectureSection[] = [];
 const NO_FOLLOWUPS: InquiryFollowup[] = [];
-const ANSWERED_AT: Intl.DateTimeFormatOptions = { dateStyle: "medium", timeStyle: "short" };
+const ANSWERED_ON: Intl.DateTimeFormatOptions = { month: "long", day: "numeric" };
 
 /**
- * 해설 상태 줄 — 항상 같은 자리·같은 높이(쓰는 중 ↔ 완료가 바뀌어도 본문이 밀리지 않음)이고, aria-busy 밖의
- * 라이브 영역이라 완료도 읽어 준다.
+ * 해설 상태·메타 줄 — 항상 같은 자리·같은 높이(쓰는 중 ↔ 완료가 바뀌어도 본문이 밀리지 않음)이고, aria-busy 밖의
+ * 라이브 영역이라 완료도 읽어 준다. 끝난 해설은 "질문 해설 · 날짜 · 약 n분".
  */
-function StatusRow({ inquiry, hasContent, unstable }: { inquiry: Inquiry | undefined; hasContent: boolean; unstable: boolean }) {
+function StatusRow({ inquiry, hasContent, unstable, minutes }: { inquiry: Inquiry | undefined; hasContent: boolean; unstable: boolean; minutes: number }) {
   const locale = useLocale();
   const t = useT(messages);
   let content: ReactNode = <Skeleton className="w-40" />;
@@ -44,13 +42,7 @@ function StatusRow({ inquiry, hasContent, unstable }: { inquiry: Inquiry | undef
       </>
     );
   } else if (inquiry) {
-    content = (
-      <>
-        <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden="true" />
-        {t.done(inquiry.answeredAt ? formatDate(new Date(inquiry.answeredAt), locale, ANSWERED_AT) : "")}
-        {inquiry.readAt ? t.readSuffix : ""}
-      </>
-    );
+    content = t.meta(inquiry.answeredAt ? formatDate(new Date(inquiry.answeredAt), locale, ANSWERED_ON) : "", minutes);
   }
   return (
     <p role="status" aria-live="polite" className="flex min-h-touch items-center gap-2 border-b border-line text-sm text-fg-secondary">
@@ -60,7 +52,8 @@ function StatusRow({ inquiry, hasContent, unstable }: { inquiry: Inquiry | undef
 }
 
 /**
- * '이 질문에 답하기' 해설 화면 — 강의와 같은 배치(상단 바 · 접은/펼친 목차 · 가독 폭 본문 · xl 보조 열).
+ * '이 질문에 답하기' 해설 화면(T-reading) — 제목·←·페이지 동작(다시 만들기·지도에서 보기)은 틀이 그린다.
+ * 접은/펼친 목차 · 가독 폭 본문 · xl 보조 열, 끝 마무리 줄 [읽음으로 표시][이어서 묻기].
  * 보조 열에는 해설에 나온 개념(지도에 있던 것 · 새로 제안한 것). 쓰는 중이면 3초마다 다시 확인하고,
  * 끝난 해설은 저장된 그대로 보인다('다시 만들기'에서만 새로 쓴다). 불러오는 중에도 같은 뼈대를 그려 밀림이 없다.
  */
@@ -70,7 +63,6 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
   const inquiry = useInquiry(inquiryId);
   const regenerate = useRegenerateInquiry();
   const setRead = useSetInquiryRead();
-  const [tocOpen, setTocOpen] = useState(false);
   const retryFollowup = useRetryFollowup(inquiryId);
   const confirm = useConfirm();
   const [quote, setQuote] = useState("");
@@ -102,11 +94,6 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
   const activeAnchor = useActiveSection(anchorKey);
   useScreenTitle(q?.content?.title || q?.question);
 
-  // 처음 불러오기에 실패했을 때만 오류 화면. 폴링 중 일시 오류는 본문을 지우지 않고 아래에 알린다.
-  if (!q && inquiry.error) {
-    return <ErrorState title={describePunisherError(inquiry.error)} onRetry={() => void inquiry.refetch()} />;
-  }
-
   const hasContent = baseSections.length > 0;
   const generating = q?.status === "pending";
   const read = Boolean(q?.readAt);
@@ -132,12 +119,24 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
   };
   const toggleRead = () => q && setRead.mutate({ id: q.id, read: !read });
 
-  const menuItems: MenuItemDef[] = q
-    ? [
-        { key: "read", label: read ? t.unread : t.markRead, disabled: generating || setRead.isPending, onSelect: toggleRead },
-        { key: "regenerate", label: t.regenerate, disabled: generating || followupBusy || regenerate.isPending, onSelect: () => void askRegenerate() },
-      ]
-    : [];
+  const relatedId = q?.concepts?.find((c) => c.kind === "related")?.id ?? q?.conceptIds[0];
+  const pageActions: PageAction[] = [];
+  if (q && !generating && !followupBusy && !regenerate.isPending) {
+    pageActions.push({ id: "regenerate", label: t.regenerate, onSelect: () => void askRegenerate() });
+  }
+  if (relatedId) { pageActions.push({ id: "map", label: t.viewOnMap, href: mapHref(relatedId) }); }
+  usePageActions(pageActions.length > 0 ? pageActions : null);
+
+  // 이어서 묻기: 본문 끝의 입력란으로 가서 쓰게 한다.
+  const askMore = () => {
+    composerRef.current?.focus();
+    composerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  // 처음 불러오기에 실패했을 때만 오류 화면. 폴링 중 일시 오류는 본문을 지우지 않고 아래에 알린다.
+  if (!q && inquiry.error) {
+    return <ErrorState title={describePunisherError(inquiry.error)} onRetry={() => void inquiry.refetch()} />;
+  }
 
   let assist: ReactNode = <LectureAssistPlaceholder>{t.assistPending}</LectureAssistPlaceholder>;
   if (q?.concepts && q.concepts.length > 0) { assist = <InquiryConcepts concepts={q.concepts} />; }
@@ -145,15 +144,8 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
 
   return (
     <div className="flex w-full flex-col">
-      <LectureTopBar
-        title={q?.content?.title || q?.question || t.title}
-        backHref={HOME}
-        onOpenToc={hasContent ? () => setTocOpen(true) : undefined}
-        menuItems={menuItems}
-        menuText={{ full: t.menuManage, short: t.menuManageShort }}
-      />
       <LectureLayout sections={sections} totalMinutes={totalMinutes} activeAnchor={activeAnchor} assist={assist}>
-        <StatusRow inquiry={q} hasContent={hasContent} unstable={Boolean(q && inquiry.error)} />
+        <StatusRow inquiry={q} hasContent={hasContent} unstable={Boolean(q && inquiry.error)} minutes={totalMinutes} />
         {/* 후속 답의 진행은 늘 있는 라이브 영역으로 읽어 준다(내용만 바뀜). */}
         <p role="status" aria-live="polite" className="sr-only">{followupAnnouncement}</p>
         {q && !generating && q.error && hasContent && (
@@ -165,7 +157,7 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
           </p>
         )}
         {q ? (
-          <InquiryHeader question={q.question} title={q.content?.title} />
+          <InquiryHeader question={q.question} />
         ) : (
           <div aria-hidden="true" className="flex flex-col gap-3 pt-4">
             <Skeleton className="w-16" />
@@ -202,16 +194,6 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
               )}
             </section>
           ))}
-          {hasContent && !generating && (
-            <FollowupComposer
-              ref={composerRef}
-              inquiryId={inquiryId}
-              used={followups.length}
-              busy={followupBusy}
-              quote={quote}
-              onClearQuote={() => setQuote("")}
-            />
-          )}
           {hasContent && !generating && followups.length < INQUIRY_MAX_FOLLOWUPS && <QuoteAsk containerRef={bodyRef} onQuote={pickQuote} />}
           {!hasContent && (!q || generating) && (
             <div className="mt-6 flex flex-col gap-6" aria-hidden="true">
@@ -236,35 +218,41 @@ export function InquiryView({ inquiryId }: { inquiryId: string }) {
           )}
         </div>
 
-        <div className="mt-10 flex flex-wrap items-center gap-2 border-t border-line pt-4">
-          {hasContent && (
-            <Button onClick={toggleRead} loading={setRead.isPending} disabled={generating} variant={read ? "secondary" : "primary"}>
-              {read ? t.unread : t.markRead}
-            </Button>
-          )}
-          {hasContent && (
-            <Button
-              variant="ghost"
-              onClick={() => void askRegenerate()}
-              loading={regenerate.isPending}
-              disabled={generating || followupBusy}
-              title={followupBusy ? t.regenerateBusy : undefined}
-            >
-              {t.regenerate}
-            </Button>
-          )}
-          <Button asChild variant="ghost">
-            <Link href={HOME}>
-              {t.home}
-            </Link>
-          </Button>
-        </div>
-        {read && hasContent && <p className="mt-2 text-xs text-fg-muted">{t.readNotice}</p>}
+        {hasContent && (
+          <div className="mt-10 flex flex-col gap-2 border-t border-line pt-4">
+            {read && <p role="status" className="text-sm text-fg-secondary">{t.readDone}</p>}
+            <div className="flex flex-wrap items-center gap-2">
+              {read ? (
+                <Button variant="ghost" onClick={toggleRead} loading={setRead.isPending} disabled={generating}>
+                  {t.unread}
+                </Button>
+              ) : (
+                <Button variant="primary" onClick={toggleRead} loading={setRead.isPending} disabled={generating}>
+                  {t.markRead}
+                </Button>
+              )}
+              {!generating && followups.length < INQUIRY_MAX_FOLLOWUPS && (
+                <Button variant="secondary" onClick={askMore}>
+                  {t.askMore}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+        {hasContent && !generating && (
+          <FollowupComposer
+            ref={composerRef}
+            inquiryId={inquiryId}
+            used={followups.length}
+            busy={followupBusy}
+            quote={quote}
+            onClearQuote={() => setQuote("")}
+          />
+        )}
         <div aria-live="polite" className="empty:hidden">
           <InlineError error={regenerate.error ?? setRead.error ?? retryFollowup.error ?? (q ? inquiry.error : null)} />
         </div>
       </LectureLayout>
-      {hasContent && <TocSheet open={tocOpen} onClose={() => setTocOpen(false)} sections={sections} totalMinutes={totalMinutes} />}
     </div>
   );
 }

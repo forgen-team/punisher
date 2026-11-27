@@ -1,9 +1,9 @@
 
-import { Link } from "@/src/shared/lib/router";
+import { Link, useRouter } from "@/src/shared/lib/router";
 import { forwardRef, useState, type ReactNode } from "react";
 import { Button, Section } from "@forgen-team/ui";
-import { MasteryDots, describeCheckError, masteryLabel, useCompleteLecture, useRelearn } from "@/src/entities/punisher";
-import { useLaunchReview } from "@/src/features/punisher/check-start";
+import { MasteryDots, describeCheckError, masteryLabel, useCompleteLecture, useRelearn, useStartCheck, useToday } from "@/src/entities/punisher";
+import { checkHref } from "@/src/features/punisher/check-start";
 import { InlineError } from "@/src/shared/ui/punisher";
 import { DIAGNOSTIC_MESSAGES } from "@/src/features/punisher/pretest";
 import { formatDate, useLocale, useT } from "@/src/shared/i18n";
@@ -16,9 +16,14 @@ import { MisconceptionList } from "./MisconceptionList";
 const TODAY_HREF = "/";
 
 const REVIEW_DATE: Intl.DateTimeFormatOptions = { month: "long", day: "numeric", weekday: "short" };
+const HEADLINE_DATE: Intl.DateTimeFormatOptions = { month: "long", day: "numeric" };
 
 interface CheckResultProps {
   checkId: string;
+  /** 끝 화면 머리 — "복습 12개를 마쳤어요" */
+  headline: string;
+  /** 가장 이른 다음 복습일(ISO, 없으면 null) */
+  nextReviewAt: string | null;
   rows: ResultRow[];
   /** 이 세션에서 오개념을 인정한 턴 */
   acknowledgedTurnIds: ReadonlySet<string>;
@@ -28,7 +33,7 @@ interface CheckResultProps {
   lectureSummary?: string;
   /** 종합 문제 결과 줄(v3 §5) */
   synthesis?: SynthesisRow[];
-  /** 아래 동작(확인: 강의 완료로 표시 · 복습: 오늘 더 하기) */
+  /** 다음 행동(복습: 확인 대기 이어서 또는 오늘로 · 확인: 강의 완료로 표시 + 오늘로) */
   children?: ReactNode;
 }
 
@@ -99,24 +104,37 @@ export function LectureCompleteAction({ lectureId, lectureCompleted }: { lecture
   );
 }
 
-/** 복습 결과의 다음 행동 — 만기된 복습이 남아 있으면 '오늘 더 하기'(POST /reviews 를 다시 부른다), 늘 '오늘로'. */
-export function ReviewMoreAction({ remaining }: { remaining: number }) {
+/**
+ * 복습 결과의 다음 행동 1개 — 확인 대기(완료했지만 확인하기를 안 한 강의)가 남았으면 그 확인 세션을 시작해(replace) 이어 가고,
+ * 없으면 '오늘로'. 오늘 응답을 아직 받는 동안은 '오늘로'를 보인다.
+ */
+export function ReviewNextAction() {
   const t = useT(messages);
-  const review = useLaunchReview();
-  return (
-    <>
-      {remaining > 0 && (
-        <Button variant="primary" onClick={review.launch} loading={review.isPending}>
-          {t.doMore}
-        </Button>
-      )}
-      <Button asChild variant={remaining > 0 ? "secondary" : "primary"}>
+  const router = useRouter();
+  const today = useToday();
+  const start = useStartCheck();
+  const unchecked = today.data?.unchecked ?? [];
+  const first = unchecked[0];
+  if (!first) {
+    return (
+      <Button asChild variant="primary">
         <Link href={TODAY_HREF}>{t.today}</Link>
       </Button>
+    );
+  }
+  return (
+    <>
+      <Button
+        variant="primary"
+        loading={start.isPending}
+        onClick={() => start.mutate(first.lectureId, { onSuccess: (detail) => router.replace(checkHref(detail.session.id)) })}
+      >
+        {t.continueUnchecked(unchecked.length)}
+      </Button>
       <div aria-live="polite" className="w-full empty:hidden">
-        {review.error && (
+        {start.error && (
           <p role="alert" className="text-sm text-danger">
-            {describeCheckError(review.error)}
+            {describeCheckError(start.error)}
           </p>
         )}
       </div>
@@ -134,9 +152,10 @@ function NextReview({ row }: { row: ResultRow }) {
 
 /** 결과 요약(design §4.4, 끝난 세션의 맨 위): 목표별 레벨 변화 · 놓친 기준 한 줄 · 다시 볼 곳 · 드러난 오개념 · 다음 복습일 · 다시 배우기 + 아래 동작. */
 export const CheckResult = forwardRef<HTMLDivElement, CheckResultProps>(function CheckResult(
-  { checkId, rows, acknowledgedTurnIds, anchorLink, lectureSummary, synthesis, children },
+  { checkId, headline, nextReviewAt, rows, acknowledgedTurnIds, anchorLink, lectureSummary, synthesis, children },
   ref,
 ) {
+  const locale = useLocale();
   const t = useT(messages);
   const dt = useT(DIAGNOSTIC_MESSAGES);
   const relearn = useRelearn();
@@ -145,6 +164,11 @@ export const CheckResult = forwardRef<HTMLDivElement, CheckResultProps>(function
     relearn.mutate(objectiveId, { onSuccess: () => setRelearnedIds((prev) => new Set(prev).add(objectiveId)) });
   return (
     <div ref={ref} tabIndex={-1} className="mt-4 scroll-mt-28 outline-none">
+    <div className="flex flex-col gap-1 pb-4">
+      <p className="text-xl font-semibold text-fg">{headline}</p>
+      {nextReviewAt && <p className="text-sm text-fg-secondary">{t.nextReview(formatDate(new Date(nextReviewAt), locale, HEADLINE_DATE))}</p>}
+      <div className="mt-3 flex flex-wrap items-center gap-2 empty:hidden">{children}</div>
+    </div>
     <Section title={t.result} className="border-b border-line pb-4">
       {synthesis && synthesis.length > 0 && <SynthesisList rows={synthesis} />}
       <ConfidentErrors rows={rows} />
@@ -206,7 +230,6 @@ export const CheckResult = forwardRef<HTMLDivElement, CheckResultProps>(function
           <LectureSummary text={lectureSummary} />
         </div>
       )}
-      <div className="mt-4 flex flex-wrap items-center gap-2 empty:hidden">{children}</div>
       <div aria-live="polite" className="mt-2 empty:hidden">
         {relearn.error && (
           <p role="alert" className="text-sm text-danger">

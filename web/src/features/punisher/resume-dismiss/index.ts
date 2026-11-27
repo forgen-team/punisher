@@ -1,3 +1,2 @@
-export { useResumeDismiss, type DismissedLecture } from "./useResumeDismiss";
-export { DismissedNotice } from "./DismissedNotice";
-export { ResumeList } from "./ResumeList";
+export { useResumeDismiss } from "./useResumeDismiss";
+export { ResumeRow, resumeKey } from "./ResumeList";

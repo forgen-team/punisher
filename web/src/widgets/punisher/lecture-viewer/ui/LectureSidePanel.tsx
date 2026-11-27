@@ -1,114 +1,131 @@
-
-import { useEffect, useState, type ReactNode } from "react";
-import { Layers } from "lucide-react";
-import { List, ListRow, SegmentedControl, SegmentedControlItem, Section, Sheet } from "@forgen-team/ui";
-import { lectureHref } from "@/src/features/punisher/instant-start";
-import { useReadingThreads } from "@/src/features/punisher/reading-assist";
-import type { DeeperOrigin } from "@/src/features/punisher/term-popover";
-import type { LinkedLecture } from "@/src/shared/api/punisher";
-import type { LectureTerm } from "../lib/lectureTerms";
+import type { ReactNode } from "react";
+import { ListOrdered, MessagesSquare } from "lucide-react";
+import { Button, SegmentedControl, SegmentedControlItem, Sheet } from "@forgen-team/ui";
+import { useNotes, useQuestions } from "@/src/entities/punisher";
+import { countPassageThreads, passageQuestionIds, useReadingThreads } from "@/src/features/punisher/reading-assist";
+import type { LectureSection } from "@/src/shared/api/punisher";
+import type { LecturePanel } from "../lib/useLecturePanel";
 import { NotesPanel } from "./NotesPanel";
 import { QuestionsPanel } from "./QuestionsPanel";
-import { TermList } from "./TermList";
+import { SectionToc } from "./SectionToc";
 import { useT } from "@/src/shared/i18n";
 import { messages } from "../i18n";
 
-type AssistTab = "questions" | "notes";
-type T = typeof messages.ko;
-
-function assistTabs(t: T) {
-  return [
-    { value: "questions", label: t.tabQuestions },
-    { value: "notes", label: t.tabNotes },
-  ] as const;
+/** "질문과 메모 n" 의 n — 구절 대화 + 구절에 묶이지 않은 질문 + 메모. */
+export function useAssistCount(lectureId: string): number {
+  const threads = useReadingThreads();
+  const questions = useQuestions(lectureId);
+  const notes = useNotes({ lectureId });
+  const inPassages = threads ? passageQuestionIds(threads.passages) : null;
+  const loose = (questions.data ?? []).filter((q) => !inPassages || !inPassages.has(q.id)).length;
+  return countPassageThreads(threads?.passages ?? []) + loose + (notes.data?.length ?? 0);
 }
 
-interface LectureAssistSheetProps {
-  open: boolean;
-  onClose: () => void;
+function assistLabel(label: string, count: number): string {
+  return count > 0 ? `${label} ${count}` : label;
+}
+
+interface NotesAndQuestionsProps {
   lectureId: string;
   conceptId: string;
-  /** 시트를 열 때의 읽던 위치 — 질문·메모의 앵커로 쓴다 */
   getAnchor: () => string;
+  onJump?: (scroll: () => void) => void;
 }
 
-/**
- * 질문·메모 시트: 모바일 하단 시트, 데스크톱 오른쪽 패널.
- * 상단 바 버튼으로 열어 하단 탭 바와 겹치는 플로팅 버튼을 두지 않는다.
- */
-export function LectureAssistSheet({ open, onClose, lectureId, conceptId, getAnchor }: LectureAssistSheetProps) {
+/** 질문과 메모 — 이 강의에 남긴 질문(구절 대화 포함)과 메모를 한 곳에. */
+export function NotesAndQuestions({ lectureId, conceptId, getAnchor, onJump }: NotesAndQuestionsProps) {
   const t = useT(messages);
-  const [tab, setTab] = useState<AssistTab>("questions");
-
   return (
-    <Sheet open={open} onOpenChange={(o) => { if (!o) { onClose(); } }} title={t.questionsAndNotes} desktop="side">
-      <div className="mb-3">
-        <SegmentedControl aria-label={t.assistTabs} value={tab} onValueChange={(v) => setTab(v as AssistTab)}>
-          {assistTabs(t).map((item) => (
-            <SegmentedControlItem key={item.value} value={item.value}>{item.label}</SegmentedControlItem>
-          ))}
-        </SegmentedControl>
-      </div>
-      <div>
-        {tab === "questions" ? (
-          <QuestionsPanel lectureId={lectureId} getAnchor={getAnchor} onJump={onClose} />
-        ) : (
-          <NotesPanel lectureId={lectureId} conceptId={conceptId} getAnchor={getAnchor} onJump={onClose} />
-        )}
-      </div>
-    </Sheet>
+    <div className="flex flex-col gap-6">
+      <section aria-label={t.tabQuestions} className="flex flex-col gap-2">
+        <h3 className="text-xs font-semibold text-fg-secondary">{t.tabQuestions}</h3>
+        <QuestionsPanel lectureId={lectureId} getAnchor={getAnchor} onJump={onJump} />
+      </section>
+      <section aria-label={t.tabNotes} className="flex flex-col gap-2 border-t border-line pt-4">
+        <h3 className="text-xs font-semibold text-fg-secondary">{t.tabNotes}</h3>
+        <NotesPanel lectureId={lectureId} conceptId={conceptId} getAnchor={getAnchor} onJump={onJump} />
+      </section>
+    </div>
   );
 }
 
-function panelTabs(t: T) {
-  return [...assistTabs(t), { value: "terms", label: t.tabTerms }] as const;
-}
-type PanelTab = AssistTab | "terms";
-
-interface LectureAssistPanelProps extends Omit<LectureAssistSheetProps, "open" | "onClose"> {
-  terms: LectureTerm[];
-  onBeforeDeeper: () => DeeperOrigin | void;
-  /** 이 강의에서 '더 깊게' 연 강의(있을 때만 아래에 짧게) */
-  deeper: LinkedLecture[];
-}
-
-/**
- * 넓은 화면(xl ≥1280)용 보조 열 — 읽으면서 바로 쓰는 것만: 질문 · 메모 · 이 강의의 용어(본문 팝오버와 같은 설명),
- * 그리고 '더 깊게' 본 강의가 있으면 그 목록. 시트를 열 필요 없이 본문 옆에 늘 펼쳐 둔다.
- */
-export function LectureAssistPanel({ lectureId, conceptId, getAnchor, terms, onBeforeDeeper, deeper }: LectureAssistPanelProps) {
+/** 폰·좁은 폭 본문 고정 바 — [목차] [질문과 메모 n] 두 버튼만(보조 열이 있으면 그리지 않는다). */
+export function ReadingBar({ count, onOpen }: { count: number; onOpen: (panel: LecturePanel) => void }) {
   const t = useT(messages);
-  const [tab, setTab] = useState<PanelTab>("questions");
-  // 본문에서 새 스레드를 열 때만(쉽게·깊게·질문·대화 n) '질문' 탭으로 돌아가 그 스레드를 펼친다 —
-  // 답이 오거나 닫는 등 focus 가 바뀔 때마다 탭을 빼앗지 않는다.
-  const openSeq = useReadingThreads()?.openSeq ?? 0;
-  useEffect(() => {
-    if (openSeq > 0) { setTab("questions"); }
-  }, [openSeq]);
   return (
-    <div className="flex flex-col gap-6">
-      <section aria-label={t.panelSection} className="flex flex-col gap-3">
-        <SegmentedControl aria-label={t.panelTabs} value={tab} onValueChange={(v) => setTab(v as PanelTab)}>
-          {panelTabs(t).map((item) => (
-            <SegmentedControlItem key={item.value} value={item.value}>{item.label}</SegmentedControlItem>
-          ))}
-        </SegmentedControl>
-        <div>
-          {tab === "questions" && <QuestionsPanel lectureId={lectureId} getAnchor={getAnchor} />}
-          {tab === "notes" && <NotesPanel lectureId={lectureId} conceptId={conceptId} getAnchor={getAnchor} />}
-          {tab === "terms" && <TermList terms={terms} onBeforeDeeper={onBeforeDeeper} />}
-        </div>
-      </section>
-      {deeper.length > 0 && (
-        <Section title={t.deeperShort} headingLevel={3}>
-          <List>
-            {deeper.map((l) => (
-              <ListRow key={l.id} href={lectureHref(l.id)} leading={<Layers aria-hidden="true" />} title={l.conceptName || l.title} />
-            ))}
-          </List>
-        </Section>
-      )}
+    <div
+      data-lecture-readbar=""
+      className="sticky top-[var(--app-header-offset,0px)] z-nav mb-4 flex gap-2 border-b border-line bg-canvas py-2"
+    >
+      <Button size="sm" variant="secondary" onClick={() => onOpen("toc")}>
+        <ListOrdered aria-hidden="true" />
+        {t.toc}
+      </Button>
+      <Button size="sm" variant="secondary" onClick={() => onOpen("notes")}>
+        <MessagesSquare aria-hidden="true" />
+        {assistLabel(t.questionsAndNotes, count)}
+      </Button>
     </div>
+  );
+}
+
+interface ReadingAsideProps {
+  tab: LecturePanel;
+  onTabChange: (tab: LecturePanel) => void;
+  count: number;
+  toc: ReactNode;
+  notes: ReactNode;
+}
+
+/** 데스크톱 오른쪽 보조 열 — 탭 [목차] [질문과 메모 n]. 화면 높이 안에서 따로 스크롤한다. */
+export function ReadingAside({ tab, onTabChange, count, toc, notes }: ReadingAsideProps) {
+  const t = useT(messages);
+  return (
+    <div
+      className="sticky top-[calc(var(--app-header-offset,0px)+1rem)] flex max-h-[calc(100dvh-var(--app-header-offset,0px)-2rem)] flex-col gap-3 overflow-y-auto pb-6"
+    >
+      <SegmentedControl aria-label={t.readingTools} value={tab} onValueChange={(v) => onTabChange(v as LecturePanel)}>
+        <SegmentedControlItem value="toc">{t.toc}</SegmentedControlItem>
+        <SegmentedControlItem value="notes">{assistLabel(t.questionsAndNotes, count)}</SegmentedControlItem>
+      </SegmentedControl>
+      <div>{tab === "toc" ? toc : notes}</div>
+    </div>
+  );
+}
+
+interface PanelSheetsProps {
+  panel: LecturePanel | null;
+  onClose: (after?: () => void) => void;
+  sections: LectureSection[];
+  totalMinutes: number;
+  lectureId: string;
+  conceptId: string;
+  getAnchor: () => string;
+}
+
+/** 폰·좁은 폭 하단 시트(주소 ?panel=toc|notes). 항목·위치로 가면 시트를 닫고 닫힌 뒤 스크롤한다. */
+export function PanelSheets({ panel, onClose, sections, totalMinutes, lectureId, conceptId, getAnchor }: PanelSheetsProps) {
+  const t = useT(messages);
+  return (
+    <>
+      <Sheet
+        open={panel === "toc"}
+        onOpenChange={(o) => { if (!o) { onClose(); } }}
+        title={t.toc}
+        description={t.totalMinutes(totalMinutes)}
+        desktop="side"
+      >
+        <SectionToc sections={sections} totalMinutes={totalMinutes} onNavigate={onClose} hideHeading />
+      </Sheet>
+      <Sheet
+        open={panel === "notes"}
+        onOpenChange={(o) => { if (!o) { onClose(); } }}
+        title={t.questionsAndNotes}
+        desktop="side"
+      >
+        <NotesAndQuestions lectureId={lectureId} conceptId={conceptId} getAnchor={getAnchor} onJump={onClose} />
+      </Sheet>
+    </>
   );
 }
 

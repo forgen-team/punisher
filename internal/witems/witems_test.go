@@ -265,6 +265,35 @@ func TestAppHandler(t *testing.T) {
 		t.Fatalf("nav.items hrefs %q", got)
 	}
 
+	// 재설계 안 B(punisher.md §1-1): 제품 이름 punisher, 섹션 오늘·지도·기록, 강의·복습 세션·카드·질문은 오늘에 묶는다.
+	if m["title"] != "punisher" || nav["label"] != "punisher" {
+		t.Fatalf("title %v / nav.label %v, want punisher", m["title"], nav["label"])
+	}
+	wantNav := map[string]string{"오늘": "/lectures /check /cards /inquiries /instant /start", "지도": "/chapters", "기록": ""}
+	for _, raw := range items {
+		item, _ := raw.(map[string]any)
+		label, _ := item["label"].(string)
+		var matches []string
+		rawMatch, _ := item["match"].([]any)
+		for _, p := range rawMatch {
+			s, _ := p.(string)
+			matches = append(matches, s)
+		}
+		if want, ok := wantNav[label]; !ok || strings.Join(matches, " ") != want {
+			t.Fatalf("nav item %v: match %v, want %q", item, matches, want)
+		}
+		delete(wantNav, label)
+	}
+	if len(wantNav) != 0 {
+		t.Fatalf("nav.items missing %v", wantNav)
+	}
+
+	// today (셸 계약 rss.md §8-3): 요약 카드 endpoint 와 앱당 카드 수.
+	today, _ := m["today"].(map[string]any)
+	if today["endpoint"] != "/v1/today-cards" || today["maxCards"] != float64(2) {
+		t.Fatalf("today %v", today)
+	}
+
 	entry := get("/static/remoteEntry.js")
 	if entry.Code != http.StatusOK || entry.Header().Get("Cache-Control") != Revalidate || entry.Header().Get("Content-Type") != "text/javascript; charset=utf-8" {
 		t.Fatalf("remoteEntry %d %v", entry.Code, entry.Header())

@@ -2,7 +2,8 @@
 import { useState } from "react";
 import { useReadingSignals } from "@/src/shared/lib/readingSignals";
 import { BookOpen } from "lucide-react";
-import { Button, Skeleton } from "@forgen-team/ui";
+import { Button, Skeleton, useToast } from "@forgen-team/ui";
+import { useRouter } from "@/src/shared/lib/router";
 import { cn, focusRing } from "@/src/shared/lib/cn";
 import { useCreateStudyRequest, useGloss } from "@/src/entities/punisher";
 import { SELECTION_MIN_CHARS, type ThreadMode } from "@/src/shared/api/punisher";
@@ -41,7 +42,7 @@ interface TermPopoverProps {
 /**
  * 강의 본문의 개념 용어 — 누르면 짧은 설명 오버레이(모바일 하단 시트, 데스크톱 용어 옆 팝오버).
  * 본문에 펼치지 않고 스크롤 위치도 바꾸지 않는다(스크롤 잠금 없음).
- * Esc·바깥·닫기로 본문 복귀, "더 깊게"는 현재 위치를 북마크하고 해당 개념 강의로 이동 (design §3.3).
+ * Esc·바깥·닫기로 본문 복귀. 버튼은 [더 깊게][더 쉽게][이어서 묻기][나중에 공부] (재설계 §4-2).
  */
 export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeDeeper, inline = false }: TermPopoverProps) {
   const t = useT(messages);
@@ -51,7 +52,9 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
   const open = anchor !== null;
   const threads = useReadingThreads();
   const readingSignals = useReadingSignals();
-  const readLater = useCreateStudyRequest();
+  const studyLater = useCreateStudyRequest();
+  const toast = useToast();
+  const router = useRouter();
   const gloss = useGloss(conceptId, open);
   const { launch, isPending, error } = useLaunchInstant();
   const label = term || conceptId;
@@ -84,6 +87,16 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
     requestAnimationFrame(() => threads.start(passage, mode));
   }
 
+  /** [나중에 공부] — 공부할 주제(학습 요청)에 넣고, 토스트에서 오늘 화면으로 갈 수 있게 한다(두 환경 같음). */
+  function addToStudy() {
+    studyLater.mutate(label, {
+      onSuccess: () => {
+        setAnchor(null);
+        toast.show(t.studyLaterDone, { action: { label: t.openToday, onAction: () => router.push("/") } });
+      },
+    });
+  }
+
   return (
     <>
       <button
@@ -114,22 +127,22 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
         anchor={anchor}
         title={label}
         footer={
-          <>
-            <Button
-              size="sm"
-              variant="ghost"
-              loading={readLater.isPending}
-              disabled={readLater.isSuccess}
-              onClick={() => readLater.mutate(label)}
-            >
-              {readLater.isSuccess ? t.readLaterDone : t.readLater}
-            </Button>
+          <div className="flex flex-wrap gap-2">
             {deeperId && (
               <Button size="sm" variant="secondary" loading={isPending} onClick={goDeeper}>
                 {t.goDeeper}
               </Button>
             )}
-          </>
+            {canThread && text && (
+              <>
+                <Button size="sm" variant="secondary" onClick={() => startThread("easier")}>{t.easier}</Button>
+                <Button size="sm" variant="secondary" onClick={() => startThread("question")}>{t.askMore}</Button>
+              </>
+            )}
+            <Button size="sm" variant="ghost" loading={studyLater.isPending} disabled={studyLater.isSuccess} onClick={addToStudy}>
+              {t.studyLater}
+            </Button>
+          </div>
         }
       >
         {gloss.isLoading && !fallbackText ? (
@@ -139,14 +152,8 @@ export function TermPopover({ term, conceptId, fallbackText, proposed, onBeforeD
         ) : (
           <InlineError error={gloss.error} />
         )}
-        {canThread && text && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => startThread("easier")}>{t.easier}</Button>
-            <Button variant="outline" size="sm" onClick={() => startThread("question")}>{t.askMore}</Button>
-          </div>
-        )}
         <div aria-live="polite" className="mt-2">
-          <InlineError error={error ?? readLater.error} />
+          <InlineError error={error ?? studyLater.error} />
         </div>
       </ReadingOverlay>
     </>

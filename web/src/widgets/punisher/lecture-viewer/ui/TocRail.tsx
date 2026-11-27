@@ -72,7 +72,7 @@ export function TocRail({ sections, totalMinutes, activeAnchor }: TocRailProps) 
       </ol>
       {open && (
         <div id={panelId} className="absolute left-full top-0 z-panel ml-2 w-64 rounded-lg border border-line bg-canvas-elevated p-2 shadow-md">
-          <SectionToc sections={sections} totalMinutes={totalMinutes} activeAnchor={activeAnchor} onNavigate={() => setOpen(false)} />
+          <SectionToc sections={sections} totalMinutes={totalMinutes} activeAnchor={activeAnchor} onNavigate={(scroll) => { setOpen(false); requestAnimationFrame(scroll); }} />
         </div>
       )}
     </div>

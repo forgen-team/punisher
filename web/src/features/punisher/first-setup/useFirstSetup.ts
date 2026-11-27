@@ -43,7 +43,7 @@ export function depthOneIdsForAreas(concepts: Concept[], areas: readonly string[
     .map((c) => c.id);
 }
 
-/** X 로 닫으면 이 기기에서 2주 동안 다시 띄우지 않는다(설명 수준은 설정에서 언제든 고를 수 있다). */
+/** 건너뛰거나 × 로 닫으면 이 기기에서 2주 동안 다시 띄우지 않고, 2주 뒤 한 번 더 묻는다(정책 23 §5-2). */
 const CLOSED_FOR_MS = 14 * 24 * 60 * 60 * 1000;
 
 export function closedRecently(raw: string | null, now: number): boolean {
@@ -53,12 +53,12 @@ export function closedRecently(raw: string | null, now: number): boolean {
   return Number.isFinite(at) && now - at < CLOSED_FOR_MS;
 }
 
-function readClosed(): boolean {
+function readClosedMark(): string | null {
   try {
-    return closedRecently(window.localStorage.getItem(CLOSED_KEY) ?? window.sessionStorage.getItem(CLOSED_KEY), Date.now());
+    return window.localStorage.getItem(CLOSED_KEY) ?? window.sessionStorage.getItem(CLOSED_KEY);
   } catch (err) {
     console.warn("punisher: storage read failed", err);
-    return false;
+    return null;
   }
 }
 
@@ -70,29 +70,43 @@ function writeClosed(): void {
   }
 }
 
+function clearClosed(): void {
+  try {
+    window.localStorage.removeItem(CLOSED_KEY);
+    window.sessionStorage.removeItem(CLOSED_KEY);
+  } catch (err) {
+    console.warn("punisher: storage write failed", err);
+  }
+}
+
 /**
- * 처음 설정 시트를 띄울지 — 설정을 받았고 설명 수준이 빈 값("")이며 최근 2주 안에 X 로 닫지 않았을 때(점검 19:
- * 세션마다 다시 뜨던 것을 기기 단위로).
- * 한 번 열리면 저장으로 수준이 채워져도(이미 앎 저장·실패 안내 중) 닫을 때까지 열어 둔다.
+ * 처음 설정 시트를 띄울지 — 설정을 받았고, 설명 수준이 빈 값("")이거나 전에 건너뛴 적이 있으며(기본 수준만 저장됨),
+ * 최근 2주 안에 건너뛰지 않았을 때. 한 번 열리면 저장으로 수준이 채워져도(이미 앎 저장·실패 안내 중) 닫을 때까지 열어 둔다.
  */
 export function useFirstSetupGate() {
   const settings = useLearningSettings();
-  const needsSetup = settings.data?.settings.readerLevel === "";
+  const level = settings.data?.settings.readerLevel;
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (needsSetup && !readClosed()) { setOpen(true); }
-  }, [needsSetup]);
+    if (level === undefined) { return; }
+    const mark = readClosedMark();
+    const skippedBefore = mark !== null;
+    if ((level === "" || skippedBefore) && !closedRecently(mark, Date.now())) { setOpen(true); }
+  }, [level]);
 
-  /** X·배경: 이 기기에서 2주 동안 닫는다. */
-  const closeForSession = useCallback(() => {
+  /** 건너뛰기·×: 이 기기에서 2주 동안 닫는다(기본 수준 저장은 시트가 한다). */
+  const skip = useCallback(() => {
     writeClosed();
     setOpen(false);
   }, []);
-  /** 저장을 마쳤을 때. */
-  const finish = useCallback(() => setOpen(false), []);
+  /** 시작하기로 저장을 마쳤을 때 — 다시 묻지 않는다. */
+  const finish = useCallback(() => {
+    clearClosed();
+    setOpen(false);
+  }, []);
 
-  return { open, closeForSession, finish };
+  return { open, skip, finish };
 }
 
 export interface FinishResult {

@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Concept, LearningSettings, LearningSettingsPatch, LearningSettingsResponse, ReaderLevel } from "@/src/shared/api/punisher";
 
@@ -54,13 +55,15 @@ Object.defineProperty(window, "scrollTo", { value: () => undefined, writable: tr
 const { FirstSetup } = await import("../FirstSetupSheet");
 const { closedRecently } = await import("../useFirstSetup");
 
-function renderSetup(level: ReaderLevel = "") {
+function renderSetup(level: ReaderLevel = "", path = "/") {
   current = { ...baseSettings, readerLevel: level };
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
-    <QueryClientProvider client={client}>
-      <FirstSetup />
-    </QueryClientProvider>,
+    <MemoryRouter initialEntries={[path]}>
+      <QueryClientProvider client={client}>
+        <FirstSetup />
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -104,13 +107,34 @@ describe("처음 설정 시트", () => {
     expect(screen.getByText("없음")).toBeInTheDocument();
   });
 
-  it("skip saves practitioner and closes", async () => {
+  it("skip saves practitioner, closes, and asks again after two weeks", async () => {
     renderSetup();
     await title("처음 설정");
-    fireEvent.click(button("건너뛰고 기본 강의로"));
+    fireEvent.click(button("건너뛰기"));
     await waitFor(() => expect(api.saveLearningSettings).toHaveBeenCalledWith({ readerLevel: "practitioner" }));
     await waitFor(() => expect(screen.queryByRole("heading", { name: /처음 설정/ })).toBeNull());
     expect(api.markKnown).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem("punisher.firstSetup.closed")).not.toBeNull();
+  });
+
+  it("treats × the same as skip", async () => {
+    renderSetup();
+    await title("처음 설정");
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    await waitFor(() => expect(api.saveLearningSettings).toHaveBeenCalledWith({ readerLevel: "practitioner" }));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: /처음 설정/ })).toBeNull());
+    expect(window.localStorage.getItem("punisher.firstSetup.closed")).not.toBeNull();
+  });
+
+  it("re-opens for a skipped user once two weeks have passed", async () => {
+    window.localStorage.setItem("punisher.firstSetup.closed", String(Date.now() - 15 * 24 * 60 * 60 * 1000));
+    renderSetup("practitioner");
+    await title("처음 설정 · 1 / 3");
+  });
+
+  it("opens from ?first=1 even when a level is chosen", async () => {
+    renderSetup("practitioner", "/?first=1");
+    await title("처음 설정 · 1 / 3");
   });
 
   it("finish saves settings, then marks depth-1 concepts of 'can explain' areas known", async () => {

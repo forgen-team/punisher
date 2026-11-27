@@ -45,7 +45,7 @@ interface FeedbackBarProps {
   getAnchor: () => string;
 }
 
-/** 피드백 5종(칩, 선택만 강조). "설명 부족"은 재설명 요청 상태를 이어서 보여 준다. */
+/** 끝 피드백 줄 — "이 강의는" + 피드백 5종(칩, 선택만 강조). "설명 부족"은 재설명 요청 상태를 이어서 보여 준다. */
 export function FeedbackBar({ lectureId, getAnchor }: FeedbackBarProps) {
   const t = useT(messages);
   const mutation = useLectureFeedback(lectureId);
@@ -56,9 +56,9 @@ export function FeedbackBar({ lectureId, getAnchor }: FeedbackBarProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-xs font-medium text-fg-secondary">{t.howWasIt}</p>
-      <div role="group" aria-label={t.feedbackGroup} className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-2 border-t border-line pt-4 text-sm text-fg-secondary">
+      <div role="group" aria-label={t.feedbackGroup} className="flex flex-wrap items-center gap-2">
+        <span>{t.howWasIt}</span>
         {FEEDBACK_ORDER.map((kind) => (
           <Chip
             key={kind}

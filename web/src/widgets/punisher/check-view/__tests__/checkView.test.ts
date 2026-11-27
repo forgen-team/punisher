@@ -1,5 +1,6 @@
+import { objectParticle } from "../i18n";
 import { describe, expect, it } from "vitest";
-import type { CheckDetail, CheckItem, CheckSession, CheckTurn } from "@/src/shared/api/punisher";
+import type { CheckDetail, CheckItem, CheckResultItem, CheckSession, CheckTurn } from "@/src/shared/api/punisher";
 import {
   canSend,
   currentItemId,
@@ -7,15 +8,19 @@ import {
   isShownItem,
   itemTurns,
   judgedTurn,
+  earliestNextReview,
   orderedItems,
-  progressLabel,
+  progressAt,
   progressOf,
+  progressRatio,
   resultRows,
   retryableTurnId,
   selfGradeStep,
   showComposer,
   showItemReview,
   showReveal,
+  stepMeta,
+  stopCounts,
 } from "../lib/checkView";
 
 const NOW = Date.parse("2026-11-13T12:00:00+09:00");
@@ -189,11 +194,19 @@ describe("결과 요약", () => {
 describe("복습(자기 채점)", () => {
   const selfSession = (patch: Partial<CheckSession> = {}) => session({ kind: "review", grader: "self", lectureId: "", conceptId: "", ...patch });
 
-  it("상단 진행은 복습·확인 모두 문항 n/N", () => {
-    expect(progressLabel(detail({ session: selfSession({ cursor: 1 }) }), "ko")).toBe("문항 2/3");
-    expect(progressLabel(detail({ session: selfSession({ cursor: 1 }) }), "en")).toBe("Question 2/3");
-    expect(progressLabel(detail(), "ko")).toBe("문항 1/3");
-    expect(progressLabel(detail({ session: session({ itemIds: [] }) }), "ko")).toBe("");
+  it("진행 줄은 '3/12 · 복습' — 문항이 없으면 제목만", () => {
+    expect(stepMeta(progressAt(detail({ session: selfSession({ cursor: 1 }) }), "i2"), "복습")).toBe("2/3 · 복습");
+    expect(stepMeta(progressOf(detail()), "확인하기")).toBe("1/3 · 확인하기");
+    expect(stepMeta({ index: 0, total: 0 }, "확인하기")).toBe("확인하기");
+  });
+
+  it("끝낸 문항을 보는 중에는 그 문항 자리, 막대는 그 문항까지 찬다", () => {
+    const d = detail({ session: selfSession({ cursor: 2 }) });
+    expect(progressAt(d, "i2")).toEqual({ index: 2, total: 3 });
+    expect(progressAt(d, "없음")).toEqual({ index: 3, total: 3 });
+    expect(progressRatio(2, 4, false)).toBe(0.25);
+    expect(progressRatio(2, 4, true)).toBe(0.5);
+    expect(progressRatio(1, 0, true)).toBe(0);
   });
 
   it("자기 채점 단계: 답 쓰기 → 채점 고르기, 실행 중·튜터 채점·현재 문항 없음은 null", () => {
@@ -229,5 +242,30 @@ describe("isShownItem", () => {
     expect(isShownItem(item("b"), "b", 0)).toBe(true);
     expect(isShownItem(item("c"), "b", 2)).toBe(true);
     expect(isShownItem(item("d"), "b", 0)).toBe(false);
+  });
+});
+
+describe("끝 화면·그만두기", () => {
+  const result = (patch: Partial<CheckResultItem>): CheckResultItem => ({
+    itemId: "i1", objectiveId: "o1", outcome: "unaided_correct", levelBefore: 1, levelAfter: 2, missing: [], anchor: "", misconception: "", nextReviewAt: null, lapses: 0, ...patch,
+  });
+
+  it("다음 복습일은 대기 아닌 줄 중 가장 이른 날짜", () => {
+    expect(earliestNextReview([result({ nextReviewAt: "2026-12-05T00:00:00Z" }), result({ nextReviewAt: "2026-12-02T00:00:00Z" }), result({ nextReviewAt: "2026-11-30T00:00:00Z", queued: true })])).toBe("2026-12-02T00:00:00Z");
+    expect(earliestNextReview([result({})])).toBeNull();
+    expect(earliestNextReview(undefined)).toBeNull();
+  });
+
+  it("그만두기 확인 창의 개수 — 끝낸 문항 + 지금 문항에 답한 것", () => {
+    const d = detail({ items: [item("i1", { done: true }), item("i2"), item("i3")] });
+    expect(stopCounts(d, false)).toEqual({ answered: 1, remaining: 2 });
+    expect(stopCounts(d, true)).toEqual({ answered: 2, remaining: 1 });
+  });
+
+  it("목적격 조사는 받침으로 가른다", () => {
+    expect(objectParticle("복습")).toBe("을");
+    expect(objectParticle("확인하기")).toBe("를");
+    expect(objectParticle("종합 문제")).toBe("를");
+    expect(objectParticle("짧은 확인")).toBe("을");
   });
 });
