@@ -92,13 +92,13 @@ export function ConceptCombobox({ label, value, onChange, max = 10 }: ConceptCom
       {value.length > 0 && (
         <ul className="flex flex-wrap gap-1.5" aria-label={t.selected}>
           {value.map((id) => (
-            <li key={id} className="inline-flex h-8 items-center gap-1 rounded-full bg-accent-subtle pl-3 pr-1 text-sm text-accent-text">
+            <li key={id} className="inline-flex h-8 items-center gap-1 bg-accent-subtle pl-3 pr-1 text-sm text-accent-text">
               {byId.get(id)?.name ?? id}
               <button
                 type="button"
                 aria-label={t.remove(byId.get(id)?.name ?? id)}
                 onClick={() => onChange(value.filter((v) => v !== id))}
-                className="inline-flex size-6 items-center justify-center rounded-full hover:bg-canvas-hover"
+                className="inline-flex size-6 items-center justify-center hover:bg-canvas-hover"
               >
                 <X className="size-3.5" aria-hidden="true" />
               </button>
