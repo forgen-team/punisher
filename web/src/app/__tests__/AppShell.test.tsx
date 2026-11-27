@@ -26,11 +26,14 @@ vi.mock("@/src/widgets/claude-status/ClaudeStatusBanner", () => ({
 }));
 
 vi.mock("@/src/pages", async () => {
-  const { usePageActions } = await import("@/src/shared/lib/screen-chrome");
+  const { usePageActions, useScreenSubtitle } = await import("@/src/shared/lib/screen-chrome");
   const { Link: AppLink } = await import("@/src/shared/lib/router");
   const page = (name: string) => function Screen() { return <p>{name}</p>; };
   return {
-    TodayPage: page("today-screen"),
+    TodayPage: function TodayScreen() {
+      useScreenSubtitle("11월 27일 금요일");
+      return <p>today-screen</p>;
+    },
     HistoryPage: () => <AppLink href="/chapters/new">to-new-chapter</AppLink>,
     MapPage: function MapScreen() {
       usePageActions([
@@ -114,6 +117,15 @@ describe("AppShell (standalone frame)", () => {
     // 섹션 첫 화면에는 ← 가 없다
     expect(screen.queryByRole("link", { name: "뒤로" })).toBeNull();
     expect(screen.getByText("today-screen")).toBeInTheDocument();
+  });
+
+  it("draws the subtitle a screen gives (today's date) under the title, and drops it on other screens", () => {
+    const first = renderAt("/");
+    const head = screen.getByRole("heading", { level: 1, name: "오늘" }).closest("header") as HTMLElement;
+    expect(within(head).getByText("11월 27일 금요일")).toBeInTheDocument();
+    first.unmount();
+    renderAt("/map");
+    expect(screen.queryByText("11월 27일 금요일")).toBeNull();
   });
 
   it("marks the section of a sub-screen and uses the default frame width", () => {

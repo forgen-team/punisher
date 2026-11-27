@@ -34,7 +34,7 @@ function isPlainClick(event: MouseEvent): boolean {
 /**
  * 화면 틀(@forgen-team/ui Page) — 두 셸이 <Outlet/> 을 이것으로 감싼다. 폭은 경로표(app/frame), 생성을 쓰는 화면이면
  * 머리 바로 아래 Claude 상태 배너. 셸 안(UIProvider inShell)이면 Page 가 머리를 그리지 않고 폭·배너만 둔다.
- * 단독판: h1 = 화면 제목, 섹션 첫 화면이 아니면 ← (앱 안에서 왔으면 뒤로, 아니면 그 섹션 첫 화면으로 replace),
+ * 단독판: h1 = 화면 제목(+ 화면이 준 부제 — useScreenSubtitle), 섹션 첫 화면이 아니면 ← (앱 안에서 왔으면 뒤로, 아니면 그 섹션 첫 화면으로 replace),
  * 동작 자리 = actions(AppShell 이 PageActions 로 그린 것 — 배치 규칙은 app/actionLayout, ⋯ 는 ui Menu).
  */
 export function AppPage({ actions, children }: { actions?: ReactNode; children: ReactNode }) {
@@ -42,6 +42,7 @@ export function AppPage({ actions, children }: { actions?: ReactNode; children: 
   const { inShell } = useUI();
   const router = useRouter();
   const title = useFrameTitle();
+  const { subtitle } = useScreenChrome();
   const issue = useClaudeStatusIssue();
   const fallback = backFallbackFor(pathname);
 
@@ -59,6 +60,7 @@ export function AppPage({ actions, children }: { actions?: ReactNode; children: 
     <div className="flex min-w-0 flex-1 flex-col" onClickCapture={inShell ? undefined : handleClickCapture}>
       <Page
         title={title}
+        subtitle={subtitle ?? undefined}
         back={fallback ? { href: fallback } : undefined}
         actions={actions}
         width={pageWidthFor(pathname)}

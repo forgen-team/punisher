@@ -35,6 +35,14 @@ vi.mock("@/src/shared/api/punisher", async (importOriginal) => {
 });
 
 const { TodayWidget } = await import("../TodayWidget");
+const { useScreenChrome } = await import("@/src/shared/lib/screen-chrome");
+
+/** 화면이 틀에 넘긴 부제(Page subtitle)를 읽어 둔다. */
+let subtitle: string | null = null;
+function ChromeProbe() {
+  subtitle = useScreenChrome().subtitle;
+  return null;
+}
 
 // 첫 렌더는 부품 모듈을 불러오느라 느리다 — 상자 세 개의 쿼리가 다 끝날 때까지 기다린다.
 configure({ asyncUtilTimeout: 4000 });
@@ -45,6 +53,7 @@ function renderToday() {
     <MemoryRouter>
       <QueryClientProvider client={client}>
         <TodayWidget />
+        <ChromeProbe />
       </QueryClientProvider>
     </MemoryRouter>,
   );
@@ -120,6 +129,14 @@ describe("오늘 — 상자·묶음", () => {
     renderToday();
     expect(await screen.findByText("지금 지도의 강의를 다 마쳤어요")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "새 챕터 열기" })).toHaveAttribute("href", "/chapters/new");
+  });
+
+  it("오늘 날짜는 본문이 아니라 화면 부제(Page subtitle)로 넘긴다", async () => {
+    renderToday();
+    await group("오늘의 추천");
+    const date = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "long" }).format(new Date());
+    expect(subtitle).toBe(date);
+    expect(screen.queryByText(date)).toBeNull();
   });
 
   it("읽던 강의가 없으면 이어보기 묶음이 없다", async () => {

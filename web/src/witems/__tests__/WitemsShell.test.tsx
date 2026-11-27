@@ -24,10 +24,14 @@ vi.mock("@/src/widgets/claude-status/ClaudeStatusBanner", () => ({
   useClaudeStatusIssue: () => true,
 }));
 
-vi.mock("@/src/pages", () => {
+vi.mock("@/src/pages", async () => {
+  const { useScreenSubtitle } = await import("@/src/shared/lib/screen-chrome");
   const page = (name: string) => function Screen() { return <p>{name}</p>; };
   return {
-    TodayPage: page("today-screen"), HistoryPage: page("history-screen"), MapPage: page("map-screen"), LecturePage: page("lecture-screen"),
+    TodayPage: function TodayScreen() {
+      useScreenSubtitle("11월 27일 금요일");
+      return <p>today-screen</p>;
+    }, HistoryPage: page("history-screen"), MapPage: page("map-screen"), LecturePage: page("lecture-screen"),
     InquiryPage: page("inquiry-screen"), CheckPage: page("check-screen"), InstantPage: page("instant-screen"), CardsPage: page("cards-screen"),
     StartPage: page("start-screen"), NotFoundPage: page("not-found-screen"), SettingsPage: page("settings-screen"),
     PromptSettingsPage: page("prompts-screen"), NewChapterPage: page("new-chapter-screen"),
@@ -62,6 +66,8 @@ describe("WitemsShell (inside the shell)", () => {
     expect(screen.getByText("claude-banner")).toBeInTheDocument();
     const commands = runtime.setCommands.mock.lastCall?.[0] as Array<{ id: string; href?: string }>;
     expect(commands.find((c) => c.id === "next-lecture")?.href).toBe("/start?concept=c1");
+    // 셸에 부제를 넘기는 계약이 아직 없다 — 셸 안에서는 날짜를 그리지 않는다
+    expect(screen.queryByText("11월 27일 금요일")).toBeNull();
   });
 
   it("draws no app frame and no palette — ⌘K belongs to the shell, which gets the same command list", () => {

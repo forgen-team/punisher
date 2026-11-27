@@ -14,7 +14,7 @@
   "dependencies": {
     "@forgen-team/tailwind-preset": "0.1.0-beta.0",
     "@forgen-team/tokens": "0.1.0-beta.0",
-    "@forgen-team/ui": "0.1.0-beta.16",
+    "@forgen-team/ui": "0.1.0-beta.17",
     "@tanstack/react-query": "^5.90.20",
     "@xyflow/react": "^12.12.1",
     "clsx": "^2.1.1",

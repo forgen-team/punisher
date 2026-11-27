@@ -51,7 +51,7 @@ vi.mock("@/src/shared/lib/router", async (importOriginal) => ({
 
 vi.mock("@forgen-team/ui", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@forgen-team/ui")>()),
-  useMediaQuery: (query: string) => (query === "(min-width: 1280px)" ? desktop : false),
+  useMediaQuery: (query: string) => (query === "(min-width: 1024px)" ? desktop : false),
 }));
 
 vi.mock("@/src/shared/api/punisher", async (importOriginal) => {
@@ -89,7 +89,7 @@ vi.mock("@/src/features/punisher/reading-assist", () => ({
   PassageThreadList: () => null,
   countPassageThreads: () => 0,
   passageQuestionIds: () => new Set<string>(),
-  THREAD_PANEL_QUERY: "(min-width: 1280px)",
+  THREAD_PANEL_QUERY: "(min-width: 1024px)",
 }));
 vi.mock("@/src/features/punisher/lecture-progress", () => ({
   useLectureProgress: () => ({ getAnchor: () => "s1", saveNow: vi.fn() }),
@@ -114,7 +114,7 @@ vi.mock("../ui/RegenerateSheet", () => ({ RegenerateSheet: ({ open }: { open: bo
 const { LectureViewer } = await import("../LectureViewer");
 
 /** 틀이 그릴 페이지 동작을 읽어 둔다. */
-let chrome: ReturnType<typeof useScreenChrome> = { title: null, actions: null };
+let chrome: ReturnType<typeof useScreenChrome> = { title: null, subtitle: null, actions: null };
 function ChromeProbe() {
   chrome = useScreenChrome();
   return null;
