@@ -141,6 +141,7 @@ export const studyApi = {
   listCards: (due = false) => punisherFetch<{ cards: ReviewCard[] }>(`/cards${due ? "?due=1" : ""}`).then((r) => r.cards),
   gradeCard: (id: string, rating: CardRating) => punisherFetch<ReviewCard>(`/cards/${enc(id)}/grade`, { method: "POST", json: { rating } }),
   deleteCard: (id: string) => punisherFetch<void>(`/cards/${enc(id)}`, { method: "DELETE" }),
+  restoreCard: (id: string) => punisherFetch<ReviewCard>(`/cards/${enc(id)}/restore`, { method: "POST" }),
   search: (q: string, limit = 20) => punisherFetch<{ hits: SearchHit[] }>(`/search?q=${enc(q)}&limit=${limit}`).then((r) => r.hits),
 };
 

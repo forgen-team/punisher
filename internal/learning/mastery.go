@@ -19,6 +19,8 @@ const (
 	OutcomeHeld           = "held"
 	// OutcomeRecorded: a pretest / placement answer — recorded, never evidence.
 	OutcomeRecorded = "recorded"
+	// OutcomeSkipped: the learner skipped the item before answering ('건너뛰기') — never evidence (ApplySkip).
+	OutcomeSkipped = "skipped"
 )
 
 // Verdicts of one answer (LLM tutor, regrade or self-grade).
@@ -162,6 +164,27 @@ func ApplyEvidence(m Mastery, outcome string, now time.Time, intervals []int) Ma
 		return m
 	}
 	m.Stale = false
+	return m
+}
+
+// ApplySkip is a skipped item ('건너뛰기'): not evidence, so nothing a failure
+// costs changes (box, best, lapses, the failure mark, ease, FSRS memory) — only
+// the review date moves to the nearest one, the first ladder step (the date a
+// failure would get, Due(0)), so the objective comes back soon. A review
+// already set sooner (and still ahead) is kept; graduated, inflow-queued and
+// '이미 앎' verification objectives keep their state.
+func ApplySkip(m Mastery, now time.Time, intervals []int) Mastery {
+	if m.Best == "" {
+		m.Best = BestNone
+	}
+	if m.GradStep == GradDone || m.Queued || m.Verify {
+		return m
+	}
+	soon := m.due(0, now, intervals)
+	if m.NextReviewAt != nil && m.NextReviewAt.After(now) && !m.NextReviewAt.After(soon) {
+		return m
+	}
+	m.NextReviewAt = &soon
 	return m
 }
 

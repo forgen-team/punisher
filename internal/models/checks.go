@@ -129,6 +129,8 @@ type CheckCurrent struct {
 	CanAnswer    bool `json:"canAnswer"`
 	CanReveal    bool `json:"canReveal"`
 	CanSelfGrade bool `json:"canSelfGrade"`
+	// CanSkip: '건너뛰기' — before the item's first answer, nothing running (not on pretest / placement).
+	CanSkip bool `json:"canSkip"`
 }
 
 // CheckDetail is the payload of GET /v1/checks/{id} (and the POST responses).

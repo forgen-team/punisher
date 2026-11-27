@@ -1,6 +1,6 @@
 // Package scheduler runs Punisher's background jobs for the owner account:
 // stale-job recovery, study-request resolution, the backfill review of stored
-// lectures and library pre-generation.
+// lectures, library pre-generation and emptying cards deleted long ago.
 // All work is idempotent (generation_jobs keys), so restarts never duplicate.
 package scheduler
 
@@ -12,11 +12,15 @@ import (
 
 	"github.com/forgen-team/punisher/internal/llm"
 	"github.com/forgen-team/punisher/internal/services"
+	"github.com/forgen-team/punisher/internal/store"
 )
 
 // staleJobAge: a pending/running job older than this is from a dead process
 // (it outlives the longest live job limit).
 const staleJobAge = services.LongestJobTimeout + 5*time.Minute
+
+// cardPurgeInterval: how often deleted cards past their restore period are removed.
+const cardPurgeInterval = 6 * time.Hour
 
 // inquirySweepInterval: how often interrupted question explanations are ended.
 const inquirySweepInterval = 2 * time.Minute
@@ -32,6 +36,7 @@ type Scheduler struct {
 func (s *Scheduler) Run(ctx context.Context) {
 	go s.sweepInquiries(ctx)
 	go s.sweepChecks(ctx)
+	go s.sweepDeletedCards(ctx)
 	if s.Svc.Cfg.OwnerUserID == "" {
 		log.Println("[scheduler] PUNISHER_OWNER_USER_ID not set: background generation disabled")
 		return
@@ -102,6 +107,34 @@ func (s *Scheduler) sweepChecks(ctx context.Context) {
 			return
 		case <-ticker.C:
 			sweep(services.StaleCheckTurnAge, services.StaleCheckPrepareAge)
+		}
+	}
+}
+
+// sweepDeletedCards empties the cards the user deleted more than
+// store.CardTrashDays ago (their text and source; the row and review log stay) — at boot and every
+// cardPurgeInterval. Runs without an owner too.
+func (s *Scheduler) sweepDeletedCards(ctx context.Context) {
+	st, ok := s.Svc.Store.(store.StudyStore)
+	if !ok {
+		return
+	}
+	purge := func() {
+		if n, err := st.PurgeDeletedCards(ctx, time.Now()); err != nil {
+			log.Printf("[scheduler] purge deleted cards: %v", err)
+		} else if n > 0 {
+			log.Printf("[scheduler] emptied %d cards deleted over %d days ago", n, store.CardTrashDays)
+		}
+	}
+	purge()
+	ticker := time.NewTicker(cardPurgeInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			purge()
 		}
 	}
 }

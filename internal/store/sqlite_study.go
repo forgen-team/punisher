@@ -280,7 +280,7 @@ func (s *SQLiteStore) ReviewForecast(ctx context.Context, userID string, now tim
 		return nil, 0, fmt.Errorf("forecast objectives: %w", err)
 	}
 	if err := add(`SELECT next_review_at FROM review_cards
-		WHERE user_id = $1 AND next_review_at IS NOT NULL AND next_review_at < $2 AND suspended_at IS NULL`, true); err != nil {
+		WHERE user_id = $1 AND next_review_at IS NOT NULL AND next_review_at < $2 AND suspended_at IS NULL AND deleted_at IS NULL`, true); err != nil {
 		return nil, 0, fmt.Errorf("forecast cards: %w", err)
 	}
 	var queued int
@@ -331,7 +331,7 @@ func (s *SQLiteStore) Activity(ctx context.Context, userID string, now time.Time
 	}
 	const day = `strftime('%Y-%m-%d', %s, '+9 hours')`
 	if err := count(`SELECT `+strings.Replace(day, "%s", "created_at", 1)+` AS d, COUNT(*) FROM check_turns
-		WHERE user_id = $1 AND outcome IS NOT NULL AND outcome NOT IN ('held', 'recorded') AND created_at >= $2 GROUP BY d`,
+		WHERE user_id = $1 AND outcome IS NOT NULL AND outcome NOT IN ('held', 'recorded', 'skipped') AND created_at >= $2 GROUP BY d`,
 		func(a *ActivityDay, n int) { a.Reviews = n }); err != nil {
 		return nil, fmt.Errorf("activity reviews: %w", err)
 	}
